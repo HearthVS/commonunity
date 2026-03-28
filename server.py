@@ -407,7 +407,7 @@ DOCUMENT:
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude_sonnet_4_6",
+                model="claude-sonnet-4-5",
                 max_tokens=1500,
                 system=CV_EXTRACTION_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -487,7 +487,7 @@ TRANSCRIPT:
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude_sonnet_4_6",
+                model="claude-sonnet-4-5",
                 max_tokens=3000,
                 system=TRANSCRIPT_ROUTING_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -591,7 +591,7 @@ QUESTION: {request.query}"""
     async def stream():
         try:
             with client.messages.stream(
-                model="claude_sonnet_4_6",
+                model="claude-sonnet-4-5",
                 max_tokens=800,
                 system=system,
                 messages=[{"role": "user", "content": user_msg}]
@@ -670,7 +670,7 @@ Write a short contemplative starting point (2–3 sentences) to help this person
     async def stream():
         try:
             with client.messages.stream(
-                model="claude_sonnet_4_6",
+                model="claude-sonnet-4-5",
                 max_tokens=200,
                 system=INSPIRE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -776,7 +776,7 @@ async def generate(request: GenerateRequest):
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude_sonnet_4_6",
+                model="claude-sonnet-4-5",
                 max_tokens=2048,
                 system=system,
                 messages=[{"role": "user", "content": user}]
