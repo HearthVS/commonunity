@@ -817,3 +817,25 @@ async def generate(request: GenerateRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
+
+
+# ── Static frontend serving ───────────────────────────────────────────────────
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import pathlib
+
+# Serve index.html at root
+@app.get("/")
+async def serve_frontend():
+    index = pathlib.Path(__file__).parent / "index.html"
+    if index.exists():
+        return FileResponse(index)
+    return {"error": "Frontend not found"}
+
+@app.get("/favicon.svg")
+async def serve_favicon():
+    fav = pathlib.Path(__file__).parent / "favicon.svg"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/svg+xml")
+    return {"error": "Not found"}
