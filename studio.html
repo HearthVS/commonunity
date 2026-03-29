@@ -928,6 +928,411 @@ input, textarea { font: inherit; color: inherit; }
 }
 .studio-footer a { color: var(--text-faint); text-decoration: none; }
 .studio-footer a:hover { color: var(--text-muted); }
+
+/* ── Frequency Engine ────────────────────────────────────────── */
+.freq-engine {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 20%, var(--border));
+  border-radius: 2rem;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.35), 0 0 60px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.freq-engine.collapsed {
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-3);
+}
+
+.freq-engine-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.freq-orb {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, white), var(--rose-color,#c4b5fd));
+  box-shadow: 0 0 8px var(--rose-color,#c4b5fd), 0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent);
+  transition: all 0.3s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.freq-orb.playing {
+  animation: orb-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 16px var(--rose-color,#c4b5fd), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent);
+}
+@keyframes orb-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 0 16px var(--rose-color,#c4b5fd), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent); }
+  50%      { transform: scale(1.12); box-shadow: 0 0 24px var(--rose-color,#c4b5fd), 0 0 60px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent); }
+}
+.freq-engine-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.freq-engine-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.freq-engine.collapsed .freq-engine-body { display: none; }
+
+.freq-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 120px;
+}
+.freq-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+
+.freq-presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.freq-preset-btn {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.freq-preset-btn:hover {
+  border-color: var(--rose-color,#c4b5fd);
+  color: var(--rose-color,#c4b5fd);
+}
+.freq-preset-btn.active {
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent);
+  border-color: var(--rose-color,#c4b5fd);
+  color: var(--rose-color,#c4b5fd);
+}
+
+.binaural-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.binaural-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.binaural-channel-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.binaural-freq-display {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--rose-color,#c4b5fd);
+  min-width: 60px;
+  text-align: center;
+}
+.freq-knob {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.freq-knob::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--rose-color,#c4b5fd);
+  box-shadow: 0 0 6px var(--rose-color,#c4b5fd);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.freq-knob::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+.freq-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.freq-volume input[type=range] {
+  -webkit-appearance: none;
+  width: 70px; height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+.freq-volume input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  cursor: pointer;
+}
+
+.freq-beat-display {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+  min-width: 80px;
+}
+
+/* ── Mood Lighting Panel ──────────────────────────────────────── */
+.mood-panel {
+  position: fixed;
+  top: 50%;
+  right: var(--space-4);
+  transform: translateY(-50%);
+  z-index: 100;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  min-width: 160px;
+}
+.mood-panel.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.mood-panel-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.mood-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mood-slider-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: flex;
+  justify-content: space-between;
+}
+.mood-slider {
+  -webkit-appearance: none;
+  width: 100%; height: 3px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.mood-slider.glow-slider { background: linear-gradient(to right, var(--border), var(--rose-color,#c4b5fd)); }
+.mood-slider.warm-slider { background: linear-gradient(to right, #818cf8, #f59e0b); }
+.mood-slider.dark-slider { background: linear-gradient(to right, #0b1120, #f7f4ef); }
+.mood-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.mood-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mood-preset {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  letter-spacing: 0.03em;
+}
+.mood-preset:hover { color: var(--text); border-color: var(--setup-accent); }
+.mood-preset.active { background: color-mix(in srgb, var(--setup-accent) 15%, transparent); border-color: var(--setup-accent); color: var(--text); }
+
+/* Mood toggle button */
+.mood-toggle-btn {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 101;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  padding: var(--space-3) var(--space-2);
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 16px;
+  transition: all 0.2s;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mood-toggle-btn:hover { color: var(--text); background: var(--card-alt); }
+
+/* ── Rose Orb — magic active state ───────────────────────────── */
+.room-mirror {
+  transition: all 0.4s ease;
+}
+.room-mirror.orb-active {
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 4%, var(--card-alt));
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
+  padding: var(--space-4);
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 12%, transparent),
+    0 0 80px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent),
+    inset 0 0 30px color-mix(in srgb, var(--rose-color,#c4b5fd) 4%, transparent);
+}
+
+.mirror-input:focus ~ .mirror-send,
+.mirror-input:focus {
+  /* handled in JS */
+}
+
+.mirror-input-row.active .mirror-send {
+  animation: send-pulse 1.5s ease-in-out infinite;
+}
+@keyframes send-pulse {
+  0%,100% { box-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent); }
+  50%      { box-shadow: 0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 70%, transparent); }
+}
+
+/* The Rose icon — larger, more orb-like in room */
+.mirror-rose-icon {
+  width: 36px !important;
+  height: 36px !important;
+  filter: drop-shadow(0 0 8px var(--rose-color,#c4b5fd));
+  transition: filter 0.4s ease;
+}
+.orb-active .mirror-rose-icon {
+  filter: drop-shadow(0 0 16px var(--rose-color,#c4b5fd)) drop-shadow(0 0 32px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent));
+  animation: rose-icon-breathe 3s ease-in-out infinite;
+}
+@keyframes rose-icon-breathe {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* ── Voice Notes ─────────────────────────────────────────────── */
+.voice-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.voice-btn:hover {
+  border-color: var(--accent-color, var(--setup-accent));
+  color: var(--accent-color, var(--setup-accent));
+}
+.voice-btn.recording {
+  background: rgba(244,63,94,0.15);
+  border-color: #f43f5e;
+  color: #f43f5e;
+  animation: record-pulse 1s ease-in-out infinite;
+}
+@keyframes record-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(244,63,94,0); }
+}
+.voice-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.voice-entry-date {
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.voice-entry audio {
+  flex: 1;
+  height: 32px;
+  min-width: 0;
+}
+.voice-entry-delete {
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 2px 6px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 0.2s;
+}
+.voice-entry-delete:hover { color: #f43f5e; }
+
+/* ── Room body overlay for mood lighting ─────────────────────── */
+#screen-room {
+  transition: background-color 0.8s ease, filter 0.8s ease;
+}
+
 </style>
 </head>
 <body>
@@ -1059,6 +1464,9 @@ input, textarea { font: inherit; color: inherit; }
       <div class="workbench-header">
         <span class="workbench-label">Workbench</span>
         <div class="workbench-actions">
+          <button class="voice-btn" id="voice-record-btn" title="Record voice note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
           <button class="workbench-btn" id="btn-save-entry">Save entry</button>
         </div>
       </div>
@@ -1075,7 +1483,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
 
     <!-- Mirror / The Rose -->
-    <div class="room-mirror">
+    <div class="room-mirror" id="room-mirror">
       <div class="mirror-header">
         <!-- Compass Rose SVG icon -->
         <svg class="mirror-rose-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1102,7 +1510,7 @@ input, textarea { font: inherit; color: inherit; }
         </p>
       </div>
 
-      <div class="mirror-input-row">
+      <div class="mirror-input-row" id="mirror-input-row">
         <textarea class="mirror-input" id="mirror-input"
           placeholder="Speak to the Rose…"
           rows="2"></textarea>
@@ -1484,9 +1892,13 @@ function enterRoom(roomKey) {
 
   // Mirror history
   renderMirrorHistory(roomKey);
+  renderVoiceEntries(roomKey);
 
   // Rose opening message
   initRoomRose(roomKey);
+
+  // Rose orb
+  setTimeout(initRoseOrb, 100);
 
   // Scroll to top
   window.scrollTo(0, 0);
@@ -1912,7 +2324,480 @@ document.addEventListener('DOMContentLoaded', () => {
       sendMirrorMessage();
     }
   });
+  initFrequencyEngine();
+  initMoodLighting();
+  initVoiceNotes();
 });
+
+// ============================================================
+// FREQUENCY ENGINE
+// ============================================================
+let audioCtx = null;
+let leftOsc = null, rightOsc = null;
+let leftGain = null, rightGain = null;
+let merger = null;
+let isPlaying = false;
+
+const BRAINWAVE_NAMES = {
+  1: 'Delta', 2: 'Delta', 3: 'Delta', 4: 'Theta', 5: 'Theta',
+  6: 'Theta', 7: 'Theta', 8: 'Alpha', 9: 'Alpha', 10: 'Alpha',
+  11: 'Alpha', 12: 'Alpha', 15: 'Beta', 20: 'Beta', 25: 'Beta',
+  30: 'Beta', 40: 'Gamma', 7.83: 'Schumann'
+};
+
+function getBrainwaveName(beat) {
+  const b = parseFloat(beat);
+  if (b <= 4) return 'Delta';
+  if (b <= 8) return 'Theta';
+  if (b <= 12) return 'Alpha';
+  if (b <= 30) return 'Beta';
+  if (b === 7.83) return 'Schumann';
+  return 'Gamma';
+}
+
+function initAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    merger = audioCtx.createChannelMerger(2);
+    merger.connect(audioCtx.destination);
+  }
+}
+
+function startTones(leftHz, rightHz, volume) {
+  stopTones();
+  initAudioCtx();
+
+  leftGain  = audioCtx.createGain();
+  rightGain = audioCtx.createGain();
+  leftGain.gain.value  = volume * 0.5;
+  rightGain.gain.value = volume * 0.5;
+
+  leftOsc  = audioCtx.createOscillator();
+  rightOsc = audioCtx.createOscillator();
+  leftOsc.type  = 'sine';
+  rightOsc.type = 'sine';
+  leftOsc.frequency.setValueAtTime(leftHz,  audioCtx.currentTime);
+  rightOsc.frequency.setValueAtTime(rightHz, audioCtx.currentTime);
+
+  // Left → channel 0, Right → channel 1
+  leftOsc.connect(leftGain);
+  rightOsc.connect(rightGain);
+  leftGain.connect(merger, 0, 0);
+  rightGain.connect(merger, 0, 1);
+
+  leftOsc.start();
+  rightOsc.start();
+  isPlaying = true;
+
+  const orb = document.getElementById('freq-orb');
+  if (orb) orb.classList.add('playing');
+  updateBeatDisplay();
+}
+
+function stopTones() {
+  if (leftOsc)  { try { leftOsc.stop();  } catch(e) {} leftOsc  = null; }
+  if (rightOsc) { try { rightOsc.stop(); } catch(e) {} rightOsc = null; }
+  isPlaying = false;
+  const orb = document.getElementById('freq-orb');
+  if (orb) orb.classList.remove('playing');
+}
+
+function updateToneFrequencies() {
+  const l = parseFloat(document.getElementById('binaural-l').value);
+  const r = parseFloat(document.getElementById('binaural-r').value);
+  document.getElementById('binaural-l-display').textContent = l + ' Hz';
+  document.getElementById('binaural-r-display').textContent = r + ' Hz';
+  if (isPlaying && leftOsc && rightOsc) {
+    leftOsc.frequency.setTargetAtTime(l, audioCtx.currentTime, 0.1);
+    rightOsc.frequency.setTargetAtTime(r, audioCtx.currentTime, 0.1);
+  }
+  updateBeatDisplay();
+}
+
+function updateBeatDisplay() {
+  const l = parseFloat(document.getElementById('binaural-l').value);
+  const r = parseFloat(document.getElementById('binaural-r').value);
+  const beat = Math.abs(r - l).toFixed(2);
+  const name = getBrainwaveName(beat);
+  const el = document.getElementById('beat-display');
+  if (el) el.innerHTML = `${beat} Hz<br><span style="font-size:8px;opacity:0.6;">${name}</span>`;
+}
+
+function updateVolume() {
+  const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
+  if (leftGain)  leftGain.gain.setTargetAtTime(vol * 0.5, audioCtx?.currentTime || 0, 0.05);
+  if (rightGain) rightGain.gain.setTargetAtTime(vol * 0.5, audioCtx?.currentTime || 0, 0.05);
+}
+
+function initFrequencyEngine() {
+  const toggle = document.getElementById('freq-toggle');
+  const engine = document.getElementById('freq-engine');
+
+  // Toggle expand/collapse
+  toggle.addEventListener('click', () => {
+    engine.classList.toggle('collapsed');
+  });
+
+  // Chakra presets
+  document.querySelectorAll('.freq-preset-btn[data-chakra]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.freq-preset-btn[data-chakra]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const l = parseFloat(btn.dataset.l);
+      const r = parseFloat(btn.dataset.r);
+      document.getElementById('binaural-l').value = l;
+      document.getElementById('binaural-r').value = r;
+      updateToneFrequencies();
+      const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
+      startTones(l, r, vol);
+      document.getElementById('freq-engine-label').textContent = btn.textContent;
+    });
+  });
+
+  // Brainwave presets — adjust beat by offsetting right channel
+  document.querySelectorAll('.freq-preset-btn[data-bw]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.freq-preset-btn[data-bw]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const beat = parseFloat(btn.dataset.beat);
+      const l = parseFloat(document.getElementById('binaural-l').value);
+      const r = l + beat;
+      document.getElementById('binaural-r').value = Math.min(r, 500);
+      updateToneFrequencies();
+      const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
+      startTones(l, Math.min(r, 500), vol);
+      document.getElementById('freq-engine-label').textContent = btn.textContent + ' · ' + beat + ' Hz';
+    });
+  });
+
+  // L/R sliders
+  document.getElementById('binaural-l').addEventListener('input', () => {
+    updateToneFrequencies();
+    if (isPlaying) {
+      const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
+      startTones(
+        parseFloat(document.getElementById('binaural-l').value),
+        parseFloat(document.getElementById('binaural-r').value),
+        vol
+      );
+    }
+  });
+  document.getElementById('binaural-r').addEventListener('input', () => {
+    updateToneFrequencies();
+    if (isPlaying) {
+      const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
+      startTones(
+        parseFloat(document.getElementById('binaural-l').value),
+        parseFloat(document.getElementById('binaural-r').value),
+        vol
+      );
+    }
+  });
+
+  document.getElementById('freq-volume').addEventListener('input', updateVolume);
+
+  document.getElementById('freq-stop-btn').addEventListener('click', () => {
+    stopTones();
+    document.querySelectorAll('.freq-preset-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('freq-engine-label').textContent = 'Frequencies';
+  });
+
+  updateBeatDisplay();
+}
+
+
+// ============================================================
+// MOOD LIGHTING
+// ============================================================
+const MOOD_PRESETS_DATA = {
+  'deep-focus': { glow: 80, warm: 20, dark: 80 },
+  'open':       { glow: 50, warm: 50, dark: 40 },
+  'contemplation': { glow: 60, warm: 40, dark: 65 },
+  'rest':       { glow: 30, warm: 70, dark: 70 },
+  'ceremony':   { glow: 100, warm: 30, dark: 90 },
+};
+
+function applyMoodLighting(glow, warm, dark) {
+  // Glow — affects card-glow-strong opacity
+  const glowVal = glow / 100;
+  // Warm — shifts hue of accent slightly warm/cool
+  const warmVal = warm / 100;
+  // Dark — overall brightness
+  const darkVal = dark / 100;
+
+  // Apply as CSS custom properties on :root
+  document.documentElement.style.setProperty('--mood-glow-mult', glowVal.toFixed(2));
+  document.documentElement.style.setProperty('--mood-dark-mult', darkVal.toFixed(2));
+
+  // Body filter for overall atmosphere
+  const brightness = 0.7 + (1 - darkVal) * 0.5;
+  const saturate   = 0.8 + glowVal * 0.6;
+  const hueShift   = (warmVal - 0.5) * 20; // ±10 degrees
+  document.body.style.filter = `brightness(${brightness.toFixed(2)}) saturate(${saturate.toFixed(2)}) hue-rotate(${hueShift.toFixed(1)}deg)`;
+
+  // Update displays
+  document.getElementById('glow-val').textContent = glow + '%';
+  document.getElementById('warm-val').textContent = warm + '%';
+  document.getElementById('dark-val').textContent = dark + '%';
+}
+
+function initMoodLighting() {
+  const toggle = document.getElementById('mood-toggle-btn');
+  const panel  = document.getElementById('mood-panel');
+
+  toggle.addEventListener('click', () => panel.classList.toggle('open'));
+
+  // Preset buttons
+  document.querySelectorAll('.mood-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mood-preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const p = MOOD_PRESETS_DATA[btn.dataset.mood];
+      if (p) {
+        document.getElementById('mood-glow').value = p.glow;
+        document.getElementById('mood-warm').value = p.warm;
+        document.getElementById('mood-dark').value = p.dark;
+        applyMoodLighting(p.glow, p.warm, p.dark);
+      }
+    });
+  });
+
+  // Sliders
+  ['mood-glow', 'mood-warm', 'mood-dark'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      applyMoodLighting(
+        parseInt(document.getElementById('mood-glow').value),
+        parseInt(document.getElementById('mood-warm').value),
+        parseInt(document.getElementById('mood-dark').value)
+      );
+      document.querySelectorAll('.mood-preset').forEach(b => b.classList.remove('active'));
+    });
+  });
+}
+
+
+// ============================================================
+// ROSE ORB — active glow state
+// ============================================================
+function initRoseOrb() {
+  const mirror = document.getElementById('room-mirror');
+  const input  = document.getElementById('mirror-input');
+  const row    = document.getElementById('mirror-input-row');
+
+  if (!mirror || !input) return;
+
+  input.addEventListener('focus', () => {
+    mirror.classList.add('orb-active');
+    if (row) row.classList.add('active');
+  });
+  input.addEventListener('blur', () => {
+    // Keep active if there's text
+    if (!input.value.trim()) {
+      mirror.classList.remove('orb-active');
+      if (row) row.classList.remove('active');
+    }
+  });
+}
+
+
+// ============================================================
+// VOICE NOTES
+// ============================================================
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+function initVoiceNotes() {
+  const btn = document.getElementById('voice-record-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  });
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      saveVoiceEntry(blob);
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    const btn = document.getElementById('voice-record-btn');
+    btn.classList.add('recording');
+    btn.title = 'Stop recording';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>`;
+    showToast('Recording…');
+  } catch(e) {
+    showToast('Microphone access denied');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    isRecording = false;
+    const btn = document.getElementById('voice-record-btn');
+    btn.classList.remove('recording');
+    btn.title = 'Record voice note';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+  }
+}
+
+function saveVoiceEntry(blob) {
+  if (!currentRoom) return;
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  // Store as base64 for persistence
+  const reader = new FileReader();
+  reader.onload = () => {
+    if (!state.rooms[currentRoom].voiceEntries) state.rooms[currentRoom].voiceEntries = [];
+    state.rooms[currentRoom].voiceEntries.push({ date, data: reader.result });
+    saveState();
+    renderVoiceEntries(currentRoom);
+    showToast('Voice note saved');
+  };
+  reader.readAsDataURL(blob);
+}
+
+function renderVoiceEntries(roomKey) {
+  const container = document.getElementById('voice-entries');
+  if (!container) return;
+  const entries = state.rooms[roomKey]?.voiceEntries || [];
+  container.innerHTML = '';
+
+  entries.slice().reverse().forEach((entry, i) => {
+    const idx = entries.length - 1 - i;
+    const div = document.createElement('div');
+    div.className = 'voice-entry';
+    div.innerHTML = `
+      <span class="voice-entry-date">🎙 ${entry.date}</span>
+      <audio controls src="${entry.data}" class="voice-entry-audio"></audio>
+      <button class="voice-entry-delete" data-idx="${idx}" title="Delete">✕</button>
+    `;
+    div.querySelector('.voice-entry-delete').addEventListener('click', () => {
+      state.rooms[roomKey].voiceEntries.splice(idx, 1);
+      saveState();
+      renderVoiceEntries(roomKey);
+    });
+    container.appendChild(div);
+  });
+}
+
 </script>
+
+<!-- ============================================================
+     FREQUENCY ENGINE (fixed bottom bar)
+     ============================================================ -->
+<div class="freq-engine collapsed" id="freq-engine">
+  <div class="freq-engine-toggle" id="freq-toggle">
+    <div class="freq-orb" id="freq-orb"></div>
+    <span class="freq-engine-label" id="freq-engine-label">Frequencies</span>
+  </div>
+
+  <div class="freq-engine-body">
+    <!-- Chakra presets -->
+    <div class="freq-section">
+      <div class="freq-section-label">Chakra · Planetary</div>
+      <div class="freq-presets" id="chakra-presets">
+        <button class="freq-preset-btn" data-chakra="root"    data-l="256" data-r="256">Root</button>
+        <button class="freq-preset-btn" data-chakra="sacral"  data-l="288" data-r="288">Sacral</button>
+        <button class="freq-preset-btn" data-chakra="solar"   data-l="320" data-r="320">Solar</button>
+        <button class="freq-preset-btn" data-chakra="heart"   data-l="341" data-r="341">Heart</button>
+        <button class="freq-preset-btn" data-chakra="throat"  data-l="384" data-r="384">Throat</button>
+        <button class="freq-preset-btn" data-chakra="third"   data-l="426" data-r="426">Third Eye</button>
+        <button class="freq-preset-btn" data-chakra="crown"   data-l="480" data-r="480">Crown</button>
+      </div>
+    </div>
+
+    <!-- Brainwave presets -->
+    <div class="freq-section">
+      <div class="freq-section-label">Brainwave State</div>
+      <div class="freq-presets" id="brainwave-presets">
+        <button class="freq-preset-btn" data-bw="delta"  data-beat="2"  title="Deep sleep 0.5–4 Hz">Delta</button>
+        <button class="freq-preset-btn" data-bw="theta"  data-beat="6"  title="Meditation 4–8 Hz">Theta</button>
+        <button class="freq-preset-btn" data-bw="alpha"  data-beat="10" title="Relaxed focus 8–12 Hz">Alpha</button>
+        <button class="freq-preset-btn" data-bw="beta"   data-beat="20" title="Alert 12–30 Hz">Beta</button>
+        <button class="freq-preset-btn" data-bw="gamma"  data-beat="40" title="Peak performance 30+ Hz">Gamma</button>
+        <button class="freq-preset-btn" data-bw="schumann" data-beat="7.83" title="Earth resonance 7.83 Hz">Schumann</button>
+      </div>
+    </div>
+
+    <!-- Binaural L/R knobs -->
+    <div class="freq-section">
+      <div class="freq-section-label">Binaural · L / R</div>
+      <div class="binaural-row">
+        <div class="binaural-channel">
+          <div class="binaural-channel-label">L</div>
+          <div class="binaural-freq-display" id="binaural-l-display">200 Hz</div>
+          <input type="range" class="freq-knob" id="binaural-l" min="100" max="500" value="200" step="1">
+        </div>
+        <div class="binaural-channel">
+          <div class="binaural-channel-label">R</div>
+          <div class="binaural-freq-display" id="binaural-r-display">210 Hz</div>
+          <input type="range" class="freq-knob" id="binaural-r" min="100" max="500" value="210" step="1">
+        </div>
+        <div class="binaural-channel">
+          <div class="binaural-channel-label">Beat</div>
+          <div class="binaural-freq-display" id="beat-display" style="font-size:9px;">10 Hz<br><span style="font-size:8px;opacity:0.6;">Alpha</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Volume + stop -->
+    <div class="freq-section">
+      <div class="freq-section-label">Volume</div>
+      <div class="freq-volume">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-faint)"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+        <input type="range" id="freq-volume" min="0" max="100" value="40" step="1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-faint)"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </div>
+      <button class="freq-preset-btn" id="freq-stop-btn" style="margin-top:4px;border-color:#f43f5e;color:#f43f5e;">■ Stop</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MOOD LIGHTING
+     ============================================================ -->
+<button class="mood-toggle-btn" id="mood-toggle-btn" title="Mood Lighting">Mood</button>
+<div class="mood-panel" id="mood-panel">
+  <div class="mood-panel-title">Mood Lighting</div>
+
+  <div class="mood-presets">
+    <button class="mood-preset" data-mood="deep-focus">◈ Deep Focus</button>
+    <button class="mood-preset" data-mood="open">◉ Open Awareness</button>
+    <button class="mood-preset" data-mood="contemplation">◎ Contemplation</button>
+    <button class="mood-preset" data-mood="rest">◌ Rest</button>
+    <button class="mood-preset" data-mood="ceremony">✦ Ceremony</button>
+  </div>
+
+  <div class="mood-slider-row">
+    <div class="mood-slider-label"><span>Glow</span><span id="glow-val">50%</span></div>
+    <input type="range" class="mood-slider glow-slider" id="mood-glow" min="0" max="100" value="50">
+  </div>
+  <div class="mood-slider-row">
+    <div class="mood-slider-label"><span>Warmth</span><span id="warm-val">50%</span></div>
+    <input type="range" class="mood-slider warm-slider" id="mood-warm" min="0" max="100" value="50">
+  </div>
+  <div class="mood-slider-row">
+    <div class="mood-slider-label"><span>Depth</span><span id="dark-val">50%</span></div>
+    <input type="range" class="mood-slider dark-slider" id="mood-dark" min="0" max="100" value="50">
+  </div>
+</div>
+
 </body>
 </html>
