@@ -3057,25 +3057,14 @@ const MOOD_PRESETS_DATA = {
   'ceremony':   { glow: 100, warm: 30, dark: 90 },
 };
 
-function applyMoodLighting(glow, warm, dark) {
-  // Glow — affects card-glow-strong opacity
-  const glowVal = glow / 100;
-  // Warm — shifts hue of accent slightly warm/cool
-  const warmVal = warm / 100;
-  // Dark — overall brightness
-  const darkVal = dark / 100;
-
-  // Apply as CSS custom properties on :root
-  document.documentElement.style.setProperty('--mood-glow-mult', glowVal.toFixed(2));
-  document.documentElement.style.setProperty('--mood-dark-mult', darkVal.toFixed(2));
-
-  // Body filter for overall atmosphere
-  const brightness = 0.7 + (1 - darkVal) * 0.5;
-  const saturate   = 0.8 + glowVal * 0.6;
-  const hueShift   = (warmVal - 0.5) * 20; // ±10 degrees
-  document.body.style.filter = `brightness(${brightness.toFixed(2)}) saturate(${saturate.toFixed(2)}) hue-rotate(${hueShift.toFixed(1)}deg)`;
-
-  // Sliders are self-updating
+function applyMoodLighting(hue, glow, dark) {
+  const hueVal  = parseFloat(hue  == null ? 220 : hue);
+  const glowVal = parseFloat(glow == null ? 50  : glow) / 100;
+  const darkVal = parseFloat(dark == null ? 50  : dark) / 100;
+  const hueShift   = hueVal - 220;
+  const brightness = 0.65 + (1 - darkVal) * 0.5;
+  const saturate   = 0.7  + glowVal * 0.8;
+  document.body.style.filter = 'brightness(' + brightness.toFixed(2) + ') saturate(' + saturate.toFixed(2) + ') hue-rotate(' + hueShift.toFixed(0) + 'deg)';
 }
 
 function initMoodLighting() {
@@ -3097,19 +3086,20 @@ function initMoodLighting() {
     });
   });
 
-  // Header sliders
-  ['mood-glow', 'mood-warm', 'mood-dark'].forEach(id => {
+  // Hue + Glow + Depth sliders
+  ['mood-hue', 'mood-glow', 'mood-dark'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('input', () => {
-        applyMoodLighting(
-          parseInt(document.getElementById('mood-glow').value),
-          parseInt(document.getElementById('mood-warm').value),
-          parseInt(document.getElementById('mood-dark').value)
-        );
-        document.querySelectorAll('.mood-preset-pill').forEach(b => b.classList.remove('active'));
-      });
-    }
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const hueEl  = document.getElementById('mood-hue');
+      const glowEl = document.getElementById('mood-glow');
+      const darkEl = document.getElementById('mood-dark');
+      applyMoodLighting(
+        hueEl  ? parseInt(hueEl.value)  : 220,
+        glowEl ? parseInt(glowEl.value) : 50,
+        darkEl ? parseInt(darkEl.value) : 50
+      );
+    });
   });
 
   // Close freq engine button
