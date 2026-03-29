@@ -1349,80 +1349,141 @@ input, textarea { font: inherit; color: inherit; }
 .room-mirror {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border);
-  background: color-mix(in srgb, var(--card) 40%, var(--bg));
+  border-left: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, var(--border));
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, var(--bg)) 0%, var(--bg) 60%);
   overflow: hidden;
   position: relative;
+  transition: background 0.6s ease;
+}
+.room-mirror.orb-active {
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, var(--bg)) 0%, var(--bg) 65%);
 }
 
-/* Rose orb at top */
+/* Rose sanctuary header */
 .rose-orb-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-6) var(--space-4) var(--space-4);
+  padding: var(--space-8) var(--space-4) var(--space-5);
   gap: var(--space-3);
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   position: relative;
+  /* Soft vignette bottom edge — no hard border */
+  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent) 0%, transparent 70%);
+}
+.rose-orb-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, transparent), transparent);
 }
 
+/* Orb wrap — gives space for rings */
 .rose-orb-wrap {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Radial glow plane beneath orb */
+.rose-orb-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent) 0%, transparent 70%);
+  animation: glow-plane 4s ease-in-out infinite;
+}
+.room-mirror.orb-active .rose-orb-wrap::before {
+  background: radial-gradient(circle, color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent) 0%, transparent 70%);
+  animation: glow-plane-active 2s ease-in-out infinite;
+}
+@keyframes glow-plane {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.08); }
+}
+@keyframes glow-plane-active {
+  0%,100% { opacity: 0.8; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.15); }
 }
 
 .rose-orb-svg {
-  width: 64px;
-  height: 64px;
-  animation: rose-orb-breathe 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 8px var(--rose-color,#c4b5fd));
+  width: 72px;
+  height: 72px;
+  position: relative;
+  z-index: 1;
+  animation: rose-orb-breathe 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px var(--rose-color,#c4b5fd)) drop-shadow(0 0 24px color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent));
 }
 @keyframes rose-orb-breathe {
-  0%,100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px var(--rose-color,#c4b5fd)); }
-  33%      { transform: scale(1.06) rotate(4deg); filter: drop-shadow(0 0 16px var(--rose-color,#c4b5fd)); }
-  66%      { transform: scale(1.03) rotate(-3deg); filter: drop-shadow(0 0 12px var(--rose-color,#c4b5fd)); }
+  0%,100% { transform: scale(1) rotate(0deg);   filter: drop-shadow(0 0 10px var(--rose-color,#c4b5fd)) drop-shadow(0 0 24px color-mix(in srgb,var(--rose-color,#c4b5fd) 35%,transparent)); }
+  35%      { transform: scale(1.07) rotate(5deg);  filter: drop-shadow(0 0 18px var(--rose-color,#c4b5fd)) drop-shadow(0 0 40px color-mix(in srgb,var(--rose-color,#c4b5fd) 50%,transparent)); }
+  70%      { transform: scale(1.03) rotate(-3deg); filter: drop-shadow(0 0 14px var(--rose-color,#c4b5fd)) drop-shadow(0 0 32px color-mix(in srgb,var(--rose-color,#c4b5fd) 40%,transparent)); }
 }
 .room-mirror.orb-active .rose-orb-svg {
-  animation: rose-orb-active 2s ease-in-out infinite;
+  animation: rose-orb-active 2.5s ease-in-out infinite;
 }
 @keyframes rose-orb-active {
-  0%,100% { transform: scale(1); filter: drop-shadow(0 0 16px var(--rose-color,#c4b5fd)) drop-shadow(0 0 32px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent)); }
-  50%      { transform: scale(1.1); filter: drop-shadow(0 0 28px var(--rose-color,#c4b5fd)) drop-shadow(0 0 60px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent)); }
+  0%,100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 20px var(--rose-color,#c4b5fd))
+            drop-shadow(0 0 50px color-mix(in srgb,var(--rose-color,#c4b5fd) 60%,transparent))
+            drop-shadow(0 0 80px color-mix(in srgb,var(--rose-color,#c4b5fd) 30%,transparent));
+  }
+  50% {
+    transform: scale(1.12) rotate(6deg);
+    filter: drop-shadow(0 0 32px var(--rose-color,#c4b5fd))
+            drop-shadow(0 0 70px color-mix(in srgb,var(--rose-color,#c4b5fd) 70%,transparent))
+            drop-shadow(0 0 120px color-mix(in srgb,var(--rose-color,#c4b5fd) 40%,transparent));
+  }
 }
 
-/* Ambient ring behind orb */
+/* Concentric rings — orbit the orb */
 .rose-orb-ring {
   position: absolute;
-  inset: -12px;
+  inset: -16px;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent);
-  animation: ring-pulse 4s ease-in-out infinite;
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, transparent);
+  animation: ring-orbit 6s linear infinite;
 }
 .rose-orb-ring-2 {
   position: absolute;
-  inset: -24px;
+  inset: -28px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent);
-  animation: ring-pulse 4s ease-in-out infinite 0.5s;
+  animation: ring-orbit 10s linear infinite reverse;
 }
-@keyframes ring-pulse {
-  0%,100% { opacity: 0.5; transform: scale(1); }
-  50%      { opacity: 1; transform: scale(1.04); }
+@keyframes ring-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.room-mirror.orb-active .rose-orb-ring {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent);
+}
+.room-mirror.orb-active .rose-orb-ring-2 {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, transparent);
 }
 
 .rose-name {
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 300;
   color: var(--rose-color,#c4b5fd);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 11px;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent);
 }
 .rose-gk-context {
   font-size: 10px;
   color: var(--text-faint);
   font-style: italic;
   text-align: center;
+  opacity: 0.7;
 }
 
 /* Conversation */
@@ -1487,9 +1548,10 @@ input, textarea { font: inherit; color: inherit; }
   transition: all 0.4s ease;
 }
 .room-mirror.orb-active .mirror-input-area {
-  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, var(--card));
-  border-top-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, var(--border));
-  box-shadow: 0 -4px 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, var(--card));
+  border-top-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 35%, var(--border));
+  box-shadow: 0 -8px 32px color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, transparent),
+              0 -2px 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, transparent);
 }
 .mirror-input {
   flex: 1;
