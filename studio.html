@@ -292,8 +292,8 @@ input, textarea { font: inherit; color: inherit; }
 .portal-facet[data-room="field"] { background: var(--field); }
 .portal-facet[data-room="call"]  { background: var(--call); }
 
-.portal-wrap.doors-open .portal-facet { opacity: 0.15; }
-.portal-wrap.doors-open .portal-facet:hover { opacity: 0.35; }
+.portal-wrap.doors-open .portal-facet { opacity: 0.1; transition: opacity 0.35s cubic-bezier(0.16,1,0.3,1); }
+.portal-wrap.doors-open .portal-facet:hover { opacity: 0.28; transition: opacity 0.15s ease; }
 
 /* Room labels that appear when doors open */
 .portal-room-labels {
@@ -416,7 +416,6 @@ input, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   background: none;
   border: none;
-  margin-top: var(--space-2);
 }
 .compass-import-link:hover { color: var(--text-muted); }
 
@@ -1390,8 +1389,7 @@ input, textarea { font: inherit; color: inherit; }
   gap: var(--space-2);
   flex-shrink: 0;
   position: relative;
-  /* Soft vignette bottom edge — no hard border */
-  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent) 0%, transparent 70%);
+  /* No background — room-mirror gradient handles atmosphere */
 }
 .rose-orb-header::after {
   content: '';
@@ -1995,9 +1993,9 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 .atmos-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 56px;
+  right: var(--space-4);
   z-index: 200;
   background: color-mix(in srgb, var(--card) 96%, transparent);
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
@@ -3595,7 +3593,7 @@ function initFrequencyEngine() {
       updateToneFrequencies();
       const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
       startTones(l, r, vol);
-      const lbl = document.getElementById('freq-toolbar-label') || document.getElementById('freq-engine-label'); if(lbl) lbl.textContent = btn.textContent;
+      const atmosLbl = document.querySelector('#atmos-toggle .atmos-toggle-label'); if(atmosLbl) { const orbEl = document.getElementById('freq-toolbar-orb'); if(orbEl) orbEl.style.background = ''; }
     });
   });
 
@@ -3611,7 +3609,7 @@ function initFrequencyEngine() {
       updateToneFrequencies();
       const vol = parseFloat(document.getElementById('freq-volume').value) / 100;
       startTones(l, Math.min(r, 500), vol);
-      const lbl2 = document.getElementById('freq-toolbar-label') || document.getElementById('freq-engine-label'); if(lbl2) lbl2.textContent = btn.textContent;
+      
     });
   });
 
@@ -3644,7 +3642,7 @@ function initFrequencyEngine() {
   document.getElementById('freq-stop-btn').addEventListener('click', () => {
     stopTones();
     document.querySelectorAll('.freq-preset-btn').forEach(b => b.classList.remove('active'));
-    const lbl3 = document.getElementById('freq-toolbar-label') || document.getElementById('freq-engine-label'); if(lbl3) lbl3.textContent = 'Frequencies';
+    
   });
 
   updateBeatDisplay();
