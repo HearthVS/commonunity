@@ -279,6 +279,21 @@ button { cursor: pointer; background: none; border: none; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.beta-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--setup-accent);
+  border: 1px solid var(--setup-accent);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  opacity: 0.7;
+  text-transform: uppercase;
 }
 
 /* ============================================================
@@ -2324,7 +2339,7 @@ body.companion-mode .companion-mode-banner { display: block; }
       </svg>
     </div>
     <h1 class="logo-title">CommonUnity Compass</h1>
-    <p class="logo-sub">Session Setup</p>
+    <p class="logo-sub">Session Setup <span class="beta-badge">Beta</span></p>
   </div>
 
   <!-- Setup Card -->
@@ -2508,7 +2523,7 @@ body.companion-mode .companion-mode-banner { display: block; }
           <circle cx="50" cy="50" r="15" fill="url(#hd-glow)"/>
         </svg>
         <div>
-          <div class="compass-title">CommonUnity Compass</div>
+          <div class="compass-title">CommonUnity Compass <span class="beta-badge" style="font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--setup-accent);border:1px solid var(--setup-accent);border-radius:999px;padding:1px 7px;opacity:0.6;margin-left:4px;">Beta</span></div>
           <div class="compass-names" id="compass-names-display" style="display:flex;gap:var(--space-4);flex-wrap:wrap;"></div>
         </div>
       </div>

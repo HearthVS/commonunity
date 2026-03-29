@@ -144,17 +144,57 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--text-faint);
   white-space: nowrap;
   opacity: 0.6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.studio-beta {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--rose-color, #c4b5fd);
+  border: 1px solid var(--rose-color, #c4b5fd);
+  border-radius: 999px;
+  padding: 1px 7px;
+  opacity: 0.7;
 }
 
 .entrance-name {
   position: absolute;
-  top: calc(var(--space-6) + 28px);
+  top: calc(var(--space-5) + 26px);
   left: 50%;
   transform: translateX(-50%);
-  font-size: var(--text-xs);
-  color: var(--text-faint);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
   white-space: nowrap;
   font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+
+/* ── Atmospheric particles ────────────────────────────────── */
+.entrance-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particle-float linear infinite;
+  opacity: 0;
+}
+@keyframes particle-float {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+}
+#screen-entrance > *:not(.entrance-particles) {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Origami Portal ───────────────────────────────────────────── */
@@ -182,6 +222,23 @@ input, textarea { font: inherit; color: inherit; }
   80%  { transform: rotate(0deg)  scale(1.02); filter: drop-shadow(0 0 18px rgba(245,158,11,0.35)); }
   100% { transform: rotate(0deg)  scale(1);    filter: drop-shadow(0 0 16px rgba(129,140,248,0.35)); }
 }
+
+.portal-hint {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.portal-wrap:hover .portal-hint { opacity: 1; }
+.portal-wrap.doors-open .portal-hint { display: none; }
 
 .portal-wrap:hover .portal-svg {
   animation: none;
@@ -880,11 +937,15 @@ input, textarea { font: inherit; color: inherit; }
      ============================================================ -->
 <div id="screen-entrance" class="screen active">
 
-  <div class="entrance-wordmark">CommonUnity Studio</div>
+  <!-- Atmospheric particles -->
+  <div class="entrance-particles" id="entrance-particles"></div>
+
+  <div class="entrance-wordmark">CommonUnity Studio <span class="studio-beta">Beta</span></div>
   <div class="entrance-name" id="entrance-name"></div>
 
   <!-- The origami portal -->
   <div class="portal-wrap" id="portal" title="Touch to open">
+    <div class="portal-hint" id="portal-hint">touch to open</div>
     <svg class="portal-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="CommonUnity Studio">
       <defs>
         <radialGradient id="s-aura" cx="50%" cy="50%" r="50%">
@@ -942,16 +1003,16 @@ input, textarea { font: inherit; color: inherit; }
     <span class="rose-byline" id="rose-byline">— The Rose</span>
   </div>
 
-  <!-- Entrance actions (import always visible; room buttons appear after portal touch) -->
-  <div class="entrance-actions" id="entrance-actions" style="opacity:1;">
+  <!-- Entrance actions -->
+  <div class="entrance-actions" id="entrance-actions">
     <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;justify-content:center;">
       <button class="btn-enter-room" data-room="work"  style="border-color:var(--work);color:var(--work);">The Work</button>
       <button class="btn-enter-room" data-room="lens"  style="border-color:var(--lens);color:var(--lens);">The Lens</button>
       <button class="btn-enter-room" data-room="field" style="border-color:var(--field);color:var(--field);">The Field</button>
       <button class="btn-enter-room" data-room="call"  style="border-color:var(--call);color:var(--call);">The Call</button>
     </div>
-    <button class="compass-import-link" id="btn-import-compass">Import from Compass session →</button>
   </div>
+  <button class="compass-import-link" id="btn-import-compass" style="opacity:0.5;margin-top:var(--space-4);">Import from Compass session →</button>
 
   <footer class="studio-footer" style="position:absolute;bottom:0;width:100%;">
     <a href="https://hearthventurestudio.com" target="_blank">Hearth Venture Studio</a> &amp;
@@ -1080,6 +1141,35 @@ input, textarea { font: inherit; color: inherit; }
 <div class="studio-toast" id="studio-toast"></div>
 
 <script>
+
+// ============================================================
+// ENTRANCE PARTICLES
+// ============================================================
+function initParticles() {
+  const container = document.getElementById('entrance-particles');
+  if (!container) return;
+  const colors = ['var(--work)', 'var(--lens)', 'var(--field)', 'var(--call)', 'var(--rose-color, #c4b5fd)'];
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 2;
+    const x = Math.random() * 100;
+    const delay = Math.random() * 8;
+    const duration = Math.random() * 6 + 6;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${x}%; bottom:${Math.random()*40}%;
+      background:${color};
+      animation-delay:${delay}s;
+      animation-duration:${duration}s;
+      box-shadow: 0 0 ${size*2}px ${color};
+      opacity: 0.4;
+    `;
+    container.appendChild(p);
+  }
+}
+
 // ============================================================
 // GENE KEYS DATA
 // ============================================================
@@ -1798,6 +1888,7 @@ function processCompassImport(file) {
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   initEntrance();
+  initParticles();
 
   // Back button
   document.getElementById('btn-back-to-entrance').addEventListener('click', () => {
