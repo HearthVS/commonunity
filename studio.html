@@ -1778,6 +1778,167 @@ input, textarea { font: inherit; color: inherit; }
   opacity: 0.7;
 }
 
+
+/* ── Studio entrance calculator ─────────────────────────────── */
+.studio-calc-section {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.studio-calc-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(8px);
+  transition: all var(--transition);
+  user-select: none;
+}
+.studio-calc-toggle:hover {
+  border-color: var(--rose-color, #c4b5fd);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, var(--card));
+}
+.studio-calc-toggle-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.studio-calc-toggle-hint {
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+}
+.studio-calc-body {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, var(--border));
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(12px);
+  animation: fadeDown 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.studio-calc-body.open { display: flex; }
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.studio-calc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.studio-calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.studio-calc-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.studio-calc-input {
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  width: 100%;
+  transition: border-color var(--transition);
+  font-family: var(--font-body);
+}
+.studio-calc-input:focus {
+  outline: none;
+  border-color: var(--rose-color,#c4b5fd);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, transparent);
+}
+.studio-calc-input::placeholder { color: var(--text-faint); }
+
+.studio-calc-btn {
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, transparent);
+  color: var(--rose-color,#c4b5fd);
+  cursor: pointer;
+  transition: all var(--transition);
+  align-self: flex-start;
+  position: relative;
+}
+.studio-calc-btn:hover {
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, transparent);
+}
+.studio-calc-btn.activating {
+  box-shadow: 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent);
+}
+
+.studio-calc-results {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.studio-calc-results.visible { display: grid; }
+
+.studio-calc-result-item {
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, var(--border));
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.studio-calc-result-item.revealed { opacity: 1; transform: translateY(0); }
+.studio-calc-result-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.studio-calc-result-point {
+  font-size: 8px;
+  color: var(--rose-color,#c4b5fd);
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+.studio-calc-result-val {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.studio-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  max-width: 440px;
+}
+
 </style>
 </head>
 <body>
@@ -1851,6 +2012,60 @@ input, textarea { font: inherit; color: inherit; }
   <div class="rose-prompt">
     <p class="rose-prompt-text" id="rose-prompt-text"></p>
     <span class="rose-byline" id="rose-byline">— The Rose</span>
+  </div>
+
+  <!-- Name field -->
+  <div class="studio-name-field">
+    <input class="studio-calc-input" id="studio-person-name" type="text"
+      placeholder="Your name (optional)…" autocomplete="off"
+      style="text-align:center;border-radius:var(--radius-full);padding:var(--space-3) var(--space-5);">
+  </div>
+
+  <!-- Gene Keys Calculator -->
+  <div class="studio-calc-section">
+    <div class="studio-calc-toggle" id="studio-calc-toggle">
+      <span class="studio-calc-toggle-label">When did you take your first breath?</span>
+      <span class="studio-calc-toggle-hint">Calculate ↓</span>
+    </div>
+    <div class="studio-calc-body" id="studio-calc-body">
+      <div class="studio-calc-row">
+        <div class="studio-calc-field">
+          <label class="studio-calc-label">Date of birth</label>
+          <input class="studio-calc-input" id="studio-dob" type="date">
+        </div>
+        <div class="studio-calc-field">
+          <label class="studio-calc-label">Time of birth</label>
+          <input class="studio-calc-input" id="studio-tob" type="time">
+        </div>
+      </div>
+      <div class="studio-calc-field">
+        <label class="studio-calc-label">Place of birth</label>
+        <input class="studio-calc-input" id="studio-pob" type="text" placeholder="City, Country…">
+      </div>
+      <button class="studio-calc-btn" id="studio-calc-btn">Reveal my profile</button>
+      <div class="studio-calc-results" id="studio-calc-results">
+        <div class="studio-calc-result-item" id="s-gk-cs">
+          <span class="studio-calc-result-label">Life's Work</span>
+          <span class="studio-calc-result-point">The Work</span>
+          <span class="studio-calc-result-val">—</span>
+        </div>
+        <div class="studio-calc-result-item" id="s-gk-ce">
+          <span class="studio-calc-result-label">Evolution</span>
+          <span class="studio-calc-result-point">The Lens</span>
+          <span class="studio-calc-result-val">—</span>
+        </div>
+        <div class="studio-calc-result-item" id="s-gk-us">
+          <span class="studio-calc-result-label">Radiance</span>
+          <span class="studio-calc-result-point">The Field</span>
+          <span class="studio-calc-result-val">—</span>
+        </div>
+        <div class="studio-calc-result-item" id="s-gk-ue">
+          <span class="studio-calc-result-label">Purpose</span>
+          <span class="studio-calc-result-point">The Call</span>
+          <span class="studio-calc-result-val">—</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Entrance actions -->
@@ -2200,6 +2415,7 @@ const STORAGE_KEY = 'commonunity_studio_v1';
 let state = {
   person: '',
   theme: 'A',
+  birthData: null,
   compassData: null,  // imported Compass JSON
   rooms: {
     work:  { entries: [], mirrorHistory: [] },
@@ -2239,6 +2455,233 @@ function showToast(msg, duration = 2500) {
 // ============================================================
 // ENTRANCE
 // ============================================================
+
+// ============================================================
+// STUDIO GENE KEYS CALCULATOR
+// ============================================================
+// (Reuses HD_GATE_WHEEL, dateToJD, jdToSolarLongitude, longitudeToGateLine from below)
+
+function initStudioCalculator() {
+  const toggle = document.getElementById('studio-calc-toggle');
+  const body   = document.getElementById('studio-calc-body');
+  const btn    = document.getElementById('studio-calc-btn');
+  const nameEl = document.getElementById('studio-person-name');
+
+  if (toggle && body) {
+    toggle.addEventListener('click', () => {
+      body.classList.toggle('open');
+      toggle.querySelector('.studio-calc-toggle-hint').textContent =
+        body.classList.contains('open') ? 'Close ↑' : 'Calculate ↓';
+    });
+  }
+
+  if (btn) btn.addEventListener('click', studioCalcGeneKeys);
+
+  // Restore saved name
+  if (nameEl) {
+    nameEl.value = state.person || '';
+    nameEl.addEventListener('input', () => {
+      state.person = nameEl.value.trim();
+      saveState();
+      const nameDisp = document.getElementById('entrance-name');
+      if (nameDisp && state.person) nameDisp.textContent = 'Welcome, ' + state.person;
+    });
+  }
+
+  // Restore calc fields if saved
+  if (state.birthData) {
+    const d = state.birthData;
+    if (d.dob && document.getElementById('studio-dob')) document.getElementById('studio-dob').value = d.dob;
+    if (d.tob && document.getElementById('studio-tob')) document.getElementById('studio-tob').value = d.tob;
+    if (d.pob && document.getElementById('studio-pob')) document.getElementById('studio-pob').value = d.pob;
+    if (d.calculated) {
+      restoreStudioCalcResults(d);
+    }
+  }
+}
+
+// Jean Meeus "Astronomical Algorithms" solar longitude method
+// Accuracy: ~0.01 degrees. Gate wheel: correct HD I Ching order.
+// ============================================================
+
+// HD / Gene Keys gate wheel — 64 gates mapped to ecliptic longitude.
+// Each gate spans 5.625°. Starting at 0° Aries (tropical).
+const HD_GATE_WHEEL = [
+  {gate:25, start:0.000},   {gate:17, start:3.875},   {gate:21, start:9.500},
+  {gate:51, start:15.125},  {gate:42, start:20.750},  {gate:3,  start:26.375},
+  {gate:27, start:32.000},  {gate:24, start:37.625},  {gate:2,  start:43.250},
+  {gate:23, start:48.875},  {gate:8,  start:54.500},  {gate:20, start:60.125},
+  {gate:16, start:65.750},  {gate:35, start:71.375},  {gate:45, start:77.000},
+  {gate:12, start:82.625},  {gate:15, start:88.250},  {gate:52, start:93.875},
+  {gate:39, start:99.500},  {gate:53, start:105.125}, {gate:62, start:110.750},
+  {gate:56, start:116.375}, {gate:31, start:122.000}, {gate:33, start:127.625},
+  {gate:7,  start:133.250}, {gate:4,  start:138.875}, {gate:29, start:144.500},
+  {gate:59, start:150.125}, {gate:40, start:155.750}, {gate:64, start:161.375},
+  {gate:47, start:167.000}, {gate:6,  start:172.625}, {gate:46, start:178.250},
+  {gate:18, start:183.875}, {gate:48, start:189.500}, {gate:57, start:195.125},
+  {gate:32, start:200.750}, {gate:50, start:206.375}, {gate:28, start:212.000},
+  {gate:44, start:217.625}, {gate:1,  start:223.250}, {gate:43, start:228.875},
+  {gate:14, start:234.500}, {gate:34, start:240.125}, {gate:9,  start:245.750},
+  {gate:5,  start:251.375}, {gate:26, start:257.000}, {gate:11, start:262.625},
+  {gate:10, start:268.250}, {gate:58, start:273.875}, {gate:38, start:279.500},
+  {gate:54, start:285.125}, {gate:61, start:290.750}, {gate:60, start:296.375},
+  {gate:41, start:302.000}, {gate:19, start:307.625}, {gate:13, start:313.250},
+  {gate:49, start:318.875}, {gate:30, start:324.500}, {gate:55, start:330.125},
+  {gate:37, start:335.750}, {gate:63, start:341.375}, {gate:22, start:347.000},
+  {gate:36, start:352.625}
+];
+
+/**
+ * Calculate Julian Day Number from a UTC Date object.
+ * Meeus, Ch. 7.
+ */
+function dateToJD(date) {
+  let year  = date.getUTCFullYear();
+  let month = date.getUTCMonth() + 1;
+  const day = date.getUTCDate();
+  const hourFrac = (date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600) / 24;
+  if (month <= 2) { year -= 1; month += 12; }
+  const A = Math.floor(year / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (year + 4716))
+       + Math.floor(30.6001 * (month + 1))
+       + day + hourFrac + B - 1524.5;
+}
+
+/**
+ * Calculate apparent solar ecliptic longitude (tropical) for a Julian Day.
+ * Meeus, Ch. 25/27. Accurate to ~0.01 degrees.
+ */
+function jdToSolarLongitude(jd) {
+  const T = (jd - 2451545.0) / 36525.0; // Julian centuries from J2000.0
+
+  // Geometric mean longitude of the Sun (degrees)
+  let L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+  L0 = ((L0 % 360) + 360) % 360;
+
+  // Mean anomaly of the Sun (degrees)
+  let M = 357.52911 + 35999.05029 * T - 0.0001537 * T * T;
+  M = ((M % 360) + 360) % 360;
+  const Mrad = M * Math.PI / 180;
+
+  // Equation of center
+  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mrad)
+          + (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad)
+          + 0.000289 * Math.sin(3 * Mrad);
+
+  // Sun's true longitude
+  const sunTrueLon = L0 + C;
+
+  // Apparent longitude — corrects for nutation and aberration (Meeus simplified)
+  let omega = 125.04452 - 1934.136261 * T;
+  omega = ((omega % 360) + 360) % 360;
+  const apparent = sunTrueLon - 0.00569 - 0.00478 * Math.sin(omega * Math.PI / 180);
+
+  return ((apparent % 360) + 360) % 360;
+}
+
+/**
+ * Map an ecliptic longitude to a HD gate + line.
+ * Returns { gate, line } where gate is 1-64 and line is 1-6.
+ */
+function longitudeToGateLine(lon) {
+  const norm = ((lon % 360) + 360) % 360;
+  // Walk the wheel from the end to find matching segment
+  for (let i = HD_GATE_WHEEL.length - 1; i >= 0; i--) {
+    if (norm >= HD_GATE_WHEEL[i].start) {
+      const posInGate = norm - HD_GATE_WHEEL[i].start;
+      const line = Math.min(Math.floor(posInGate / 0.9375) + 1, 6);
+      return { gate: HD_GATE_WHEEL[i].gate, line };
+    }
+  }
+  // Fallback: wraps into gate 25 (358.25-360 zone)
+  return { gate: 25, line: 1 };
+}
+
+function studioCalcGeneKeys() {
+  const dobVal = document.getElementById('studio-dob').value;
+  const tobVal = document.getElementById('studio-tob').value;
+  if (!dobVal) { showToast('Please enter a date of birth'); return; }
+
+  const timeStr = tobVal || '12:00';
+  const [yr, mo, dy] = dobVal.split('-').map(Number);
+  const [hr, mn]     = timeStr.split(':').map(Number);
+  const birthUTC = new Date(Date.UTC(yr, mo - 1, dy, hr, mn, 0));
+  if (isNaN(birthUTC.getTime())) { showToast('Invalid date/time'); return; }
+
+  const jdBirth  = dateToJD(birthUTC);
+  const csLon    = jdToSolarLongitude(jdBirth);
+  const csResult = longitudeToGateLine(csLon);
+  const ceLon    = (csLon + 180) % 360;
+  const ceResult = longitudeToGateLine(ceLon);
+  const usSunLon = ((csLon - 88) + 360) % 360;
+  const usResult = longitudeToGateLine(usSunLon);
+  const ueLon    = (usSunLon + 180) % 360;
+  const ueResult = longitudeToGateLine(ueLon);
+
+  // Save to state
+  state.birthData = {
+    dob: dobVal, tob: tobVal,
+    pob: document.getElementById('studio-pob')?.value || '',
+    calculated: true,
+    cs: csResult, ce: ceResult, us: usResult, ue: ueResult
+  };
+
+  // Also seed compassData with GK profile for rooms to use
+  if (!state.compassData) state.compassData = { points: { work:{}, lens:{}, field:{}, call:{} } };
+  if (!state.compassData.points) state.compassData.points = { work:{}, lens:{}, field:{}, call:{} };
+
+  // work=CS, lens=CE, field=US, call=UE
+  state.compassData.points.work.gk_num  = String(csResult.gate);
+  state.compassData.points.work.gk_line = String(csResult.line);
+  state.compassData.points.lens.gk_num  = String(ceResult.gate);
+  state.compassData.points.lens.gk_line = String(ceResult.line);
+  state.compassData.points.field.gk_num = String(usResult.gate);
+  state.compassData.points.field.gk_line= String(usResult.line);
+  state.compassData.points.call.gk_num  = String(ueResult.gate);
+  state.compassData.points.call.gk_line = String(ueResult.line);
+
+  if (state.person) state.compassData.companion = state.person;
+  saveState();
+
+  // Animate button
+  const btn = document.getElementById('studio-calc-btn');
+  if (btn) {
+    btn.classList.add('activating');
+    setTimeout(() => btn.classList.remove('activating'), 1000);
+  }
+
+  restoreStudioCalcResults(state.birthData);
+  showToast('Profile activated');
+
+  // Update Rose prompt with new context
+  showRosePrompt();
+}
+
+function restoreStudioCalcResults(d) {
+  if (!d || !d.cs) return;
+  function fmt(r) {
+    const gk = GENE_KEYS[r.gate];
+    return 'GK ' + r.gate + ' · ' + (gk ? gk.gift : '?') + ' (Line ' + r.line + ')';
+  }
+  const results = document.getElementById('studio-calc-results');
+  if (results) {
+    results.classList.add('visible');
+    [
+      ['s-gk-cs', d.cs],
+      ['s-gk-ce', d.ce],
+      ['s-gk-us', d.us],
+      ['s-gk-ue', d.ue],
+    ].forEach(([id, r], i) => {
+      const el = document.getElementById(id);
+      if (el && r) {
+        el.querySelector('.studio-calc-result-val').textContent = fmt(r);
+        setTimeout(() => el.classList.add('revealed'), i * 120);
+      }
+    });
+  }
+}
+
 function initEntrance() {
   loadState();
 
@@ -2793,6 +3236,7 @@ function processCompassImport(file) {
       // Validate it looks like a Compass session
       if (!data.points) throw new Error('Not a Compass session file');
       state.compassData = data;
+      state.birthData = null; // JSON is master key — overrides calculator
       if (data.companion) state.person = data.companion;
       if (data.theme) {
         state.theme = data.theme;
@@ -2827,6 +3271,7 @@ function processCompassImport(file) {
 document.addEventListener('DOMContentLoaded', () => {
   initEntrance();
   initParticles();
+  initStudioCalculator();
 
   // Back button
   document.getElementById('btn-back-to-entrance').addEventListener('click', () => {
