@@ -935,6 +935,7 @@ input, textarea { font: inherit; color: inherit; }
   bottom: var(--space-4);
   left: 50%;
   transform: translateX(-50%);
+  position: fixed;
   z-index: 100;
   background: color-mix(in srgb, var(--card) 90%, transparent);
   border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 20%, var(--border));
@@ -949,6 +950,7 @@ input, textarea { font: inherit; color: inherit; }
   min-width: 0;
   max-width: calc(100vw - 2rem);
   transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  position: fixed;
 }
 .freq-engine.collapsed {
   padding: var(--space-2) var(--space-4);
@@ -1114,28 +1116,24 @@ input, textarea { font: inherit; color: inherit; }
 
 /* ── Mood Lighting Panel ──────────────────────────────────────── */
 .mood-panel {
-  position: fixed;
-  top: 50%;
-  right: var(--space-4);
-  transform: translateY(-50%);
-  z-index: 100;
-  background: color-mix(in srgb, var(--card) 90%, transparent);
-  border: 1px solid var(--border);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
   border-radius: var(--radius-xl);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   padding: var(--space-4);
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: var(--space-3);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  min-width: 160px;
+  min-width: 180px;
 }
 .mood-panel.open {
-  opacity: 1;
-  pointer-events: all;
+  display: flex;
 }
 
 .mood-panel-title {
@@ -1203,28 +1201,22 @@ input, textarea { font: inherit; color: inherit; }
 
 /* Mood toggle button */
 .mood-toggle-btn {
-  position: fixed;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  z-index: 101;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-right: none;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  padding: var(--space-3) var(--space-2);
-  cursor: pointer;
-  color: var(--text-faint);
-  font-size: 16px;
-  transition: all 0.2s;
-  writing-mode: vertical-rl;
-  letter-spacing: 0.1em;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.mood-toggle-btn:hover { color: var(--text); background: var(--card-alt); }
+.mood-toggle-btn:hover { color: var(--text); border-color: var(--setup-accent); }
+.mood-toggle-btn.active { color: var(--rose-color,#c4b5fd); border-color: var(--rose-color,#c4b5fd); }
 
 /* ── Rose Orb — magic active state ───────────────────────────── */
 .room-mirror {
@@ -2436,6 +2428,8 @@ function initFrequencyEngine() {
   // Toggle expand/collapse
   toggle.addEventListener('click', () => {
     engine.classList.toggle('collapsed');
+    const closeBtn = document.getElementById('freq-close-btn');
+    if (closeBtn) closeBtn.style.display = engine.classList.contains('collapsed') ? 'none' : '';
   });
 
   // Chakra presets
@@ -2545,7 +2539,19 @@ function initMoodLighting() {
   const toggle = document.getElementById('mood-toggle-btn');
   const panel  = document.getElementById('mood-panel');
 
-  toggle.addEventListener('click', () => panel.classList.toggle('open'));
+  toggle.addEventListener('click', () => {
+    panel.classList.toggle('open');
+    toggle.classList.toggle('active', panel.classList.contains('open'));
+  });
+
+  // Close freq engine
+  const closeBtn = document.getElementById('freq-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      document.getElementById('freq-engine').classList.add('collapsed');
+      panel.classList.remove('open');
+    });
+  }
 
   // Preset buttons
   document.querySelectorAll('.mood-preset').forEach(btn => {
@@ -2703,12 +2709,18 @@ function renderVoiceEntries(roomKey) {
      FREQUENCY ENGINE (fixed bottom bar)
      ============================================================ -->
 <div class="freq-engine collapsed" id="freq-engine">
-  <div class="freq-engine-toggle" id="freq-toggle">
-    <div class="freq-orb" id="freq-orb"></div>
-    <span class="freq-engine-label" id="freq-engine-label">Frequencies</span>
+  <div class="freq-engine-controls-row" style="display:flex;align-items:center;gap:var(--space-3);flex-shrink:0;">
+    <div class="freq-engine-toggle" id="freq-toggle" style="cursor:pointer;display:flex;align-items:center;gap:var(--space-2);">
+      <div class="freq-orb" id="freq-orb"></div>
+      <span class="freq-engine-label" id="freq-engine-label">Frequencies</span>
+    </div>
+    <button id="mood-toggle-btn" class="mood-toggle-btn" title="Mood">✦ Mood</button>
+    <button id="freq-close-btn" style="background:none;border:none;color:var(--text-faint);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;opacity:0.6;" title="Close">✕</button>
   </div>
 
-  <div class="freq-engine-body">
+  <button class="mood-toggle-btn" id="mood-toggle-btn" title="Mood Lighting">✦ Mood</button>
+  <div class="mood-panel" id="mood-panel">
+
     <!-- Chakra presets -->
     <div class="freq-section">
       <div class="freq-section-label">Chakra · Planetary</div>
@@ -2773,8 +2785,8 @@ function renderVoiceEntries(roomKey) {
 <!-- ============================================================
      MOOD LIGHTING
      ============================================================ -->
-<button class="mood-toggle-btn" id="mood-toggle-btn" title="Mood Lighting">Mood</button>
-<div class="mood-panel" id="mood-panel">
+<!-- mood panel moved into freq engine -->
+<div class="mood-panel" id="mood-panel" style="display:none;position:absolute;bottom:calc(100% + 8px);right:0;left:auto;transform:none;top:auto;">
   <div class="mood-panel-title">Mood Lighting</div>
 
   <div class="mood-presets">
