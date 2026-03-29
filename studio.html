@@ -1963,6 +1963,114 @@ input, textarea { font: inherit; color: inherit; }
   max-width: 440px;
 }
 
+
+/* ── Atmosphere unified control ─────────────────────────────── */
+.atmos-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.atmos-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 12px 4px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.atmos-toggle:hover,
+.atmos-toggle.active {
+  border-color: var(--rose-color,#c4b5fd);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent);
+}
+.atmos-toggle-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.atmos-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.45), 0 0 80px color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, transparent);
+  padding: var(--space-5);
+  display: none;
+  min-width: 480px;
+}
+.atmos-dropdown.open { display: block; }
+
+.atmos-cols {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+.atmos-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+.atmos-col-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rose-color,#c4b5fd);
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
+}
+.atmos-col-divider {
+  width: 1px;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  align-self: stretch;
+  margin: 0 var(--space-1);
+  flex-shrink: 0;
+}
+.atmos-section-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.atmos-binaural {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+.atmos-binaural-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.atmos-light-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+}
+.mood-slider-h {
+  width: 100% !important;
+}
+
 </style>
 </head>
 <body>
@@ -3458,8 +3566,8 @@ function updateVolume() {
 
 function initFrequencyEngine() {
   // Toolbar toggle
-  const tbToggle = document.getElementById('freq-toolbar-toggle');
-  const tbDropdown = document.getElementById('freq-dropdown');
+  const tbToggle = document.getElementById('atmos-toggle');
+  const tbDropdown = document.getElementById('atmos-dropdown');
   if (tbToggle && tbDropdown) {
     tbToggle.addEventListener('click', (e) => {
       e.stopPropagation();
