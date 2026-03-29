@@ -924,8 +924,8 @@ input, textarea { font: inherit; color: inherit; }
     <span class="rose-byline" id="rose-byline">— The Rose</span>
   </div>
 
-  <!-- Entrance actions (appear after portal interaction) -->
-  <div class="entrance-actions" id="entrance-actions">
+  <!-- Entrance actions (import always visible; room buttons appear after portal touch) -->
+  <div class="entrance-actions" id="entrance-actions" style="opacity:1;">
     <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;justify-content:center;">
       <button class="btn-enter-room" data-room="work"  style="border-color:var(--work);color:var(--work);">The Work</button>
       <button class="btn-enter-room" data-room="lens"  style="border-color:var(--lens);color:var(--lens);">The Lens</button>
