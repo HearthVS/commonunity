@@ -2299,7 +2299,13 @@ input, textarea { font: inherit; color: inherit; }
       <button class="btn-enter-room" data-room="call"  style="border-color:var(--call);color:var(--call);">The Call</button>
     </div>
   </div>
-  <button class="compass-import-link" id="btn-import-compass" style="opacity:0.5;margin-top:var(--space-4);">Import from Compass session →</button>
+  <div style="display:flex;gap:var(--space-4);align-items:center;margin-top:var(--space-4);">
+    <button class="compass-import-link" id="btn-import-compass" style="opacity:0.5;">Import from Compass session →</button>
+    <span style="color:var(--text-faint);opacity:0.4;font-size:var(--text-xs);">·</span>
+    <button class="compass-import-link" id="btn-studio-save-entrance" style="opacity:0.5;">Save Studio →</button>
+    <button class="compass-import-link" id="btn-studio-load-entrance" style="opacity:0.5;">Load Studio →</button>
+    <input type="file" id="studio-load-file-entrance" accept=".json" style="display:none">
+  </div>
 
   <footer class="studio-footer" style="margin-top:var(--space-8);padding-bottom:var(--space-6);">
     © <a href="https://hearthventurestudio.com" target="_blank">Hearth Venture Studio</a> &amp; Koda 2026
@@ -2315,10 +2321,21 @@ input, textarea { font: inherit; color: inherit; }
 
   <!-- Room Header with mood toolbar -->
   <div class="room-header">
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-shrink:0;">
     <button class="room-back" id="btn-back-to-entrance">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
 CommonUnity Studio <span style="font-size:8px;font-weight:700;letter-spacing:0.12em;color:var(--rose-color,#c4b5fd);border:1px solid var(--rose-color,#c4b5fd);border-radius:999px;padding:1px 6px;opacity:0.6;margin-left:4px;">Beta</span>
     </button>
+    <button class="room-back" id="btn-studio-save" title="Save session" style="gap:var(--space-1);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save
+    </button>
+    <button class="room-back" id="btn-studio-load" title="Load session" style="gap:var(--space-1);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Load
+    </button>
+    <input type="file" id="studio-load-file" accept=".json" style="display:none">
+    </div>
     <div class="room-title-block">
       <div class="room-title" id="room-title-display"></div>
       <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:2px;">
@@ -3527,6 +3544,142 @@ function processCompassImport(file) {
 // ============================================================
 
 // ── Info popups ───────────────────────────────────────────────
+
+// ============================================================
+// STUDIO SAVE / LOAD JSON
+// ============================================================
+function studioSaveJSON() {
+  const name = (state.person || state.compassData?.companion || 'studio').toLowerCase().replace(/\s+/g,'-');
+  const date = new Date().toISOString().slice(0,10);
+  const filename = name + '-studio-' + date + '.json';
+
+  // Build export object
+  const exportData = {
+    version: 'studio-v1',
+    exported: new Date().toISOString(),
+    person: state.person,
+    theme: state.theme,
+    birthData: state.birthData,
+    compassData: state.compassData,
+    rooms: {}
+  };
+
+  // Rooms — include entries and mirror history, exclude large voice data
+  ['work','lens','field','call'].forEach(room => {
+    const r = state.rooms[room] || {};
+    exportData.rooms[room] = {
+      entries: r.entries || [],
+      mirrorHistory: r.mirrorHistory || [],
+      // Voice entries: keep metadata only to avoid huge files
+      voiceEntries: (r.voiceEntries || []).map(v => ({
+        date: v.date,
+        note: '[voice recording — re-record to restore]'
+      }))
+    };
+  });
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Studio session saved');
+}
+
+function studioLoadJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.version || !data.version.startsWith('studio')) {
+        // Try treating as Compass JSON
+        if (data.points) {
+          processCompassImport(file);
+          return;
+        }
+        throw new Error('Not a Studio session file');
+      }
+      // Restore Studio state
+      if (data.person) state.person = data.person;
+      if (data.theme) {
+        state.theme = data.theme;
+        document.documentElement.dataset.theme = data.theme;
+      }
+      if (data.birthData) state.birthData = data.birthData;
+      if (data.compassData) state.compassData = data.compassData;
+      if (data.rooms) {
+        ['work','lens','field','call'].forEach(room => {
+          if (data.rooms[room]) {
+            state.rooms[room] = {
+              entries: data.rooms[room].entries || [],
+              mirrorHistory: data.rooms[room].mirrorHistory || [],
+              voiceEntries: []
+            };
+          }
+        });
+      }
+      saveState();
+
+      // Update UI
+      const nameEl = document.getElementById('studio-person-name');
+      if (nameEl && state.person) nameEl.value = state.person;
+      const nameDisp = document.getElementById('entrance-name');
+      if (nameDisp && state.person) {
+        nameDisp.textContent = 'Welcome back, ' + state.person;
+        nameDisp.classList.add('visible');
+      }
+
+      // Open portal if not open
+      if (!portalOpened) {
+        portalOpened = true;
+        const portal = document.getElementById('portal');
+        if (portal) portal.classList.add('doors-open');
+        const actions = document.getElementById('entrance-actions');
+        if (actions) actions.classList.add('visible');
+        showRosePrompt();
+      }
+
+      // Restore calc results if birth data present
+      if (state.birthData?.calculated) restoreStudioCalcResults(state.birthData);
+
+      showToast('Studio session loaded — welcome back, ' + (state.person || 'explorer'));
+    } catch(err) {
+      showToast('Could not load file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function initStudioJSON() {
+  // Room header buttons
+  const saveBtn = document.getElementById('btn-studio-save');
+  const loadBtn = document.getElementById('btn-studio-load');
+  const loadFile = document.getElementById('studio-load-file');
+
+  if (saveBtn) saveBtn.addEventListener('click', studioSaveJSON);
+  if (loadBtn && loadFile) {
+    loadBtn.addEventListener('click', () => loadFile.click());
+    loadFile.addEventListener('change', e => {
+      if (e.target.files[0]) studioLoadJSON(e.target.files[0]);
+      loadFile.value = '';
+    });
+  }
+
+  // Entrance buttons
+  const saveEntrance = document.getElementById('btn-studio-save-entrance');
+  const loadEntrance = document.getElementById('btn-studio-load-entrance');
+  const loadFileEntrance = document.getElementById('studio-load-file-entrance');
+
+  if (saveEntrance) saveEntrance.addEventListener('click', studioSaveJSON);
+  if (loadEntrance && loadFileEntrance) {
+    loadEntrance.addEventListener('click', () => loadFileEntrance.click());
+    loadFileEntrance.addEventListener('change', e => {
+      if (e.target.files[0]) studioLoadJSON(e.target.files[0]);
+      loadFileEntrance.value = '';
+    });
+  }
+}
+
 function initInfoPopups() {
   document.addEventListener('click', (e) => {
     // Open popup
@@ -3556,6 +3709,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initParticles();
   initPortalTooltips();
   initInfoPopups();
+  initStudioJSON();
   initStudioCalculator();
 
   // Back button
