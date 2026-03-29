@@ -995,7 +995,11 @@ input, textarea { font: inherit; color: inherit; }
   flex: 1;
   min-width: 0;
 }
-.room-title { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.01em; }
+.room-title { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.01em; animation: room-title-glow 5s ease-in-out infinite; }
+@keyframes room-title-glow {
+  0%,100% { text-shadow: 0 0 8px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 25%, transparent); }
+  50%      { text-shadow: 0 0 20px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 55%, transparent), 0 0 40px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 20%, transparent); }
+}
 .room-subtitle { font-size: 10px; color: var(--text-faint); font-style: italic; letter-spacing: 0.02em; }
 
 .room-gk-badge {
@@ -1378,6 +1382,7 @@ input, textarea { font: inherit; color: inherit; }
   overflow: hidden;
   position: relative;
   transition: background 0.6s ease;
+  isolation: isolate;
 }
 .room-mirror.orb-active {
   background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, var(--bg)) 0%, var(--bg) 65%);
@@ -1410,7 +1415,6 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: var(--space-2);
 }
 
 /* Radial glow plane beneath orb */
@@ -4041,38 +4045,71 @@ function initVoiceNotes() {
 
 async function startRecording() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      saveVoiceEntry(blob);
-      stream.getTracks().forEach(t => t.stop());
-    };
-
-    mediaRecorder.start();
-    isRecording = true;
-    const btn = document.getElementById('voice-record-btn');
-    btn.classList.add('recording');
-    btn.title = 'Stop recording';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>`;
-    showToast('Recording…');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      let finalTranscript = '';
+      const workbenchInput = document.getElementById('workbench-input');
+      recognition.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i].transcript;
+          if (event.results[i].isFinal) finalTranscript += t + ' ';
+          else interim += t;
+        }
+        if (workbenchInput) workbenchInput.placeholder = (finalTranscript + interim).trim() || 'Listening…';
+      };
+      recognition.onerror = () => { showToast('Speech error — try again'); stopRecording(); };
+      recognition.onend = () => {
+        if (isRecording) {
+          if (finalTranscript.trim()) {
+            if (!state.rooms[currentRoom].entries) state.rooms[currentRoom].entries = [];
+            state.rooms[currentRoom].entries.push({ text: finalTranscript.trim(), date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), type: 'voice' });
+            saveState();
+            renderWorkbenchEntries(currentRoom);
+            renderArchive(currentRoom);
+            showToast('Voice note transcribed and saved');
+          }
+          if (workbenchInput) workbenchInput.placeholder = 'Write freely. Reflections, questions, fragments, intentions. This space is yours.';
+          stopRecording();
+        }
+      };
+      window._recognition = recognition;
+      recognition.start();
+      isRecording = true;
+      const btn = document.getElementById('voice-record-btn');
+      btn.classList.add('recording');
+      btn.title = 'Stop recording';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+      showToast('Listening — speak now…');
+    } else {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => { const blob = new Blob(audioChunks, { type: 'audio/webm' }); saveVoiceEntry(blob); stream.getTracks().forEach(t => t.stop()); };
+      mediaRecorder.start();
+      isRecording = true;
+      const btn = document.getElementById('voice-record-btn');
+      btn.classList.add('recording');
+      btn.title = 'Stop recording';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+      showToast('Recording…');
+    }
   } catch(e) {
     showToast('Microphone access denied');
   }
 }
 
 function stopRecording() {
-  if (mediaRecorder && isRecording) {
-    mediaRecorder.stop();
-    isRecording = false;
-    const btn = document.getElementById('voice-record-btn');
-    btn.classList.remove('recording');
-    btn.title = 'Record voice note';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
-  }
+  if (window._recognition) { try { window._recognition.stop(); } catch(e) {} window._recognition = null; }
+  if (mediaRecorder && isRecording) { try { mediaRecorder.stop(); } catch(e) {} }
+  isRecording = false;
+  const btn = document.getElementById('voice-record-btn');
+  if (btn) { btn.classList.remove('recording'); btn.title = 'Record voice note'; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'; }
 }
 
 function saveVoiceEntry(blob) {
