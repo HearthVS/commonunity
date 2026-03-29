@@ -240,17 +240,18 @@ input, textarea { font: inherit; color: inherit; }
 
 .portal-hint {
   position: absolute;
-  bottom: -32px;
+  bottom: -28px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
   opacity: 0;
   transition: opacity 0.4s ease;
   white-space: nowrap;
   pointer-events: none;
+  text-align: center;
 }
 .portal-wrap:hover .portal-hint { opacity: 1; }
 .portal-wrap.doors-open .portal-hint { display: none; }
@@ -961,7 +962,7 @@ input, textarea { font: inherit; color: inherit; }
 .room-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg) 95%, transparent);
@@ -969,7 +970,7 @@ input, textarea { font: inherit; color: inherit; }
   position: sticky;
   top: 0;
   z-index: 20;
-  gap: var(--space-3);
+  gap: var(--space-4);
   flex-shrink: 0;
 }
 
@@ -2117,13 +2118,16 @@ input, textarea { font: inherit; color: inherit; }
   <div class="room-header">
     <button class="room-back" id="btn-back-to-entrance">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-      Studio <span style="font-size:8px;font-weight:700;letter-spacing:0.12em;color:var(--rose-color,#c4b5fd);border:1px solid var(--rose-color,#c4b5fd);border-radius:999px;padding:1px 6px;opacity:0.6;margin-left:3px;">Beta</span>
+CommonUnity Studio <span style="font-size:8px;font-weight:700;letter-spacing:0.12em;color:var(--rose-color,#c4b5fd);border:1px solid var(--rose-color,#c4b5fd);border-radius:999px;padding:1px 6px;opacity:0.6;margin-left:4px;">Beta</span>
     </button>
     <div class="room-title-block">
-      <div class="room-title" id="room-title-display"></div>
+      <div style="display:flex;align-items:center;gap:var(--space-3);">
+        <div class="room-title" id="room-title-display"></div>
+        <div class="room-gk-badge" id="room-gk-badge">—</div>
+      </div>
       <div class="room-subtitle" id="room-subtitle-display"></div>
     </div>
-    <div class="room-mood-toolbar">
+    <div class="room-mood-toolbar" style="margin-left:auto;">
       <!-- Freq toolbar -->
       <div class="freq-toolbar-wrap" id="freq-toolbar-wrap">
         <button class="freq-toolbar-toggle" id="freq-toolbar-toggle">
@@ -2195,8 +2199,6 @@ input, textarea { font: inherit; color: inherit; }
         <span class="mood-toolbar-label">Depth</span>
         <input type="range" class="mood-slider-h dark" id="mood-dark" min="0" max="100" value="50">
       </div>
-      <div class="room-toolbar-divider"></div>
-      <div class="room-gk-badge" id="room-gk-badge">—</div>
     </div>
   </div>
 
