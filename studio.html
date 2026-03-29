@@ -1386,8 +1386,8 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-4) var(--space-4) var(--space-4);
-  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  gap: var(--space-2);
   flex-shrink: 0;
   position: relative;
   /* Soft vignette bottom edge — no hard border */
@@ -1404,21 +1404,23 @@ input, textarea { font: inherit; color: inherit; }
 /* Orb wrap — gives space for rings */
 .rose-orb-wrap {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: var(--space-2);
 }
 
 /* Radial glow plane beneath orb */
 .rose-orb-wrap::before {
   content: '';
   position: absolute;
-  inset: -30px;
+  inset: -16px;
   border-radius: 50%;
   background: radial-gradient(circle, color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent) 0%, transparent 70%);
   animation: glow-plane 4s ease-in-out infinite;
+  pointer-events: none;
 }
 .room-mirror.orb-active .rose-orb-wrap::before {
   background: radial-gradient(circle, color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent) 0%, transparent 70%);
@@ -1467,14 +1469,14 @@ input, textarea { font: inherit; color: inherit; }
 /* Concentric rings — orbit the orb */
 .rose-orb-ring {
   position: absolute;
-  inset: -16px;
+  inset: -10px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, transparent);
   animation: ring-orbit 6s linear infinite;
 }
 .rose-orb-ring-2 {
   position: absolute;
-  inset: -28px;
+  inset: -20px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent);
   animation: ring-orbit 10s linear infinite reverse;
