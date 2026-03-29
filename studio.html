@@ -2756,8 +2756,6 @@ function initFrequencyEngine() {
   // Toggle expand/collapse
   toggle.addEventListener('click', () => {
     engine.classList.toggle('collapsed');
-    const closeBtn = document.getElementById('freq-close-btn');
-    if (closeBtn) closeBtn.style.display = engine.classList.contains('collapsed') ? 'none' : '';
   });
 
   // Chakra presets
@@ -2817,6 +2815,17 @@ function initFrequencyEngine() {
   });
 
   document.getElementById('freq-volume').addEventListener('input', updateVolume);
+
+  // Reopen button
+  const reopenBtn = document.getElementById('freq-reopen-btn');
+  if (reopenBtn) {
+    reopenBtn.addEventListener('click', () => {
+      reopenBtn.style.display = 'none';
+      const eng = document.getElementById('freq-engine');
+      eng.style.display = 'flex';
+      eng.classList.add('collapsed');
+    });
+  }
 
   document.getElementById('freq-stop-btn').addEventListener('click', () => {
     stopTones();
@@ -2898,7 +2907,11 @@ function initMoodLighting() {
   const closeBtn = document.getElementById('freq-close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
-      document.getElementById('freq-engine').classList.add('collapsed');
+      const eng = document.getElementById('freq-engine');
+      eng.style.display = 'none';
+      // Show the reopen button
+      const reopen = document.getElementById('freq-reopen-btn');
+      if (reopen) reopen.style.display = 'flex';
     });
   }
 }
@@ -3022,20 +3035,24 @@ function renderVoiceEntries(roomKey) {
 
 </script>
 
+<!-- Freq reopen button -->
+<button id="freq-reopen-btn" style="display:none;position:fixed;bottom:var(--space-4);left:50%;transform:translateX(-50%);z-index:100;background:color-mix(in srgb,var(--card) 90%,transparent);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 20%,var(--border));border-radius:var(--radius-full);padding:6px 16px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);cursor:pointer;backdrop-filter:blur(12px);gap:8px;align-items:center;" title="Open frequencies">
+  ◈ Frequencies
+</button>
+
 <!-- ============================================================
      FREQUENCY ENGINE (fixed bottom bar)
      ============================================================ -->
-<div class="freq-engine collapsed" id="freq-engine">
+<div class="freq-engine collapsed" id="freq-engine" style="display:flex;">
   <div class="freq-engine-controls-row" style="display:flex;align-items:center;gap:var(--space-3);flex-shrink:0;">
     <div class="freq-engine-toggle" id="freq-toggle" style="cursor:pointer;display:flex;align-items:center;gap:var(--space-2);">
       <div class="freq-orb" id="freq-orb"></div>
       <span class="freq-engine-label" id="freq-engine-label">Frequencies</span>
     </div>
     <button id="mood-toggle-btn" class="mood-toggle-btn" title="Mood">✦ Mood</button>
-    <button id="freq-close-btn" style="background:none;border:none;color:var(--text-faint);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;opacity:0.6;" title="Close">✕</button>
+    <button id="freq-close-btn" style="background:none;border:1px solid var(--border);border-radius:50%;color:var(--text-faint);font-size:12px;cursor:pointer;width:22px;height:22px;display:flex;align-items:center;justify-content:center;opacity:0.7;flex-shrink:0;transition:all 0.2s;" title="Close frequencies">✕</button>
   </div>
 
-  <button class="mood-toggle-btn" id="mood-toggle-btn" title="Mood Lighting">✦ Mood</button>
   <div class="mood-panel" id="mood-panel">
 
     <!-- Chakra presets -->
