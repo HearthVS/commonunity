@@ -1213,6 +1213,7 @@ input, textarea { font: inherit; color: inherit; }
   display: grid;
   grid-template-columns: 220px 1fr 340px;
   grid-template-rows: 1fr;
+  align-items: stretch;
   gap: 0;
   height: calc(100dvh - 56px);
   overflow: hidden;
@@ -1530,7 +1531,7 @@ input, textarea { font: inherit; color: inherit; }
   position: relative;
   transition: background 0.6s ease;
   isolation: isolate;
-  height: 100%;
+  align-self: stretch;
   min-height: 0;
 }
 .room-mirror.orb-active {
