@@ -125,19 +125,41 @@ input, textarea { font: inherit; color: inherit; }
    ENTRANCE SCREEN
    ============================================================ */
 #screen-entrance {
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 100dvh;
+  overflow-y: auto;
+}
+
+/* Left column — torus portal */
+.entrance-left {
+  flex: 1;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: var(--space-12) var(--space-4) var(--space-8);
+  justify-content: center;
+  padding: var(--space-8);
+  position: relative;
+  min-height: 100dvh;
+}
+
+/* Right sidebar — inputs */
+.entrance-right {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-8) var(--space-6);
+  border-left: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  backdrop-filter: blur(8px);
+  gap: var(--space-5);
   overflow-y: auto;
-  gap: var(--space-4);
 }
 
 .entrance-wordmark {
-  position: absolute;
-  top: var(--space-5);
-  left: 50%;
-  transform: translateX(-50%);
   font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -166,19 +188,15 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 .entrance-name {
-  position: absolute;
-  top: calc(var(--space-5) + 30px);
-  left: 50%;
-  transform: translateX(-50%);
   font-size: var(--text-sm);
   color: var(--rose-color,#c4b5fd);
-  white-space: nowrap;
   font-style: italic;
   letter-spacing: 0.04em;
   opacity: 0;
   transition: opacity 0.8s ease;
   text-shadow: 0 0 16px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent);
   animation: welcome-glow 4s ease-in-out infinite;
+  min-height: 1.4em;
 }
 .entrance-name.visible { opacity: 1; }
 @keyframes welcome-glow {
@@ -223,11 +241,29 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 .torus-canvas {
-  width: 275px;
-  height: 275px;
+  width: 300px;
+  height: 300px;
   display: block;
   cursor: pointer;
 }
+
+.entrance-session-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.studio-footer {
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.5;
+  text-align: center;
+  padding-top: var(--space-6);
+}
+.studio-footer a { color: inherit; text-decoration: none; }
+.studio-footer a:hover { opacity: 0.8; }
 .portal-svg {
   width: 100%;
   height: 100%;
@@ -2438,7 +2474,6 @@ input, textarea { font: inherit; color: inherit; }
 .studio-info-popup-title { font-size: var(--text-sm) !important; }
 
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
@@ -2450,110 +2485,120 @@ input, textarea { font: inherit; color: inherit; }
   <!-- Atmospheric particles -->
   <div class="entrance-particles" id="entrance-particles"></div>
 
-  <div class="entrance-wordmark">CommonUnity Studio <span class="studio-beta">Beta</span></div>
-  <div class="entrance-name" id="entrance-name"></div>
+  <!-- Left: torus portal -->
+  <div class="entrance-left">
+    <div class="portal-wrap" id="portal" title="Touch to open">
+      <div class="portal-hint" id="portal-hint">touch to open</div>
+      <canvas id="torus-canvas" class="torus-canvas" aria-label="CommonUnity Studio"></canvas>
 
-  <!-- Torus portal -->
-  <div class="portal-wrap" id="portal" title="Touch to open">
-    <div class="portal-hint" id="portal-hint">touch to open</div>
-    <canvas id="torus-canvas" class="torus-canvas" aria-label="CommonUnity Studio"></canvas>
+      <!-- Invisible facet hit areas -->
+      <div class="portal-facet top"    data-room="work"  title="The Work"></div>
+      <div class="portal-facet right"  data-room="lens"  title="The Lens"></div>
+      <div class="portal-facet bottom" data-room="field" title="The Field"></div>
+      <div class="portal-facet left"   data-room="call"  title="The Call"></div>
 
-    <!-- Invisible facet hit areas -->
-    <div class="portal-facet top"    data-room="work"  title="The Work"></div>
-    <div class="portal-facet right"  data-room="lens"  title="The Lens"></div>
-    <div class="portal-facet bottom" data-room="field" title="The Field"></div>
-    <div class="portal-facet left"   data-room="call"  title="The Call"></div>
-
-    <!-- Room labels that appear after first touch -->
-    <div class="portal-room-labels">
-      <span class="room-label work">The Work</span>
-      <span class="room-label lens">The Lens</span>
-      <span class="room-label field">The Field</span>
-      <span class="room-label call">The Call</span>
+      <!-- Room labels -->
+      <div class="portal-room-labels">
+        <span class="room-label work">The Work</span>
+        <span class="room-label lens">The Lens</span>
+        <span class="room-label field">The Field</span>
+        <span class="room-label call">The Call</span>
+      </div>
     </div>
-  </div>
 
-  <!-- The Nexus prompt -->
-  <div class="rose-prompt">
-    <p class="rose-prompt-text" id="rose-prompt-text"></p>
-    <span class="rose-byline" id="rose-byline">— The Nexus</span>
-  </div>
-
-  <!-- Name field -->
-  <div class="studio-name-field">
-    <input class="studio-calc-input" id="studio-person-name" type="text"
-      placeholder="What shall I call you?"
-      autocomplete="off"
-      style="text-align:center;border-radius:var(--radius-full);padding:var(--space-3) var(--space-5);font-style:italic;">
-  </div>
-
-  <!-- Gene Keys Calculator -->
-  <div class="studio-calc-section">
-    <div class="studio-calc-toggle" id="studio-calc-toggle">
-      <span class="studio-calc-toggle-label">When did you take your first breath?</span>
-      <span class="studio-calc-toggle-hint">Calculate ↓</span>
+    <!-- Entrance room buttons (appear after portal touch) -->
+    <div class="entrance-actions" id="entrance-actions">
+      <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;justify-content:center;">
+        <button class="btn-enter-room" data-room="work"  style="border-color:var(--work);color:var(--work);">The Work</button>
+        <button class="btn-enter-room" data-room="lens"  style="border-color:var(--lens);color:var(--lens);">The Lens</button>
+        <button class="btn-enter-room" data-room="field" style="border-color:var(--field);color:var(--field);">The Field</button>
+        <button class="btn-enter-room" data-room="call"  style="border-color:var(--call);color:var(--call);">The Call</button>
+      </div>
     </div>
-    <div class="studio-calc-body" id="studio-calc-body">
-      <div class="studio-calc-row">
+
+    <footer class="studio-footer">
+      © <a href="https://hearthventurestudio.com" target="_blank">Hearth Venture Studio</a> &amp; Koda 2026
+    </footer>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="entrance-right">
+
+    <div>
+      <div class="entrance-wordmark">CommonUnity Studio <span class="studio-beta">Beta</span></div>
+      <div class="entrance-name" id="entrance-name"></div>
+    </div>
+
+    <!-- Name field -->
+    <div>
+      <input class="studio-calc-input" id="studio-person-name" type="text"
+        placeholder="What shall I call you?"
+        autocomplete="off"
+        style="width:100%;border-radius:var(--radius-full);padding:var(--space-3) var(--space-4);font-style:italic;">
+    </div>
+
+    <!-- Gene Keys Calculator — collapsed by default -->
+    <div class="studio-calc-section">
+      <div class="studio-calc-toggle" id="studio-calc-toggle">
+        <span class="studio-calc-toggle-label">When did you take your first breath?</span>
+        <span class="studio-calc-toggle-hint" id="studio-calc-hint">↓</span>
+      </div>
+      <div class="studio-calc-body" id="studio-calc-body">
+        <div class="studio-calc-row">
+          <div class="studio-calc-field">
+            <label class="studio-calc-label">Date of birth</label>
+            <input class="studio-calc-input" id="studio-dob" type="date">
+          </div>
+          <div class="studio-calc-field">
+            <label class="studio-calc-label">Time of birth</label>
+            <input class="studio-calc-input" id="studio-tob" type="time">
+          </div>
+        </div>
         <div class="studio-calc-field">
-          <label class="studio-calc-label">Date of birth</label>
-          <input class="studio-calc-input" id="studio-dob" type="date">
+          <label class="studio-calc-label">Place of birth</label>
+          <input class="studio-calc-input" id="studio-pob" type="text" placeholder="City, Country…">
         </div>
-        <div class="studio-calc-field">
-          <label class="studio-calc-label">Time of birth</label>
-          <input class="studio-calc-input" id="studio-tob" type="time">
-        </div>
-      </div>
-      <div class="studio-calc-field">
-        <label class="studio-calc-label">Place of birth</label>
-        <input class="studio-calc-input" id="studio-pob" type="text" placeholder="City, Country…">
-      </div>
-      <button class="studio-calc-btn" id="studio-calc-btn">Reveal my profile</button>
-      <div class="studio-calc-results" id="studio-calc-results">
-        <div class="studio-calc-result-item" id="s-gk-cs">
-          <span class="studio-calc-result-label">Life's Work</span>
-          <span class="studio-calc-result-point">The Work</span>
-          <span class="studio-calc-result-val">—</span>
-        </div>
-        <div class="studio-calc-result-item" id="s-gk-ce">
-          <span class="studio-calc-result-label">Evolution</span>
-          <span class="studio-calc-result-point">The Lens</span>
-          <span class="studio-calc-result-val">—</span>
-        </div>
-        <div class="studio-calc-result-item" id="s-gk-us">
-          <span class="studio-calc-result-label">Radiance</span>
-          <span class="studio-calc-result-point">The Field</span>
-          <span class="studio-calc-result-val">—</span>
-        </div>
-        <div class="studio-calc-result-item" id="s-gk-ue">
-          <span class="studio-calc-result-label">Purpose</span>
-          <span class="studio-calc-result-point">The Call</span>
-          <span class="studio-calc-result-val">—</span>
+        <button class="studio-calc-btn" id="studio-calc-btn">Reveal my profile</button>
+        <div class="studio-calc-results" id="studio-calc-results">
+          <div class="studio-calc-result-item" id="s-gk-cs">
+            <span class="studio-calc-result-label">Life's Work</span>
+            <span class="studio-calc-result-point">The Work</span>
+            <span class="studio-calc-result-val">—</span>
+          </div>
+          <div class="studio-calc-result-item" id="s-gk-ce">
+            <span class="studio-calc-result-label">Evolution</span>
+            <span class="studio-calc-result-point">The Lens</span>
+            <span class="studio-calc-result-val">—</span>
+          </div>
+          <div class="studio-calc-result-item" id="s-gk-us">
+            <span class="studio-calc-result-label">Radiance</span>
+            <span class="studio-calc-result-point">The Field</span>
+            <span class="studio-calc-result-val">—</span>
+          </div>
+          <div class="studio-calc-result-item" id="s-gk-ue">
+            <span class="studio-calc-result-label">Purpose</span>
+            <span class="studio-calc-result-point">The Call</span>
+            <span class="studio-calc-result-val">—</span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Entrance actions -->
-  <div class="entrance-actions" id="entrance-actions">
-    <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;justify-content:center;">
-      <button class="btn-enter-room" data-room="work"  style="border-color:var(--work);color:var(--work);">The Work</button>
-      <button class="btn-enter-room" data-room="lens"  style="border-color:var(--lens);color:var(--lens);">The Lens</button>
-      <button class="btn-enter-room" data-room="field" style="border-color:var(--field);color:var(--field);">The Field</button>
-      <button class="btn-enter-room" data-room="call"  style="border-color:var(--call);color:var(--call);">The Call</button>
+    <!-- Session actions -->
+    <div class="entrance-session-links">
+      <button class="compass-import-link" id="btn-import-compass">Import from Compass →</button>
+      <button class="compass-import-link" id="btn-studio-load-entrance">Load session →</button>
+      <button class="compass-import-link" id="btn-studio-save-entrance" style="opacity:0.4;">Save session →</button>
+      <input type="file" id="studio-load-file-entrance" accept=".json" style="display:none">
     </div>
-  </div>
-  <div style="display:flex;gap:var(--space-4);align-items:center;margin-top:var(--space-4);">
-    <button class="compass-import-link" id="btn-import-compass" style="opacity:0.5;">Import from Compass session →</button>
-    <span style="color:var(--text-faint);opacity:0.4;font-size:var(--text-xs);">·</span>
-    <button class="compass-import-link" id="btn-studio-save-entrance" style="opacity:0.5;">Save Studio →</button>
-    <button class="compass-import-link" id="btn-studio-load-entrance" style="opacity:0.5;">Load Studio →</button>
-    <input type="file" id="studio-load-file-entrance" accept=".json" style="display:none">
-  </div>
 
-  <footer class="studio-footer" style="margin-top:var(--space-8);padding-bottom:var(--space-6);">
-    © <a href="https://hearthventurestudio.com" target="_blank">Hearth Venture Studio</a> &amp; Koda 2026
-  </footer>
+    <!-- Hidden Nexus prompt elements (kept for JS compatibility, never shown) -->
+    <div style="display:none;">
+      <p id="rose-prompt-text"></p>
+      <span id="rose-byline"></span>
+    </div>
+
+  </div>
 
 </div><!-- /screen-entrance -->
 
@@ -3216,7 +3261,7 @@ function studioCalcGeneKeys() {
   showToast('Profile activated');
 
   // Update Rose prompt with new context
-  showRosePrompt();
+  // showRosePrompt() — removed, Nexus prompt not shown on entrance
 }
 
 function restoreStudioCalcResults(d) {
@@ -3286,7 +3331,7 @@ function initEntrance() {
         portal.classList.remove('unfolding');
         portal.classList.add('doors-open');
         actions.classList.add('visible');
-        showRosePrompt();
+        // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }, 1400);
     }
   });
@@ -3838,7 +3883,7 @@ function processCompassImport(file) {
         const portal = document.getElementById('portal');
         portal.classList.add('doors-open');
         document.getElementById('entrance-actions').classList.add('visible');
-        showRosePrompt();
+        // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
     } catch(err) {
       showToast('Could not read file — please use a Compass session JSON');
@@ -3938,7 +3983,7 @@ function studioLoadJSON(file) {
         if (portal) portal.classList.add('doors-open');
         const actions = document.getElementById('entrance-actions');
         if (actions) actions.classList.add('visible');
-        showRosePrompt();
+        // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
 
       // Restore calc results if birth data present
@@ -4689,96 +4734,148 @@ function renderVoiceEntries(roomKey) {
 
 <script>
 // ============================================================
-// TORUS PORTAL — Three.js
+// TORUS PORTAL — Pure Canvas 2D (no dependencies, instant load)
+// Mathematically projects a 3D torus onto 2D canvas
 // ============================================================
 function initTorusPortal() {
   const canvas = document.getElementById('torus-canvas');
-  if (!canvas || typeof THREE === 'undefined') return;
+  if (!canvas) return;
 
-  const SIZE = 275;
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(SIZE, SIZE);
-  renderer.setClearColor(0x000000, 0);
+  const DPR  = Math.min(window.devicePixelRatio || 1, 2);
+  const SIZE = 300;
+  canvas.width  = SIZE * DPR;
+  canvas.height = SIZE * DPR;
+  canvas.style.width  = SIZE + 'px';
+  canvas.style.height = SIZE + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, 3.8);
+  const cx = SIZE / 2, cy = SIZE / 2;
+  // Horn torus: R = r — tube radius equals major radius
+  // Inner hole collapses to a singularity at centre
+  const R = 72, r = 72;
+  const N_THETA = 80, N_PHI = 40;
 
-  // Torus geometry
-  const geometry = new THREE.TorusGeometry(1, 0.38, 24, 80);
-
-  // Wireframe overlay
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: 0xc4b5fd,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.18
-  });
-  const wireframe = new THREE.Mesh(geometry, wireMat);
-  scene.add(wireframe);
-
-  // Main surface — subtle translucent
-  const surfMat = new THREE.MeshPhongMaterial({
-    color: 0x1a1040,
-    emissive: 0x3b0f6e,
-    emissiveIntensity: 0.3,
-    transparent: true,
-    opacity: 0.55,
-    side: THREE.DoubleSide,
-    shininess: 60
-  });
-  const torus = new THREE.Mesh(geometry, surfMat);
-  scene.add(torus);
-
-  // Lights
-  const ambLight = new THREE.AmbientLight(0x8b5cf6, 0.6);
-  scene.add(ambLight);
-  const pointLight1 = new THREE.PointLight(0xa78bfa, 2.0, 10);
-  pointLight1.position.set(2, 2, 2);
-  scene.add(pointLight1);
-  const pointLight2 = new THREE.PointLight(0x6ee7b7, 1.2, 10);
-  pointLight2.position.set(-2, -1, 1);
-  scene.add(pointLight2);
-
-  // State
-  let hovered = false;
-  let activated = false;
-  let time = 0;
+  let rotX = 0.48, rotY = 0, t = 0;
+  let hovered = false, activated = false;
 
   canvas.addEventListener('mouseenter', () => hovered = true);
   canvas.addEventListener('mouseleave', () => hovered = false);
 
-  // Listen for portal open to accelerate spin
+  // Accelerate on portal open
   const portalEl = document.getElementById('portal');
   if (portalEl) {
-    const obs = new MutationObserver(() => {
+    new MutationObserver(() => {
       if (portalEl.classList.contains('doors-open')) activated = true;
+    }).observe(portalEl, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // Pre-generate particles with unique phase + drift for ether quality
+  const particles = [];
+  for (let i = 0; i < N_THETA; i++) {
+    for (let j = 0; j < N_PHI; j++) {
+      particles.push({
+        theta:    (i / N_THETA) * Math.PI * 2,
+        phi:      (j / N_PHI)   * Math.PI * 2,
+        phase:    Math.random() * Math.PI * 2,
+        sizeVar:  0.5 + Math.random() * 0.9,
+        driftT:   (Math.random() - 0.5) * 0.025,
+        driftP:   (Math.random() - 0.5) * 0.025,
+      });
+    }
+  }
+
+  function project(x, y, z) {
+    const x1 =  x * Math.cos(rotY) + z * Math.sin(rotY);
+    const z1 = -x * Math.sin(rotY) + z * Math.cos(rotY);
+    const y2 =  y * Math.cos(rotX) - z1 * Math.sin(rotX);
+    const z2 =  y * Math.sin(rotX) + z1 * Math.cos(rotX);
+    const fov = 580;
+    const scale = fov / (fov + z2 + 300);
+    return { sx: cx + x1 * scale, sy: cy + y2 * scale, depth: z2, scale };
+  }
+
+  function draw() {
+    requestAnimationFrame(draw);
+    t += 0.007;
+    const speed = activated ? 2.6 : hovered ? 1.5 : 0.85;
+    rotY += 0.006 * speed;
+    rotX  = 0.48 + 0.07 * Math.sin(t * 0.22);
+
+    ctx.clearRect(0, 0, SIZE, SIZE);
+
+    // Ambient breath glow
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.1);
+    const glowA = activated ? 0.6 + 0.2 * pulse : 0.2 + 0.08 * pulse;
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R + r + 20);
+    grd.addColorStop(0,    `rgba(110, 70, 255, ${0.18 * glowA})`);
+    grd.addColorStop(0.4,  `rgba(80,  50, 200, ${0.08 * glowA})`);
+    grd.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // Project all particles
+    const pts = particles.map(p => {
+      const theta = p.theta + p.driftT * t;
+      const phi   = p.phi   + p.driftP * t;
+      // Horn torus: R = r, so inner self-intersection at origin
+      const breathe = 1 + 0.015 * Math.sin(t * 2.2 + p.phase);
+      const Rb = R * breathe, rb = r * breathe;
+      const x = (Rb + rb * Math.cos(phi)) * Math.cos(theta);
+      const y = (Rb + rb * Math.cos(phi)) * Math.sin(theta);
+      const z = rb * Math.sin(phi);
+      const proj = project(x, y, z);
+      const opPulse  = 0.5 + 0.5 * Math.sin(t * 1.9 + p.phase * 1.4);
+      const depthFade = 0.45 + 0.55 * ((proj.scale - 0.4) / 0.6);
+      return { ...proj, opPulse, depthFade, sizeVar: p.sizeVar,
+               ti: Math.floor(p.theta / (Math.PI*2) * N_THETA),
+               pi: Math.floor(p.phi   / (Math.PI*2) * N_PHI) };
     });
-    obs.observe(portalEl, { attributes: true, attributeFilter: ['class'] });
+
+    // Painter sort
+    pts.sort((a, b) => a.depth - b.depth);
+
+    // Faint structural lines
+    ctx.lineWidth = 0.25;
+    for (let i = 0; i < N_THETA; i++) {
+      for (let j = 0; j < N_PHI; j++) {
+        const p0 = pts[i * N_PHI + j];
+        const p1 = pts[((i+1)%N_THETA) * N_PHI + j];
+        const alpha = Math.min(p0.depthFade, p1.depthFade) * 0.07 * glowA * 3;
+        ctx.strokeStyle = `rgba(180, 150, 255, ${alpha})`;
+        ctx.beginPath(); ctx.moveTo(p0.sx, p0.sy); ctx.lineTo(p1.sx, p1.sy); ctx.stroke();
+      }
+    }
+
+    // Particles — soft glowing dots
+    for (const p of pts) {
+      const alpha = p.opPulse * p.depthFade * (activated ? 0.85 : 0.65);
+      const sz = p.sizeVar * p.scale * 2.0;
+
+      // Soft outer halo
+      const halo = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, sz * 3.5);
+      halo.addColorStop(0,   `rgba(190, 160, 255, ${alpha * 0.35})`);
+      halo.addColorStop(0.5, `rgba(150, 110, 240, ${alpha * 0.1})`);
+      halo.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, sz * 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright core
+      const coreColor = activated
+        ? `rgba(220, 200, 255, ${alpha * 0.95})`
+        : `rgba(200, 180, 255, ${alpha * 0.85})`;
+      ctx.fillStyle = coreColor;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, Math.max(0.4, sz * 0.55), 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  function animate() {
-    requestAnimationFrame(animate);
-    time += 0.005;
-    const speed = activated ? 3.5 : hovered ? 1.8 : 1.0;
-    torus.rotation.x += 0.004 * speed;
-    torus.rotation.y += 0.007 * speed;
-    wireframe.rotation.x = torus.rotation.x;
-    wireframe.rotation.y = torus.rotation.y;
-
-    // Breathing glow
-    const pulse = 0.5 + 0.5 * Math.sin(time * 1.2);
-    surfMat.emissiveIntensity = activated ? 0.7 + 0.3 * pulse : 0.2 + 0.15 * pulse;
-    wireMat.opacity = activated ? 0.35 + 0.15 * pulse : 0.14 + 0.08 * pulse;
-    pointLight1.intensity = activated ? 3.0 + 1.0 * pulse : 1.8 + 0.4 * pulse;
-
-    renderer.render(scene, camera);
-  }
-  animate();
+  requestAnimationFrame(draw);
 }
 
-// Init after DOM + Three.js ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTorusPortal);
 } else {
