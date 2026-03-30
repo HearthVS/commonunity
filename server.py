@@ -830,7 +830,11 @@ import pathlib
 async def serve_frontend():
     index = pathlib.Path(__file__).parent / "index.html"
     if index.exists():
-        return FileResponse(index)
+        return FileResponse(index, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        })
     return {"error": "Frontend not found"}
 
 @app.get("/favicon.svg")
@@ -1049,5 +1053,9 @@ Respond with precision and care. Ask the next question that genuinely matters. O
 async def serve_studio():
     studio = pathlib.Path(__file__).parent / "studio.html"
     if studio.exists():
-        return FileResponse(studio)
+        return FileResponse(studio, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        })
     return {"error": "Studio not found"}
