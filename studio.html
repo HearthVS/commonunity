@@ -590,6 +590,8 @@ input, textarea { font: inherit; color: inherit; }
   transition: all 0.2s ease;
   text-align: left;
   width: 100%;
+  opacity: 0;           /* hidden until hold reveals them */
+  transform: translateX(12px);
 }
 .room-tile:hover {
   border-color: var(--rose-color, #c4b5fd);
@@ -4058,6 +4060,49 @@ function initEntrance() {
     portalHoldStart = null;
     portalRafId = null;
     if (portalRingProgress) portalRingProgress.style.strokeDashoffset = PORTAL_CIRC;
+    resetHoldEffects();
+  }
+
+  // Track which room tiles have already slid in during hold
+  const tilesRevealed = [false, false, false, false];
+  const TILE_THRESHOLDS = [0.25, 0.50, 0.75, 1.00];
+  const TILE_ROOMS = ['work', 'lens', 'field', 'call'];
+
+  function revealTileAt(index) {
+    if (tilesRevealed[index]) return;
+    tilesRevealed[index] = true;
+    // Show the chooser panel if not already visible
+    const chooser = document.getElementById('entrance-room-chooser');
+    if (chooser && !chooser.classList.contains('visible')) {
+      chooser.style.opacity = '0';
+      chooser.classList.add('visible');
+    }
+    // Find the tile and animate it in
+    const tile = document.querySelector(`.room-tile[data-room="${TILE_ROOMS[index]}"]`);
+    if (tile) {
+      tile.style.opacity = '0';
+      tile.style.transform = 'translateX(12px)';
+      tile.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      setTimeout(() => {
+        tile.style.opacity = '1';
+        tile.style.transform = 'translateX(0)';
+      }, 40);
+    }
+  }
+
+  function resetHoldEffects() {
+    if (window.setTorusHoldProgress) window.setTorusHoldProgress(0);
+    // Hide room tiles and chooser if portal not yet opened
+    if (!portalOpened) {
+      tilesRevealed.fill(false);
+      const chooser = document.getElementById('entrance-room-chooser');
+      if (chooser) chooser.classList.remove('visible');
+      document.querySelectorAll('.room-tile').forEach(t => {
+        t.style.opacity = '';
+        t.style.transform = '';
+        t.style.transition = '';
+      });
+    }
   }
 
   function startPortalHold() {
@@ -4068,6 +4113,12 @@ function initEntrance() {
       if (!portalHoldStart) return;
       const progress = Math.min((Date.now() - portalHoldStart) / PORTAL_HOLD_MS, 1);
       if (portalRingProgress) portalRingProgress.style.strokeDashoffset = PORTAL_CIRC * (1 - progress);
+      // Feed progress into torus draw loop
+      if (window.setTorusHoldProgress) window.setTorusHoldProgress(progress);
+      // Reveal room tiles sequentially at 25/50/75/100%
+      TILE_THRESHOLDS.forEach((thresh, i) => {
+        if (progress >= thresh) revealTileAt(i);
+      });
       if (progress < 1) { portalRafId = requestAnimationFrame(tick); }
       else { openPortal(); }
     }
