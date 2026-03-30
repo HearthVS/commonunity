@@ -5499,8 +5499,10 @@ function initFrequencyEngine() {
     if (label) label.textContent = displayName;
   }
 
-  document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(btn => {
-    btn.addEventListener('click', () => {
+  // ── Ambient event delegation (buttons live inside hidden screen-room at init time) ──
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.freq-preset-btn[data-ambient]');
+    if (btn) {
       const key = btn.dataset.ambient;
       if (ambientActive === key) {
         stopAmbient();
@@ -5511,33 +5513,33 @@ function initFrequencyEngine() {
       document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       startAmbient(key);
-    });
-  });
-
-  document.getElementById('ambient-volume').addEventListener('input', () => {
-    const vol = parseFloat(document.getElementById('ambient-volume').value) / 100;
-    if (ambientNoiseGain && ambientNoiseGain._ctx) {
-      ambientNoiseGain.gain.setTargetAtTime(vol * 0.45, ambientNoiseGain._ctx.currentTime, 0.1);
     }
-    if (ambientAudioEl) {
-      ambientAudioEl.volume = Math.min(1, vol * 0.85);
+    // Ambient stop button
+    if (e.target.closest('#ambient-stop-btn')) {
+      stopAmbient();
+      const label = document.getElementById('freq-toolbar-label');
+      if (label) label.textContent = 'Sound';
+    }
+    // Ambient dice
+    if (e.target.closest('#ambient-dice-btn')) {
+      const keys = Object.keys(AMBIENT_URLS).concat(['white','pink','brown']);
+      const pick  = keys[Math.floor(Math.random() * keys.length)];
+      document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(b => {
+        b.classList.toggle('active', b.dataset.ambient === pick);
+      });
+      startAmbient(pick);
     }
   });
 
-  document.getElementById('ambient-stop-btn').addEventListener('click', () => {
-    stopAmbient();
-    const label = document.getElementById('freq-toolbar-label');
-    if (label) label.textContent = 'Sound';
-  });
-
-  // ── Ambient dice randomiser ─────────────────────────────
-  document.getElementById('ambient-dice-btn').addEventListener('click', () => {
-    const keys = Object.keys(AMBIENT_URLS).concat(['white','pink','brown']);
-    const pick  = keys[Math.floor(Math.random() * keys.length)];
-    document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(b => {
-      b.classList.toggle('active', b.dataset.ambient === pick);
-    });
-    startAmbient(pick);
+  // Volume slider — also delegated since slider may not exist at init
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'ambient-volume') {
+      const vol = parseFloat(e.target.value) / 100;
+      if (ambientNoiseGain && ambientNoiseGain._ctx) {
+        ambientNoiseGain.gain.setTargetAtTime(vol * 0.45, ambientNoiseGain._ctx.currentTime, 0.1);
+      }
+      if (ambientAudioEl) ambientAudioEl.volume = Math.min(1, vol * 0.85);
+    }
   });
 
   // ── Colour dice randomiser ────────────────────────────
