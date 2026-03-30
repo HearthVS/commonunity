@@ -5515,10 +5515,8 @@ function startAmbient(key) {
 
 // Ambient buttons wired directly — called from doEnterRoom after screen is visible
 function initAmbientButtons() {
-  document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(btn => {
-    // Remove any existing listener to avoid duplicates
-    btn.replaceWith(btn.cloneNode(true));
-  });
+  // Clone to remove old listeners, then re-query the fresh nodes
+  document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(btn => btn.replaceWith(btn.cloneNode(true)));
   document.querySelectorAll('.freq-preset-btn[data-ambient]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.ambient;
