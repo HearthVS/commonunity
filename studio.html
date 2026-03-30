@@ -3361,6 +3361,7 @@ input, textarea { font: inherit; color: inherit; }
           <div class="archive-section">
             <div class="archive-section-label">Sessions</div>
             <div id="archive-studio-items"></div>
+            <div id="archive-session-log"></div>
           </div>
         </div>
       </div>
@@ -3460,6 +3461,11 @@ input, textarea { font: inherit; color: inherit; }
         <!-- Hint directly under orb — first thing seen after the image -->
         <div class="nexus-knock-hint" id="nexus-knock-hint">hold the centre to open</div>
         <div class="rose-gk-context" id="mirror-gk-context"></div>
+        <!-- Nexus memory — shown only when memory exists -->
+        <div id="nexus-memory-display" style="display:none;margin-top:var(--space-2);">
+          <button id="nexus-memory-toggle" style="background:none;border:none;cursor:pointer;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);opacity:0.5;padding:var(--space-1) 0;width:100%;text-align:center;">what nexus knows ▾</button>
+          <div id="nexus-memory-body" style="display:none;font-size:10px;color:var(--text-faint);line-height:1.6;padding:var(--space-2) var(--space-3);background:color-mix(in srgb,var(--card) 40%,transparent);border-radius:var(--radius-md);margin-top:4px;white-space:pre-wrap;"></div>
+        </div>
       </div>
 
       <div class="mirror-conversation" id="mirror-conversation">
@@ -4417,9 +4423,32 @@ function doEnterRoom(roomKey, meta) {
   setTimeout(initRoseOrb, 100);
 
   // Start ON AIR timer for this room
-  if (typeof stopOnAir === 'function') stopOnAir(sessionRoomKey ? true : false); // save previous if switching rooms
+  if (typeof stopOnAir === 'function') stopOnAir(sessionRoomKey ? true : false);
   resetOnAirDisplay();
   startOnAir(roomKey);
+
+  // Restore vibe if saved for this room
+  const savedVibe = state.rooms[roomKey]?.vibe;
+  if (savedVibe) applyVibeState(savedVibe);
+
+  // Nexus memory display
+  const memDisplay = document.getElementById('nexus-memory-display');
+  const memBody    = document.getElementById('nexus-memory-body');
+  const memToggle  = document.getElementById('nexus-memory-toggle');
+  if (memDisplay && memBody && state.nexusMemory) {
+    memDisplay.style.display = 'block';
+    memBody.textContent = state.nexusMemory;
+    if (memToggle && !memToggle._wired) {
+      memToggle._wired = true;
+      memToggle.addEventListener('click', () => {
+        const open = memBody.style.display === 'block';
+        memBody.style.display = open ? 'none' : 'block';
+        memToggle.textContent = open ? 'what nexus knows ▾' : 'what nexus knows ▴';
+      });
+    }
+  } else if (memDisplay) {
+    memDisplay.style.display = 'none';
+  }
 
   // Scroll to top
   window.scrollTo(0, 0);
@@ -4501,6 +4530,7 @@ function renderArchive(roomKey) {
     studioItems.innerHTML = `<p class="archive-empty">Your saved entries will appear here.</p>`;
   } else {
     entries.slice().reverse().forEach((entry, i) => {
+      if (!entry.text || entry.text === 'undefined') return;
       const div = document.createElement('div');
       div.className = 'archive-item';
       div.innerHTML = `<div class="archive-item-label">${entry.date}</div><div class="archive-item-text">${entry.text}</div>`;
@@ -4510,6 +4540,29 @@ function renderArchive(roomKey) {
       });
       studioItems.appendChild(div);
     });
+  }
+
+  // Session history log for this room
+  const sessionLogEl = document.getElementById('archive-session-log');
+  if (sessionLogEl) {
+    const roomSessions = (state.sessionLog || []).filter(s => s.room === roomKey);
+    if (roomSessions.length === 0) {
+      sessionLogEl.innerHTML = '';
+    } else {
+      sessionLogEl.innerHTML = `
+        <div style="margin-top:var(--space-3);border-top:1px solid color-mix(in srgb,var(--border) 40%,transparent);padding-top:var(--space-2);">
+          <div class="archive-section-label" style="margin-bottom:var(--space-2);">Session History</div>
+          ${roomSessions.slice().reverse().slice(0, 10).map(s => {
+            const d = new Date(s.date);
+            const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+            const timeStr = d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-1) 0;border-bottom:1px solid color-mix(in srgb,var(--border) 20%,transparent);">
+              <span style="font-size:10px;color:var(--text-muted);">${dateStr} ${timeStr}</span>
+              <span style="font-size:10px;color:var(--rose-color,#c4b5fd);font-weight:600;">${s.duration}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
   }
 }
 
@@ -4998,6 +5051,12 @@ function stopOnAir(autoSave = true) {
 
   // Stop rAF timer immediately
   if (sessionTimerRaf) { cancelAnimationFrame(sessionTimerRaf); sessionTimerRaf = null; }
+
+  // Save current vibe to this room so it restores on return
+  if (room && state.rooms[room]) {
+    state.rooms[room].vibe = readVibeState();
+  }
+
   sessionStartTime = null;
   sessionRoomKey   = null;
 
@@ -5814,6 +5873,13 @@ function initMoodLighting() {
           applyVibeState(presets[i]);
           document.querySelectorAll('.vibe-preset-slot').forEach(s => s.classList.remove('active-preset'));
           slot.classList.add('active-preset');
+          // Show preset name in colour pill label
+          const nm = presetNames[i];
+          const colourPill = document.getElementById('colour-toggle');
+          if (colourPill) {
+            const span = colourPill.querySelector('span') || colourPill;
+            span.textContent = nm ? nm : `Preset ${i + 1}`;
+          }
           openNameRow(i);
         }
         // Click on empty slot: do nothing (hold to save)
