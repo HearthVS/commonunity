@@ -3968,13 +3968,18 @@ function initEntrance() {
     if (portalOpened) return;
     portalOpened = true;
     portal.classList.remove('portal-holding');
-    // Ring stays visible briefly then fades
+    // Ring fades out
     setTimeout(() => { portalRingEl.style.transition = 'opacity 0.5s'; portalRingEl.style.opacity = '0'; }, 400);
     portal.classList.add('doors-open');
-    actions.classList.add('visible');
-    // Update hint
+    // Show room chooser in sidebar
+    const chooser = document.getElementById('entrance-room-chooser');
+    if (chooser) chooser.classList.add('visible');
+    // Update hint text
     const hint = document.getElementById('portal-hint');
-    if (hint) { hint.style.opacity = '1'; hint.textContent = 'choose a direction'; }
+    if (hint) { hint.style.opacity = '1'; hint.textContent = 'choose your room →'; }
+    // Scroll sidebar so chooser is visible
+    const sidebar = document.getElementById('entrance-right');
+    if (sidebar && chooser) setTimeout(() => chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
   }
 
   function cancelPortalHold() {
@@ -4613,7 +4618,8 @@ function processCompassImport(file) {
         portalOpened = true;
         const portal = document.getElementById('portal');
         portal.classList.add('doors-open');
-        document.getElementById('entrance-actions').classList.add('visible');
+        const chooser = document.getElementById('entrance-room-chooser');
+        if (chooser) chooser.classList.add('visible');
         // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
     } catch(err) {
@@ -4712,8 +4718,8 @@ function studioLoadJSON(file) {
         portalOpened = true;
         const portal = document.getElementById('portal');
         if (portal) portal.classList.add('doors-open');
-        const actions = document.getElementById('entrance-actions');
-        if (actions) actions.classList.add('visible');
+        const chooser = document.getElementById('entrance-room-chooser');
+        if (chooser) chooser.classList.add('visible');
         // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
 
@@ -5849,38 +5855,52 @@ function initTorusPortal() {
   ctx.scale(DPR, DPR);
 
   const cx = SIZE / 2, cy = SIZE / 2;
-  // Horn torus: R = r, kept small so projection stays circular not oval
+  // Horn torus: R = r = 78
   const R = 78, r = 78;
-  const N_THETA = 80, N_PHI = 40;
+  // Lean point counts — 960 total (was 3200), no per-frame sort
+  const NT = 48, NP = 20;
+  const FOV = 500, Z_OFF = 260;
 
   let rotX = 0.48, rotY = 0, t = 0;
   let hovered = false, activated = false;
+  let mouseX = 0, mouseY = 0;
+  let targetRotX = 0.48;
 
-  // Mouse parallax — listen on portal-wrap (canvas is covered by facet overlays)
-  let mouseX = 0, mouseY = 0;  // normalised -1..1
-  let targetRotX = 0.48, targetRotY = 0;
+  // Pre-bake static particle data
+  const pts = new Array(NT * NP);
+  for (let i = 0; i < NT; i++) {
+    for (let j = 0; j < NP; j++) {
+      pts[i * NP + j] = {
+        theta:   (i / NT) * Math.PI * 2,
+        phi:     (j / NP) * Math.PI * 2,
+        phase:   Math.random() * Math.PI * 2,
+        sv:      0.55 + Math.random() * 0.8,
+        dT:      (Math.random() - 0.5) * 0.018,
+        dP:      (Math.random() - 0.5) * 0.018,
+        // projected values filled each frame
+        sx: 0, sy: 0, sc: 0,
+      };
+    }
+  }
+
+  // Mouse / touch input — attach to portal-wrap
   const portalWrapEl = document.getElementById('portal');
-
   function updateMouse(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     mouseX = ((clientX - rect.left)  / rect.width  - 0.5) * 2;
     mouseY = ((clientY - rect.top)   / rect.height - 0.5) * 2;
     hovered = true;
   }
-
   if (portalWrapEl) {
-    portalWrapEl.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+    portalWrapEl.addEventListener('mousemove',  (e) => updateMouse(e.clientX, e.clientY));
     portalWrapEl.addEventListener('mouseenter', () => { hovered = true; });
     portalWrapEl.addEventListener('mouseleave', () => { hovered = false; mouseX = 0; mouseY = 0; });
-    portalWrapEl.addEventListener('touchmove', (e) => {
-      const touch = e.touches[0];
-      updateMouse(touch.clientX, touch.clientY);
+    portalWrapEl.addEventListener('touchmove',  (e) => {
+      updateMouse(e.touches[0].clientX, e.touches[0].clientY);
     }, { passive: true });
   }
-  canvas.addEventListener('mouseenter', () => hovered = true);
-  canvas.addEventListener('mouseleave', () => { hovered = false; mouseX = 0; mouseY = 0; });
 
-  // Accelerate on portal open
+  // Speed up when portal opens
   const portalEl = document.getElementById('portal');
   if (portalEl) {
     new MutationObserver(() => {
@@ -5888,116 +5908,87 @@ function initTorusPortal() {
     }).observe(portalEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  // Pre-generate particles with unique phase + drift for ether quality
-  const particles = [];
-  for (let i = 0; i < N_THETA; i++) {
-    for (let j = 0; j < N_PHI; j++) {
-      particles.push({
-        theta:    (i / N_THETA) * Math.PI * 2,
-        phi:      (j / N_PHI)   * Math.PI * 2,
-        phase:    Math.random() * Math.PI * 2,
-        sizeVar:  0.5 + Math.random() * 0.9,
-        driftT:   (Math.random() - 0.5) * 0.025,
-        driftP:   (Math.random() - 0.5) * 0.025,
-      });
-    }
-  }
-
-  function project(x, y, z) {
-    const x1 =  x * Math.cos(rotY) + z * Math.sin(rotY);
-    const z1 = -x * Math.sin(rotY) + z * Math.cos(rotY);
-    const y2 =  y * Math.cos(rotX) - z1 * Math.sin(rotX);
-    const z2 =  y * Math.sin(rotX) + z1 * Math.cos(rotX);
-    const fov = 500;
-    const scale = fov / (fov + z2 + 260);
-    return { sx: cx + x1 * scale, sy: cy + y2 * scale, depth: z2, scale };
-  }
-
   function draw() {
     requestAnimationFrame(draw);
     t += 0.007;
-    const speed = activated ? 2.6 : hovered ? 1.5 : 0.85;
+    const speed = activated ? 2.4 : hovered ? 1.4 : 0.8;
 
-    // Mouse parallax: target rotation influenced by cursor position
-    if (hovered) {
-      targetRotY = rotY + mouseX * 0.4;  // nudge Y toward mouse X
-      targetRotX = 0.48 - mouseY * 0.3;  // nudge X toward mouse Y
-    } else {
-      targetRotX = 0.48 + 0.07 * Math.sin(t * 0.22);
-      // targetRotY just keeps spinning
-    }
-    // Auto-spin Y always, parallax adds on top
+    // Rotation
     rotY += 0.006 * speed;
-    // Smoothly interpolate X tilt
+    targetRotX = hovered
+      ? 0.48 - mouseY * 0.28
+      : 0.48 + 0.07 * Math.sin(t * 0.22);
     rotX += (targetRotX - rotX) * 0.04;
+
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    const breathe = 1 + 0.013 * Math.sin(t * 2.2);
+    const Rb = R * breathe, rb = r * breathe;
+
+    // Project all points (no sort)
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k];
+      const th = p.theta + p.dT * t;
+      const ph = p.phi   + p.dP * t;
+      const cosPh = Math.cos(ph), sinPh = Math.sin(ph);
+      const cosTh = Math.cos(th), sinTh = Math.sin(th);
+      const cx2 = Rb + rb * cosPh;
+      const x = cx2 * cosTh;
+      const y = cx2 * sinTh;
+      const z = rb * sinPh;
+      // Rotate Y then X
+      const x1 =  x * cosY + z * sinY;
+      const z1 = -x * sinY + z * cosY;
+      const y2 =  y * cosX - z1 * sinX;
+      const z2 =  y * sinX + z1 * cosX;
+      const sc = FOV / (FOV + z2 + Z_OFF);
+      p.sx = cx + x1 * sc;
+      p.sy = cy + y2 * sc;
+      p.sc = sc;
+    }
 
     ctx.clearRect(0, 0, SIZE, SIZE);
 
-    // Ambient breath glow
+    // One ambient glow at centre (one radial gradient per frame total)
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.1);
-    const glowA = activated ? 0.6 + 0.2 * pulse : 0.2 + 0.08 * pulse;
-    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R + r + 30);
-    grd.addColorStop(0,    `rgba(110, 70, 255, ${0.18 * glowA})`);
-    grd.addColorStop(0.4,  `rgba(80,  50, 200, ${0.08 * glowA})`);
-    grd.addColorStop(1,    'rgba(0,0,0,0)');
+    const glowA = activated ? 0.55 + 0.18 * pulse : 0.18 + 0.07 * pulse;
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R + r + 28);
+    grd.addColorStop(0,   `rgba(110,70,255,${(0.16 * glowA).toFixed(3)})`);
+    grd.addColorStop(0.5, `rgba(80,50,200,${(0.07 * glowA).toFixed(3)})`);
+    grd.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, SIZE, SIZE);
 
-    // Project all particles
-    const pts = particles.map(p => {
-      const theta = p.theta + p.driftT * t;
-      const phi   = p.phi   + p.driftP * t;
-      // Horn torus: R = r, so inner self-intersection at origin
-      const breathe = 1 + 0.015 * Math.sin(t * 2.2 + p.phase);
-      const Rb = R * breathe, rb = r * breathe;
-      const x = (Rb + rb * Math.cos(phi)) * Math.cos(theta);
-      const y = (Rb + rb * Math.cos(phi)) * Math.sin(theta);
-      const z = rb * Math.sin(phi);
-      const proj = project(x, y, z);
-      const opPulse  = 0.5 + 0.5 * Math.sin(t * 1.9 + p.phase * 1.4);
-      const depthFade = 0.45 + 0.55 * ((proj.scale - 0.4) / 0.6);
-      return { ...proj, opPulse, depthFade, sizeVar: p.sizeVar,
-               ti: Math.floor(p.theta / (Math.PI*2) * N_THETA),
-               pi: Math.floor(p.phi   / (Math.PI*2) * N_PHI) };
-    });
-
-    // Painter sort
-    pts.sort((a, b) => a.depth - b.depth);
-
-    // Faint structural lines
-    ctx.lineWidth = 0.25;
-    for (let i = 0; i < N_THETA; i++) {
-      for (let j = 0; j < N_PHI; j++) {
-        const p0 = pts[i * N_PHI + j];
-        const p1 = pts[((i+1)%N_THETA) * N_PHI + j];
-        const alpha = Math.min(p0.depthFade, p1.depthFade) * 0.07 * glowA * 3;
-        ctx.strokeStyle = `rgba(180, 150, 255, ${alpha})`;
-        ctx.beginPath(); ctx.moveTo(p0.sx, p0.sy); ctx.lineTo(p1.sx, p1.sy); ctx.stroke();
-      }
+    // Structural ring lines (theta direction only, thinned)
+    ctx.lineWidth = 0.22;
+    const lineAlpha = glowA * 0.18;
+    for (let i = 0; i < NT; i++) {
+      const p0 = pts[i * NP];
+      const p1 = pts[((i + 1) % NT) * NP];
+      const d0 = 0.4 + 0.6 * ((p0.sc - 0.38) / 0.62);
+      const d1 = 0.4 + 0.6 * ((p1.sc - 0.38) / 0.62);
+      ctx.strokeStyle = `rgba(180,150,255,${(Math.min(d0, d1) * lineAlpha).toFixed(3)})`;
+      ctx.beginPath(); ctx.moveTo(p0.sx, p0.sy); ctx.lineTo(p1.sx, p1.sy); ctx.stroke();
     }
 
-    // Particles — soft glowing dots
-    for (const p of pts) {
-      const alpha = p.opPulse * p.depthFade * (activated ? 0.85 : 0.65);
-      const sz = p.sizeVar * p.scale * 2.0;
-
-      // Soft outer halo
-      const halo = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, sz * 3.5);
-      halo.addColorStop(0,   `rgba(190, 160, 255, ${alpha * 0.35})`);
-      halo.addColorStop(0.5, `rgba(150, 110, 240, ${alpha * 0.1})`);
-      halo.addColorStop(1,   'rgba(0,0,0,0)');
-      ctx.fillStyle = halo;
+    // Dots — flat filled circles, depth-faded alpha, no radial gradient per dot
+    const baseAlpha = activated ? 0.82 : 0.62;
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k];
+      const depthFade = 0.38 + 0.62 * ((p.sc - 0.38) / 0.62);
+      const opPulse   = 0.52 + 0.48 * Math.sin(t * 1.8 + p.phase);
+      const alpha     = opPulse * depthFade * baseAlpha;
+      if (alpha < 0.04) continue;  // skip invisible points
+      const sz = Math.max(0.45, p.sv * p.sc * 1.9);
+      // Halo (one arc, no gradient)
+      ctx.fillStyle = `rgba(170,140,255,${(alpha * 0.28).toFixed(3)})`;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, sz * 3.5, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, sz * 2.8, 0, 6.2832);
       ctx.fill();
-
-      // Bright core
-      const coreColor = activated
-        ? `rgba(220, 200, 255, ${alpha * 0.95})`
-        : `rgba(200, 180, 255, ${alpha * 0.85})`;
-      ctx.fillStyle = coreColor;
+      // Core dot
+      ctx.fillStyle = `rgba(215,195,255,${(alpha * 0.92).toFixed(3)})`;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, Math.max(0.4, sz * 0.55), 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, sz * 0.5, 0, 6.2832);
       ctx.fill();
     }
   }
