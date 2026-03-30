@@ -1162,16 +1162,15 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 .vibe-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 100;
-  background: var(--card);
+  position: fixed;
+  z-index: 500;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
   border-radius: var(--radius-lg);
   padding: var(--space-4);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, transparent);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: none;
   min-width: 200px;
 }
@@ -1531,7 +1530,7 @@ input, textarea { font: inherit; color: inherit; }
   position: relative;
   transition: background 0.6s ease;
   isolation: isolate;
-  /* height handled by grid row */
+  height: 100%;
   min-height: 0;
 }
 .room-mirror.orb-active {
@@ -2043,21 +2042,20 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 .freq-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 200;
-  background: color-mix(in srgb, var(--card) 95%, transparent);
+  position: fixed;
+  z-index: 500;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
   border-radius: var(--radius-xl);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
   padding: var(--space-4);
   display: none;
   flex-direction: column;
   gap: var(--space-3);
   min-width: 320px;
+  max-width: calc(100vw - 32px);
 }
 .freq-dropdown.open { display: flex; }
 
@@ -4180,17 +4178,43 @@ function updateVolume() {
 
 function initFrequencyEngine() {
   // Toolbar toggles — Sound and Colour dropdowns
+  // Uses position:fixed with JS placement so they never overflow the viewport
+  function positionDropdown(tog, drop) {
+    const rect = tog.getBoundingClientRect();
+    const dropW = drop.offsetWidth || parseInt(drop.style.minWidth) || 320;
+    const dropH = drop.offsetHeight || 300;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 8;
+    // Prefer opening below the toggle
+    let top = rect.bottom + MARGIN;
+    if (top + dropH > vh - MARGIN) top = rect.top - dropH - MARGIN;
+    // Right-align to toggle right edge, but clamp to viewport
+    let right = vw - rect.right;
+    if (rect.right - dropW < MARGIN) right = vw - Math.min(rect.right, vw - MARGIN) - dropW;
+    right = Math.max(right, MARGIN);
+    drop.style.top  = top + 'px';
+    drop.style.right = right + 'px';
+    drop.style.left  = 'auto';
+  }
+
   function wireDropdown(toggleId, dropdownId) {
     const tog = document.getElementById(toggleId);
     const drop = document.getElementById(dropdownId);
     if (!tog || !drop) return;
     tog.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Close the other dropdown first
-      document.querySelectorAll('.vibe-dropdown.open').forEach(d => { if (d !== drop) d.classList.remove('open'); });
-      document.querySelectorAll('.freq-dropdown.open').forEach(d => { if (d !== drop) d.classList.remove('open'); });
-      drop.classList.toggle('open');
-      tog.classList.toggle('active', drop.classList.contains('open'));
+      // Close all other dropdowns
+      document.querySelectorAll('.vibe-dropdown.open, .freq-dropdown.open').forEach(d => {
+        if (d !== drop) {
+          d.classList.remove('open');
+          const btn = document.querySelector('[data-dropdown-for="' + d.id + '"]');
+          if (btn) btn.classList.remove('active');
+        }
+      });
+      const isOpen = drop.classList.toggle('open');
+      tog.classList.toggle('active', isOpen);
+      if (isOpen) positionDropdown(tog, drop);
     });
     document.addEventListener('click', (e) => {
       if (!tog.contains(e.target) && !drop.contains(e.target)) {
