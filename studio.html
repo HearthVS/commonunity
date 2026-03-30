@@ -577,6 +577,26 @@ input, textarea { font: inherit; color: inherit; }
   text-transform: uppercase;
   color: var(--text-faint);
   padding-bottom: var(--space-1);
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+.entrance-room-chooser.visible .chooser-label {
+  color: var(--rose-color, #c4b5fd);
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent),
+    0 0 24px color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, transparent);
+  animation: chooser-label-glow 3s ease-in-out infinite;
+}
+@keyframes chooser-label-glow {
+  0%,100% {
+    text-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
+    opacity: 0.8;
+  }
+  50% {
+    text-shadow:
+      0 0 16px color-mix(in srgb, var(--rose-color,#c4b5fd) 75%, transparent),
+      0 0 32px color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, transparent);
+    opacity: 1;
+  }
 }
 .room-tile {
   display: flex;
