@@ -1092,6 +1092,33 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
+/* Space Tuner label */
+.space-tuner-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.space-tuner-wordmark {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  animation: space-tuner-pulse 6s ease-in-out infinite;
+}
+@keyframes space-tuner-pulse {
+  0%,100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+.space-tuner-info-btn {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  font-size: 8px !important;
+}
+
 /* ── Room layout — DAW style ─────────────────────────────────── */
 .room-body {
   display: grid;
@@ -1394,9 +1421,37 @@ input, textarea { font: inherit; color: inherit; }
   position: relative;
   transition: background 0.6s ease;
   isolation: isolate;
+  /* height handled by grid row */
+  min-height: 0;
 }
 .room-mirror.orb-active {
   background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, var(--bg)) 0%, var(--bg) 65%);
+}
+
+/* Rose surface — framed card matching notepad */
+.rose-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, var(--border));
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent),
+    0 4px 32px rgba(0,0,0,0.2),
+    0 0 60px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
+  transition: box-shadow 0.5s ease;
+  overflow: hidden;
+}
+.room-mirror.orb-active .rose-surface {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, transparent),
+    0 8px 48px rgba(0,0,0,0.28),
+    0 0 80px color-mix(in srgb, var(--rose-color,#c4b5fd) 14%, transparent),
+    0 0 120px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 38%, var(--border));
 }
 
 /* Rose sanctuary header */
@@ -2355,15 +2410,20 @@ input, textarea { font: inherit; color: inherit; }
       <div class="room-title" id="room-title-display"></div>
       <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:2px;">
         <div class="room-subtitle" id="room-subtitle-display"></div>
-        <div class="room-gk-badge" id="room-gk-badge" style="font-size:9px;padding:2px 8px;"></div>
       </div>
     </div>
     <div class="room-mood-toolbar" style="margin-left:auto;">
-      <!-- Freq toolbar -->
+      <!-- Space Tuner label -->
+      <div class="space-tuner-label-wrap">
+        <span class="space-tuner-wordmark">Space Tuner</span>
+        <button class="studio-info-btn space-tuner-info-btn" data-info="info-spacetuner-overlay" title="About Space Tuner"><i>i</i></button>
+      </div>
+      <div class="room-toolbar-divider"></div>
+      <!-- Sound -->
       <div class="freq-toolbar-wrap" id="freq-toolbar-wrap">
         <button class="freq-toolbar-toggle" id="freq-toolbar-toggle">
           <div class="freq-toolbar-orb" id="freq-toolbar-orb"></div>
-          <span class="freq-toolbar-label" id="freq-toolbar-label">Frequencies</span>
+          <span class="freq-toolbar-label" id="freq-toolbar-label">Sound</span>
         </button>
         <div class="freq-dropdown" id="freq-dropdown">
           <div class="freq-dropdown-row">
@@ -2417,9 +2477,9 @@ input, textarea { font: inherit; color: inherit; }
         </div>
       </div>
       <div class="room-toolbar-divider"></div>
-      <!-- Colour + atmosphere sliders -->
+      <!-- Light sliders -->
       <div class="mood-toolbar-slider">
-        <span class="mood-toolbar-label">Hue</span>
+        <span class="mood-toolbar-label">Colour</span>
         <input type="range" class="mood-slider-h hue" id="mood-hue" min="0" max="360" value="220">
       </div>
       <div class="mood-toolbar-slider">
@@ -2480,6 +2540,7 @@ input, textarea { font: inherit; color: inherit; }
 
     <!-- The Rose (right panel) -->
     <div class="room-mirror" id="room-mirror">
+      <div class="rose-surface">
       <div class="rose-orb-header">
         <div class="rose-orb-wrap">
           <div class="rose-orb-ring-2"></div>
@@ -2524,6 +2585,7 @@ input, textarea { font: inherit; color: inherit; }
           </svg>
         </button>
       </div>
+      </div><!-- /rose-surface -->
     </div>
 
   </div><!-- /room-body -->
@@ -3114,19 +3176,7 @@ function enterRoom(roomKey) {
   document.getElementById('room-title-display').style.color = `var(${meta.color})`;
   document.getElementById('room-subtitle-display').textContent = meta.subtitle;
 
-  // GK badge
-  const gkNum = state.compassData?.points?.[roomKey]?.gk_num || '';
-  const gkLine = state.compassData?.points?.[roomKey]?.gk_line || '';
-  const badgeEl = document.getElementById('room-gk-badge');
-  if (gkNum) {
-    badgeEl.textContent = `${meta.gkLabel} · GK ${gkNum}${gkLine ? ` · Line ${gkLine}` : ''}`;
-    badgeEl.style.borderColor = `var(${meta.color})`;
-    badgeEl.style.color = `var(${meta.color})`;
-  } else {
-    badgeEl.textContent = `${meta.gkLabel}`;
-    badgeEl.style.borderColor = '';
-    badgeEl.style.color = '';
-  }
+  // GK label (shown in Archive SGS block, not in header)
 
   // SGS triad
   renderRoomSGS(roomKey);
@@ -4194,6 +4244,21 @@ function renderVoiceEntries(roomKey) {
 
 
 <!-- ── Info popups ──────────────────────────────────────────── -->
+<div class="studio-info-overlay" id="info-spacetuner-overlay">
+  <div class="studio-info-popup">
+    <div class="studio-info-popup-header">
+      <span class="studio-info-popup-title">Space Tuner</span>
+      <button class="studio-info-popup-close" data-close="info-spacetuner-overlay">✕</button>
+    </div>
+    <div class="studio-info-popup-body">
+      <p>Every act of composition happens inside an environment. The Studio is designed on the premise that color, sound, and atmosphere are not decoration — they are part of the process itself. The right frequency can open a state. The right light can settle the nervous system. The right depth of field can invite you inward.</p>
+      <p><strong>Sound</strong> gives you access to binaural frequencies tuned to specific states — from deep rest (Delta) through meditation (Theta) and focused clarity (Alpha) up to peak performance (Gamma). Chakra presets align tone with different centres of the body. These are not background music. They are tuning instruments.</p>
+      <p><strong>Colour</strong> shifts the entire visual palette of the Studio using the Hue slider — from the cool blue of deep water to the warm amber of candlelight. Glow controls how much luminance enters the space. Depth controls how dark the field is. Together they create the quality of light you work inside.</p>
+      <p>The Studio aims to become a personal OS — an interface that learns and adapts to the conditions under which you do your best thinking. Space Tuner is the beginning of that. Tune it to where you are, not where you think you should be.</p>
+    </div>
+  </div>
+</div>
+
 <div class="studio-info-overlay" id="info-rose-overlay">
   <div class="studio-info-popup">
     <div class="studio-info-popup-header">
