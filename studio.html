@@ -1092,6 +1092,74 @@ input, textarea { font: inherit; color: inherit; }
   50%      { text-shadow: 0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 65%, transparent), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent); opacity: 1; }
 }
 
+/* ── ON AIR timer pill ────────────────────────────── */
+.onair-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, #ef4444 30%, var(--border));
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+  flex-shrink: 0;
+  animation: onair-glow 3s ease-in-out infinite;
+  transition: opacity 0.6s ease, border-color 0.6s ease, background 0.6s ease;
+}
+.onair-pill.offair {
+  animation: none;
+  border-color: color-mix(in srgb, var(--text-faint) 20%, var(--border));
+  background: transparent;
+  opacity: 0.35;
+}
+@keyframes onair-glow {
+  0%,100% {
+    box-shadow: 0 0 6px color-mix(in srgb, #ef4444 25%, transparent);
+    border-color: color-mix(in srgb, #ef4444 30%, var(--border));
+  }
+  50% {
+    box-shadow: 0 0 14px color-mix(in srgb, #ef4444 50%, transparent), 0 0 28px color-mix(in srgb, #ef4444 20%, transparent);
+    border-color: color-mix(in srgb, #ef4444 55%, var(--border));
+  }
+}
+.onair-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  animation: onair-dot-pulse 1.8s ease-in-out infinite;
+}
+.onair-pill.offair .onair-dot {
+  background: var(--text-faint);
+  animation: none;
+}
+@keyframes onair-dot-pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 4px #ef4444; }
+  50%      { opacity: 0.4; box-shadow: none; }
+}
+.onair-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ef4444;
+}
+.onair-pill.offair .onair-label {
+  color: var(--text-faint);
+  content: 'OFF AIR';
+}
+.onair-time {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, #ef4444 70%, var(--text));
+  min-width: 36px;
+}
+.onair-pill.offair .onair-time {
+  color: var(--text-faint);
+}
+
 /* ── Room switcher — four pills in header ────────────────── */
 .room-switcher {
   display: flex;
@@ -2731,6 +2799,14 @@ input, textarea { font: inherit; color: inherit; }
     </button>
     <input type="file" id="studio-load-file" accept=".json" style="display:none">
     </div>
+
+    <!-- ON AIR timer pill -->
+    <div class="onair-pill" id="onair-pill">
+      <span class="onair-dot" id="onair-dot"></span>
+      <span class="onair-label" id="onair-label">ON AIR</span>
+      <span class="onair-time" id="onair-time">0:00</span>
+    </div>
+
     <!-- Room switcher — four pills, active glows -->
     <div class="room-switcher" id="room-switcher">
       <button class="room-pill" data-room="work"  style="--pill-color:var(--work);--pill-glow:var(--work-glow);">The Work</button>
@@ -3739,6 +3815,11 @@ function doEnterRoom(roomKey, meta) {
   if (nexusOrb) delete nexusOrb.dataset.nexusInit;
   setTimeout(initRoseOrb, 100);
 
+  // Start ON AIR timer for this room
+  if (typeof stopOnAir === 'function') stopOnAir(sessionRoomKey ? true : false); // save previous if switching rooms
+  resetOnAirDisplay();
+  startOnAir(roomKey);
+
   // Scroll to top
   window.scrollTo(0, 0);
 }
@@ -4249,6 +4330,94 @@ function studioLoadJSON(file) {
   reader.readAsText(file);
 }
 
+// ============================================================
+// ON AIR — Session timer + auto-save + session log
+// ============================================================
+let sessionStartTime  = null;   // when current room session started
+let sessionTimerRaf   = null;   // rAF handle
+let sessionRoomKey    = null;   // room being timed
+
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}:${String(m % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+  return `${m}:${String(s % 60).padStart(2,'0')}`;
+}
+
+function startOnAir(roomKey) {
+  sessionStartTime = Date.now();
+  sessionRoomKey   = roomKey;
+  const pill  = document.getElementById('onair-pill');
+  const label = document.getElementById('onair-label');
+  const time  = document.getElementById('onair-time');
+  if (pill)  { pill.classList.remove('offair'); }
+  if (label) label.textContent = 'ON AIR';
+  if (time)  time.textContent = '0:00';
+
+  function tick() {
+    if (!sessionStartTime) return;
+    const elapsed = Date.now() - sessionStartTime;
+    if (time) time.textContent = formatDuration(elapsed);
+    sessionTimerRaf = requestAnimationFrame(tick);
+  }
+  if (sessionTimerRaf) cancelAnimationFrame(sessionTimerRaf);
+  sessionTimerRaf = requestAnimationFrame(tick);
+}
+
+function stopOnAir(autoSave = true) {
+  if (!sessionStartTime) return;
+  const elapsed = Date.now() - sessionStartTime;
+  const duration = formatDuration(elapsed);
+
+  // Log session
+  const logEntry = {
+    date:     new Date().toISOString(),
+    room:     sessionRoomKey,
+    duration: duration,
+    durationMs: elapsed,
+    sound:    document.getElementById('freq-toolbar-label')?.textContent || '',
+    hue:      document.getElementById('mood-hue')?.value || '',
+    warmth:   document.getElementById('mood-warm')?.value || '',
+  };
+  if (!state.sessionLog) state.sessionLog = [];
+  state.sessionLog.push(logEntry);
+
+  // Auto-save
+  if (autoSave) {
+    saveState();
+    showToast(`Session saved · ${duration} in ${logEntry.room ? (logEntry.room[0].toUpperCase() + logEntry.room.slice(1)) : ''}`);
+  }
+
+  // OFF AIR visual
+  const pill  = document.getElementById('onair-pill');
+  const label = document.getElementById('onair-label');
+  const time  = document.getElementById('onair-time');
+  if (pill)  pill.classList.add('offair');
+  if (label) label.textContent = 'OFF AIR';
+  if (time)  time.textContent = duration;
+
+  // Stop timer
+  if (sessionTimerRaf) { cancelAnimationFrame(sessionTimerRaf); sessionTimerRaf = null; }
+  sessionStartTime = null;
+  sessionRoomKey   = null;
+
+  // Fade OFF AIR back to invisible after 3s
+  setTimeout(() => {
+    const p = document.getElementById('onair-pill');
+    if (p) { p.style.opacity = '0'; p.style.transition = 'opacity 1s ease'; }
+  }, 3000);
+}
+
+function resetOnAirDisplay() {
+  const pill = document.getElementById('onair-pill');
+  if (pill) { pill.style.opacity = ''; pill.style.transition = ''; pill.classList.remove('offair'); }
+  const label = document.getElementById('onair-label');
+  if (label) label.textContent = 'ON AIR';
+  const time = document.getElementById('onair-time');
+  if (time) time.textContent = '0:00';
+}
+
 function initRoomSwitcher() {
   // Wire up the four room pills in the header
   document.querySelectorAll('.room-pill').forEach(pill => {
@@ -4333,10 +4502,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initStudioCalculator();
   initRoomSwitcher();
 
-  // Back button (also handled in initRoomSwitcher, this resets currentRoom too)
+  // Back button — auto-save and stop ON AIR, then return to entrance
   document.getElementById('btn-back-to-entrance').addEventListener('click', () => {
+    stopOnAir(true);  // auto-save + OFF AIR
     currentRoom = null;
     window.scrollTo(0, 0);
+  });
+
+  // Also auto-save if page is closed/hidden
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && sessionStartTime) stopOnAir(true);
+  });
+  window.addEventListener('beforeunload', () => {
+    if (sessionStartTime) stopOnAir(true);
   });
 
   // Save entry
