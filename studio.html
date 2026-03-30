@@ -5344,15 +5344,18 @@ function initMoodLighting() {
   // ─ Slot interaction ────────────────────────────────────────────────
   renderPresets();
 
-  let presetHoldTimer  = null;
-  let presetDeleteTimer = null;
-  let presetHoldStarted = false;  // distinguish click vs hold
+  let presetHoldTimer    = null;
+  let presetDeleteTimer  = null;
+  let presetVisualTimer  = null;
+  let presetHoldStarted  = false;  // distinguish click vs hold
 
   function cancelAllTimers() {
     clearTimeout(presetHoldTimer);
     clearTimeout(presetDeleteTimer);
-    presetHoldTimer  = null;
+    clearTimeout(presetVisualTimer);
+    presetHoldTimer   = null;
     presetDeleteTimer = null;
+    presetVisualTimer = null;
   }
 
   document.querySelectorAll('.vibe-preset-slot').forEach((slot, i) => {
@@ -5365,7 +5368,7 @@ function initMoodLighting() {
         // —— FILLED slot: hold 5s = delete, short release = click (recall + name) ——
         slot.style.setProperty('--delete-dur', `${PRESET_DELETE_MS}ms`);
         // Start visual feedback after short delay so clicks don't flash it
-        const deleteVisualTimer = setTimeout(() => {
+        presetVisualTimer = setTimeout(() => {
           if (presetDeleteTimer) slot.classList.add('deleting');
         }, 200);
         presetDeleteTimer = setTimeout(() => {
