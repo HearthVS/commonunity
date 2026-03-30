@@ -1081,20 +1081,55 @@ input, textarea { font: inherit; color: inherit; }
   50%      { text-shadow: 0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 65%, transparent), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent); opacity: 1; }
 }
 
-.room-title-block {
+/* ── Room switcher — four pills in header ────────────────── */
+.room-switcher {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: var(--space-2);
   flex: 1;
+  justify-content: center;
   min-width: 0;
 }
-.room-title { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.01em; animation: room-title-glow 5s ease-in-out infinite; }
-@keyframes room-title-glow {
-  0%,100% { text-shadow: 0 0 8px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 25%, transparent); }
-  50%      { text-shadow: 0 0 20px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 55%, transparent), 0 0 40px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 20%, transparent); }
+.room-pill {
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--pill-color) 25%, var(--border));
+  background: color-mix(in srgb, var(--pill-color) 6%, transparent);
+  color: color-mix(in srgb, var(--pill-color) 45%, var(--text-faint));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.room-subtitle { font-size: 10px; color: var(--text-faint); font-style: italic; letter-spacing: 0.02em; }
+.room-pill:hover {
+  border-color: color-mix(in srgb, var(--pill-color) 55%, var(--border));
+  color: color-mix(in srgb, var(--pill-color) 80%, var(--text));
+  background: color-mix(in srgb, var(--pill-color) 12%, transparent);
+}
+.room-pill.active {
+  border-color: var(--pill-color);
+  color: var(--pill-color);
+  background: color-mix(in srgb, var(--pill-color) 14%, transparent);
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pill-color) 20%, transparent),
+    0 0 12px color-mix(in srgb, var(--pill-color) 35%, transparent),
+    0 0 28px color-mix(in srgb, var(--pill-color) 15%, transparent);
+  animation: pill-glow 4s ease-in-out infinite;
+}
+@keyframes pill-glow {
+  0%,100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--pill-color) 20%, transparent), 0 0 10px color-mix(in srgb, var(--pill-color) 30%, transparent); }
+  50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--pill-color) 35%, transparent), 0 0 20px color-mix(in srgb, var(--pill-color) 50%, transparent), 0 0 40px color-mix(in srgb, var(--pill-color) 20%, transparent); }
+}
+
+/* Keep old title refs for any JS that still sets them */
+.room-title-block { display: none; }
+.room-title { display: none; }
+.room-subtitle { display: none; }
 
 .room-gk-badge {
   font-size: 9px;
@@ -2685,11 +2720,12 @@ input, textarea { font: inherit; color: inherit; }
     </button>
     <input type="file" id="studio-load-file" accept=".json" style="display:none">
     </div>
-    <div class="room-title-block">
-      <div class="room-title" id="room-title-display"></div>
-      <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:2px;">
-        <div class="room-subtitle" id="room-subtitle-display"></div>
-      </div>
+    <!-- Room switcher — four pills, active glows -->
+    <div class="room-switcher" id="room-switcher">
+      <button class="room-pill" data-room="work"  style="--pill-color:var(--work);--pill-glow:var(--work-glow);">The Work</button>
+      <button class="room-pill" data-room="lens"  style="--pill-color:var(--lens);--pill-glow:var(--lens-glow);">The Lens</button>
+      <button class="room-pill" data-room="field" style="--pill-color:var(--field);--pill-glow:var(--field-glow);">The Field</button>
+      <button class="room-pill" data-room="call"  style="--pill-color:var(--call);--pill-glow:var(--call-glow);">The Call</button>
     </div>
     <!-- Set Your Vibe panel -->
     <div class="vibe-panel" style="margin-left:auto;">
@@ -3651,10 +3687,16 @@ function doEnterRoom(roomKey, meta) {
     document.querySelector('.room-body').style.setProperty('--rose-color', resolvedColor);
   }
 
-  // Header
-  document.getElementById('room-title-display').textContent = meta.title;
-  document.getElementById('room-title-display').style.color = `var(${meta.color})`;
-  document.getElementById('room-subtitle-display').textContent = meta.subtitle;
+  // Room switcher pills — set active
+  document.querySelectorAll('.room-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.room === roomKey);
+  });
+
+  // Keep hidden title elements in sync for any JS still referencing them
+  const titleEl = document.getElementById('room-title-display');
+  const subtitleEl = document.getElementById('room-subtitle-display');
+  if (titleEl) { titleEl.textContent = meta.title; titleEl.style.color = `var(${meta.color})`; }
+  if (subtitleEl) subtitleEl.textContent = meta.subtitle;
 
   // GK label (shown in Archive SGS block, not in header)
 
@@ -4198,6 +4240,27 @@ function studioLoadJSON(file) {
   reader.readAsText(file);
 }
 
+function initRoomSwitcher() {
+  // Wire up the four room pills in the header
+  document.querySelectorAll('.room-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const room = pill.dataset.room;
+      if (room && room !== currentRoom) {
+        enterRoom(room);
+      }
+    });
+  });
+
+  // Back button — return to entrance
+  const backBtn = document.getElementById('btn-back-to-entrance');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      document.getElementById('screen-room').classList.remove('active');
+      document.getElementById('screen-entrance').classList.add('active');
+    });
+  }
+}
+
 function initStudioJSON() {
   // Room header buttons
   const saveBtn = document.getElementById('btn-studio-save');
@@ -4259,11 +4322,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initInfoPopups();
   initStudioJSON();
   initStudioCalculator();
+  initRoomSwitcher();
 
-  // Back button
+  // Back button (also handled in initRoomSwitcher, this resets currentRoom too)
   document.getElementById('btn-back-to-entrance').addEventListener('click', () => {
-    document.getElementById('screen-room').classList.remove('active');
-    document.getElementById('screen-entrance').classList.add('active');
     currentRoom = null;
     window.scrollTo(0, 0);
   });
