@@ -295,6 +295,8 @@ input, textarea { font: inherit; color: inherit; }
 }
 .portal-wrap:hover .portal-hint { opacity: 1; }
 .portal-wrap.doors-open .portal-hint { display: none; }
+.portal-wrap.portal-holding { transform: scale(1.04); transition: transform 0.15s ease; }
+.portal-wrap.portal-holding .torus-canvas { filter: brightness(1.3); }
 
 .portal-wrap:hover .portal-svg {
   animation: none;
@@ -1105,6 +1107,8 @@ input, textarea { font: inherit; color: inherit; }
 .mood-slider-h.warm::-webkit-slider-thumb { background: #c4a87a; }
 .mood-slider-h.dark { background: linear-gradient(to right, #0b1120, #94a3b8); }
 .mood-slider-h.dark::-webkit-slider-thumb { background: var(--text-faint); }
+.mood-slider-h.warm { background: linear-gradient(to right, #1e2a4a, #c4821a); }
+.mood-slider-h.warm::-webkit-slider-thumb { background: #c4821a; }
 
 .mood-preset-pill {
   font-size: 9px;
@@ -1607,7 +1611,7 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  padding: var(--space-6) var(--space-4) var(--space-4);
   gap: var(--space-2);
   flex-shrink: 0;
   position: relative;
@@ -2720,6 +2724,10 @@ input, textarea { font: inherit; color: inherit; }
               <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Depth</span>
               <input type="range" class="mood-slider-h dark" id="mood-dark" min="0" max="100" value="50" style="flex:1;">
             </div>
+            <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
+              <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Warmth</span>
+              <input type="range" class="mood-slider-h warm" id="mood-warm" min="0" max="100" value="0" style="flex:1;">
+            </div>
           </div>
         </div>
       </div><!-- /colour-pill-wrap -->
@@ -3326,19 +3334,67 @@ function initEntrance() {
   const portal = document.getElementById('portal');
   const actions = document.getElementById('entrance-actions');
 
-  portal.addEventListener('click', (e) => {
-    if (!portalOpened) {
-      // First touch — unfold
-      portalOpened = true;
-      portal.classList.add('unfolding');
-      setTimeout(() => {
-        portal.classList.remove('unfolding');
-        portal.classList.add('doors-open');
-        actions.classList.add('visible');
-        // showRosePrompt() — removed, Nexus prompt not shown on entrance
-      }, 1400);
+  // Hold-to-open ritual — mirrors Nexus awakening
+  const PORTAL_HOLD_MS = 1800;
+  const PORTAL_CIRC = 2 * Math.PI * 185; // ring around 380px canvas (r~185 at viewBox scale)
+  let portalHoldStart = null;
+  let portalRafId = null;
+
+  // Create progress ring SVG overlay on portal
+  const portalRingEl = document.createElement('div');
+  portalRingEl.id = 'portal-hold-ring';
+  portalRingEl.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;';
+  portalRingEl.innerHTML = `<svg viewBox="0 0 380 380" style="width:100%;height:100%;transform:rotate(-90deg)">
+    <circle id="portal-ring-progress" cx="190" cy="190" r="185"
+      fill="none" stroke="rgba(167,139,250,0.75)" stroke-width="2"
+      stroke-linecap="round"
+      stroke-dasharray="${PORTAL_CIRC}"
+      stroke-dashoffset="${PORTAL_CIRC}"
+      style="transition:stroke-dashoffset 0.05s linear;"/>
+  </svg>`;
+  portal.appendChild(portalRingEl);
+  const portalRingProgress = document.getElementById('portal-ring-progress');
+
+  function openPortal() {
+    if (portalOpened) return;
+    portalOpened = true;
+    portalRingEl.style.display = 'none';
+    portal.classList.add('doors-open');
+    actions.classList.add('visible');
+  }
+
+  function cancelPortalHold() {
+    if (portalOpened) return;
+    portal.classList.remove('portal-holding');
+    if (portalRafId) cancelAnimationFrame(portalRafId);
+    portalHoldStart = null;
+    portalRafId = null;
+    if (portalRingProgress) portalRingProgress.style.strokeDashoffset = PORTAL_CIRC;
+  }
+
+  function startPortalHold() {
+    if (portalOpened) return;
+    portalHoldStart = Date.now();
+    portal.classList.add('portal-holding');
+    function tick() {
+      if (!portalHoldStart) return;
+      const progress = Math.min((Date.now() - portalHoldStart) / PORTAL_HOLD_MS, 1);
+      if (portalRingProgress) portalRingProgress.style.strokeDashoffset = PORTAL_CIRC * (1 - progress);
+      if (progress < 1) { portalRafId = requestAnimationFrame(tick); }
+      else { openPortal(); }
     }
-  });
+    portalRafId = requestAnimationFrame(tick);
+  }
+
+  portal.addEventListener('mousedown', startPortalHold);
+  portal.addEventListener('mouseup',   cancelPortalHold);
+  portal.addEventListener('mouseleave',cancelPortalHold);
+  portal.addEventListener('touchstart', startPortalHold, { passive: true });
+  portal.addEventListener('touchend',   (e) => { cancelPortalHold(); openPortal(); }); // tap on touch = open
+
+  // Hint text update
+  const hint = document.getElementById('portal-hint');
+  if (hint) hint.textContent = 'hold to open';
 
   // Facet direct navigation
   document.querySelectorAll('.portal-facet').forEach(facet => {
@@ -4323,14 +4379,23 @@ const MOOD_PRESETS_DATA = {
   'ceremony':   { glow: 100, warm: 30, dark: 90 },
 };
 
-function applyMoodLighting(hue, glow, dark) {
+function applyMoodLighting(hue, glow, dark, warm) {
   const hueVal  = parseFloat(hue  == null ? 220 : hue);
   const glowVal = parseFloat(glow == null ? 50  : glow) / 100;
   const darkVal = parseFloat(dark == null ? 50  : dark) / 100;
+  const warmVal = parseFloat(warm == null ? 0   : warm) / 100;
   const hueShift   = hueVal - 220;
   const brightness = 0.65 + (1 - darkVal) * 0.5;
   const saturate   = 0.7  + glowVal * 0.8;
-  document.body.style.filter = 'brightness(' + brightness.toFixed(2) + ') saturate(' + saturate.toFixed(2) + ') hue-rotate(' + hueShift.toFixed(0) + 'deg)';
+  // Warmth: shift sepia-tone overlay via CSS filter sepia
+  const sepia = warmVal * 0.55;
+  const warmHue = warmVal * 28; // nudge hue slightly warm (amber direction)
+  document.body.style.filter = [
+    'brightness(' + brightness.toFixed(2) + ')',
+    'saturate(' + saturate.toFixed(2) + ')',
+    'hue-rotate(' + (hueShift + warmHue).toFixed(0) + 'deg)',
+    sepia > 0.01 ? 'sepia(' + sepia.toFixed(2) + ')' : ''
+  ].filter(Boolean).join(' ');
 }
 
 function initMoodLighting() {
@@ -4352,18 +4417,20 @@ function initMoodLighting() {
     });
   });
 
-  // Hue + Glow + Depth sliders
-  ['mood-hue', 'mood-glow', 'mood-dark'].forEach(id => {
+  // Hue + Glow + Depth + Warmth sliders
+  ['mood-hue', 'mood-glow', 'mood-dark', 'mood-warm'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', () => {
       const hueEl  = document.getElementById('mood-hue');
       const glowEl = document.getElementById('mood-glow');
       const darkEl = document.getElementById('mood-dark');
+      const warmEl = document.getElementById('mood-warm');
       applyMoodLighting(
         hueEl  ? parseInt(hueEl.value)  : 220,
         glowEl ? parseInt(glowEl.value) : 50,
-        darkEl ? parseInt(darkEl.value) : 50
+        darkEl ? parseInt(darkEl.value) : 50,
+        warmEl ? parseInt(warmEl.value) : 0
       );
     });
   });
