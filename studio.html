@@ -4172,6 +4172,9 @@ function enterRoom(roomKey) {
 }
 
 function doEnterRoom(roomKey, meta) {
+  // Stop torus — no point burning CPU while in a room
+  if (window.torusPause) window.torusPause();
+
   // Switch screens
   document.getElementById('screen-entrance').classList.remove('active');
   const roomScreen = document.getElementById('screen-room');
@@ -4871,6 +4874,7 @@ function initRoomSwitcher() {
     backBtn.addEventListener('click', () => {
       document.getElementById('screen-room').classList.remove('active');
       document.getElementById('screen-entrance').classList.add('active');
+      if (window.torusResume) window.torusResume();
     });
   }
 }
@@ -4943,6 +4947,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopOnAir(true);  // auto-save + OFF AIR
     currentRoom = null;
     window.scrollTo(0, 0);
+    if (window.torusResume) window.torusResume();
   });
 
   // Also auto-save if page is closed/hidden
@@ -5940,8 +5945,42 @@ function initTorusPortal() {
     }).observe(portalEl, { attributes: true, attributeFilter: ['class'] });
   }
 
+  // ── Sleep / wake control ─────────────────────────────────────
+  let rafId = null;
+  let sleeping = false;
+  let sleepTimer = null;
+  const IDLE_SLEEP_MS = 30000;  // 30 seconds
+
+  function wakeTorus() {
+    if (!sleeping) return;
+    sleeping = false;
+    scheduleSleep();
+    if (!rafId) rafId = requestAnimationFrame(draw);
+  }
+
+  function sleepTorus() {
+    sleeping = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  function scheduleSleep() {
+    clearTimeout(sleepTimer);
+    sleepTimer = setTimeout(sleepTorus, IDLE_SLEEP_MS);
+  }
+
+  // Wake on any interaction with the portal
+  if (portalWrapEl) {
+    ['mouseenter','touchstart','mousemove'].forEach(ev =>
+      portalWrapEl.addEventListener(ev, wakeTorus, { passive: true })
+    );
+  }
+
+  // Pause when entering a room, resume when returning to entrance
+  window.torusPause  = sleepTorus;
+  window.torusResume = () => { sleeping = false; scheduleSleep(); if (!rafId) rafId = requestAnimationFrame(draw); };
+
   function draw() {
-    requestAnimationFrame(draw);
+    rafId = requestAnimationFrame(draw);
     t += 0.007;
     const speed = activated ? 2.4 : hovered ? 1.4 : 0.8;
 
@@ -6025,7 +6064,8 @@ function initTorusPortal() {
     }
   }
 
-  requestAnimationFrame(draw);
+  rafId = requestAnimationFrame(draw);
+  scheduleSleep();  // auto-sleep after 30s if untouched
 }
 
 if (document.readyState === 'loading') {
