@@ -246,31 +246,49 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 .entrance-seed-btn {
-  background: none;
-  border: none;
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
+  border-radius: var(--radius-full);
   cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--rose-color, #c4b5fd);
-  opacity: 0.7;
-  padding: var(--space-2) 0;
-  text-align: left;
-  transition: opacity 0.3s ease, text-shadow 0.3s ease;
-  text-shadow: 0 0 10px color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent);
-  animation: seed-btn-glow 4s ease-in-out infinite;
+  opacity: 0.85;
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  width: 100%;
+  transition: opacity 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  animation: seed-btn-glow 3.5s ease-in-out infinite;
 }
 @keyframes seed-btn-glow {
-  0%,100% { opacity: 0.6; text-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 35%, transparent); }
-  50%      { opacity: 1;   text-shadow: 0 0 18px color-mix(in srgb, var(--rose-color,#c4b5fd) 70%, transparent), 0 0 32px color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, transparent); }
+  0%,100% {
+    opacity: 0.75;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, transparent),
+                inset 0 0 6px color-mix(in srgb, var(--rose-color,#c4b5fd) 10%, transparent);
+    border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, transparent),
+                0 0 36px color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent),
+                inset 0 0 10px color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, transparent);
+    border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 75%, transparent);
+  }
 }
-.entrance-seed-btn:hover { opacity: 1; }
+.entrance-seed-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent);
+}
 .entrance-seed-btn.seeded {
   animation: none;
-  opacity: 0.3;
+  opacity: 0.35;
   color: var(--text-faint);
-  text-shadow: none;
-  font-size: 9px;
+  background: none;
+  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  box-shadow: none;
+  font-size: 11px;
 }
 .entrance-seed-btn.pulse {
   animation: seed-pulse 0.6s ease 3;
