@@ -1092,6 +1092,96 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
+/* ── Set Your Vibe panel ─────────────────────────────── */
+.vibe-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, var(--border));
+  background: color-mix(in srgb, var(--card) 50%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent),
+    0 0 20px color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, transparent);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+.vibe-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  justify-content: flex-end;
+}
+.vibe-panel-title {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+  animation: space-tuner-pulse 6s ease-in-out infinite;
+}
+.vibe-pills {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.vibe-pill-wrap {
+  position: relative;
+}
+.vibe-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+.vibe-pill:hover,
+.vibe-pill.active {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, var(--border));
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, var(--card));
+}
+.colour-orb {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  flex-shrink: 0;
+}
+.vibe-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, var(--border));
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 40px color-mix(in srgb, var(--rose-color,#c4b5fd) 5%, transparent);
+  backdrop-filter: blur(12px);
+  display: none;
+  min-width: 200px;
+}
+.vibe-dropdown.open { display: block; }
+.mood-toolbar-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* Space Tuner label */
 .space-tuner-label-wrap {
   display: flex;
@@ -1142,10 +1232,30 @@ input, textarea { font: inherit; color: inherit; }
 .room-archive {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  background: color-mix(in srgb, var(--card) 60%, var(--bg));
+  overflow: hidden;
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  min-height: 0;
+}
+
+/* Archive surface — framed card matching notepad and Nexus */
+.archive-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 15%, var(--border));
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 6%, transparent),
+    0 4px 32px rgba(0,0,0,0.2),
+    0 0 40px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 4%, transparent);
+  transition: box-shadow 0.5s ease;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .archive-title {
@@ -1263,7 +1373,7 @@ input, textarea { font: inherit; color: inherit; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin: var(--space-5);
+  margin: var(--space-4);
   border-radius: var(--radius-xl);
   border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 20%, var(--border));
   background: color-mix(in srgb, var(--card) 70%, transparent);
@@ -1433,25 +1543,26 @@ input, textarea { font: inherit; color: inherit; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin: var(--space-5);
+  margin: var(--space-4);
   border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 20%, var(--border));
   background: color-mix(in srgb, var(--card) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 8%, transparent),
     0 4px 32px rgba(0,0,0,0.2),
-    0 0 60px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
-  transition: box-shadow 0.5s ease;
+    0 0 60px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 5%, transparent);
+  transition: box-shadow 0.5s ease, border-color 0.5s ease;
   overflow: hidden;
+  min-height: 0;
 }
 .room-mirror.orb-active .rose-surface {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--rose-color,#c4b5fd) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 30%, var(--border)),
     0 8px 48px rgba(0,0,0,0.28),
-    0 0 80px color-mix(in srgb, var(--rose-color,#c4b5fd) 14%, transparent),
-    0 0 120px color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
-  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 38%, var(--border));
+    0 0 80px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 14%, transparent),
+    0 0 120px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 6%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color,var(--setup-accent)) 38%, var(--border));
 }
 
 /* Rose sanctuary header */
@@ -2285,14 +2396,16 @@ input, textarea { font: inherit; color: inherit; }
   background: var(--card);
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 25%, var(--border));
   border-radius: var(--radius-xl);
-  padding: var(--space-8);
-  max-width: 480px;
+  padding: var(--space-5);
+  max-width: 400px;
+  max-height: 70vh;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 80px color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent);
   animation: popup-appear 0.3s cubic-bezier(0.16,1,0.3,1);
+  overflow: hidden;
 }
 @keyframes popup-appear {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
@@ -2317,11 +2430,16 @@ input, textarea { font: inherit; color: inherit; }
 }
 .studio-info-popup-close:hover { color: var(--text); }
 .studio-info-popup-body {
-  font-size: var(--text-sm);
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.8;
+  line-height: 1.7;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: var(--space-2);
 }
-.studio-info-popup-body p + p { margin-top: var(--space-3); }
+.studio-info-popup-body p + p { margin-top: var(--space-2); }
+.studio-info-popup-title { font-size: var(--text-sm) !important; }
 
 </style>
 </head>
@@ -2505,20 +2623,20 @@ input, textarea { font: inherit; color: inherit; }
         <div class="room-subtitle" id="room-subtitle-display"></div>
       </div>
     </div>
-    <div class="room-mood-toolbar" style="margin-left:auto;">
-      <!-- Space Tuner label -->
-      <div class="space-tuner-label-wrap">
-        <span class="space-tuner-wordmark">Space Tuner</span>
-        <button class="studio-info-btn space-tuner-info-btn" data-info="info-spacetuner-overlay" title="About Space Tuner"><i>i</i></button>
+    <!-- Set Your Vibe panel -->
+    <div class="vibe-panel" style="margin-left:auto;">
+      <div class="vibe-panel-header">
+        <span class="vibe-panel-title">Set Your Vibe</span>
+        <button class="studio-info-btn space-tuner-info-btn" data-info="info-spacetuner-overlay" title="About Set Your Vibe"><i>i</i></button>
       </div>
-      <div class="room-toolbar-divider"></div>
-      <!-- Sound -->
-      <div class="freq-toolbar-wrap" id="freq-toolbar-wrap">
-        <button class="freq-toolbar-toggle" id="freq-toolbar-toggle">
+      <div class="vibe-pills">
+      <!-- Sound pill -->
+      <div class="freq-toolbar-wrap vibe-pill-wrap" id="freq-toolbar-wrap">
+        <button class="freq-toolbar-toggle vibe-pill" id="freq-toolbar-toggle">
           <div class="freq-toolbar-orb" id="freq-toolbar-orb"></div>
           <span class="freq-toolbar-label" id="freq-toolbar-label">Sound</span>
         </button>
-        <div class="freq-dropdown" id="freq-dropdown">
+        <div class="freq-dropdown vibe-dropdown" id="freq-dropdown">
           <div class="freq-dropdown-row">
             <div class="freq-dropdown-section">
               <div class="freq-dropdown-label">Chakra</div>
@@ -2568,42 +2686,58 @@ input, textarea { font: inherit; color: inherit; }
             <button class="freq-preset-btn" id="freq-stop-btn" style="border-color:#f43f5e;color:#f43f5e;align-self:flex-end;">■ Stop</button>
           </div>
         </div>
-      </div>
-      <div class="room-toolbar-divider"></div>
-      <!-- Light sliders -->
-      <div class="mood-toolbar-slider">
-        <span class="mood-toolbar-label">Colour</span>
-        <input type="range" class="mood-slider-h hue" id="mood-hue" min="0" max="360" value="220">
-      </div>
-      <div class="mood-toolbar-slider">
-        <span class="mood-toolbar-label">Glow</span>
-        <input type="range" class="mood-slider-h glow" id="mood-glow" min="0" max="100" value="50">
-      </div>
-      <div class="mood-toolbar-slider">
-        <span class="mood-toolbar-label">Depth</span>
-        <input type="range" class="mood-slider-h dark" id="mood-dark" min="0" max="100" value="50">
-      </div>
-    </div>
-  </div>
+      </div><!-- /freq-toolbar-wrap -->
+
+      <!-- Colour pill -->
+      <div class="vibe-pill-wrap" id="colour-pill-wrap">
+        <button class="freq-toolbar-toggle vibe-pill" id="colour-toggle">
+          <div class="colour-orb" id="colour-orb"></div>
+          <span>Colour</span>
+        </button>
+        <div class="freq-dropdown vibe-dropdown" id="colour-dropdown">
+          <div class="freq-dropdown-row" style="flex-direction:column;gap:var(--space-3);min-width:180px;">
+            <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
+              <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Hue</span>
+              <input type="range" class="mood-slider-h hue" id="mood-hue" min="0" max="360" value="220" style="flex:1;">
+            </div>
+            <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
+              <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Glow</span>
+              <input type="range" class="mood-slider-h glow" id="mood-glow" min="0" max="100" value="50" style="flex:1;">
+            </div>
+            <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
+              <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Depth</span>
+              <input type="range" class="mood-slider-h dark" id="mood-dark" min="0" max="100" value="50" style="flex:1;">
+            </div>
+          </div>
+        </div>
+      </div><!-- /colour-pill-wrap -->
+
+      </div><!-- /vibe-pills -->
+    </div><!-- /vibe-panel -->
+  </div><!-- /room-header -->
 
   <div class="room-body">
 
     <!-- Archive (left panel) -->
     <div class="room-archive">
-<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border);position:sticky;top:0;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(4px);">
-        <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Archive</span>
-        <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
-      </div>
-      <div class="room-sgs" id="room-sgs">
-        <span style="font-size:var(--text-xs);color:var(--text-faint);font-style:italic;text-align:center;width:100%;">Enter Gene Key to see frequencies</span>
-      </div>
-      <div id="archive-compass-section" class="archive-section">
-        <div class="archive-section-label">From Compass</div>
-        <div id="archive-compass-items"></div>
-      </div>
-      <div class="archive-section">
-        <div class="archive-section-label">Sessions</div>
-        <div id="archive-studio-items"></div>
+      <div class="archive-surface">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);position:sticky;top:0;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(4px);border-radius:var(--radius-xl) var(--radius-xl) 0 0;">
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Archive</span>
+          <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
+        </div>
+        <div style="overflow-y:auto;flex:1;min-height:0;">
+          <div class="room-sgs" id="room-sgs">
+            <span style="font-size:var(--text-xs);color:var(--text-faint);font-style:italic;text-align:center;width:100%;">Enter Gene Key to see frequencies</span>
+          </div>
+          <div id="archive-compass-section" class="archive-section">
+            <div class="archive-section-label">From Compass</div>
+            <div id="archive-compass-items"></div>
+          </div>
+          <div class="archive-section">
+            <div class="archive-section-label">Sessions</div>
+            <div id="archive-studio-items"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3298,9 +3432,15 @@ function enterRoom(roomKey) {
   const roomScreen = document.getElementById('screen-room');
   roomScreen.classList.add('active');
 
-  // Set accent color
+  // Set accent color — also sync --rose-color so Nexus orb matches the room
   roomScreen.style.setProperty('--accent-color', `var(${meta.color})`);
   document.querySelector('.room-body').style.setProperty('--accent-color', `var(${meta.color})`);
+  // Resolve the actual computed color value and set --rose-color to match
+  const resolvedColor = getComputedStyle(document.documentElement).getPropertyValue(meta.color).trim();
+  if (resolvedColor) {
+    roomScreen.style.setProperty('--rose-color', resolvedColor);
+    document.querySelector('.room-body').style.setProperty('--rose-color', resolvedColor);
+  }
 
   // Header
   document.getElementById('room-title-display').textContent = meta.title;
@@ -4039,23 +4179,28 @@ function updateVolume() {
 }
 
 function initFrequencyEngine() {
-  // Toolbar toggle
-  const tbToggle = document.getElementById('atmos-toggle');
-  const tbDropdown = document.getElementById('atmos-dropdown');
-  if (tbToggle && tbDropdown) {
-    tbToggle.addEventListener('click', (e) => {
+  // Toolbar toggles — Sound and Colour dropdowns
+  function wireDropdown(toggleId, dropdownId) {
+    const tog = document.getElementById(toggleId);
+    const drop = document.getElementById(dropdownId);
+    if (!tog || !drop) return;
+    tog.addEventListener('click', (e) => {
       e.stopPropagation();
-      tbDropdown.classList.toggle('open');
-      tbToggle.classList.toggle('active', tbDropdown.classList.contains('open'));
+      // Close the other dropdown first
+      document.querySelectorAll('.vibe-dropdown.open').forEach(d => { if (d !== drop) d.classList.remove('open'); });
+      document.querySelectorAll('.freq-dropdown.open').forEach(d => { if (d !== drop) d.classList.remove('open'); });
+      drop.classList.toggle('open');
+      tog.classList.toggle('active', drop.classList.contains('open'));
     });
-    // Close on outside click
     document.addEventListener('click', (e) => {
-      if (!tbToggle.contains(e.target) && !tbDropdown.contains(e.target)) {
-        tbDropdown.classList.remove('open');
-        tbToggle.classList.remove('active');
+      if (!tog.contains(e.target) && !drop.contains(e.target)) {
+        drop.classList.remove('open');
+        tog.classList.remove('active');
       }
     });
   }
+  wireDropdown('freq-toolbar-toggle', 'freq-dropdown');
+  wireDropdown('colour-toggle', 'colour-dropdown');
 
   // Chakra presets
   document.querySelectorAll('.freq-preset-btn[data-chakra]').forEach(btn => {
