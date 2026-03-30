@@ -1399,6 +1399,63 @@ input, textarea { font: inherit; color: inherit; }
   min-width: 200px;
 }
 .vibe-dropdown.open { display: block; }
+
+/* ── Vibe presets strip ─────────────────────────── */
+.vibe-preset-strip {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.vibe-preset-slot {
+  flex: 1;
+  height: 28px;
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in srgb, var(--border) 60%, transparent);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, transform 0.1s;
+  overflow: hidden;
+}
+.vibe-preset-slot::before {
+  /* colour swatch — filled by JS */
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.vibe-preset-slot.filled {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+.vibe-preset-slot.filled::before { opacity: 1; }
+.vibe-preset-slot.active-preset {
+  border-color: var(--rose-color,#c4b5fd);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--rose-color,#c4b5fd) 40%, transparent);
+}
+.vibe-preset-slot.saving {
+  animation: preset-saving 0.8s ease;
+}
+@keyframes preset-saving {
+  0%   { transform: scale(1);    border-color: var(--rose-color,#c4b5fd); }
+  50%  { transform: scale(1.08); border-color: #fff; box-shadow: 0 0 12px var(--rose-color,#c4b5fd); }
+  100% { transform: scale(1);    border-color: var(--rose-color,#c4b5fd); }
+}
+.vibe-preset-slot .preset-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+
 .mood-toolbar-slider {
   display: flex;
   align-items: center;
@@ -2914,7 +2971,9 @@ input, textarea { font: inherit; color: inherit; }
           <span>Colour</span>
         </button>
         <div class="freq-dropdown vibe-dropdown" id="colour-dropdown">
-          <div class="freq-dropdown-row" style="flex-direction:column;gap:var(--space-3);min-width:180px;">
+          <div class="freq-dropdown-row" style="flex-direction:column;gap:var(--space-3);min-width:200px;">
+
+            <!-- Sliders -->
             <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
               <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Hue</span>
               <input type="range" class="mood-slider-h hue" id="mood-hue" min="0" max="360" value="220" style="flex:1;">
@@ -2938,6 +2997,29 @@ input, textarea { font: inherit; color: inherit; }
                 background:linear-gradient(to right,#000 0%,#1a0a2e 15%,#0b1120 25%,#0d2a1e 45%,#1a1a0a 65%,#2a0a0a 85%,#fff 100%);"
               >
             </div>
+            <div class="mood-toolbar-slider" style="flex-direction:row;align-items:center;gap:var(--space-3);width:100%;">
+              <span class="freq-dropdown-label" style="white-space:nowrap;min-width:44px;">Text</span>
+              <input type="range" id="mood-text" min="0" max="100" value="75"
+                style="flex:1;-webkit-appearance:none;height:3px;border-radius:2px;outline:none;cursor:pointer;
+                background:linear-gradient(to right,#1a1a2e 0%,#94a3b8 50%,#ffffff 100%);"
+              >
+            </div>
+
+            <!-- Preset strip -->
+            <div style="border-top:1px solid color-mix(in srgb,var(--border) 40%,transparent);padding-top:var(--space-2);">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span class="freq-dropdown-label">Presets</span>
+                <span style="font-size:9px;color:var(--text-faint);opacity:0.6;">hold to save</span>
+              </div>
+              <div class="vibe-preset-strip" id="vibe-preset-strip">
+                <button class="vibe-preset-slot" data-slot="0" title="Hold to save current settings"></button>
+                <button class="vibe-preset-slot" data-slot="1" title="Hold to save current settings"></button>
+                <button class="vibe-preset-slot" data-slot="2" title="Hold to save current settings"></button>
+                <button class="vibe-preset-slot" data-slot="3" title="Hold to save current settings"></button>
+                <button class="vibe-preset-slot" data-slot="4" title="Hold to save current settings"></button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div><!-- /colour-pill-wrap -->
@@ -4896,7 +4978,7 @@ const MOOD_PRESETS_DATA = {
   'ceremony':   { glow: 100, warm: 30, dark: 90 },
 };
 
-function applyMoodLighting(hue, glow, dark, warm) {
+function applyMoodLighting(hue, glow, dark, warm, textVal) {
   const hueVal  = parseFloat(hue  == null ? 220 : hue);
   const glowVal = parseFloat(glow == null ? 50  : glow) / 100;
   const darkVal = parseFloat(dark == null ? 50  : dark) / 100;
@@ -4904,15 +4986,53 @@ function applyMoodLighting(hue, glow, dark, warm) {
   const hueShift   = hueVal - 220;
   const brightness = 0.65 + (1 - darkVal) * 0.5;
   const saturate   = 0.7  + glowVal * 0.8;
-  // Warmth: shift sepia-tone overlay via CSS filter sepia
   const sepia = warmVal * 0.55;
-  const warmHue = warmVal * 28; // nudge hue slightly warm (amber direction)
+  const warmHue = warmVal * 28;
   document.body.style.filter = [
     'brightness(' + brightness.toFixed(2) + ')',
     'saturate(' + saturate.toFixed(2) + ')',
     'hue-rotate(' + (hueShift + warmHue).toFixed(0) + 'deg)',
     sepia > 0.01 ? 'sepia(' + sepia.toFixed(2) + ')' : ''
   ].filter(Boolean).join(' ');
+
+  // Text brightness — controls --text CSS variable lightness
+  if (textVal != null) {
+    const tv = parseFloat(textVal) / 100; // 0–1
+    // Scale from very dim (5% lightness) to bright (98%)
+    const l = Math.round(5 + tv * 93);
+    document.documentElement.style.setProperty('--text', `hsl(220,15%,${l}%)`);
+    document.documentElement.style.setProperty('--text-muted', `hsl(220,10%,${Math.round(l * 0.72)}%)`);
+    document.documentElement.style.setProperty('--text-faint', `hsl(220,8%,${Math.round(l * 0.48)}%)`);
+  }
+}
+
+// Read all current slider values into an object
+function readVibeState() {
+  return {
+    hue:   parseInt(document.getElementById('mood-hue')?.value  ?? 220),
+    glow:  parseInt(document.getElementById('mood-glow')?.value ?? 50),
+    dark:  parseInt(document.getElementById('mood-dark')?.value ?? 50),
+    warm:  parseInt(document.getElementById('mood-warm')?.value ?? 0),
+    space: parseInt(document.getElementById('mood-space')?.value ?? 7),
+    text:  parseInt(document.getElementById('mood-text')?.value  ?? 75)
+  };
+}
+
+// Apply a vibe state object to all sliders + lighting
+function applyVibeState(v) {
+  const ids = { hue: 'mood-hue', glow: 'mood-glow', dark: 'mood-dark',
+                warm: 'mood-warm', space: 'mood-space', text: 'mood-text' };
+  Object.entries(ids).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el && v[key] != null) el.value = v[key];
+  });
+  applyMoodLighting(v.hue, v.glow, v.dark, v.warm, v.text);
+  // Apply space slider independently
+  const spaceEl = document.getElementById('mood-space');
+  if (spaceEl && v.space != null) {
+    spaceEl.value = v.space;
+    spaceEl.dispatchEvent(new Event('input'));
+  }
 }
 
 function initMoodLighting() {
@@ -4934,22 +5054,92 @@ function initMoodLighting() {
     });
   });
 
-  // Hue + Glow + Depth + Warmth sliders
-  ['mood-hue', 'mood-glow', 'mood-dark', 'mood-warm'].forEach(id => {
+  // All sliders: Hue, Glow, Depth, Warmth, Text
+  ['mood-hue', 'mood-glow', 'mood-dark', 'mood-warm', 'mood-text'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', () => {
-      const hueEl  = document.getElementById('mood-hue');
-      const glowEl = document.getElementById('mood-glow');
-      const darkEl = document.getElementById('mood-dark');
-      const warmEl = document.getElementById('mood-warm');
-      applyMoodLighting(
-        hueEl  ? parseInt(hueEl.value)  : 220,
-        glowEl ? parseInt(glowEl.value) : 50,
-        darkEl ? parseInt(darkEl.value) : 50,
-        warmEl ? parseInt(warmEl.value) : 0
-      );
+      const v = readVibeState();
+      applyMoodLighting(v.hue, v.glow, v.dark, v.warm, v.text);
+      // Deactivate any active preset when user manually adjusts
+      document.querySelectorAll('.vibe-preset-slot.active-preset')
+        .forEach(s => s.classList.remove('active-preset'));
     });
+  });
+
+  // — Preset slots: click = recall, hold (600ms) = save —
+  const PRESET_HOLD_MS = 700;
+  const presets = JSON.parse(localStorage.getItem('cu_vibe_presets') || 'null') || Array(5).fill(null);
+
+  function renderPresets() {
+    document.querySelectorAll('.vibe-preset-slot').forEach((slot, i) => {
+      slot.innerHTML = '';
+      const p = presets[i];
+      if (p) {
+        slot.classList.add('filled');
+        // Colour swatch: use hue + space to derive a preview colour
+        const swatchHue = (p.hue - 220 + p.warm * 0.28) % 360;
+        const swatchL = Math.max(8, Math.min(60, 8 + (p.space || 7) * 0.5));
+        slot.style.setProperty('--swatch', `hsl(${swatchHue},60%,${swatchL}%)`);
+        slot.style.cssText += ';';
+        const inner = document.createElement('div');
+        inner.style.cssText = `position:absolute;inset:0;background:hsl(${swatchHue},55%,${swatchL}%);opacity:0.9;border-radius:inherit;`;
+        const lbl = document.createElement('span');
+        lbl.className = 'preset-label';
+        lbl.textContent = i + 1;
+        slot.appendChild(inner);
+        slot.appendChild(lbl);
+      } else {
+        slot.classList.remove('filled');
+        slot.style.background = '';
+        const lbl = document.createElement('span');
+        lbl.className = 'preset-label';
+        lbl.textContent = i + 1;
+        lbl.style.opacity = '0.25';
+        slot.appendChild(lbl);
+      }
+    });
+  }
+
+  renderPresets();
+
+  let presetHoldTimer = null;
+  document.querySelectorAll('.vibe-preset-slot').forEach((slot, i) => {
+    // Click: recall preset
+    slot.addEventListener('click', () => {
+      if (presets[i]) {
+        applyVibeState(presets[i]);
+        document.querySelectorAll('.vibe-preset-slot').forEach(s => s.classList.remove('active-preset'));
+        slot.classList.add('active-preset');
+      }
+    });
+
+    // Hold: save current state into slot
+    slot.addEventListener('mousedown', () => {
+      presetHoldTimer = setTimeout(() => {
+        presets[i] = readVibeState();
+        localStorage.setItem('cu_vibe_presets', JSON.stringify(presets));
+        slot.classList.add('saving');
+        setTimeout(() => slot.classList.remove('saving'), 900);
+        renderPresets();
+        document.querySelectorAll('.vibe-preset-slot').forEach(s => s.classList.remove('active-preset'));
+        slot.classList.add('active-preset');
+        showToast(`Preset ${i + 1} saved`);
+      }, PRESET_HOLD_MS);
+    });
+    slot.addEventListener('mouseup',    () => clearTimeout(presetHoldTimer));
+    slot.addEventListener('mouseleave', () => clearTimeout(presetHoldTimer));
+    slot.addEventListener('touchstart', () => {
+      presetHoldTimer = setTimeout(() => {
+        presets[i] = readVibeState();
+        localStorage.setItem('cu_vibe_presets', JSON.stringify(presets));
+        slot.classList.add('saving');
+        setTimeout(() => slot.classList.remove('saving'), 900);
+        renderPresets();
+        showToast(`Preset ${i + 1} saved`);
+      }, PRESET_HOLD_MS);
+    }, { passive: true });
+    slot.addEventListener('touchend', () => clearTimeout(presetHoldTimer));
   });
 
   // Space slider — controls background colour directly
