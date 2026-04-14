@@ -301,36 +301,62 @@
 
     /* ── MOBILE ── */
     @media (max-width: 640px) {
+
+      /* Unlock the fixed-height deck so the page can scroll freely */
+      html, body { overflow: visible; height: auto; }
+      .deck { height: auto; }
+      .slide { position: static; display: none; }
+      .slide.active { display: flex; flex-direction: column; min-height: 100vh; }
+
       /* Cover tweaks */
-      .cover { padding: 32px 24px; gap: 14px; }
+      .cover { padding: 32px 24px; gap: 14px; height: 100svh; }
       .cover-title { font-size: clamp(26px, 8vw, 40px); }
 
-      /* Stack slide body vertically — whole column scrolls together */
-      .slide-body {
-        flex-direction: column;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        align-items: stretch;
+      /* Nav bars — sticky at top */
+      .bot-bar {
+        order: -1;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--bg);
+        padding: 0 16px;
+        height: 52px;
+        border-top: none;
+        border-bottom: 1px solid var(--rule);
+      }
+      .top-bar {
+        position: sticky;
+        top: 52px;
+        z-index: 9;
+        background: var(--bg);
+        padding: 0 16px;
+        border-bottom: 1px solid var(--rule);
+        border-top: none;
       }
 
-      /* Image: natural size, scrolls with content */
+      /* Slide body: normal block flow, no height constraints */
+      .slide-body {
+        flex-direction: column;
+        flex: none;
+      }
+
+      /* Image panel: compact, natural height */
       .img-panel {
         width: 100%;
         height: auto;
-        min-height: 220px;
-        padding: 16px;
+        padding: 16px 20px 8px;
         flex-shrink: 0;
       }
-      .img-panel img { max-height: 260px; width: auto; }
+      .img-panel img { max-height: 240px; width: auto; }
 
-      /* Info panel: natural height, no independent scrolling needed */
+      /* Info panel: full natural height, no clipping */
       .info-panel {
         flex-shrink: 0;
         justify-content: flex-start;
-        padding: 16px 20px 32px;
+        padding: 12px 20px 40px;
         border-left: none;
         border-top: 1px solid var(--rule);
-        overflow-y: visible;
+        overflow: visible;
         gap: 0;
       }
 
@@ -341,21 +367,10 @@
       .tips li  { font-size: 12px; }
       .tips-label { font-size: 9px; margin-top: 10px; }
 
-      /* Nav bar — move to top on mobile, above the image */
-      .bot-bar {
-        order: -1;
-        padding: 0 16px;
-        height: 52px;
-        border-top: none;
-        border-bottom: 1px solid var(--rule);
-      }
-      .top-bar { border-bottom: none; }
+      /* Dots: hide on mobile */
+      .dots { display: none; }
       .nav-btn { font-size: 14px; padding: 10px 22px; }
       .slide-count { font-size: 11px; }
-
-      /* Top bar */
-      .top-bar { padding: 0 16px; }
-      .dots { display: none; } /* too many dots on small screen */
       .top-label { font-size: 10px; letter-spacing: 2px; }
     }
 
@@ -752,8 +767,8 @@
     current = n;
     document.getElementById('slide-' + current).classList.add('active');
     renderDots();
-    // Reset scroll position on slide change
-    document.querySelectorAll('.slide-body').forEach(p => { p.scrollTop = 0; });
+    // Reset scroll to top on slide change (mobile: page scroll; desktop: no-op)
+    window.scrollTo(0, 0);
   }
   function next() { if (current < TOTAL) goTo(current + 1); }
   function prev() { if (current > 1)     goTo(current - 1); }
