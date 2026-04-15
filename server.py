@@ -1140,6 +1140,15 @@ _audio_dir = _os.path.join(_os.path.dirname(__file__), 'audio')
 if _os.path.isdir(_audio_dir):
     app.mount("/audio", StaticFiles(directory=_audio_dir), name="audio")
 
+# Serve yoga deck folders as static sites
+_surya_dir = _os.path.join(_os.path.dirname(__file__), 'surya-namaskar')
+if _os.path.isdir(_surya_dir):
+    app.mount("/surya-namaskar", StaticFiles(directory=_surya_dir, html=True), name="surya-namaskar")
+
+_ashtanga_dir = _os.path.join(_os.path.dirname(__file__), 'ashtanga-vinyasa')
+if _os.path.isdir(_ashtanga_dir):
+    app.mount("/ashtanga-vinyasa", StaticFiles(directory=_ashtanga_dir, html=True), name="ashtanga-vinyasa")
+
 @app.get("/studio")
 async def serve_studio():
     studio = pathlib.Path(__file__).parent / "studio.html"
