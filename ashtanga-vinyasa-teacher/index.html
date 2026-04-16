@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>Ashtanga Vinyasa · Teacher Edition</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Ashtanga Vinyasa · Sun Salutations" />
+  <meta property="og:description" content="Surya Namaskar A, B & C — Ashtanga Vinyasa practice deck with alignment tips and teacher cues · Rishikesh style." />
+  <meta property="og:image" content="og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Ashtanga Vinyasa · Sun Salutations" />
+  <meta name="twitter:image" content="og-image.png" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #FAF8F4;
+      --dark:      #2C3A4A;
+      --saffron:   #C8622A;
+      --gold:      #B8872E;
+      --text:      #2C1A08;
+      --muted:     #8B6040;
+      --rule:      #E2D5C3;
+
+      /* Series colour identities */
+      --a-accent:  #C8622A;   /* Terracotta / saffron — fire, sun rising */
+      --a-tint:    rgba(200, 98, 42, 0.55);
+      --b-accent:  #2A6B8C;   /* Deep teal / ocean — strength, depth */
+      --b-tint:    rgba(42, 107, 140, 0.55);
+      --c-accent:  #5C7A3E;   /* Forest green — earth, roots */
+      --c-tint:    rgba(92, 122, 62, 0.55);
+    }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--dark); }
+
+    /* ── SCREENS ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ═══════════════════════════════════
+       HOME SCREEN
+    ═══════════════════════════════════ */
+    #home {
+      width: 100vw;
+      height: 100vh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background: var(--dark);
+      position: relative;
+      overflow: hidden;
+    }
+    #home.active { display: flex; }
+
+    .home-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+      opacity: 0.35;
+      z-index: 0;
+    }
+    .home-content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 40px 32px;
+      max-width: 620px;
+      width: 100%;
+      text-align: center;
+    }
+    .home-om   { font-size: 68px; color: var(--gold); line-height: 1; }
+    .home-title {
+      font-family: Georgia, serif;
+      font-size: clamp(28px, 5vw, 52px);
+      color: #FAF8F4;
+      letter-spacing: 1px;
+    }
+    .home-sub {
+      font-family: Georgia, serif;
+      font-size: 12px;
+      color: var(--gold);
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+    .home-rule {
+      width: 60px; height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold), transparent);
+    }
+    .home-note {
+      font-family: Georgia, serif;
+      font-size: 13px;
+      color: rgba(250,248,244,0.55);
+      font-style: italic;
+      line-height: 1.8;
+    }
+
+    /* Series card grid */
+    .series-grid {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .series-card {
+      flex: 1;
+      min-width: 140px;
+      max-width: 170px;
+      border: 1px solid rgba(250,248,244,0.18);
+      border-radius: 6px;
+      padding: 22px 16px 18px;
+      cursor: pointer;
+      transition: transform .18s, border-color .18s, background .18s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      background: rgba(250,248,244,0.04);
+    }
+    .series-card:hover { transform: translateY(-3px); background: rgba(250,248,244,0.09); }
+    .card-a { border-color: rgba(200,98,42,0.4); }
+    .card-a:hover { border-color: var(--a-accent); }
+    .card-b { border-color: rgba(42,107,140,0.4); }
+    .card-b:hover { border-color: var(--b-accent); }
+    .card-c { border-color: rgba(92,122,62,0.4); }
+    .card-c:hover { border-color: var(--c-accent); }
+
+    .card-letter {
+      font-family: Georgia, serif;
+      font-size: 42px;
+      line-height: 1;
+      font-weight: normal;
+    }
+    .card-a .card-letter { color: var(--a-accent); }
+    .card-b .card-letter { color: var(--b-accent); }
+    .card-c .card-letter { color: var(--c-accent); }
+
+    .card-name {
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #FAF8F4;
+    }
+    .card-count {
+      font-family: Georgia, serif;
+      font-size: 11px;
+      color: rgba(250,248,244,0.45);
+      font-style: italic;
+    }
+
+    .home-credit {
+      font-family: Georgia, serif;
+      font-size: 9px;
+      color: rgba(250,248,244,0.25);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ═══════════════════════════════════
+       DECK
+    ═══════════════════════════════════ */
+    #deck-screen {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    #deck-screen.active { display: block; }
+
+    /* ── SLIDE BASE ── */
+    .deck { width: 100vw; height: 100vh; position: relative; }
+    .slide { position: absolute; inset: 0; display: none; background: var(--bg); }
+    .slide.active { display: flex; flex-direction: column; }
+
+    /* ── SERIES COVER ── */
+    .cover {
+      background: var(--dark);
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+      padding: 48px 40px;
+      height: 100vh;
+    }
+    .cover-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+      opacity: 1;
+      z-index: 0;
+    }
+    .cover-tint {
+      position: absolute; inset: 0;
+      z-index: 1;
+    }
+    .cover > *:not(.cover-bg):not(.cover-tint) { position: relative; z-index: 2; }
+
+    .cover-om   { font-size: 64px; color: #FAF8F4; line-height: 1; opacity: 0.9; }
+    .cover-series-badge {
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      border: 1px solid rgba(250,248,244,0.5);
+      border-radius: 40px;
+      color: rgba(250,248,244,0.8);
+    }
+    .cover-title {
+      font-family: Georgia, serif;
+      font-size: clamp(28px, 5vw, 52px);
+      color: #FAF8F4;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .cover-sub {
+      font-family: Georgia, serif;
+      font-size: 12px;
+      color: rgba(250,248,244,0.7);
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+    .cover-rule {
+      width: 80px; height: 1px;
+      background: linear-gradient(to right, transparent, rgba(250,248,244,0.5), transparent);
+    }
+    .cover-btn {
+      margin-top: 8px;
+      border: none;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 13px 38px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .cover-btn:hover { opacity: .82; }
+    .cover-home-btn {
+      background: transparent;
+      border: 1px solid rgba(250,248,244,0.35);
+      color: rgba(250,248,244,0.65);
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 8px 22px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .cover-home-btn:hover { opacity: 1; border-color: rgba(250,248,244,0.7); }
+    .cover-credit {
+      font-family: Georgia, serif;
+      font-size: 9px;
+      color: rgba(250,248,244,0.25);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    /* ── POSE SLIDE LAYOUT ── */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 52px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .top-left  { display: flex; align-items: center; gap: 10px; }
+    .top-om    { font-size: 18px; }
+    .top-label { font-family: Georgia, serif; font-size: 11px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+    .dots      { display: flex; gap: 5px; align-items: center; }
+    .dot       { width: 6px; height: 6px; border-radius: 50%; background: var(--rule); transition: background .3s; }
+    .dot.done  { background: var(--gold); }
+
+    .slide-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: row;
+    }
+    .img-panel {
+      width: 55%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 24px 32px;
+      background: var(--bg);
+    }
+    .img-panel img {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .info-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 32px 36px 32px 28px;
+      border-left: 1px solid var(--rule);
+      gap: 0;
+    }
+
+    .breath-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--dark);
+      color: #FAF8F4;
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 40px;
+      width: fit-content;
+      margin-bottom: 20px;
+    }
+    .breath-icon { font-size: 14px; }
+
+    .count-badge {
+      display: inline-block;
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 40px;
+      width: fit-content;
+      margin-bottom: 10px;
+      opacity: 0.75;
+    }
+
+    .sanskrit {
+      font-family: Georgia, serif;
+      font-size: clamp(20px, 2.8vw, 34px);
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .english {
+      font-family: Georgia, serif;
+      font-size: clamp(11px, 1.1vw, 13px);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-style: italic;
+      margin-bottom: 24px;
+    }
+    .divider {
+      width: 40px; height: 1px;
+      background: var(--gold);
+      margin-bottom: 24px;
+    }
+    .tips-label {
+      font-family: Georgia, serif;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .tips {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .tips li {
+      font-family: Georgia, serif;
+      font-size: clamp(11px, 1vw, 13px);
+      color: var(--text);
+      line-height: 1.55;
+      padding-left: 14px;
+      position: relative;
+    }
+    .tips li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 8px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+    }
+    .cue {
+      margin-top: 12px;
+      margin-bottom: 4px;
+      padding: 13px 16px;
+      border-left: 3px solid var(--gold);
+      background: rgba(184,135,46,0.06);
+      border-radius: 0 4px 4px 0;
+      font-family: Georgia, serif;
+      font-size: clamp(12px, 1.1vw, 14px);
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* Series-coloured accents on pose slides */
+    .series-a .top-om          { color: var(--a-accent); }
+    .series-a .dot.now         { background: var(--a-accent); transform: scale(1.35); }
+    .series-a .english         { color: var(--a-accent); }
+    .series-a .tips li::before { background: var(--a-accent); }
+    .series-a .count-badge     { border: 1px solid rgba(200,98,42,0.4); color: var(--a-accent); }
+
+    .series-b .top-om          { color: var(--b-accent); }
+    .series-b .dot.now         { background: var(--b-accent); transform: scale(1.35); }
+    .series-b .english         { color: var(--b-accent); }
+    .series-b .tips li::before { background: var(--b-accent); }
+    .series-b .count-badge     { border: 1px solid rgba(42,107,140,0.4); color: var(--b-accent); }
+
+    .series-c .top-om          { color: var(--c-accent); }
+    .series-c .dot.now         { background: var(--c-accent); transform: scale(1.35); }
+    .series-c .english         { color: var(--c-accent); }
+    .series-c .tips li::before { background: var(--c-accent); }
+    .series-c .count-badge     { border: 1px solid rgba(92,122,62,0.4); color: var(--c-accent); }
+
+    /* NAV BUTTONS */
+    .bot-bar {
+      flex-shrink: 0;
+      height: 52px;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 8px;
+    }
+    .nav-btn {
+      border: none;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 9px 22px;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 1.5px;
+      transition: opacity .2s;
+      white-space: nowrap;
+    }
+    .series-a .nav-btn { background: var(--a-accent); }
+    .series-b .nav-btn { background: var(--b-accent); }
+    .series-c .nav-btn { background: var(--c-accent); }
+
+    .nav-btn:hover:not(:disabled) { opacity: .82; }
+    .nav-btn:disabled { opacity: .2; cursor: default; }
+    .nav-btn-ghost {
+      background: transparent !important;
+      border: 1px solid rgba(44,58,74,0.3);
+      color: var(--muted) !important;
+      font-weight: normal;
+      opacity: 0.8;
+    }
+    .nav-btn-ghost:hover { opacity: 1 !important; }
+    .slide-count { font-family: Georgia, serif; font-size: 11px; color: var(--muted); letter-spacing: 2px; white-space: nowrap; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 640px) {
+      html, body { overflow: visible; height: auto; }
+      #home { height: 100svh; }
+
+      #deck-screen { height: auto; }
+      .deck { height: auto; }
+      .slide { position: static; display: none; }
+      .slide.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+      .cover { padding: 28px 20px; gap: 12px; height: 100svh; }
+      .cover-title { font-size: clamp(24px, 7.5vw, 36px); }
+
+      .bot-bar {
+        order: -1;
+        position: sticky; top: 0; z-index: 10;
+        background: var(--bg);
+        padding: 0 12px;
+        height: 48px;
+        border-top: none;
+        border-bottom: 1px solid var(--rule);
+      }
+      .top-bar {
+        position: sticky; top: 48px; z-index: 9;
+        background: var(--bg);
+        padding: 0 14px;
+        border-top: none;
+      }
+      .slide-body { flex-direction: column; flex: none; }
+      .img-panel { width: 100%; height: auto; padding: 14px 16px 6px; flex-shrink: 0; }
+      .img-panel img { max-height: 210px; width: auto; }
+      .info-panel {
+        flex-shrink: 0; justify-content: flex-start;
+        padding: 10px 16px 36px;
+        border-left: none; border-top: 1px solid var(--rule);
+        overflow: visible; gap: 0;
+      }
+      .sanskrit { font-size: clamp(20px, 5.5vw, 28px); margin-top: 4px; }
+      .english  { font-size: 10px; letter-spacing: 3px; }
+      .cue      { font-size: 12px; margin-top: 8px; padding: 9px 10px; }
+      .tips li  { font-size: 11px; }
+      .tips-label { font-size: 9px; margin-top: 8px; }
+      .dots { display: none; }
+      .nav-btn { font-size: 12px; padding: 8px 16px; }
+      .slide-count { font-size: 10px; }
+      .top-label { font-size: 10px; letter-spacing: 2px; }
+      .home-content { padding: 28px 20px; gap: 14px; }
+      .series-grid { gap: 10px; }
+      .series-card { min-width: 100px; max-width: 130px; padding: 16px 10px; }
+      .card-letter { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     HOME SCREEN
+══════════════════════════════════════════════ -->
+<div id="home" class="active">
+  <img class="home-bg" src="cover-photo.jpg" alt="" />
+  <div class="home-content">
+    <div class="home-om">ॐ</div>
+    <div class="home-title">Ashtanga Vinyasa</div>
+    <div class="home-sub">Sun Salutations</div>
+    <div class="home-rule"></div>
+    <div class="home-note">Select a series to begin your practice</div>
+    <div class="series-grid">
+      <div class="series-card card-a" onclick="startSeries('a')">
+        <div class="card-letter">A</div>
+        <div class="card-name">Series A</div>
+        <div class="card-count">9 vinyasa</div>
+      </div>
+      <div class="series-card card-b" onclick="startSeries('b')">
+        <div class="card-letter">B</div>
+        <div class="card-name">Series B</div>
+        <div class="card-count">17 vinyasa</div>
+      </div>
+      <div class="series-card card-c" onclick="startSeries('c')">
+        <div class="card-letter">C</div>
+        <div class="card-name">Series C</div>
+        <div class="card-count">12 vinyasa</div>
+      </div>
+    </div>
+    <div class="home-credit">Shubhaum Chauhan &middot; Rishikesh 2026</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     DECK SCREEN
+══════════════════════════════════════════════ -->
+<div id="deck-screen">
+<div class="deck" id="deck">
+
+<!-- ═══════════════════════
+     SERIES A
+═══════════════════════ -->
+
+<!-- A: Cover -->
+<div class="slide cover series-a" id="sa-0">
+  <img class="cover-bg" src="cover-photo.jpg" alt="" />
+  <div class="cover-tint" style="background: var(--a-tint);"></div>
+  <div class="cover-om">ॐ</div>
+  <div class="cover-series-badge" style="border-color:rgba(250,248,244,0.5)">Series A</div>
+  <div class="cover-title">Surya Namaskar A</div>
+  <div class="cover-sub">Ashtanga Vinyasa · 9 Vinyasa</div>
+  <div class="cover-rule"></div>
+  <button class="cover-btn" style="background:var(--a-accent)" onclick="goTo('a',1)">Begin</button>
+  <button class="cover-home-btn" onclick="goHome()">← All Series</button>
+  <div class="cover-credit">Shubhaum Chauhan &middot; Rishikesh 2026</div>
+</div>
+
+<!-- A1: Samasthiti -->
+<div class="slide series-a" id="sa-1">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Ekam · 1 of 9</span></div>
+    <div class="dots" id="da-1"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-01-samasthiti.png" alt="Samasthiti"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">—</span> Standing · Neutral</div>
+      <div class="sanskrit">Samasthiti</div>
+      <div class="english">Equal Standing</div>
+      <div class="divider"></div>
+      <div class="cue">Stand at Samasthiti. Feet together, spine tall, Ujjayi breath established. Prepare to begin.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Feet together, big toes touching — weight evenly across all four corners of both feet</li>
+        <li>Spine long, tailbone descending — engage the thigh muscles, lift the kneecaps</li>
+        <li>Arms at sides, palms open — shoulders relaxed back and down, chest broad</li>
+        <li>Drishti: Nasagrai — soft gaze toward the tip of the nose, eyes relaxed</li>
+        <li>Establish Ujjayi breath here before moving — steady, even, nasal breathing</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+    <span class="slide-count">1 / 9</span>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A2: Urdhva Hastasana -->
+<div class="slide series-a" id="sa-2">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Ekam · 2 of 9</span></div>
+    <div class="dots" id="da-2"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-02-urdhva-hastasana.png" alt="Urdhva Hastasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Ekam</div>
+      <div class="sanskrit">Urdhva Hastasana</div>
+      <div class="english">Raised Arms · Arms Overhead</div>
+      <div class="divider"></div>
+      <div class="cue">Ekam — Inhale, sweep arms overhead, palms joined, slight backbend. Gaze to the thumbs.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Sweep the arms up and join the palms overhead — inner arms beside the ears</li>
+        <li>Lift from the navel center, draw the shoulders down away from the ears</li>
+        <li>Gentle upper backbend — the thoracic spine opens, not the lumbar</li>
+        <li>Drishti: Angustha Madhye — gaze to the thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">2 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A3: Uttanasana -->
+<div class="slide series-a" id="sa-3">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Dve · 3 of 9</span></div>
+    <div class="dots" id="da-3"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-03-uttanasana.png" alt="Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Dve</div>
+      <div class="sanskrit">Uttanasana</div>
+      <div class="english">Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Dve — Exhale, fold forward, hands to the floor beside the feet, head toward the knees.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Fold deeply forward from the hips — palms flat on the floor beside the feet</li>
+        <li>Legs straight, kneecaps lifted — fold leads from chest, not from rounding the back</li>
+        <li>Head releases fully down toward shins — neck relaxed, crown heavy</li>
+        <li>Drishti: Nasagrai — gaze to nose tip</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">3 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A4: Ardha Uttanasana -->
+<div class="slide series-a" id="sa-4">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Trini · 4 of 9</span></div>
+    <div class="dots" id="da-4"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-04-ardha-uttanasana.png" alt="Ardha Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Trini</div>
+      <div class="sanskrit">Ardha Uttanasana</div>
+      <div class="english">Half Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Trini — Inhale, lengthen the chest forward, long flat spine, crown reaching forward.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Lift the chest and lengthen the spine — torso becomes parallel to the floor</li>
+        <li>Fingertips or palms to shins / floor — spine fully extended, neck long</li>
+        <li>Legs straight, draw the diaphragm forward — find length through the crown of the head</li>
+        <li>Drishti: Nasagrai or Broomadhye — nose tip or third eye</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">4 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A5: Chaturanga -->
+<div class="slide series-a" id="sa-5">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Catvari · 5 of 9</span></div>
+    <div class="dots" id="da-5"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Catvari</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Catvari — Exhale, step or jump back, lower to Chaturanga — body parallel, elbows 90°.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Step or jump back — body hovers parallel to the floor, elbows bent to 90°</li>
+        <li>Elbows hug the ribcage, pointing directly back — collarbone broad</li>
+        <li>Core engaged, hips in line with shoulders — do not let hips sag or lift</li>
+        <li>Drishti: Nasagrai — gaze to nose tip</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">5 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A6: Urdhva Mukha -->
+<div class="slide series-a" id="sa-6">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Pañca · 6 of 9</span></div>
+    <div class="dots" id="da-6"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Pañca</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Pañca — Inhale, roll the toes, straighten the arms, lift the chest — Upward Dog, thighs off the floor.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll over the toes — arms straight, chest lifted, thighs and knees off the floor</li>
+        <li>Roll the shoulders back and down — collarbones wide, sternum lifts forward and up</li>
+        <li>Tops of the feet press into the mat — legs engaged but relaxed at the hips</li>
+        <li>Drishti: Nasagrai or Broomadhye — nose tip or upward between the brows</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">6 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A7: Adho Mukha — HOLD 5 BREATHS -->
+<div class="slide series-a" id="sa-7">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Sat · 7 of 9</span></div>
+    <div class="dots" id="da-7"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-07-adho-mukha.png" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Sat</div>
+      <div class="count-badge">Hold · 5 Ujjayi Breaths</div>
+      <div class="sanskrit">Adho Mukha Svanasana</div>
+      <div class="english">Downward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Sat — Exhale, hips up and back. Hold 5 Ujjayi breaths. Long spine, heels reaching down.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll back over the toes, hips lift high — body forms a clear inverted V</li>
+        <li>Spread the fingers, press through the index finger knuckles — arms externally rotated</li>
+        <li>Spine long, tailbone toward the sky — heels press toward the floor</li>
+        <li>Hold for exactly 5 full Ujjayi breaths before stepping forward</li>
+        <li>Drishti: Nabi — navel gaze</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">7 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A8: Uttanasana return -->
+<div class="slide series-a" id="sa-8">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Sapta / Astau · 8 of 9</span></div>
+    <div class="dots" id="da-8"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-08-uttanasana-b.png" alt="Uttanasana return"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑↓</span> Inhale then Exhale</div>
+      <div class="count-badge">Sapta · Inhale forward · Astau · Exhale fold</div>
+      <div class="sanskrit">Uttanasana</div>
+      <div class="english">Return Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Sapta — Inhale, step/jump forward, lengthen the chest. Astau — Exhale, fold into Uttanasana.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Sapta — Inhale, step or jump feet to hands, lift the chest to Ardha Uttanasana</li>
+        <li>Astau — Exhale, fold fully into Uttanasana, hands to floor or shins</li>
+        <li>Mirror of poses 3 & 4 — re-establish the same deep forward fold</li>
+        <li>Drishti: Nasagrai — nose tip throughout</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">8 / 9</span>
+    </div>
+    <button class="nav-btn" onclick="nextA()">Next →</button>
+  </div>
+</div>
+
+<!-- A9: Return to Samasthiti -->
+<div class="slide series-a" id="sa-9">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">A · Nava · 9 of 9</span></div>
+    <div class="dots" id="da-9"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-09-samasthiti-return.png" alt="Return Samasthiti"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Nava</div>
+      <div class="sanskrit">Samasthiti</div>
+      <div class="english">Return to Equal Standing</div>
+      <div class="divider"></div>
+      <div class="cue">Nava — Inhale, rise with arms overhead. Exhale — Samasthiti. One round of Series A complete.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Nava — Inhale, rise with arms sweeping overhead, palms joined, gaze to thumbs</li>
+        <li>Samasthiti — Exhale, lower the arms back to your sides, return to stillness</li>
+        <li>Stand for one complete breath — observe the heat, the heartbeat, the shift in prana</li>
+        <li>Traditionally repeated 5 times before moving to Series B</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevA()">← Back</button>
+    <span class="slide-count">9 / 9</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+      <button class="nav-btn" onclick="goTo('a',1)">⟳ Repeat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════
+     SERIES B
+═══════════════════════ -->
+
+<!-- B: Cover -->
+<div class="slide cover series-b" id="sb-0">
+  <img class="cover-bg" src="cover-photo.jpg" alt="" />
+  <div class="cover-tint" style="background: var(--b-tint);"></div>
+  <div class="cover-om">ॐ</div>
+  <div class="cover-series-badge">Series B</div>
+  <div class="cover-title">Surya Namaskar B</div>
+  <div class="cover-sub">Ashtanga Vinyasa · 17 Vinyasa</div>
+  <div class="cover-rule"></div>
+  <button class="cover-btn" style="background:var(--b-accent)" onclick="goTo('b',1)">Begin</button>
+  <button class="cover-home-btn" onclick="goHome()">← All Series</button>
+  <div class="cover-credit">Shubhaum Chauhan &middot; Rishikesh 2026</div>
+</div>
+
+<!-- B1: Utkatasana -->
+<div class="slide series-b" id="sb-1">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Ekam · 1 of 17</span></div>
+    <div class="dots" id="db-1"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="b-pose-01-utkatasana.png" alt="Utkatasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Ekam</div>
+      <div class="sanskrit">Utkatasana</div>
+      <div class="english">Chair Pose · Fierce Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Ekam — Inhale, sink the hips, arms sweep up, palms joined overhead — Utkatasana.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Bend the knees deeply, hips sitting back over the heels — find the line from sitting bones to fingertips</li>
+        <li>Raise the arms and join the palms overhead — shoulders down, spine long</li>
+        <li>Lift from the front of the hip bones — do not let the lower back collapse</li>
+        <li>Drishti: Angustha Madhye — gaze to the thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+    <span class="slide-count">1 / 17</span>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B2: Uttanasana -->
+<div class="slide series-b" id="sb-2">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Dve · 2 of 17</span></div>
+    <div class="dots" id="db-2"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-03-uttanasana.png" alt="Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Dve</div>
+      <div class="sanskrit">Uttanasana</div>
+      <div class="english">Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Dve — Exhale, straighten the legs, fold forward, hands to the floor.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Straighten the legs and fold forward — hands to the floor beside the feet</li>
+        <li>Head releases toward the legs — chest drawn down, crown heavy</li>
+        <li>Kneecaps lifting, hamstrings lengthening — fold from the hip joints</li>
+        <li>Drishti: Nasagrai — nose tip</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">2 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B3: Ardha Uttanasana -->
+<div class="slide series-b" id="sb-3">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Trini · 3 of 17</span></div>
+    <div class="dots" id="db-3"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-04-ardha-uttanasana.png" alt="Ardha Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Trini</div>
+      <div class="sanskrit">Ardha Uttanasana</div>
+      <div class="english">Half Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Trini — Inhale, lengthen the chest forward, long flat spine.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Lift the chest, spine long and parallel to the floor — draw the diaphragm forward</li>
+        <li>Fingertips to shins or floor — crown of the head reaches forward</li>
+        <li>Legs firm, lift the kneecaps — maintain length from tailbone to crown</li>
+        <li>Drishti: Nasagrai or Broomadhye</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">3 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B4: Chaturanga -->
+<div class="slide series-b" id="sb-4">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Catvari · 4 of 17</span></div>
+    <div class="dots" id="db-4"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Catvari</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Catvari — Exhale, step or jump back, lower to Chaturanga, body parallel.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Step or jump back — lower to Chaturanga with control, elbows 90° at ribs</li>
+        <li>Body parallel to the floor — core active, hips level with shoulders</li>
+        <li>Collarbone broad, elbows hugging the torso — no sag in the hips</li>
+        <li>Drishti: Nasagrai</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">4 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B5: Urdhva Mukha -->
+<div class="slide series-b" id="sb-5">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Pañca · 5 of 17</span></div>
+    <div class="dots" id="db-5"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Pañca</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Pañca — Inhale, roll the toes, straighten arms, lift the chest — Upward Dog.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll over the toes, straighten the arms — chest lifts, thighs and knees off the floor</li>
+        <li>Shoulders roll back and down — collarbones wide, sternum forward and up</li>
+        <li>Tops of feet pressed into the mat — legs engaged but not gripping</li>
+        <li>Drishti: Nasagrai or gently upward</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">5 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B6: Adho Mukha (transition, no hold) -->
+<div class="slide series-b" id="sb-6">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Sat · 6 of 17</span></div>
+    <div class="dots" id="db-6"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-07-adho-mukha.png" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Sat</div>
+      <div class="count-badge">Transition — no 5-breath hold here</div>
+      <div class="sanskrit">Adho Mukha Svanasana</div>
+      <div class="english">Downward-Facing Dog · Transition</div>
+      <div class="divider"></div>
+      <div class="cue">Sat — Exhale, hips up to Downward Dog. Pivot the left heel in. Step the right foot forward — prepare for Warrior I.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll back over the toes, hips lift high — inverted V, long spine</li>
+        <li>In Series B the first Down Dog is a transition only — do not hold 5 breaths here</li>
+        <li>Pivot the left heel inward 45° to prepare for Virabhadrasana on the right</li>
+        <li>Drishti: Nabi — navel</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">6 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B7: Virabhadrasana A Right -->
+<div class="slide series-b" id="sb-7">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Sapta · 7 of 17</span></div>
+    <div class="dots" id="db-7"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="b-pose-07-virabhadrasana-right.png" alt="Virabhadrasana A Right"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Sapta</div>
+      <div class="sanskrit">Virabhadrasana I</div>
+      <div class="english">Warrior I · Right Leg Forward</div>
+      <div class="divider"></div>
+      <div class="cue">Sapta — Inhale, right foot forward, rise into Warrior I. Knee over ankle, hips square, arms up.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Right foot steps forward between the hands — rise up, palms joined overhead</li>
+        <li>Front knee over the ankle at 90° — back foot at 45°, heel grounded</li>
+        <li>Torso square to the front — draw the left hip forward, right hip back</li>
+        <li>Arms beside the ears, shoulders released — extend from sitting bones to fingertips</li>
+        <li>Drishti: Angustha Madhye — thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">7 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B8: Chaturanga -->
+<div class="slide series-b" id="sb-8">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Ashta · 8 of 17</span></div>
+    <div class="dots" id="db-8"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Ashta</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Ashta — Exhale, hands to floor, step back into Chaturanga.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Hands to the floor on either side of the right foot — step the right foot back</li>
+        <li>Lower with control to Chaturanga — body parallel, elbows 90° at ribs</li>
+        <li>Core braced, hips level — no sagging, no piking</li>
+        <li>Drishti: Nasagrai</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">8 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B9: Urdhva Mukha -->
+<div class="slide series-b" id="sb-9">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Nava · 9 of 17</span></div>
+    <div class="dots" id="db-9"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Nava</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Nava — Inhale, Upward Dog. Roll the toes, lift the chest, thighs off the mat.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll over the toes, straighten the arms — chest lifts high, thighs off the floor</li>
+        <li>Shoulders back and down — same quality as before, each repetition deepens the opening</li>
+        <li>Drishti: Nasagrai or upward gaze</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">9 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B10: Adho Mukha (transition) -->
+<div class="slide series-b" id="sb-10">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Dasha · 10 of 17</span></div>
+    <div class="dots" id="db-10"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-07-adho-mukha.png" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Dasha</div>
+      <div class="count-badge">Transition — pivot right heel in for left Warrior</div>
+      <div class="sanskrit">Adho Mukha Svanasana</div>
+      <div class="english">Downward Dog · Transition</div>
+      <div class="divider"></div>
+      <div class="cue">Dasha — Exhale, Downward Dog. Pivot the right heel in. Prepare for left-leg Warrior I.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Exhale, hips up and back to Downward Dog — transition pose, do not hold</li>
+        <li>Pivot the right heel inward 45° — prepare to step the left foot forward</li>
+        <li>Keep the gaze stable and the breath even as you move through the transition</li>
+        <li>Drishti: Nabi</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">10 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B11: Virabhadrasana A Left -->
+<div class="slide series-b" id="sb-11">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Eka Dasha · 11 of 17</span></div>
+    <div class="dots" id="db-11"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="b-pose-11-virabhadrasana-left.png" alt="Virabhadrasana A Left"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Eka Dasha</div>
+      <div class="sanskrit">Virabhadrasana I</div>
+      <div class="english">Warrior I · Left Leg Forward</div>
+      <div class="divider"></div>
+      <div class="cue">Eka Dasha — Inhale, left foot forward, rise into Warrior I. Left knee over ankle, torso square, arms up.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Left foot steps forward between the hands — rise, palms joined overhead</li>
+        <li>Left knee over the ankle — right foot at 45°, right heel grounded</li>
+        <li>Draw the right hip forward to square the torso to the front</li>
+        <li>Identical to pose 7 on the opposite side — bring the same quality and length</li>
+        <li>Drishti: Angustha Madhye — thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">11 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B12: Chaturanga -->
+<div class="slide series-b" id="sb-12">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Dve Dasha · 12 of 17</span></div>
+    <div class="dots" id="db-12"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Dve Dasha</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Dve Dasha — Exhale, hands to floor, step back to Chaturanga.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Hands to the floor beside the left foot — step the left foot back</li>
+        <li>Lower with control to Chaturanga — third time this sequence, same precision</li>
+        <li>No compensation — keep the elbows tracking directly back, body parallel</li>
+        <li>Drishti: Nasagrai</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">12 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B13: Urdhva Mukha -->
+<div class="slide series-b" id="sb-13">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Trayodasha · 13 of 17</span></div>
+    <div class="dots" id="db-13"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Trayodasha</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Trayodasha — Inhale, Upward Dog. Roll the toes, lift the chest, thighs off the mat.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Roll over the toes — chest lifts, arms straight, thighs off the mat</li>
+        <li>Roll the shoulders back and down each time — opening deepens with repetition</li>
+        <li>Drishti: Nasagrai or upward</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">13 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B14: Adho Mukha — HOLD 5 BREATHS -->
+<div class="slide series-b" id="sb-14">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Caturdasha · 14 of 17</span></div>
+    <div class="dots" id="db-14"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-07-adho-mukha.png" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Caturdasha</div>
+      <div class="count-badge">Hold · 5 Ujjayi Breaths</div>
+      <div class="sanskrit">Adho Mukha Svanasana</div>
+      <div class="english">Downward Dog · 5-Breath Hold</div>
+      <div class="divider"></div>
+      <div class="cue">Caturdasha — Exhale, Downward Dog. Hold 5 Ujjayi breaths. Long spine, steady gaze.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Hips high, body in a clear inverted V — this is the final resting Down Dog in Series B</li>
+        <li>Hold for 5 full Ujjayi breaths — feet hip-width apart, heels pressing toward the floor</li>
+        <li>Spine long from tailbone to crown — outer edges of the feet pressing down</li>
+        <li>Drishti: Nabi — navel</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">14 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B15/16: Uttanasana return -->
+<div class="slide series-b" id="sb-15">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Pañcadasha / Shodasha · 15 of 17</span></div>
+    <div class="dots" id="db-15"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-08-uttanasana-b.png" alt="Uttanasana return"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑↓</span> Inhale then Exhale</div>
+      <div class="count-badge">Pañcadasha · Inhale · Shodasha · Exhale</div>
+      <div class="sanskrit">Uttanasana</div>
+      <div class="english">Return Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Pañcadasha — Inhale, step/jump forward, lengthen. Shodasha — Exhale, fold into Uttanasana.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Pañcadasha — Inhale, step or jump feet to hands, lift chest to Ardha Uttanasana</li>
+        <li>Shodasha — Exhale, fold fully into Uttanasana, hands to the floor</li>
+        <li>Mirror of poses 2 & 3 — same quality of fold returning as beginning</li>
+        <li>Drishti: Nasagrai</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">15 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B16: Utkatasana return -->
+<div class="slide series-b" id="sb-16">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Saptadasha · 16 of 17</span></div>
+    <div class="dots" id="db-16"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="b-pose-01-utkatasana.png" alt="Utkatasana return"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale · Saptadasha</div>
+      <div class="sanskrit">Utkatasana</div>
+      <div class="english">Chair Pose · Return</div>
+      <div class="divider"></div>
+      <div class="cue">Saptadasha — Inhale, bend the knees, arms up into Utkatasana — mirror the opening pose.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Saptadasha — Inhale, bend the knees deep, hips back, arms sweep up, palms joined</li>
+        <li>Return to the same depth as the opening Utkatasana — mirror the beginning</li>
+        <li>Spine long, core lifted — resist the fatigue and find the same quality as pose 1</li>
+        <li>Drishti: Angustha Madhye — thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">16 / 17</span>
+    </div>
+    <button class="nav-btn" onclick="nextB()">Next →</button>
+  </div>
+</div>
+
+<!-- B17: Samasthiti -->
+<div class="slide series-b" id="sb-17">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">B · Samasthiti · 17 of 17</span></div>
+    <div class="dots" id="db-17"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-01-samasthiti.png" alt="Samasthiti"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale · Samasthiti</div>
+      <div class="sanskrit">Samasthiti</div>
+      <div class="english">Equal Standing · Return</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale — Samasthiti. One round of Series B complete. Stand. Breathe. Observe.</div>
+      <div class="tips-label">Alignment &amp; Drishti</div>
+      <ul class="tips">
+        <li>Exhale, straighten the legs, lower the arms to the sides — Samasthiti</li>
+        <li>Stand still for one complete breath — feel the heat, the heartbeat, the expansion of prana</li>
+        <li>One full round of Series B complete — typically repeated 5 times in traditional practice</li>
+        <li>Drishti: Nasagrai — return to a soft inward gaze</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevB()">← Back</button>
+    <span class="slide-count">17 / 17</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+      <button class="nav-btn" onclick="goTo('b',1)">⟳ Repeat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════
+     SERIES C
+═══════════════════════ -->
+
+<!-- C: Cover -->
+<div class="slide cover series-c" id="sc-0">
+  <img class="cover-bg" src="cover-photo.jpg" alt="" />
+  <div class="cover-tint" style="background: var(--c-tint);"></div>
+  <div class="cover-om">ॐ</div>
+  <div class="cover-series-badge">Series C</div>
+  <div class="cover-title">Surya Namaskar C</div>
+  <div class="cover-sub">Ashtanga Vinyasa · 12 Vinyasa</div>
+  <div class="cover-rule"></div>
+  <button class="cover-btn" style="background:var(--c-accent)" onclick="goTo('c',1)">Begin</button>
+  <button class="cover-home-btn" onclick="goHome()">← All Series</button>
+  <div class="cover-credit">Shubhaum Chauhan &middot; Rishikesh 2026</div>
+</div>
+
+<!-- C1: Samasthiti -->
+<div class="slide series-c" id="sc-1">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 1 of 12</span></div>
+    <div class="dots" id="dc-1"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-01-samasthiti.png" alt="Samasthiti"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">—</span> Standing · Neutral</div>
+      <div class="sanskrit">Samasthiti</div>
+      <div class="english">Equal Standing · Opening</div>
+      <div class="divider"></div>
+      <div class="cue">Begin at Samasthiti. Stand tall, breathe, set your intention. Ujjayi breath established.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Stand tall, feet together or hip-width apart — weight evenly distributed</li>
+        <li>Spine long, shoulders back and down — chest open, arms at sides</li>
+        <li>Establish Ujjayi breath before beginning — steady, even, nasal breathing</li>
+        <li>Set your intention and find stillness before the first movement</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+    <span class="slide-count">1 / 12</span>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C2: Arms up -->
+<div class="slide series-c" id="sc-2">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 2 of 12</span></div>
+    <div class="dots" id="dc-2"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-02-urdhva-hastasana.png" alt="Urdhva Hastasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale</div>
+      <div class="sanskrit">Urdhva Hastasana</div>
+      <div class="english">Arms Raised · Upward Salute</div>
+      <div class="divider"></div>
+      <div class="cue">Inhale, lift the arms to the sky, side body long, gentle backbend.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Inhale, lift the arms up overhead — palms together or shoulder-width apart</li>
+        <li>Side body extends fully — lift from the core, shoulders down</li>
+        <li>Gentle upper back arch if comfortable — chest opens upward</li>
+        <li>Gaze follows the hands upward</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">2 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C3: Uttanasana -->
+<div class="slide series-c" id="sc-3">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 3 of 12</span></div>
+    <div class="dots" id="dc-3"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-03-uttanasana.png" alt="Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale</div>
+      <div class="sanskrit">Uttanasana</div>
+      <div class="english">Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, fold forward, hands to the floor, head toward the knees — Uttanasana.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Exhale, fold forward from the hips — keep the spine long as you descend</li>
+        <li>Hands to the floor, fingertips or palms — bend the knees if needed to reach</li>
+        <li>Crown of the head heavy toward the shins — neck relaxed completely</li>
+        <li>Shift weight slightly forward into the toes</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">3 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C4: Ardha Uttanasana -->
+<div class="slide series-c" id="sc-4">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 4 of 12</span></div>
+    <div class="dots" id="dc-4"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-04-ardha-uttanasana.png" alt="Ardha Uttanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale</div>
+      <div class="sanskrit">Ardha Uttanasana</div>
+      <div class="english">Half Standing Forward Fold</div>
+      <div class="divider"></div>
+      <div class="cue">Inhale, lengthen the chest forward, long flat spine — plant the hands ready to step back.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Inhale, lengthen the spine — chest lifts, torso parallel to the floor</li>
+        <li>Firm the hands on the floor or shins — draw the crown of the head forward</li>
+        <li>Legs strong, spine extending — prepare for the right-leg lunge to follow</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">4 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C5: Virabhadrasana I right -->
+<div class="slide series-c" id="sc-5">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 5 of 12</span></div>
+    <div class="dots" id="dc-5"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="c-pose-05-anjaneyasana-right.png" alt="Virabhadrasana I Right"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓↑</span> Exhale then Inhale</div>
+      <div class="sanskrit">Virabhadrasana I</div>
+      <div class="english">Warrior I · Right Leg Forward</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, step the right foot back into Virabhadrasana I — back knee lifted, hips square. Inhale, arms sweep up overhead, heart open.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Exhale — step the right foot back, back knee lifted, ground the outer edge of the back foot</li>
+        <li>Inhale — lift both arms overhead, palms together, chest open, gentle backbend</li>
+        <li>Left knee stays directly over the left ankle — shin vertical</li>
+        <li>Sink the hips toward the floor, draw the tailbone down — open the hip flexors</li>
+        <li>Gaze upward toward the joined thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">5 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C6: Chaturanga -->
+<div class="slide series-c" id="sc-6">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 6 of 12</span></div>
+    <div class="dots" id="dc-6"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, hands down, tuck the back toes, step back into low plank — Chaturanga Dandasana.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Hands to the floor, curl the back toes — step or jump back to high plank first</li>
+        <li>Lower with control to Chaturanga — elbows at 90°, body parallel</li>
+        <li>Keep the core fully engaged through the transition from the lunge</li>
+        <li>Elbows hug the ribcage — no splaying outward</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">6 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C7: Urdhva Mukha -->
+<div class="slide series-c" id="sc-7">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 7 of 12</span></div>
+    <div class="dots" id="dc-7"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Inhale, roll the toes, lift the chest into Upward Dog — arms straight, thighs off the mat.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Roll over the toes — arms straight, chest lifting, thighs and knees off the floor</li>
+        <li>Shoulders back and down, collarbones broad — sternum lifts forward and up</li>
+        <li>Tops of feet pressing into the mat — legs active but not gripping</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">7 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C8: Adho Mukha — 3-5 breaths -->
+<div class="slide series-c" id="sc-8">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 8 of 12</span></div>
+    <div class="dots" id="dc-8"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-07-adho-mukha.png" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale</div>
+      <div class="count-badge">Hold · 3–5 Breaths</div>
+      <div class="sanskrit">Adho Mukha Svanasana</div>
+      <div class="english">Downward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, hips up and back — Downward Dog. Hold 3–5 breaths, then step the left foot forward.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Hips lift back and up — clear inverted V, spine long, heels toward the floor</li>
+        <li>Hold for 3–5 full Ujjayi breaths in Series C practice</li>
+        <li>Spread the fingers, press through the knuckles — arms externally rotated</li>
+        <li>Use this hold to settle the breath before stepping into the left-leg lunge</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">8 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C9: Virabhadrasana I left -->
+<div class="slide series-c" id="sc-9">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 9 of 12</span></div>
+    <div class="dots" id="dc-9"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="c-pose-13-anjaneyasana-left.png" alt="Virabhadrasana I Left"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓↑</span> Exhale then Inhale</div>
+      <div class="sanskrit">Virabhadrasana I</div>
+      <div class="english">Warrior I · Left Leg Forward</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, step the left foot back into Virabhadrasana I — back knee lifted, hips square. Inhale, arms sweep up overhead.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Exhale — step the left foot back (or drop left knee from Down Dog), knee to mat, untuck toes</li>
+        <li>Inhale — arms sweep overhead, palms together, heart open, gentle backbend</li>
+        <li>Right knee directly over the right ankle — mirror of pose 5 on the other side</li>
+        <li>Hips sinking forward and down — hip flexors opening on the left side</li>
+        <li>Gaze upward to the joined thumbs</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">9 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C10: Chaturanga -->
+<div class="slide series-c" id="sc-10">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 10 of 12</span></div>
+    <div class="dots" id="dc-10"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-05-chaturanga.png" alt="Chaturanga Dandasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓</span> Exhale</div>
+      <div class="sanskrit">Chaturanga Dandasana</div>
+      <div class="english">Four-Limbed Staff Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Exhale, hands down, step back to plank, lower into Chaturanga Dandasana.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Hands to the floor, curl the back toes, lift the left knee — step back to plank</li>
+        <li>Lower to Chaturanga with the same control as before — elbows 90°, body parallel</li>
+        <li>Maintain engagement in the core and legs throughout the transition</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">10 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C11: Urdhva Mukha -->
+<div class="slide series-c" id="sc-11">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 11 of 12</span></div>
+    <div class="dots" id="dc-11"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-06-urdhva-mukha.png" alt="Urdhva Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↑</span> Inhale</div>
+      <div class="sanskrit">Urdhva Mukha Svanasana</div>
+      <div class="english">Upward-Facing Dog</div>
+      <div class="divider"></div>
+      <div class="cue">Inhale, roll the toes, lift the chest — Upward Dog. Arms straight, thighs off the mat.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Roll over the toes — arms straight, chest lifts high, thighs and knees off the mat</li>
+        <li>Shoulders back and down — feel the full opening of the front body after the lunges</li>
+        <li>Long neck, gaze forward or slightly upward</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂</button>
+      <span class="slide-count">11 / 12</span>
+    </div>
+    <button class="nav-btn" onclick="nextC()">Next →</button>
+  </div>
+</div>
+
+<!-- C12: Return to Samasthiti -->
+<div class="slide series-c" id="sc-12">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">C · 12 of 12</span></div>
+    <div class="dots" id="dc-12"></div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="a-pose-09-samasthiti-return.png" alt="Return to Samasthiti"></div>
+    <div class="info-panel">
+      <div class="breath-pill"><span class="breath-icon">↓↑↓</span> Exhale · Inhale · Exhale</div>
+      <div class="sanskrit">Samasthiti</div>
+      <div class="english">Return to Equal Standing</div>
+      <div class="divider"></div>
+      <div class="cue">Walk forward, fold, then rise with arms up — Exhale, return to Samasthiti. One round of Series C complete.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Exhale — push back to Adho Mukha Svanasana from Up Dog</li>
+        <li>Walk or step the feet to the hands — Inhale, lengthen the chest to Ardha Uttanasana</li>
+        <li>Exhale, fold to Uttanasana — Inhale, rise with arms sweeping overhead</li>
+        <li>Exhale, lower the arms back to Samasthiti — one round complete</li>
+      </ul>
+      
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prevC()">← Back</button>
+    <span class="slide-count">12 / 12</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goHome()">⌂ Home</button>
+      <button class="nav-btn" onclick="goTo('c',1)">⟳ Repeat</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+</div><!-- /deck-screen -->
+
+<script>
+  // ── State ──
+  const TOTALS = { a: 9, b: 17, c: 12 };
+  let activeSeries = null;
+  let currentIdx = { a: 0, b: 0, c: 0 };
+
+  // ── Navigation ──
+  function startSeries(s) {
+    document.getElementById('home').classList.remove('active');
+    document.getElementById('deck-screen').classList.remove('active');
+    activeSeries = s;
+    goTo(s, 0);
+    document.getElementById('deck-screen').classList.add('active');
+  }
+
+  function goHome() {
+    // Hide current slide
+    if (activeSeries) {
+      const cur = document.getElementById('s' + activeSeries + '-' + currentIdx[activeSeries]);
+      if (cur) cur.classList.remove('active');
+    }
+    document.getElementById('deck-screen').classList.remove('active');
+    document.getElementById('home').classList.add('active');
+    window.scrollTo(0, 0);
+    activeSeries = null;
+  }
+
+  function goTo(s, n) {
+    if (activeSeries && activeSeries !== s) {
+      const prev = document.getElementById('s' + activeSeries + '-' + currentIdx[activeSeries]);
+      if (prev) prev.classList.remove('active');
+    }
+    const prev = document.getElementById('s' + s + '-' + currentIdx[s]);
+    if (prev) prev.classList.remove('active');
+    currentIdx[s] = n;
+    activeSeries = s;
+    const next = document.getElementById('s' + s + '-' + n);
+    if (next) next.classList.add('active');
+    renderDots(s, n);
+    window.scrollTo(0, 0);
+  }
+
+  function nextA() { if (currentIdx.a < TOTALS.a) goTo('a', currentIdx.a + 1); }
+  function prevA() { if (currentIdx.a > 1) goTo('a', currentIdx.a - 1); }
+  function nextB() { if (currentIdx.b < TOTALS.b) goTo('b', currentIdx.b + 1); }
+  function prevB() { if (currentIdx.b > 1) goTo('b', currentIdx.b - 1); }
+  function nextC() { if (currentIdx.c < TOTALS.c) goTo('c', currentIdx.c + 1); }
+  function prevC() { if (currentIdx.c > 1) goTo('c', currentIdx.c - 1); }
+
+  // ── Dots ──
+  function renderDots(s, active) {
+    const total = TOTALS[s];
+    // Only render up to 17 dots — hide on mobile anyway
+    for (let i = 1; i <= total; i++) {
+      const c = document.getElementById('d' + s + '-' + i);
+      if (!c) continue;
+      c.innerHTML = '';
+      for (let j = 1; j <= total; j++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (j < active ? ' done' : j === active ? ' now' : '');
+        c.appendChild(d);
+      }
+    }
+  }
+
+  // ── Keyboard ──
+  document.addEventListener('keydown', e => {
+    if (!activeSeries) return;
+    const s = activeSeries;
+    if (['ArrowRight','ArrowDown',' '].includes(e.key)) {
+      e.preventDefault();
+      if (currentIdx[s] === 0) goTo(s, 1);
+      else if (s === 'a') nextA();
+      else if (s === 'b') nextB();
+      else nextC();
+    }
+    if (['ArrowLeft','ArrowUp'].includes(e.key)) {
+      e.preventDefault();
+      if (s === 'a') prevA();
+      else if (s === 'b') prevB();
+      else prevC();
+    }
+  });
+</script>
+</body>
+</html>
