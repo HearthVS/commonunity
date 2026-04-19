@@ -1157,6 +1157,10 @@ _ashtanga_exam_dir = _os.path.join(_os.path.dirname(__file__), 'ashtanga-exam-cl
 if _os.path.isdir(_ashtanga_exam_dir):
     app.mount("/ashtanga-exam-class", StaticFiles(directory=_ashtanga_exam_dir, html=True), name="ashtanga-exam-class")
 
+_hatha_exam_dir = _os.path.join(_os.path.dirname(__file__), 'hatha-practical-exam')
+if _os.path.isdir(_hatha_exam_dir):
+    app.mount("/hatha-practical-exam", StaticFiles(directory=_hatha_exam_dir, html=True), name="hatha-practical-exam")
+
 @app.get("/studio")
 async def serve_studio():
     studio = pathlib.Path(__file__).parent / "studio.html"

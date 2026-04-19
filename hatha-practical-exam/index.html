@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Hatha Practical Exam · Tara &amp; Markus</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Hatha Practical Exam · Tara & Markus" />
+  <meta property="og:description" content="60-minute Hatha sequence · Pūrva / Paścima · Peak: Setu Bandha Sarvangasana · Mira Yogashala, Rishikesh 2026" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #FAF8F4;
+      --dark:      #2C3A4A;
+      --saffron:   #C8622A;
+      --gold:      #B8872E;
+      --text:      #2C1A08;
+      --muted:     #8B6040;
+      --rule:      #E2D5C3;
+      --tara:      #3E8E6E;    /* sage green, keyed to her dress */
+      --markus:    #C8622A;    /* saffron */
+    }
+
+    html, body { width: 100%; height: 100%; background: var(--dark); overflow: hidden; }
+
+    /* ── DECK ── */
+    .deck { width: 100vw; height: 100vh; position: relative; }
+
+    .slide {
+      position: absolute; inset: 0;
+      display: none;
+      background: var(--bg);
+    }
+    .slide.active { display: flex; flex-direction: column; }
+
+    /* ────────────────── COVER ────────────────── */
+    .cover {
+      background: var(--dark);
+      position: relative;
+      overflow: hidden;
+      height: 100vh;
+      padding: 0;
+    }
+
+    /* Full-bleed split: two 50% columns, each showing a portrait edge-to-edge */
+    .cover-photos {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      display: flex;
+      flex-direction: row;
+      pointer-events: none;
+    }
+    .cover-photos .half {
+      flex: 1 1 50%;
+      width: 50%;
+      height: 100%;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+    .cover-photos .half.tara {
+      background-image: url('cover-tara.jpg');
+      background-position: center 35%;
+    }
+    .cover-photos .half.markus {
+      background-image: url('cover-markus.jpg');
+      background-position: center 30%;
+    }
+
+    /* Overlay: darken + center band for title legibility */
+    .cover-scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse 52% 62% at center, rgba(20,28,38,0.78) 0%, rgba(20,28,38,0.55) 55%, rgba(20,28,38,0.15) 100%),
+        linear-gradient(to bottom, rgba(20,28,38,0.28) 0%, rgba(20,28,38,0.0) 30%, rgba(20,28,38,0.0) 70%, rgba(20,28,38,0.55) 100%);
+      pointer-events: none;
+    }
+
+    .cover-center {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 40px 28px;
+      text-align: center;
+    }
+    .cover-om   { font-size: 78px; color: var(--gold); line-height: 1; text-shadow: 0 2px 18px rgba(0,0,0,0.5); }
+    .cover-title {
+      font-family: Georgia, serif;
+      font-size: clamp(32px, 5.5vw, 62px);
+      color: #FAF8F4;
+      letter-spacing: 1px;
+      line-height: 1.1;
+      text-shadow: 0 2px 18px rgba(0,0,0,0.55);
+    }
+    .cover-sub  {
+      font-family: Georgia, serif;
+      font-size: 13px;
+      color: var(--gold);
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+    }
+    .cover-rule {
+      width: 80px; height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold), transparent);
+    }
+    .cover-names {
+      font-family: Georgia, serif;
+      font-size: 15px;
+      color: #FAF8F4;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      opacity: 0.95;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+    }
+    .cover-meta {
+      font-family: Georgia, serif;
+      font-size: 12px;
+      color: #FAF8F4;
+      opacity: 0.78;
+      letter-spacing: 2px;
+      font-style: italic;
+      line-height: 1.8;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+    }
+    .cover-btn {
+      margin-top: 6px;
+      background: var(--saffron);
+      border: none;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 13px 38px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: opacity .2s, transform .2s;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    }
+    .cover-btn:hover { opacity: .88; transform: translateY(-1px); }
+    .cover-credit {
+      font-family: Georgia, serif;
+      font-size: 9px;
+      color: rgba(250,248,244,0.55);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* Cover mini-avatars with colored rings */
+    .cover-trio {
+      display: flex;
+      gap: 26px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    .cover-trio-person { display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .cover-trio-avatar {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(250,248,244,0.55);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+    }
+    .cover-trio-avatar.tara   { border-color: var(--tara); }
+    .cover-trio-avatar.markus { border-color: var(--markus); }
+    .cover-trio-name {
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(250,248,244,0.85);
+    }
+
+    /* ────────────────── POSE / SEGMENT SLIDE ────────────────── */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 52px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .top-left  { display: flex; align-items: center; gap: 10px; }
+    .top-om    { font-size: 18px; color: var(--saffron); }
+    .top-label { font-family: Georgia, serif; font-size: 11px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+    .top-right { font-family: Georgia, serif; font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
+    .slide-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: row;
+    }
+
+    /* IMAGE PANEL — left 55% */
+    .img-panel {
+      width: 55%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 24px 32px;
+      background: var(--bg);
+      gap: 12px;
+    }
+    .img-panel img {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+      border-radius: 6px;
+      box-shadow: 0 2px 12px rgba(44,26,8,0.08), 0 0 0 1px rgba(226,213,195,0.6);
+    }
+    .img-panel.pair img { max-height: 88%; max-width: 48%; }
+
+    /* INFO PANEL — right 45% */
+    .info-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 26px 36px 26px 28px;
+      border-left: 1px solid var(--rule);
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* INSTRUCTOR AVATAR BLOCK */
+    .instructor-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .instructor-avatar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar-img {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center top;
+      border: 2px solid;
+      flex-shrink: 0;
+    }
+    .avatar-img.tara   { border-color: var(--tara); }
+    .avatar-img.markus { border-color: var(--markus); }
+    .avatar-label { display: flex; flex-direction: column; gap: 1px; }
+    .avatar-name  {
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .avatar-name.tara   { color: var(--tara); }
+    .avatar-name.markus { color: var(--markus); }
+    .avatar-role  {
+      font-family: Georgia, serif;
+      font-size: 10px;
+      font-style: italic;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .time-chip {
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      padding: 4px 10px;
+      border: 1px solid var(--gold);
+      border-radius: 40px;
+      white-space: nowrap;
+    }
+
+    .sanskrit {
+      font-family: Georgia, serif;
+      font-size: clamp(20px, 2.6vw, 32px);
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+    .english {
+      font-family: Georgia, serif;
+      font-size: clamp(11px, 1.2vw, 14px);
+      color: var(--saffron);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+
+    .divider {
+      width: 40px; height: 1px;
+      background: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .cue {
+      margin-bottom: 14px;
+      padding: 11px 15px;
+      border-left: 3px solid var(--gold);
+      background: rgba(184,135,46,0.06);
+      border-radius: 0 4px 4px 0;
+      font-family: Georgia, serif;
+      font-size: clamp(12px, 1.1vw, 14px);
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .tips-label {
+      font-family: Georgia, serif;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+    .tips {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .tips li {
+      font-family: Georgia, serif;
+      font-size: clamp(11px, 1vw, 13px);
+      color: var(--text);
+      line-height: 1.5;
+      padding-left: 14px;
+      position: relative;
+    }
+    .tips li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 7px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--saffron);
+    }
+
+    /* Chant / mantra block with translation */
+    .chant {
+      font-family: Georgia, serif;
+      font-size: clamp(12px, 1.05vw, 14px);
+      color: var(--text);
+      line-height: 1.7;
+      font-style: italic;
+      padding: 11px 14px;
+      border-left: 2px solid var(--saffron);
+      background: rgba(200,98,42,0.05);
+      border-radius: 0 3px 3px 0;
+      margin-bottom: 10px;
+    }
+    .chant .verse-break { display: block; height: 6px; }
+    .chant-translate {
+      font-family: Georgia, serif;
+      font-size: clamp(10px, 0.9vw, 12px);
+      font-style: normal;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dotted var(--rule);
+    }
+
+    /* Surya Namaskar sequence list — 2-column compact */
+    .sequence {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 14px;
+      row-gap: 5px;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(44,58,74,0.04);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+    }
+    .seq-item {
+      display: flex;
+      gap: 7px;
+      align-items: baseline;
+      font-family: Georgia, serif;
+      font-size: clamp(10px, 0.92vw, 12px);
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .seq-num {
+      font-size: 9px;
+      color: var(--gold);
+      letter-spacing: 1px;
+      flex-shrink: 0;
+      min-width: 18px;
+    }
+    .seq-name { font-weight: normal; }
+    .seq-breath { color: var(--muted); font-style: italic; font-size: 10px; }
+
+    /* ─────── SESSION MAP (Slide 1) ─────── */
+    .map-wrap {
+      flex: 1;
+      padding: 28px 44px 18px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .map-head {
+      text-align: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 14px;
+    }
+    .map-head .map-om { font-size: 22px; color: var(--gold); display: block; line-height: 1; }
+    .map-head .map-title {
+      font-family: Georgia, serif;
+      font-size: clamp(20px, 2.1vw, 28px);
+      color: var(--text);
+      margin: 4px 0 2px;
+      letter-spacing: 0.5px;
+    }
+    .map-head .map-sub {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: clamp(11px, 1vw, 13px);
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .map-meta {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 6px;
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .map-meta span { position: relative; }
+    .map-meta span + span::before {
+      content: "·";
+      position: absolute; left: -12px; color: var(--rule);
+    }
+    .map-table {
+      flex: 1;
+      overflow: hidden;
+      border-collapse: collapse;
+      width: 100%;
+      font-family: Georgia, serif;
+      font-size: clamp(10px, 0.95vw, 12.5px);
+    }
+    .map-table thead th {
+      font-family: Georgia, serif;
+      font-weight: normal;
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 8px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--rule);
+    }
+    .map-table thead th.col-num,
+    .map-table thead th.col-time,
+    .map-table thead th.col-run,
+    .map-table thead th.col-lead { text-align: center; }
+    .map-table tbody td {
+      padding: 4.5px 8px;
+      border-bottom: 1px dotted var(--rule);
+      color: var(--text);
+      line-height: 1.35;
+      vertical-align: middle;
+    }
+    .map-table tbody tr.band { background: rgba(184,135,46,0.04); }
+    .map-table tbody tr.peak {
+      background: rgba(200,98,42,0.08);
+      border-left: 3px solid var(--saffron);
+    }
+    .map-table tbody tr.peak td:first-child { padding-left: 5px; }
+    .map-table td.col-num {
+      text-align: center;
+      font-size: 10px;
+      color: var(--gold);
+      letter-spacing: 1px;
+      width: 28px;
+    }
+    .map-table td.col-seg { font-size: clamp(10px, 0.95vw, 12.5px); }
+    .map-table td.col-seg .seg-sanskrit { color: var(--text); }
+    .map-table td.col-seg .seg-en { color: var(--muted); font-style: italic; font-size: 92%; }
+    .map-table td.col-time,
+    .map-table td.col-run {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 11px;
+      width: 56px;
+      letter-spacing: 0.5px;
+    }
+    .map-table td.col-run { color: var(--text); }
+    .map-table td.col-lead {
+      text-align: center;
+      width: 64px;
+      white-space: nowrap;
+    }
+    .lead-dot {
+      display: inline-block;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin: 0 1px;
+    }
+    .lead-dot.tara   { background: var(--tara); }
+    .lead-dot.markus { background: var(--markus); }
+    .lead-dot.both   { background: var(--gold); }
+    .map-footer {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: Georgia, serif;
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+    .map-legend { display: flex; gap: 14px; align-items: center; }
+    .map-legend .legend-item { display: flex; gap: 6px; align-items: center; }
+    .map-total {
+      color: var(--saffron);
+      letter-spacing: 2px;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    /* BOTTOM NAV */
+    .bot-bar {
+      flex-shrink: 0;
+      height: 52px;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+    }
+    .nav-btn {
+      background: var(--saffron);
+      border: none;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 10px 28px;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: opacity .2s;
+    }
+    .nav-btn:hover:not(:disabled) { opacity: .82; }
+    .nav-btn:disabled { opacity: .2; cursor: default; }
+    .nav-btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(200,98,42,0.5);
+      color: var(--saffron);
+      font-weight: normal;
+      opacity: 0.75;
+    }
+    .nav-btn-ghost:hover { opacity: 1; }
+    .slide-count { font-family: Georgia, serif; font-size: 12px; color: var(--muted); letter-spacing: 2px; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 640px) {
+      html, body { overflow: visible; height: auto; }
+      .deck { height: auto; }
+      .slide { position: static; display: none; }
+      .slide.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+      .cover { height: 100svh; }
+      .cover-center { padding: 32px 22px; gap: 11px; }
+      .cover-title { font-size: clamp(26px, 8vw, 40px); }
+      .cover-names { font-size: 12px; letter-spacing: 3px; }
+      .cover-trio-avatar { width: 56px; height: 56px; }
+      .cover-om { font-size: 60px; }
+
+      .bot-bar {
+        order: -1;
+        position: sticky; top: 0; z-index: 10;
+        background: var(--bg);
+        padding: 0 14px;
+        height: 52px;
+        border-top: none;
+        border-bottom: 1px solid var(--rule);
+      }
+      .top-bar {
+        position: sticky; top: 52px; z-index: 9;
+        background: var(--bg);
+        padding: 0 14px;
+        border-bottom: 1px solid var(--rule);
+        border-top: none;
+      }
+
+      .slide-body { flex-direction: column; flex: none; }
+      .img-panel {
+        width: 100%;
+        height: auto;
+        padding: 16px 20px 8px;
+        flex-shrink: 0;
+      }
+      .img-panel img { max-height: 230px; width: auto; }
+      .img-panel.pair img { max-height: 190px; max-width: 45%; }
+
+      .info-panel {
+        flex-shrink: 0;
+        justify-content: flex-start;
+        padding: 14px 20px 40px;
+        border-left: none;
+        border-top: 1px solid var(--rule);
+        overflow: visible;
+      }
+
+      .sanskrit { font-size: clamp(20px, 5.5vw, 28px); margin-top: 4px; }
+      .english  { font-size: 11px; letter-spacing: 3px; }
+      .cue      { font-size: 13px; padding: 10px 12px; }
+      .tips li  { font-size: 12px; }
+      .tips-label { font-size: 9px; }
+      .chant { font-size: 12px; padding: 10px 12px; }
+      .sequence { grid-template-columns: 1fr; }
+      .avatar-img { width: 40px; height: 40px; }
+
+      .nav-btn { font-size: 13px; padding: 10px 20px; letter-spacing: 1.5px; }
+      .slide-count { font-size: 10px; letter-spacing: 1.5px; }
+      .top-label { font-size: 10px; letter-spacing: 2px; }
+      .top-right { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ════════════════════════════════════ -->
+<!-- COVER — full bleed                   -->
+<!-- ════════════════════════════════════ -->
+<div class="slide cover active" id="slide-0">
+  <div class="cover-photos" aria-hidden="true">
+    <div class="half tara"></div>
+    <div class="half markus"></div>
+  </div>
+  <div class="cover-scrim" aria-hidden="true"></div>
+
+  <div class="cover-center">
+    <div class="cover-om">ॐ</div>
+    <div class="cover-title">Hatha Practical Exam</div>
+    <div class="cover-sub">Pūrva · Paścima · Setu Bandha</div>
+    <div class="cover-rule"></div>
+
+    <div class="cover-trio">
+      <div class="cover-trio-person">
+        <img src="avatar-tara.webp" class="cover-trio-avatar tara" alt="Tara" />
+        <div class="cover-trio-name">Tara</div>
+      </div>
+      <div class="cover-trio-person">
+        <img src="avatar-markus.webp" class="cover-trio-avatar markus" alt="Markus" />
+        <div class="cover-trio-name">Markus</div>
+      </div>
+    </div>
+
+    <div class="cover-meta">Mira Yogashala · Rishikesh<br/>Thursday · 23 April 2026 · 60 min</div>
+    <button class="cover-btn" onclick="goTo(1)">Begin</button>
+    <div class="cover-credit">Hearth Venture Studio &amp; Koda &middot; Rishikesh 2026</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════ -->
+<!-- SEGMENT SLIDES                        -->
+<!-- ════════════════════════════════════ -->
+
+<!-- 1 · Session Map (Class Flow Index) -->
+<div class="slide" id="slide-1">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Session Map</span></div>
+    <div class="top-right">Reference</div>
+  </div>
+  <div class="map-wrap">
+    <div class="map-head">
+      <span class="map-om">ॐ</span>
+      <div class="map-title">Class Flow</div>
+      <div class="map-sub">Pūrva · Paścima — Setu Bandha Sarvangasana</div>
+      <div class="map-meta">
+        <span>23 April 2026</span><span>Mira Yogashala</span><span>60 min target</span>
+      </div>
+    </div>
+    <table class="map-table">
+      <thead>
+        <tr>
+          <th class="col-num">#</th>
+          <th class="col-seg">Segment</th>
+          <th class="col-time">Time</th>
+          <th class="col-run">Running</th>
+          <th class="col-lead">Lead</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-num">1</td><td class="col-seg"><span class="seg-sanskrit">Welcome · Injury Check · Intention · Yogena Cittasya</span></td><td class="col-time">5:00</td><td class="col-run">5:00</td><td class="col-lead"><span class="lead-dot both" title="Both"></span></td></tr>
+        <tr class="band"><td class="col-num">2</td><td class="col-seg"><span class="seg-sanskrit">Ujjayi Pranayama</span> <span class="seg-en">· 5 rounds</span></td><td class="col-time">2:00</td><td class="col-run">7:00</td><td class="col-lead"><span class="lead-dot markus" title="Markus"></span></td></tr>
+        <tr class="band"><td class="col-num">3</td><td class="col-seg"><span class="seg-sanskrit">Joint Warm-Up</span> <span class="seg-en">· seated → standing</span></td><td class="col-time">2:00</td><td class="col-run">9:00</td><td class="col-lead"><span class="lead-dot tara" title="Tara"></span></td></tr>
+        <tr><td class="col-num">4</td><td class="col-seg"><span class="seg-sanskrit">Sūrya Namaskāra — Demos</span> <span class="seg-en">· Tara R1, Markus R2</span></td><td class="col-time">2:00</td><td class="col-run">11:00</td><td class="col-lead"><span class="lead-dot tara"></span><span class="lead-dot markus"></span></td></tr>
+        <tr><td class="col-num">5</td><td class="col-seg"><span class="seg-sanskrit">Sūrya Namaskāra — Students × 3</span> <span class="seg-en">· verbal cueing</span></td><td class="col-time">7:00</td><td class="col-run">18:00</td><td class="col-lead"><span class="lead-dot tara"></span><span class="lead-dot markus"></span></td></tr>
+        <tr class="band"><td class="col-num">6</td><td class="col-seg"><span class="seg-sanskrit">Mārjaryāsana–Bitilāsana</span> <span class="seg-en">· Cat-Cow × 6</span></td><td class="col-time">2:00</td><td class="col-run">20:00</td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr class="band"><td class="col-num">7</td><td class="col-seg"><span class="seg-sanskrit">Pārśva Balāsana</span> <span class="seg-en">· Thread-the-Needle, both sides</span></td><td class="col-time">3:00</td><td class="col-run">23:00</td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr><td class="col-num">8</td><td class="col-seg"><span class="seg-sanskrit">Adho Mukha Śvānāsana</span> <span class="seg-en">· Down Dog + pedal</span></td><td class="col-time">2:00</td><td class="col-run">25:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr><td class="col-num">9</td><td class="col-seg"><span class="seg-sanskrit">Añjaneyāsana</span> <span class="seg-en">· Low Lunge, both sides</span></td><td class="col-time">3:00</td><td class="col-run">28:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr><td class="col-num">10</td><td class="col-seg"><span class="seg-sanskrit">Śalabhāsana</span> <span class="seg-en">· Locust × 2 rounds</span></td><td class="col-time">3:00</td><td class="col-run">31:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr><td class="col-num">11</td><td class="col-seg"><span class="seg-sanskrit">Bhujaṅgāsana</span> <span class="seg-en">· Cobra × 2 rounds</span></td><td class="col-time">3:00</td><td class="col-run">34:00</td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr><td class="col-num">12</td><td class="col-seg"><span class="seg-sanskrit">Virābhadrāsana I → Pārśvottanāsana</span> <span class="seg-en">· both sides</span></td><td class="col-time">6:00</td><td class="col-run">40:00</td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr class="band"><td class="col-num">13</td><td class="col-seg"><span class="seg-sanskrit">Utkaṭāsana</span> <span class="seg-en">· Chair</span></td><td class="col-time">2:00</td><td class="col-run">42:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr class="band"><td class="col-num">14</td><td class="col-seg"><span class="seg-sanskrit">Eka Pāda Setu Bandha</span> <span class="seg-en">· single-leg prep</span></td><td class="col-time">3:00</td><td class="col-run">45:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr class="peak"><td class="col-num"><strong>15</strong></td><td class="col-seg"><strong><span class="seg-sanskrit">Setu Bandha Sarvangāsana</span></strong> <span class="seg-en">· peak · × 2 + variations + bhavana</span></td><td class="col-time"><strong>7:00</strong></td><td class="col-run"><strong>52:00</strong></td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr><td class="col-num">16</td><td class="col-seg"><span class="seg-sanskrit">Apānāsana</span> <span class="seg-en">· Knees-to-chest</span></td><td class="col-time">1:00</td><td class="col-run">53:00</td><td class="col-lead"><span class="lead-dot markus"></span></td></tr>
+        <tr><td class="col-num">17</td><td class="col-seg"><span class="seg-sanskrit">Supta Matsyendrāsana</span> <span class="seg-en">· Supine Twist, both sides</span></td><td class="col-time">3:00</td><td class="col-run">56:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr><td class="col-num">18</td><td class="col-seg"><span class="seg-sanskrit">Supta Baddha Koṇāsana</span> <span class="seg-en">· Reclined Bound Angle</span></td><td class="col-time">2:00</td><td class="col-run">58:00</td><td class="col-lead"><span class="lead-dot tara"></span></td></tr>
+        <tr class="band"><td class="col-num">19</td><td class="col-seg"><span class="seg-sanskrit">Śavāsana</span> <span class="seg-en">· silent rest</span></td><td class="col-time">5:00</td><td class="col-run">63:00</td><td class="col-lead"><span class="lead-dot both"></span></td></tr>
+        <tr class="band"><td class="col-num">20</td><td class="col-seg"><span class="seg-sanskrit">Closing · Sarve Bhavantu Sukhinaḥ</span> <span class="seg-en">· sealing mudra</span></td><td class="col-time">2:00</td><td class="col-run">65:00</td><td class="col-lead"><span class="lead-dot both"></span></td></tr>
+      </tbody>
+    </table>
+    <div class="map-footer">
+      <div class="map-legend">
+        <div class="legend-item"><span class="lead-dot tara"></span>Tara</div>
+        <div class="legend-item"><span class="lead-dot markus"></span>Markus</div>
+        <div class="legend-item"><span class="lead-dot both"></span>Both</div>
+      </div>
+      <div class="map-total">Total · ≅63 min practice + 2 min closing</div>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">1 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 2 · Welcome & Yogena Chittasya -->
+<div class="slide" id="slide-2">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 1 of 20</span></div>
+    <div class="top-right">Opening</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-01-opening.webp" alt="Seated meditation, Anjali mudra"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Welcome · Injury Check</div></div>
+        </div>
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Theme · Intention</div></div>
+        </div>
+        <span class="time-chip">5 min</span>
+      </div>
+      <div class="sanskrit">Yogena Cittasya</div>
+      <div class="english">Patañjali Invocation · Opening</div>
+      <div class="divider"></div>
+      <div class="cue">Our theme is pūrva and paścima — front body and back body. We open the front, strengthen the back, and find balance between them in Bridge.</div>
+      <div class="chant">
+        Yogena cittasya padena vācāṁ<br/>
+        Malaṁ śarīrasya ca vaidyakena<br/>
+        Yopākarottaṁ pravaraṁ munīnāṁ<br/>
+        Patañjaliṁ prāñjalir ānato'smi
+        <span class="verse-break"></span>
+        Ābāhu puruṣākāraṁ<br/>
+        Śaṅkha cakrāsi dhāriṇam<br/>
+        Sahasra śirasaṁ śvetaṁ<br/>
+        Praṇamāmi Patañjalim
+        <div class="chant-translate">
+          To the one who purified the mind through yoga, speech through grammar, and the body through medicine — to that greatest of sages, Patañjali, I bow with folded hands.
+          <br/><br/>
+          To the one with a human form up to the arms, holding a conch, a discus, and a sword, crowned with a thousand white heads — to Patañjali, I bow.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()" disabled>← Back</button>
+    <span class="slide-count">2 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 2 · Ujjayi Pranayama -->
+<div class="slide" id="slide-3">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 2 of 20</span></div>
+    <div class="top-right">Pranayama</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-02-pranayama.webp" alt="Seated pranayama"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Ujjayi Prāṇāyāma</div>
+      <div class="english">Victorious Breath · 5 Rounds</div>
+      <div class="divider"></div>
+      <div class="cue">Gentle constriction at the back of the throat — a soft ocean sound. Inhale long and steady, exhale slightly audible. The sound is the signal that your breath is full.</div>
+      <div class="tips-label">Cue &amp; Count</div>
+      <ul class="tips">
+        <li>5 sec inhale · 5 sec exhale · 5 rounds, eyes closed</li>
+        <li>Carry this breath through the entire practice; when it fades, return to it</li>
+        <li>Establishes the breath-body contract for today's flow</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">3 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 3 · Joint Warm-Up -->
+<div class="slide" id="slide-4">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 3 of 20</span></div>
+    <div class="top-right">Warm-Up</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-03-warmup.webp" alt="Standing warm-up"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Joint Warm-Up</div>
+      <div class="english">Seated → Standing · Sūkṣma Vyāyāma</div>
+      <div class="divider"></div>
+      <div class="cue">Move with your breath. Each circle bigger than the last.</div>
+      <div class="tips-label">Sequence</div>
+      <ul class="tips">
+        <li>Seated: flex / point toes × 8 · ankle circles × 8 each way</li>
+        <li>Wrist circles × 8 each way · rise to standing</li>
+        <li>Shoulder rolls × 8 backwards</li>
+        <li>Neck half-circles — chin to chest, ear to shoulder · never roll the head back</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">4 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 4 · Surya Namaskar Demo -->
+<div class="slide" id="slide-5">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 4 of 20</span></div>
+    <div class="top-right">Demo</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-04-surya-namaskar.webp" alt="Surya Namaskar"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Demo · Round 1</div></div>
+        </div>
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Demo · Round 2</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Sūrya Namaskāra — Two Demos</div>
+      <div class="english">Students Watch · Seated</div>
+      <div class="divider"></div>
+      <div class="cue">Tara flows through Round 1 with clear verbal cues. Markus follows with Round 2. Students stay seated and watch the breath-movement pairing before practicing.</div>
+      <div class="tips-label">Sequence — 12 Poses</div>
+      <div class="sequence">
+        <div class="seq-item"><span class="seq-num">1</span><span><span class="seq-name">Pranamāsana</span><br/><span class="seq-breath">exhale · prayer</span></span></div>
+        <div class="seq-item"><span class="seq-num">2</span><span><span class="seq-name">Hasta Utthānāsana</span><br/><span class="seq-breath">inhale · arms up</span></span></div>
+        <div class="seq-item"><span class="seq-num">3</span><span><span class="seq-name">Pādahastāsana</span><br/><span class="seq-breath">exhale · fold</span></span></div>
+        <div class="seq-item"><span class="seq-num">4</span><span><span class="seq-name">Aśva Sañcalanāsana</span><br/><span class="seq-breath">inhale · lunge R back</span></span></div>
+        <div class="seq-item"><span class="seq-num">5</span><span><span class="seq-name">Parvatāsana</span><br/><span class="seq-breath">exhale · mountain</span></span></div>
+        <div class="seq-item"><span class="seq-num">6</span><span><span class="seq-name">Aṣṭāṅga Namaskāra</span><br/><span class="seq-breath">retain · 8-limbs</span></span></div>
+        <div class="seq-item"><span class="seq-num">7</span><span><span class="seq-name">Bhujaṅgāsana</span><br/><span class="seq-breath">inhale · cobra</span></span></div>
+        <div class="seq-item"><span class="seq-num">8</span><span><span class="seq-name">Parvatāsana</span><br/><span class="seq-breath">exhale · mountain</span></span></div>
+        <div class="seq-item"><span class="seq-num">9</span><span><span class="seq-name">Aśva Sañcalanāsana</span><br/><span class="seq-breath">inhale · lunge R fwd</span></span></div>
+        <div class="seq-item"><span class="seq-num">10</span><span><span class="seq-name">Pādahastāsana</span><br/><span class="seq-breath">exhale · fold</span></span></div>
+        <div class="seq-item"><span class="seq-num">11</span><span><span class="seq-name">Hasta Utthānāsana</span><br/><span class="seq-breath">inhale · arms up</span></span></div>
+        <div class="seq-item"><span class="seq-num">12</span><span><span class="seq-name">Pranamāsana</span><br/><span class="seq-breath">exhale · return</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">5 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 5 · Surya Namaskar Practice -->
+<div class="slide" id="slide-6">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 5 of 20</span></div>
+    <div class="top-right">Practice</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-04-surya-namaskar.webp" alt="Surya Namaskar practice"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Verbal Cues</div></div>
+        </div>
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Verbal Cues</div></div>
+        </div>
+        <span class="time-chip">7 min</span>
+      </div>
+      <div class="sanskrit">Sūrya Namaskāra × 3</div>
+      <div class="english">Students Practice · Full Rounds</div>
+      <div class="divider"></div>
+      <div class="cue">Students run through on their own. Tara and Markus share verbal cueing: inhale reach up · exhale fold · inhale half lift · exhale step back, plank, lower · inhale Cobra · exhale Down Dog, 5 breaths…</div>
+      <div class="tips-label">Watch For</div>
+      <ul class="tips">
+        <li>Locked knees in the forward fold — cue soft micro-bend</li>
+        <li>Collapsed shoulders in Cobra — cue shoulder blades down &amp; together</li>
+        <li>Match each breath to its movement; do not rush</li>
+        <li>Alternate lead leg: Round 1 = right back · Round 2 = left back · Round 3 = right back</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">6 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 6 · Cat-Cow -->
+<div class="slide" id="slide-7">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 6 of 20</span></div>
+    <div class="top-right">Spine</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-06-cat-cow.webp" alt="Cat-Cow tabletop"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Mārjaryāsana–Bitilāsana</div>
+      <div class="english">Cat-Cow · 6 Rounds</div>
+      <div class="divider"></div>
+      <div class="cue">Let the breath lead the movement — the body follows.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Tabletop — wrists under shoulders, knees under hips, tops of feet pressing down</li>
+        <li>Cow (inhale): belly drops, chest and tailbone lift, gaze softens forward</li>
+        <li>Cat (exhale): spine rounds, tailbone tucks, navel to spine, chin to chest</li>
+        <li>Watch for collapsed shoulders — cue "press the floor away"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">7 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 7 · Parsva Balasana -->
+<div class="slide" id="slide-8">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 7 of 20</span></div>
+    <div class="top-right">Thoracic Open</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-07-thread-needle.webp" alt="Parsva Balasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Pārśva Bālāsana</div>
+      <div class="english">Thread-the-Needle · Both Sides</div>
+      <div class="divider"></div>
+      <div class="cue">This is where your thoracic spine lives — the place most of your backbend will come from. Breathe into the space between the shoulder blades.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Inhale right arm up, opening the chest</li>
+        <li>Exhale slide right arm under the left · shoulder &amp; ear to mat · palm up</li>
+        <li>Left hand presses the mat or walks forward for a deeper stretch</li>
+        <li>5 breaths · press back to tabletop · switch sides</li>
+        <li>Watch for head collapse — ear heavy, not crunched</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">8 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 8 · Down Dog -->
+<div class="slide" id="slide-9">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 8 of 20</span></div>
+    <div class="top-right">Down Dog</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-08-down-dog.webp" alt="Adho Mukha Svanasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Adho Mukha Śvānāsana</div>
+      <div class="english">Down Dog with Pedal</div>
+      <div class="divider"></div>
+      <div class="cue">5 long breaths. Inhale lengthens the spine, exhale sinks the heels.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Hands shoulder-width, fingers spread, middle finger pointing forward</li>
+        <li>Feet hip-width, heels reaching toward the mat — not forced</li>
+        <li>Pedal the feet — bend one knee, then the other; hamstrings wake up</li>
+        <li>Watch for rounded upper back — cue "bend the knees to lengthen the spine"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">9 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 9 · Anjaneyasana -->
+<div class="slide" id="slide-10">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 9 of 20</span></div>
+    <div class="top-right">Low Lunge</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-09-low-lunge.webp" alt="Anjaneyasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Añjaneyāsana</div>
+      <div class="english">Low Lunge · Both Sides</div>
+      <div class="divider"></div>
+      <div class="cue">Tuck the tailbone under and feel the stretch in the front of the back thigh. This is your psoas opening — pūrva at work.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Front knee over front ankle · back knee on mat · top of back foot flat</li>
+        <li>Back hip sinking forward and down</li>
+        <li>Inhale arms sweep overhead · exhale tuck tailbone, open chest</li>
+        <li>5 breaths · switch · watch for front knee collapsing inward or past toes</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">10 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 10 · Salabhasana -->
+<div class="slide" id="slide-11">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 10 of 20</span></div>
+    <div class="top-right">Locust</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-10-locust.webp" alt="Salabhasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Śalabhāsana</div>
+      <div class="english">Locust · 2 Rounds</div>
+      <div class="divider"></div>
+      <div class="cue">Reach the crown forward and the toes back. Length, not height.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Round 1 — arms alongside body, palms down · lift chest, arms, legs · 5 breaths</li>
+        <li>Round 2 — interlace hands behind low back, knuckles toward heels · lift · 5 breaths</li>
+        <li>Watch for neck crunch — gaze down and slightly forward, neck long</li>
+        <li>Paścima activating: posterior chain waking up for Bridge</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">11 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 11 · Bhujangasana -->
+<div class="slide" id="slide-12">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 11 of 20</span></div>
+    <div class="top-right">Cobra</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-11-cobra.webp" alt="Bhujangasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Bhujaṅgāsana</div>
+      <div class="english">Cobra · 2 Rounds</div>
+      <div class="divider"></div>
+      <div class="cue">This is a backbend from the upper back, not the arms. Shoulder blades draw down and together.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Hands under shoulders, elbows hugging in, legs active, tops of feet pressing down</li>
+        <li>Inhale peel the chest off the mat, leading with the heart — not the chin</li>
+        <li>Only as high as your back allows without pushing into the hands</li>
+        <li>Round 2 slightly deeper · watch for low-back crunch — pubic bone pressing down</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">12 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 12 · Warrior I → Pyramid -->
+<div class="slide" id="slide-13">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 12 of 20</span></div>
+    <div class="top-right">Standing Pair</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel pair">
+      <img src="pose-12a-warrior-one.webp" alt="Virabhadrasana I">
+      <img src="pose-12b-pyramid.webp" alt="Parsvottanasana">
+    </div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads · Both Sides</div></div>
+        </div>
+        <span class="time-chip">6 min</span>
+      </div>
+      <div class="sanskrit">Vīrabhadrāsana I → Pārśvottānāsana</div>
+      <div class="english">Warrior I → Pyramid</div>
+      <div class="divider"></div>
+      <div class="cue">Feel the front-body open, the back-body strong — pūrva and paścima meeting in the hip crease. Then: lengthen first, then fold.</div>
+      <div class="tips-label">Warrior I → Pyramid Flow</div>
+      <ul class="tips">
+        <li>From Down Dog step right foot forward · back heel down, foot at 45°</li>
+        <li>Warrior I: rise, arms overhead · internally rotate back thigh, left hip forward</li>
+        <li>Lift frontal hip bones toward ribs · sink front thigh toward parallel · 5 breaths</li>
+        <li>Exhale straighten front leg, hands to hips, square hips fully forward</li>
+        <li>Pyramid: exhale hinge forward, flat back first · hands to mat, blocks, or shins · 5 breaths</li>
+        <li>Inhale rise · step back to Down Dog · second side</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">13 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 13 · Utkatasana -->
+<div class="slide" id="slide-14">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 13 of 20</span></div>
+    <div class="top-right">Chair</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-13-chair.webp" alt="Utkatasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Utkaṭāsana</div>
+      <div class="english">Chair Pose</div>
+      <div class="divider"></div>
+      <div class="cue">Tailbone heavy, low ribs drawing in. Strong legs, strong arms, calm face.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Feet together or hip-width, big toes touching</li>
+        <li>Inhale arms overhead · exhale sit hips back and down</li>
+        <li>Weight in the heels · chest lifted</li>
+        <li>5 breaths · watch for knees splaying — track over middle toes</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">14 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 14 · Eka Pada Bridge Prep -->
+<div class="slide" id="slide-15">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 14 of 20</span></div>
+    <div class="top-right">Bridge Prep</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-14-eka-pada-bridge-prep.webp" alt="Eka Pada Setu Bandha prep"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Eka Pāda Setu Bandha — Prep</div>
+      <div class="english">Single-Leg Bridge Prep</div>
+      <div class="divider"></div>
+      <div class="cue">This is the diagnostic for Bridge — if your glutes and hamstrings are awake, you're ready.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Supine · knees bent · feet flat, hip-width · heels close to sit-bones</li>
+        <li>Press feet · lift pelvis a few inches · hover right foot off mat</li>
+        <li>Feel the left glute firing · lower · switch · lower · lift both</li>
+        <li>2–3 rounds each side</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">15 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 15 · Setu Bandha Sarvangasana (PEAK) -->
+<div class="slide" id="slide-16">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 15 of 20 · Peak</span></div>
+    <div class="top-right">Bridge</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-15-setu-bandha.webp" alt="Setu Bandha Sarvangasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads · Peak</div></div>
+        </div>
+        <span class="time-chip">7 min</span>
+      </div>
+      <div class="sanskrit">Setu Bandha Sarvāṅgāsana</div>
+      <div class="english">Bridge Pose · Peak · Anahata + Vishuddha</div>
+      <div class="divider"></div>
+      <div class="cue">Imagine the heart center lifting toward the sky. The front body blooming open. Each inhale — a little more space across the chest. Each exhale — legs and glutes rooting down.</div>
+      <div class="tips-label">Round 1 · Base Setup</div>
+      <ul class="tips">
+        <li>Feet flat, hip-width, parallel · heels close enough for fingertips to graze them</li>
+        <li>Inhale press through four corners of feet · lift pelvis vertebra by vertebra</li>
+        <li>Interlace hands under back · walk shoulder blades toward each other</li>
+        <li>Lift chest toward chin — not chin toward chest · back of neck long · 5 breaths</li>
+      </ul>
+      <div class="tips-label" style="margin-top:10px;">Round 2 · Choose Your Variation</div>
+      <ul class="tips">
+        <li>Level 1 — Supported: block under sacrum, arms wide, palms up</li>
+        <li>Level 2 — Classical: full bind · 8 breaths</li>
+        <li>Level 3 — Eka Pāda: extend right leg, toes pointing · 3 breaths · switch</li>
+        <li>Exit: release hands, roll down slowly · knees knock gently</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">16 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 16 · Apanasana -->
+<div class="slide" id="slide-17">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 16 of 20</span></div>
+    <div class="top-right">Release</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-16-apanasana.webp" alt="Apanasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">1 min</span>
+      </div>
+      <div class="sanskrit">Apānāsana</div>
+      <div class="english">Knees-to-Chest</div>
+      <div class="divider"></div>
+      <div class="cue">Small rocks side to side, massaging the low back.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Both knees into chest · hands around shins or backs of thighs</li>
+        <li>Breath soft · spine neutralizes after the backbend</li>
+        <li>Brief — this is a transition, not a hold</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">17 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 17 · Supta Matsyendrasana -->
+<div class="slide" id="slide-18">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 17 of 20</span></div>
+    <div class="top-right">Twist</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-17-supine-twist.webp" alt="Supta Matsyendrasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">3 min</span>
+      </div>
+      <div class="sanskrit">Supta Matsyendrāsana</div>
+      <div class="english">Supine Twist · Both Sides</div>
+      <div class="divider"></div>
+      <div class="cue">This is where the spine neutralizes after the backbend.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Arms out in a T · knees to chest · drop both knees to the right, gaze left</li>
+        <li>Both shoulders stay grounded</li>
+        <li>5 breaths · switch sides</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">18 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 18 · Supta Baddha Konasana -->
+<div class="slide" id="slide-19">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 18 of 20</span></div>
+    <div class="top-right">Open</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-18-supta-baddha-konasana.webp" alt="Supta Baddha Konasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Leads</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Supta Baddha Koṇāsana</div>
+      <div class="english">Reclined Bound Angle</div>
+      <div class="divider"></div>
+      <div class="cue">This is the final opening — a complete release of pūrva, the front body, in preparation for Shavasana.</div>
+      <div class="tips-label">Alignment &amp; Tips</div>
+      <ul class="tips">
+        <li>Soles of feet together · knees falling wide like a book opening</li>
+        <li>Heels as close or far from pelvis as feels good</li>
+        <li>Arms rest out wide, palms up · blocks under knees if inner thighs strain</li>
+        <li>Rest 2 min · breath softens</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">19 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 19 · Shavasana -->
+<div class="slide" id="slide-20">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 19 of 20</span></div>
+    <div class="top-right">Rest</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="pose-19-shavasana.webp" alt="Shavasana"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Setup Cue</div></div>
+        </div>
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Bring-Back</div></div>
+        </div>
+        <span class="time-chip">5 min</span>
+      </div>
+      <div class="sanskrit">Śavāsana</div>
+      <div class="english">Corpse Pose · Complete Rest</div>
+      <div class="divider"></div>
+      <div class="cue">Legs long, feet fall open, arms relaxed, palms up. Let the mat hold you.</div>
+      <div class="tips-label">Rest</div>
+      <ul class="tips">
+        <li>Tara delivers the setup cue, then silence holds the space</li>
+        <li>Five minutes of complete stillness — no song, no reading</li>
+        <li>Breath softens on its own — let it</li>
+        <li>Bring-back (Markus): deepen breath · wiggle fingers &amp; toes · roll to the right · press up to a seated position</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">20 / 21</span>
+    <button class="nav-btn" onclick="next()">Next →</button>
+  </div>
+</div>
+
+<!-- 20 · Closing -->
+<div class="slide" id="slide-21">
+  <div class="top-bar">
+    <div class="top-left"><span class="top-om">ॐ</span><span class="top-label">Segment 20 of 20</span></div>
+    <div class="top-right">Closing</div>
+  </div>
+  <div class="slide-body">
+    <div class="img-panel"><img src="slide-20-closing.webp" alt="Closing seated with Om"></div>
+    <div class="info-panel">
+      <div class="instructor-row">
+        <div class="instructor-avatar">
+          <img src="avatar-tara.webp" class="avatar-img tara" alt="Tara" />
+          <div class="avatar-label"><div class="avatar-name tara">Tara</div><div class="avatar-role">Sealing Mudra</div></div>
+        </div>
+        <div class="instructor-avatar">
+          <img src="avatar-markus.webp" class="avatar-img markus" alt="Markus" />
+          <div class="avatar-label"><div class="avatar-name markus">Markus</div><div class="avatar-role">Chant · Namaste</div></div>
+        </div>
+        <span class="time-chip">2 min</span>
+      </div>
+      <div class="sanskrit">Sarve Bhavantu Sukhinaḥ</div>
+      <div class="english">Shanti Mantra · Sealing Mudra</div>
+      <div class="divider"></div>
+      <div class="cue">Sealing mudra (Tara leads): thumb to third eye — I honor the wisdom in me. Thumb to the heart — I honor the wisdom in you.</div>
+      <div class="chant">
+        Om sarve bhavantu sukhinaḥ<br/>
+        Sarve santu nirāmayāḥ<br/>
+        Sarve bhadrāṇi paśyantu<br/>
+        Mā kaścid duḥkha bhāg bhavet
+        <span class="verse-break"></span>
+        Om śāntiḥ śāntiḥ śāntiḥ
+        <div class="chant-translate">
+          May all beings be happy. May all be free from illness. May all see what is auspicious. May no one suffer. Om · peace · peace · peace.
+        </div>
+      </div>
+      <div class="tips-label">Close With</div>
+      <ul class="tips">
+        <li>Both: "Namaste. Thank you for practicing with us."</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bot-bar">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <span class="slide-count">21 / 21</span>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="nav-btn nav-btn-ghost" onclick="goTo(0)" title="Return to home">⌂ Home</button>
+      <button class="nav-btn" onclick="goTo(1)">⟳ Repeat</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<script>
+  const TOTAL = 21;
+  let current = 0;
+
+  function goTo(n) {
+    document.getElementById('slide-' + current).classList.remove('active');
+    current = n;
+    document.getElementById('slide-' + current).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  function next() { if (current < TOTAL) goTo(current + 1); }
+  function prev() { if (current > 1)     goTo(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight','ArrowDown',' '].includes(e.key)) {
+      e.preventDefault();
+      current === 0 ? goTo(1) : next();
+    }
+    if (['ArrowLeft','ArrowUp'].includes(e.key)) {
+      e.preventDefault();
+      prev();
+    }
+  });
+</script>
+</body>
+</html>
