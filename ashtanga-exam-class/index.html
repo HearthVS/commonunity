@@ -420,14 +420,16 @@
     .info-slide {
       flex-direction: column;
       background: var(--bg);
+      overflow: hidden;
     }
     .info-body {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 40px 52px;
-      gap: 20px;
+      justify-content: flex-start;
+      padding: 28px 52px 28px 52px;
+      gap: 16px;
+      overflow-y: auto;
     }
 
     @media (max-width: 640px) {
@@ -586,6 +588,18 @@
     }
 
     /* ─── COVER COLLAGE ─── */
+    /* Cover overflow fix */
+    #slide-0 {
+      overflow-y: auto;
+      justify-content: flex-start;
+      padding: 0;
+      gap: 8px;
+    }
+    #slide-0 .cover-collage {
+      position: relative;
+      height: 260px;
+      flex-shrink: 0;
+    }
     .cover-collage {
       position: absolute; inset: 0;
       display: flex;
