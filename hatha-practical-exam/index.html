@@ -43,6 +43,7 @@
       position: relative;
       overflow: hidden;
       height: 100vh;
+      height: 100dvh;
       padding: 0;
     }
 
@@ -707,14 +708,16 @@
     .nav-btn-ghost:hover { opacity: 1; }
     .slide-count { font-family: Georgia, serif; font-size: 12px; color: var(--muted); letter-spacing: 2px; }
 
-    /* ── MOBILE ── */
-    @media (max-width: 640px) {
+    /* ── MOBILE & TABLET PORTRAIT ── */
+    /* Covers phones AND iPads in portrait (iPad 9.7" = 768w, iPad Air = 820w, iPad Pro 11" = 834w, iPad Pro 12.9" = 1024w). */
+    /* Switches from side-by-side to stacked layout with sticky top nav, so the Next/Back buttons are always reachable. */
+    @media (max-width: 1024px) {
       html, body { overflow: visible; height: auto; }
       .deck { height: auto; }
       .slide { position: static; display: none; }
-      .slide.active { display: flex; flex-direction: column; min-height: 100vh; }
+      .slide.active { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 
-      .cover { height: 100svh; }
+      .cover { height: 100svh; height: 100dvh; }
       .cover-center { padding: 32px 22px; gap: 11px; }
       .cover-title { font-size: clamp(26px, 8vw, 40px); }
       .cover-names { font-size: 12px; letter-spacing: 3px; }
@@ -1489,6 +1492,7 @@
         <li>Exhale straighten front leg, hands to hips, square hips fully forward</li>
         <li>Pyramid: exhale hinge forward, flat back first · hands to mat, blocks, or shins · 5 breaths</li>
         <li>Inhale rise · step back to Down Dog · second side</li>
+        <li><strong>Transition to floor:</strong> from Down Dog, lower knees · swing legs through to <strong>Daṇḍāsana</strong> · legs long, feet flexed, crown tall, 2 breaths · then roll down onto your back for Tara</li>
       </ul>
     </div>
   </div>
