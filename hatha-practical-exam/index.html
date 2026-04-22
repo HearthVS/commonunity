@@ -1076,7 +1076,7 @@
     </div>
   </div>
   <div class="bot-bar">
-    <button class="nav-btn" onclick="prev()" disabled>← Back</button>
+    <button class="nav-btn" onclick="prev()">← Back</button>
     <span class="slide-count">3 / 21</span>
     <button class="nav-btn" onclick="next()">Next →</button>
   </div>
@@ -1809,7 +1809,7 @@
     window.scrollTo(0, 0);
   }
   function next() { if (current < TOTAL) goTo(current + 1); }
-  function prev() { if (current > 1)     goTo(current - 1); }
+  function prev() { if (current > 0)     goTo(current - 1); }
 
   document.addEventListener('keydown', e => {
     if (['ArrowRight','ArrowDown',' '].includes(e.key)) {
