@@ -90,6 +90,17 @@ function sha256Hex(input) {
   return sha256JS(str);
 }
 
+// Pure-JS SHA-256 fallback for browsers that don't expose `require("crypto")`.
+//
+// History: the prior implementation computed the padding length such that
+// `out.length` was `64 * ceil((N+9)/64) + 8` — i.e. 8 bytes too long and
+// NOT a multiple of 64. The block loop then processed an extra trailing
+// 64-byte window of mostly-zero/garbage bytes, producing a deterministic
+// but completely wrong digest. In Node `sha256Hex` short-circuits to
+// `require("crypto")` so tests passed; on the live site (no `require`)
+// every Cipher seed surfaced this wrong hash (e.g. Markus rendered
+// `25345a79…` instead of the canonical `58b2ea61…`). Fix: pad so the
+// total length is exactly `64 * ceil((N+9)/64)`.
 function sha256JS(ascii) {
   function rightRotate(n, x) { return (x >>> n) | (x << (32 - n)); }
   const K = new Uint32Array([
@@ -105,19 +116,34 @@ function sha256JS(ascii) {
   let H = new Uint32Array([
     0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19,
   ]);
+  // UTF-8 byte length of the input (not character count).
   const utf8 = unescape(encodeURIComponent(ascii));
-  const bytes = new Uint8Array(utf8.length + 1);
-  for (let i = 0; i < utf8.length; i++) bytes[i] = utf8.charCodeAt(i);
-  bytes[utf8.length] = 0x80;
-  const bitLen = utf8.length * 8;
-  const padLen = (Math.ceil((utf8.length + 9) / 64) * 64) - utf8.length - 1;
-  const out = new Uint8Array(utf8.length + 1 + padLen + 8);
-  out.set(bytes.subarray(0, utf8.length + 1));
-  for (let i = 0; i < 4; i++) out[out.length - 5 - i] = (bitLen >>> (i * 8)) & 0xff;
+  const N = utf8.length;
+  // Total padded length: smallest multiple of 64 that fits N + 1 (0x80
+  // separator) + 8 (64-bit big-endian bit length).
+  const totalLen = 64 * Math.ceil((N + 9) / 64);
+  const out = new Uint8Array(totalLen);
+  for (let i = 0; i < N; i++) out[i] = utf8.charCodeAt(i);
+  out[N] = 0x80;
+  // 64-bit big-endian bit length in the last 8 bytes. Top 4 bytes carry
+  // bits 32..63 of the length; for inputs shorter than 2^29 bytes these
+  // are all zero, but emit them explicitly so longer inputs stay correct.
+  const bitLen = N * 8;
+  // bitLen ≥ 2^32 is unreachable in practice for our short canonical
+  // strings; still write the high word safely.
+  const hiBits = Math.floor(bitLen / 0x100000000);
+  out[totalLen - 8] = (hiBits >>> 24) & 0xff;
+  out[totalLen - 7] = (hiBits >>> 16) & 0xff;
+  out[totalLen - 6] = (hiBits >>> 8)  & 0xff;
+  out[totalLen - 5] = (hiBits)        & 0xff;
+  out[totalLen - 4] = (bitLen >>> 24) & 0xff;
+  out[totalLen - 3] = (bitLen >>> 16) & 0xff;
+  out[totalLen - 2] = (bitLen >>> 8)  & 0xff;
+  out[totalLen - 1] = (bitLen)        & 0xff;
   const W = new Uint32Array(64);
-  for (let off = 0; off < out.length; off += 64) {
+  for (let off = 0; off < totalLen; off += 64) {
     for (let i = 0; i < 16; i++) {
-      W[i] = (out[off + i*4] << 24) | (out[off + i*4 + 1] << 16) | (out[off + i*4 + 2] << 8) | (out[off + i*4 + 3]);
+      W[i] = ((out[off + i*4] << 24) | (out[off + i*4 + 1] << 16) | (out[off + i*4 + 2] << 8) | (out[off + i*4 + 3])) >>> 0;
     }
     for (let i = 16; i < 64; i++) {
       const s0 = rightRotate(7, W[i-15]) ^ rightRotate(18, W[i-15]) ^ (W[i-15] >>> 3);
