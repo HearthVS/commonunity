@@ -132,6 +132,8 @@ function buildSection() {
   leaf(sec, 'p',  { 'data-cu-om-cipher-narrative': '1' });
   leaf(sec, 'p',  { 'data-cu-om-cipher-contemplation': '1' });
   leaf(sec, 'p',  { 'data-cu-om-cipher-activation': '1' });
+  leaf(sec, 'p',  { 'data-cu-om-cipher-seal-full': '1' });
+  leaf(sec, 'p',  { 'data-cu-om-cipher-input-fingerprint': '1' });
   leaf(sec, 'p',  { 'data-cu-om-cipher-bhramari': '1' });
   ['life_path','expression','soul_urge','personality','lunar_phase','solar_quarter','temporal_gate'].forEach(k => {
     const item = leaf(sec, 'div', { 'data-cu-om-cipher-gematria': k }, ['oc-source-item', 'is-pending']);
@@ -293,12 +295,14 @@ test('activation sequence carries Challenge 2 + Stability 4 with line roles', ()
   r.render({}, sec);
   const act = sec.querySelector('[data-cu-om-cipher-activation]');
   assert.ok(!act.classList.contains('is-pending'), 'activation not pending');
-  // Challenge pair (work/lens) — both line 2 → "Challenge 2: Dancer / Marriage"
-  assert.ok(/Challenge 2:.*Dancer.*Marriage/.test(act.textContent),
-    'expected Challenge 2 with Dancer + Marriage; got: ' + act.textContent);
-  // Stability pair (field/call) — both line 4 → "Stability 4: Love & Community / Breath"
-  assert.ok(/Stability 4:.*Love & Community.*Breath/.test(act.textContent),
-    'expected Stability 4 with Love & Community + Breath; got: ' + act.textContent);
+  // Challenge pair (work/lens=Evolution) — both line 2 →
+  // "Challenge 2: Dancer / Passion & Relationships"
+  assert.ok(/Challenge 2:.*Dancer.*Passion & Relationships/.test(act.textContent),
+    'expected Challenge 2 with Dancer + Passion & Relationships; got: ' + act.textContent);
+  // Stability pair (field=Radiance/call) — both line 4 →
+  // "Stability 4: Friendship / Breath"
+  assert.ok(/Stability 4:.*Friendship.*Breath/.test(act.textContent),
+    'expected Stability 4 with Friendship + Breath; got: ' + act.textContent);
 });
 
 // ── 9. Cipher name is derived (`[Preferred] of the [Temporal Qualifier]`).
@@ -338,6 +342,80 @@ test('narrative surface renders the Layer 6 archetypal story seed (keyed 8_6)', 
   // No instruction text embedded in the story content itself.
   assert.ok(!/Living Profile/.test(narr.textContent),
     'story content must not contain UI instruction text');
+});
+
+// ── 11. Cipher seed surface = canonical engine seed (NOT input_hash).
+//        For Markus the canonical seed is sha256("LP:22|EX:8|SU:6|PE:2|
+//        LUN:6|SOL:3|TG:1") = 58b2ea61…f388784.
+test('cipher seed surface shows canonical engine seed (58b2ea61…f388784)', () => {
+  const CANONICAL_SEED = '58b2ea613f7d3c7522bf0df86e1826e4200ab64a7f31c319810eb3701f388784';
+  const win = makeWindow(FIXTURE);
+  const r = makeRenderer(win);
+  const sec = buildSection();
+  r.render({}, sec);
+  // Short caption form: <first8>…<last4>.
+  const seedShort = sec.querySelector('[data-cu-om-cipher-seed]');
+  assert.equal(seedShort.textContent,
+    CANONICAL_SEED.slice(0, 8) + '…' + CANONICAL_SEED.slice(-4),
+    'short cipher seed must derive from canonical engine seed, not input fingerprint');
+  assert.equal(seedShort.getAttribute('data-cu-om-cipher-seed-full'), CANONICAL_SEED,
+    'data-cu-om-cipher-seed-full carries the full canonical seed');
+  // Full 64-char surface mirrors the canonical seed verbatim.
+  const sealFull = sec.querySelector('[data-cu-om-cipher-seal-full]');
+  assert.equal(sealFull.textContent, CANONICAL_SEED,
+    'oc-seal-full text is the canonical Om Cipher seed');
+});
+
+// ── 12. Input fingerprint surfaces rec.input_hash, clearly separate
+//        from the canonical Cipher seed. ──────────────────────────
+test('input fingerprint surface = rec.input_hash, labelled "Input fingerprint:"', () => {
+  const win = makeWindow(FIXTURE);
+  const r = makeRenderer(win);
+  const sec = buildSection();
+  r.render({}, sec);
+
+  // Re-derive what the engine should produce for the fixture so we can
+  // compare against the rendered surface.
+  const input = r.buildInput(null);
+  const rec = om.generate(input, { featureFlag: true });
+  const fp = sec.querySelector('[data-cu-om-cipher-input-fingerprint]');
+  assert.ok(rec.input_hash && rec.input_hash.length === 64,
+    'engine input_hash present');
+  assert.ok(fp.textContent.startsWith('Input fingerprint: '),
+    'fingerprint surface prefixed by explicit label');
+  assert.equal(fp.getAttribute('data-cu-om-cipher-input-fingerprint-full'),
+    rec.input_hash, 'fingerprint surface stores full input_hash');
+  // Critically — the input fingerprint must NOT equal the canonical seed.
+  assert.notEqual(rec.input_hash, rec.seed,
+    'input fingerprint is distinct from canonical Cipher seed');
+});
+
+// ── 13. Field-pattern hero line (visible beside the sigil) renders
+//        the canonical Activation Sequence labels for Markus.
+//        Acceptance copy from the task spec:
+//          Root 4 · Challenge 2: Dancer / Passion & Relationships ·
+//          Stability 4: Friendship / Breath
+test('field-pattern hero line renders canonical Markus activation labels', () => {
+  const win = makeWindow(FIXTURE);
+  const r = makeRenderer(win);
+  const sec = buildSection();
+  r.render({}, sec);
+  const fp = sec.querySelector('[data-cu-om-cipher-field-pattern]');
+  assert.ok(!fp.classList.contains('is-pending'),
+    'field pattern should render, not stay pending');
+  const txt = fp.textContent;
+  assert.ok(/Root 4\b/.test(txt),
+    'expected "Root 4" prefix; got: ' + txt);
+  assert.ok(/Challenge 2: Dancer \/ Passion & Relationships/.test(txt),
+    'expected canonical Evolution-sphere label "Passion & Relationships"; got: ' + txt);
+  assert.ok(/Stability 4: Friendship \/ Breath/.test(txt),
+    'expected canonical Radiance-sphere label "Friendship"; got: ' + txt);
+  // Regression: the previous swap put Radiance labels on the lens slot
+  // and Evolution labels on the field slot.
+  assert.ok(!/Challenge 2: Dancer \/ Marriage/.test(txt),
+    'lens (Evolution) line 2 must not surface "Marriage"; got: ' + txt);
+  assert.ok(!/Stability 4: Love & Community \/ Breath/.test(txt),
+    'field (Radiance) line 4 must not surface "Love & Community"; got: ' + txt);
 });
 
 console.log('\n' + (failed === 0 ? '✅ all passed' : '❌ ' + failed + ' failed') +

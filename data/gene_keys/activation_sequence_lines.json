@@ -12,20 +12,20 @@
       "6": { "name": "Teacher",  "keynote": "embodies and transmits" }
     },
     "lens": {
-      "1": { "name": "Solitude",     "keynote": "clarity through inward focus" },
-      "2": { "name": "Marriage",     "keynote": "clarity through close pairing" },
-      "3": { "name": "Interaction",  "keynote": "clarity through varied contact" },
-      "4": { "name": "Friendship",   "keynote": "clarity through chosen circle" },
-      "5": { "name": "Impact",       "keynote": "clarity through wider reach" },
-      "6": { "name": "Nurture",      "keynote": "clarity through care of others" }
-    },
-    "field": {
       "1": { "name": "Self & Empowerment",       "keynote": "grounding in own sovereignty" },
       "2": { "name": "Passion & Relationships",  "keynote": "vitality through bond" },
       "3": { "name": "Energy & Experience",      "keynote": "vitality through experimentation" },
       "4": { "name": "Love & Community",         "keynote": "vitality through belonging" },
       "5": { "name": "Power & Projection",       "keynote": "vitality through wider influence" },
       "6": { "name": "Education & Surrender",    "keynote": "vitality through learning and yielding" }
+    },
+    "field": {
+      "1": { "name": "Solitude",     "keynote": "clarity through inward focus" },
+      "2": { "name": "Marriage",     "keynote": "clarity through close pairing" },
+      "3": { "name": "Interaction",  "keynote": "clarity through varied contact" },
+      "4": { "name": "Friendship",   "keynote": "clarity through chosen circle" },
+      "5": { "name": "Impact",       "keynote": "clarity through wider reach" },
+      "6": { "name": "Nurture",      "keynote": "clarity through care of others" }
     },
     "call": {
       "1": { "name": "Physicality", "keynote": "answer through body" },

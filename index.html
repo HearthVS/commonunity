@@ -3933,7 +3933,9 @@ const GENE_KEYS = {
 // ============================================================
 
 // Gene Keys line names vary per sphere (compass point)
-// Sphere key: work=Life's Work, lens=Radiance, field=Evolution, call=Purpose
+// Sphere key: work=Life's Work, lens=Evolution, field=Radiance, call=Purpose
+// (Canonical Activation Sequence mapping — matches sdk/om_cipher.js and
+// data/gene_keys/activation_sequence_lines.json.)
 const GK_LINE_NAMES = {
   work: {
     1: { name: 'Creator',  desc: 'Stabilising — building the foundation that others rest upon' },
@@ -3944,15 +3946,6 @@ const GK_LINE_NAMES = {
     6: { name: 'Teacher',  desc: 'Trickling — wisdom distilled through experience, living example' }
   },
   lens: {
-    // Radiance sphere
-    1: { name: 'Solitude',     desc: 'Entering deep inner silence, the foundation of radiance' },
-    2: { name: 'Marriage',     desc: 'Radiance through intimate union and creative partnership' },
-    3: { name: 'Interaction',  desc: 'Radiance discovered through encounter and experimentation' },
-    4: { name: 'Friendship',   desc: 'Radiance shared through community and trusted bonds' },
-    5: { name: 'Impact',       desc: 'Radiance projected widely, influencing the field around you' },
-    6: { name: 'Nurture',      desc: 'Radiance expressed through care, holding, and mentoring others' }
-  },
-  field: {
     // Evolution sphere
     1: { name: 'Self & Empowerment',       desc: 'Evolution through deep self-knowledge and inner authority' },
     2: { name: 'Passion & Relationships',  desc: 'Evolution ignited by desire and transformed through relating' },
@@ -3960,6 +3953,15 @@ const GK_LINE_NAMES = {
     4: { name: 'Love & Community',         desc: 'Evolution flowering in connection, belonging, and love' },
     5: { name: 'Power & Projection',       desc: 'Evolution through leadership, visibility, and influence' },
     6: { name: 'Education & Surrender',    desc: 'Evolution completed through wisdom, teaching, and letting go' }
+  },
+  field: {
+    // Radiance sphere
+    1: { name: 'Solitude',     desc: 'Entering deep inner silence, the foundation of radiance' },
+    2: { name: 'Marriage',     desc: 'Radiance through intimate union and creative partnership' },
+    3: { name: 'Interaction',  desc: 'Radiance discovered through encounter and experimentation' },
+    4: { name: 'Friendship',   desc: 'Radiance shared through community and trusted bonds' },
+    5: { name: 'Impact',       desc: 'Radiance projected widely, influencing the field around you' },
+    6: { name: 'Nurture',      desc: 'Radiance expressed through care, holding, and mentoring others' }
   },
   call: {
     // Purpose sphere

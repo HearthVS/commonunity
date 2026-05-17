@@ -167,11 +167,13 @@ def name_resonance(legal_name: Optional[str]) -> Optional[dict]:
 
 # ── Gene Keys / I Ching ─────────────────────────────────────────────────
 
+# Activation Sequence sphere → canonical line names. `lens` = Evolution,
+# `field` = Radiance — these are sphere-specific labels, not interchangeable.
 _GK_LINE_NAMES = {
     "work":  {1:"Creator",2:"Dancer",3:"Changer",4:"Server",5:"Fixer",6:"Teacher"},
-    "lens":  {1:"Solitude",2:"Marriage",3:"Interaction",4:"Friendship",5:"Impact",6:"Nurture"},
-    "field": {1:"Self & Empowerment",2:"Passion & Relationships",3:"Energy & Experience",
+    "lens":  {1:"Self & Empowerment",2:"Passion & Relationships",3:"Energy & Experience",
               4:"Love & Community",5:"Power & Projection",6:"Education & Surrender"},
+    "field": {1:"Solitude",2:"Marriage",3:"Interaction",4:"Friendship",5:"Impact",6:"Nurture"},
     "call":  {1:"Physicality",2:"Posture",3:"Movement",4:"Breath",5:"Voice",6:"Intent"},
 }
 
