@@ -121,8 +121,9 @@ ok('renderer reads Layer-6 om_cipher_mantra from engine metadata',
 ok('renderer keeps seed_syllable as fallback path',
    /sealed_inputs[\s\S]*seed_syllable/.test(src));
 
-console.log('\nflag gating (?om_cipher=1 query param init still in place)');
-ok('?om_cipher=1 flag init still present',             /\[\?&\]om_cipher=1/.test(src));
+console.log('\nflag gating (default-on, ?om_cipher=0 opt-out in place)');
+ok('CU_OM_CIPHER_ENABLED defaults to true',            /window\.CU_OM_CIPHER_ENABLED\s*=\s*true/.test(src));
+ok('?om_cipher=0 opt-out path present',                /\[\?&\]om_cipher=0/.test(src));
 ok('?bhramari=1 flag init still present',              /\[\?&\]bhramari=1/.test(src));
 
 if (failed) {

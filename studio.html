@@ -9205,6 +9205,23 @@ function studioLoadJSON(file) {
       if (state.birthData?.calculated) restoreStudioCalcResults(state.birthData);
 
       showToast('Studio session loaded — welcome back, ' + (state.person || 'explorer'));
+
+      // If a profile / website preview is already open at the moment of
+      // import, re-render it so the OM Cipher engine area and sigil
+      // recalculate against the newly-loaded Compass data instead of
+      // holding the placeholder text. Matches processCompassImport().
+      try {
+        const lpOpen = document.getElementById('living-profile-modal');
+        if (lpOpen && lpOpen.classList.contains('is-open')
+            && typeof window.openLivingProfile === 'function') {
+          window.openLivingProfile();
+        }
+        const wpOpen = document.getElementById('website-preview-modal');
+        if (wpOpen && wpOpen.classList.contains('is-open')
+            && typeof window.openWebsitePreview === 'function') {
+          window.openWebsitePreview();
+        }
+      } catch (_) { /* refresh is best-effort */ }
     } catch(err) {
       showToast('Could not load file: ' + err.message);
     }
@@ -14056,12 +14073,22 @@ if (document.readyState === 'loading') {
     }
     window.cuRenderSigilSlots = cuRenderSigilSlots;
 
-    // Om Cipher flag init — honour ?om_cipher=1 / ?bhramari=1 query
-    // params so the feature can be exercised manually without rebuilding.
-    // Defaults remain false; absence of the query param is the off state.
+    // Om Cipher flag init.
+    // The OM Cipher v2 section is shipped: the renderLivingProfile() output
+    // includes the full section template unconditionally, so the engine
+    // that fills it must also be on by default — otherwise the surfaces
+    // stay frozen on their placeholder copy ("Awaiting Compass seal" /
+    // "Pending source data") even when the foundation card shows real
+    // birth_date / birth_time / birthplace.
+    // Honour an explicit `?om_cipher=0` to opt out for debugging only.
     try {
       var _ocs = window.location.search || '';
-      if (/[?&]om_cipher=1\b/.test(_ocs)) window.CU_OM_CIPHER_ENABLED = true;
+      if (/[?&]om_cipher=0\b/.test(_ocs)) {
+        window.CU_OM_CIPHER_ENABLED = false;
+      } else {
+        window.CU_OM_CIPHER_ENABLED = true;
+      }
+      // Bhramari capture stays opt-in (Living Profile feature, not core).
       if (/[?&]bhramari=1\b/.test(_ocs))  window.CU_BHRAMARI_CAPTURE_ENABLED = true;
     } catch (_) { /* ignore */ }
 
@@ -14206,9 +14233,13 @@ if (document.readyState === 'loading') {
         var slots = container.querySelectorAll('.lp-hero-slot.is-sigil');
         for (var i = 0; i < slots.length; i++) {
           var slot = slots[i];
-          // Remove any prior badge so re-renders don't duplicate.
+          // Drop any prior badge so re-renders don't duplicate.
           var prior = slot.parentNode && slot.parentNode.querySelector('.cu-om-cipher-meta');
           if (prior) prior.parentNode.removeChild(prior);
+          // Skip the OM Cipher v2 section: the engine surface (oc-field-pattern)
+          // already renders the Activation Sequence beside the sigil, so a
+          // badge below the sigil here is a duplicate.
+          if (slot.closest && slot.closest('[data-cu-om-cipher-section]')) continue;
           var badge = document.createElement('div');
           badge.className = 'cu-om-cipher-meta';
           badge.setAttribute('data-cu-om-cipher', 'true');
