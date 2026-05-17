@@ -72,6 +72,13 @@ ok('separate "Input fingerprint" surface exists below the seed',
 ok('renderer paints rec.input_hash into the input fingerprint surface',
    /data-cu-om-cipher-input-fingerprint[\s\S]{0,400}rec\.input_hash/.test(src));
 
+console.log('\nRevision 12 — visible canonical seed under "Cipher seed:" label');
+ok('renderer prefixes the seal-full text with "Cipher seed: " so the hash is locatable',
+   /sealFullEl\.textContent\s*=\s*['"`]?Cipher seed:\s*['"`]?\s*\+\s*fullHash|sealLabel\s*=\s*['"`]Cipher seed:\s/.test(src));
+ok('template placeholder is also labelled (no bare "Pending derivation.")',
+   /Cipher seed:\s*pending derivation/i.test(src) &&
+   !/>\s*Pending derivation\.\s*</.test(src));
+
 console.log('\nRevision 10 — temporal gate label uses local birth time');
 ok('engine temporal_gate label uses "local birth time" wording',
    /local birth time/.test(fs.readFileSync(path.join(__dirname, '..', 'sdk', 'om_cipher.js'), 'utf8')) &&

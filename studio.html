@@ -12997,8 +12997,8 @@ if (document.readyState === 'loading') {
         // retained as a stable hook for downstream consumers.
         '<div class="oc-source-block oc-seal-block">' +
           '<h4 class="oc-source-title">Cipher seed <span class="oc-source-sub">· canonical deterministic hash</span></h4>' +
-          '<p class="oc-seal-full" data-cu-om-cipher-seal-full title="The canonical Om Cipher seed: SHA-256 of LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_. Same inputs → same seed, always.">Pending derivation.</p>' +
-          '<p class="oc-seal-fingerprint" data-cu-om-cipher-input-fingerprint title="Separate SHA-256 over the raw sealed-input bundle (name + birth data + Bhramari). Distinct from the Cipher seed; useful for proving the inputs themselves match." style="margin:6px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:0.55;word-break:break-all;">Input fingerprint pending.</p>' +
+          '<p class="oc-seal-full" data-cu-om-cipher-seal-full title="The canonical Om Cipher seed: SHA-256 of LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_. Same inputs → same seed, always.">Cipher seed: pending derivation.</p>' +
+          '<p class="oc-seal-fingerprint" data-cu-om-cipher-input-fingerprint title="Separate SHA-256 over the raw sealed-input bundle (name + birth data + Bhramari). Distinct from the Cipher seed; useful for proving the inputs themselves match." style="margin:6px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:0.6;word-break:break-all;">Input fingerprint: pending.</p>' +
           '<p class="oc-activation-line" data-cu-om-cipher-activation aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">Pending Compass-sealed Gene Keys.</p>' +
         '</div>' +
         // ── Bhramari resonance ───────────────────────────────
@@ -14781,18 +14781,22 @@ if (document.readyState === 'loading') {
         // ── Cipher seed full hash + copy affordance ──────────────
         // The canonical Om Cipher seed (SHA-256 of the deterministic
         // seed string `LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_`). Distinct
-        // from the input fingerprint surfaced below.
+        // from the input fingerprint surfaced below. The visible text
+        // is explicitly prefixed `Cipher seed:` so the hash carries its
+        // own label and can be located by text scrapers / acceptance
+        // tests independently of the surrounding <h4>.
         var sealFullEl = section.querySelector('[data-cu-om-cipher-seal-full]');
         if (sealFullEl) {
           var fullHash = rec.seed || '';
           if (fullHash) {
-            sealFullEl.textContent = fullHash;
+            var sealLabel = 'Cipher seed: ' + fullHash;
+            sealFullEl.textContent = sealLabel;
             if (sealFullEl.style) {
               try {
                 sealFullEl.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
                 sealFullEl.style.fontSize = '11px';
                 sealFullEl.style.wordBreak = 'break-all';
-                sealFullEl.style.opacity = '0.7';
+                sealFullEl.style.opacity = '0.85';
                 sealFullEl.style.cursor = 'pointer';
               } catch (_) {}
             }
