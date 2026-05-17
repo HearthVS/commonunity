@@ -51,6 +51,12 @@ console.log('\nOm Cipher — browser-context render (sidecar + SDK)');
 // no `require`. The SDK's `_loadLayer6Data()` must fall through to the
 // window global. We then call generate() on the Markus fixture and assert
 // the Layer 6 outputs surface.
+//
+// Critically: do NOT wrap the sources in an IIFE here. The browser loads
+// each <script> tag as a normal top-level program against a shared global
+// scope. If the sidecar or SDK declared a top-level `const _exports`, that
+// would collide and the second script would fail to execute — which is
+// exactly the prod bug this test guards against.
 test('Markus fixture renders Layer 6 outputs through window.cuOmCipherLayer6', () => {
   const win = {};
   const sandbox = {
@@ -61,20 +67,18 @@ test('Markus fixture renders Layer 6 outputs through window.cuOmCipherLayer6', (
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
 
-  // Each <script> tag in the browser runs in its own top-level scope; vm
-  // runInContext shares one global scope, so wrap each source in an IIFE
-  // to mirror the browser (avoids top-level `const` collisions like
-  // `_exports` being declared in both files).
-  const wrap = (src) => '(function(){\n' + src + '\n})();';
-
-  // Sidecar: populates window.cuOmCipherLayer6.
-  vm.runInContext(wrap(fs.readFileSync(SIDECAR_PATH, 'utf8')), sandbox,
+  // Sidecar: populates window.cuOmCipherLayer6. Evaluated as a plain
+  // browser script (no IIFE wrapper) so top-level identifier collisions
+  // with the SDK would surface here.
+  vm.runInContext(fs.readFileSync(SIDECAR_PATH, 'utf8'), sandbox,
     { filename: 'om_cipher_layer6_data.js' });
   assert.ok(win.cuOmCipherLayer6, 'sidecar must expose window.cuOmCipherLayer6');
   assert.ok(win.cuOmCipherLayer6.MANTRA_TABLE, 'mantra table present');
 
   // SDK: must read window.cuOmCipherLayer6 (no `require` in sandbox).
-  vm.runInContext(wrap(fs.readFileSync(SDK_PATH, 'utf8')), sandbox,
+  // Also evaluated as a plain browser script — must not throw a top-level
+  // `Identifier '_exports' has already been declared` against the sidecar.
+  vm.runInContext(fs.readFileSync(SDK_PATH, 'utf8'), sandbox,
     { filename: 'om_cipher.js' });
   assert.ok(win.cuOmCipher, 'SDK must expose window.cuOmCipher');
   assert.equal(typeof win.cuOmCipher.generate, 'function');
