@@ -9028,6 +9028,43 @@ function saveWorkbenchEntry() {
 // ============================================================
 // COMPASS IMPORT
 // ============================================================
+// Accept BOTH raw Compass session JSON (has `points` at top level) and
+// Studio export wrapper JSON (has `version: "studio-v1"`, `compassData`,
+// optional `rooms`/`person`/`birthData`/`theme`). Returns a normalized
+// shape `{compassData, rooms, person, birthData, theme}` or null if the
+// shape is unrecognised. Exposed on `window` so tests can exercise it
+// directly without spinning up a FileReader.
+function normalizeImportedStudioOrCompassJson(data) {
+  if (!data || typeof data !== 'object') return null;
+  // Studio export wrapper — the actual Compass data lives under
+  // `compassData`. Detect by version OR by the presence of compassData
+  // with a `points` payload inside.
+  const looksLikeWrapper =
+    (typeof data.version === 'string' && data.version.indexOf('studio') === 0)
+    || (data.compassData && typeof data.compassData === 'object' && data.compassData.points);
+  if (looksLikeWrapper && data.compassData) {
+    return {
+      compassData: data.compassData,
+      rooms: data.rooms || null,
+      person: data.person || data.compassData.companion || null,
+      birthData: data.birthData || null,
+      theme: data.theme || data.compassData.theme || null,
+    };
+  }
+  // Raw Compass session — must carry `points`.
+  if (data.points) {
+    return {
+      compassData: data,
+      rooms: null,
+      person: data.companion || null,
+      birthData: null,
+      theme: data.theme || null,
+    };
+  }
+  return null;
+}
+try { if (typeof window !== 'undefined') window.normalizeImportedStudioOrCompassJson = normalizeImportedStudioOrCompassJson; } catch (_) {}
+
 function initImportModal() {
   const modal = document.getElementById('import-modal');
   const dropzone = document.getElementById('import-dropzone');
@@ -9055,25 +9092,44 @@ function processCompassImport(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const data = JSON.parse(e.target.result);
-      // Validate it looks like a Compass session
-      if (!data.points) throw new Error('Not a Compass session file');
-      state.compassData = data;
-      state.birthData = null; // JSON is master key — overrides calculator
-      if (data.companion) state.person = data.companion;
-      if (data.theme) {
-        state.theme = data.theme;
-        document.documentElement.dataset.theme = data.theme;
+      const raw = JSON.parse(e.target.result);
+      const norm = normalizeImportedStudioOrCompassJson(raw);
+      if (!norm) throw new Error('Not a Compass session file');
+      const compass = norm.compassData;
+      state.compassData = compass;
+      // Prefer the wrapper's explicit birthData if present; otherwise
+      // the Compass JSON itself is the master key for the foundation
+      // (overrides any prior calculator state).
+      state.birthData = norm.birthData || null;
+      const displayName = norm.person || compass.companion || null;
+      if (displayName) state.person = displayName;
+      const theme = norm.theme;
+      if (theme) {
+        state.theme = theme;
+        document.documentElement.dataset.theme = theme;
+      }
+      // Studio export wrappers also carry per-room entries — restore
+      // them so OM Cipher and Living Profile have the surrounding
+      // context they expect.
+      if (norm.rooms && state.rooms) {
+        ['work','lens','field','call'].forEach(room => {
+          if (norm.rooms[room]) {
+            state.rooms[room] = {
+              entries: norm.rooms[room].entries || [],
+              mirrorHistory: norm.rooms[room].mirrorHistory || []
+            };
+          }
+        });
       }
       saveState();
       document.getElementById('import-modal').classList.remove('open');
-      showToast('Session imported — welcome, ' + (data.companion || 'explorer'));
+      showToast('Session imported — welcome, ' + (displayName || 'explorer'));
       const nd = document.getElementById('entrance-name');
-      if (nd && data.companion) { nd.textContent = 'Welcome, ' + data.companion; nd.classList.add('visible'); }
+      if (nd && displayName) { nd.textContent = 'Welcome, ' + displayName; nd.classList.add('visible'); }
 
       // Update entrance name
       const nameEl = document.getElementById('entrance-name');
-      if (data.companion) nameEl.textContent = `Welcome back, ${data.companion}`;
+      if (displayName) nameEl.textContent = `Welcome back, ${displayName}`;
 
       // Open portal if not already
       if (!portalOpened) {
