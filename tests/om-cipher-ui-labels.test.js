@@ -50,16 +50,27 @@ ok('Bhramari header reads "Bhramari resonance · from Living Profile"',
    /Bhramari resonance\s*<span[^>]*>·\s*from Living Profile/i.test(src));
 
 console.log('\nRevision 8 — duplicate activation removed below sigil');
-ok('below-sigil block is now the Cipher seal block (not a 2nd activation header)',
+ok('below-sigil block is now the Cipher seed block (not a 2nd activation header)',
    /oc-seal-block/.test(src));
 
-console.log('\nRevision 9 — copyable cipher seal + tooltip');
-ok('seal element has cryptographic-fingerprint tooltip',
-   /cryptographic fingerprint of your birth data/.test(src));
-ok('renderer wires clipboard copy on the seal element',
+console.log('\nRevision 9 — copyable cipher seed + tooltip');
+ok('seed element has canonical-seed tooltip',
+   /Same inputs\s*[→-]\s*same seed/.test(src) ||
+   /canonical Om Cipher seed/i.test(src));
+ok('renderer wires clipboard copy on the seed element',
    /navigator\.clipboard/.test(src) && /data-cu-om-cipher-seed-full/.test(src));
-ok('full 64-char seal hash surface present in below-sigil block',
+ok('full 64-char seed hash surface present in below-sigil block',
    /data-cu-om-cipher-seal-full/.test(src));
+
+console.log('\nRevision 11 — Cipher seed vs Input fingerprint disambiguation');
+ok('caption labels the visible hash as "Cipher seed" (not Cipher seal)',
+   /Cipher seed:\s*<em data-cu-om-cipher-seed>/.test(src));
+ok('lower block title says "Cipher seed · canonical deterministic hash"',
+   /Cipher seed\s*<span[^>]*>·\s*canonical deterministic hash/.test(src));
+ok('separate "Input fingerprint" surface exists below the seed',
+   /data-cu-om-cipher-input-fingerprint(?:\b|")/.test(src));
+ok('renderer paints rec.input_hash into the input fingerprint surface',
+   /data-cu-om-cipher-input-fingerprint[\s\S]{0,400}rec\.input_hash/.test(src));
 
 console.log('\nRevision 10 — temporal gate label uses local birth time');
 ok('engine temporal_gate label uses "local birth time" wording',

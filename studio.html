@@ -12947,7 +12947,7 @@ if (document.readyState === 'loading') {
               '<span class="lp-hero-slot-glyph" aria-hidden="true">ॐ</span>' +
               '<span class="lp-hero-slot-label">Digital key<br>· sigil</span>' +
             '</div>' +
-            '<div class="oc-sigil-caption" data-cu-om-cipher-seed-hash>Cipher seal: <em data-cu-om-cipher-seed>pending</em></div>' +
+            '<div class="oc-sigil-caption" data-cu-om-cipher-seed-hash>Cipher seed: <em data-cu-om-cipher-seed>pending</em></div>' +
           '</div>' +
           '<div class="oc-identity">' +
             '<div class="oc-id-row">' +
@@ -12996,8 +12996,9 @@ if (document.readyState === 'loading') {
         // this block carries provenance + an aria-hidden activation line
         // retained as a stable hook for downstream consumers.
         '<div class="oc-source-block oc-seal-block">' +
-          '<h4 class="oc-source-title">Cipher seal <span class="oc-source-sub">· verifiable fingerprint</span></h4>' +
-          '<p class="oc-seal-full" data-cu-om-cipher-seal-full title="This is a cryptographic fingerprint of your birth data. It proves your Om Cipher was derived deterministically from your sealed inputs.">Pending derivation.</p>' +
+          '<h4 class="oc-source-title">Cipher seed <span class="oc-source-sub">· canonical deterministic hash</span></h4>' +
+          '<p class="oc-seal-full" data-cu-om-cipher-seal-full title="The canonical Om Cipher seed: SHA-256 of LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_. Same inputs → same seed, always.">Pending derivation.</p>' +
+          '<p class="oc-seal-fingerprint" data-cu-om-cipher-input-fingerprint title="Separate SHA-256 over the raw sealed-input bundle (name + birth data + Bhramari). Distinct from the Cipher seed; useful for proving the inputs themselves match." style="margin:6px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:0.55;word-break:break-all;">Input fingerprint pending.</p>' +
           '<p class="oc-activation-line" data-cu-om-cipher-activation aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">Pending Compass-sealed Gene Keys.</p>' +
         '</div>' +
         // ── Bhramari resonance ───────────────────────────────
@@ -14165,11 +14166,14 @@ if (document.readyState === 'loading') {
     // ─────────────────────────────────────────────────────────────────────
     (function () {
       if (window.cuOmCipherDisplay) return;
+      // Activation Sequence sphere → canonical line names (Gene Keys
+      // Activation Sequence teaching). `lens` = Evolution; `field` =
+      // Radiance — these are sphere-specific, not interchangeable.
       var GK_LINE_NAMES = {
         work:  {1:"Creator",2:"Dancer",3:"Changer",4:"Server",5:"Fixer",6:"Teacher"},
-        lens:  {1:"Solitude",2:"Marriage",3:"Interaction",4:"Friendship",5:"Impact",6:"Nurture"},
-        field: {1:"Self & Empowerment",2:"Passion & Relationships",3:"Energy & Experience",
+        lens:  {1:"Self & Empowerment",2:"Passion & Relationships",3:"Energy & Experience",
                 4:"Love & Community",5:"Power & Projection",6:"Education & Surrender"},
+        field: {1:"Solitude",2:"Marriage",3:"Interaction",4:"Friendship",5:"Impact",6:"Nurture"},
         call:  {1:"Physicality",2:"Posture",3:"Movement",4:"Breath",5:"Voice",6:"Intent"},
       };
       var NOTES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -14610,10 +14614,13 @@ if (document.readyState === 'loading') {
             seedEl._cuSealCopyWired = true;
           }
         }
-        // Caption text — keep cipher-seal label in sync with state.
+        // Caption text — keep cipher-seed label in sync with state. The
+        // visible hash here is `rec.seed` (canonical Om Cipher seed,
+        // SHA-256 of the deterministic seed string), not the
+        // input_hash fingerprint.
         var seedCap = section.querySelector('[data-cu-om-cipher-seed-hash]');
         if (seedCap) {
-          var seedCapPrefix = sealed ? 'Cipher seal: ' : 'Draft seal: ';
+          var seedCapPrefix = sealed ? 'Cipher seed: ' : 'Draft seed: ';
           // Preserve the <em data-cu-om-cipher-seed> child verbatim.
           var emEl = seedCap.querySelector('[data-cu-om-cipher-seed]');
           if (emEl) {
@@ -14771,7 +14778,10 @@ if (document.readyState === 'loading') {
             actEl.classList.add('is-pending');
           }
         }
-        // ── Cipher seal full hash + copy affordance ──────────────
+        // ── Cipher seed full hash + copy affordance ──────────────
+        // The canonical Om Cipher seed (SHA-256 of the deterministic
+        // seed string `LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_`). Distinct
+        // from the input fingerprint surfaced below.
         var sealFullEl = section.querySelector('[data-cu-om-cipher-seal-full]');
         if (sealFullEl) {
           var fullHash = rec.seed || '';
@@ -14801,6 +14811,15 @@ if (document.readyState === 'loading') {
               sealFullEl._cuSealFullWired = true;
             }
           }
+        }
+        // ── Input fingerprint (SHA-256 of sealed-input bundle) ──
+        // Surfaced as a small subordinate line so it can never be
+        // confused with the Cipher seed above. This is `rec.input_hash`,
+        // not `rec.seed`.
+        var inputFpEl = section.querySelector('[data-cu-om-cipher-input-fingerprint]');
+        if (inputFpEl && rec.input_hash) {
+          inputFpEl.textContent = 'Input fingerprint: ' + rec.input_hash;
+          inputFpEl.setAttribute('data-cu-om-cipher-input-fingerprint-full', rec.input_hash);
         }
 
         // ── Bhramari resonance line ───────────────────────────

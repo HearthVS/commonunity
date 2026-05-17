@@ -114,8 +114,8 @@ test("Challenge pair (work/lens) renders single label when lines match (line 2)"
       lens: { gk_num: "11", gk_line: "2" },
     },
   });
-  // Work line 2 = Dancer; Lens line 2 = Marriage.
-  assert.ok(r.label.includes("Challenge 2: Dancer / Marriage"), r.label);
+  // Work line 2 = Dancer; Lens (Evolution) line 2 = Passion & Relationships.
+  assert.ok(r.label.includes("Challenge 2: Dancer / Passion & Relationships"), r.label);
 });
 
 test("Stability pair (field/call) renders single label when lines match (line 4)", () => {
@@ -127,8 +127,8 @@ test("Stability pair (field/call) renders single label when lines match (line 4)
       call:  { gk_num: "57", gk_line: "4" },
     },
   });
-  // Field line 4 = Love & Community; Call line 4 = Breath.
-  assert.ok(r.label.includes("Stability 4: Love & Community / Breath"), r.label);
+  // Field (Radiance) line 4 = Friendship; Call line 4 = Breath.
+  assert.ok(r.label.includes("Stability 4: Friendship / Breath"), r.label);
 });
 
 test("Full Activation Sequence (user case: work/lens line 2, field/call line 4)", () => {
@@ -144,14 +144,14 @@ test("Full Activation Sequence (user case: work/lens line 2, field/call line 4)"
     },
     frequency_signature: { dominant_hz: 136.1 },
   });
-  // Expect: Root 8 · Challenge 2: Dancer / Marriage · Stability 4: Love & Community / Breath · Resonance C#3
+  // Expect: Root 8 · Challenge 2: Dancer / Passion & Relationships · Stability 4: Friendship / Breath · Resonance C#3
   assert.ok(r.label.includes("Root 8"));
-  assert.ok(r.label.includes("Challenge 2: Dancer / Marriage"));
-  assert.ok(r.label.includes("Stability 4: Love & Community / Breath"));
+  assert.ok(r.label.includes("Challenge 2: Dancer / Passion & Relationships"));
+  assert.ok(r.label.includes("Stability 4: Friendship / Breath"));
   assert.ok(r.label.includes("Resonance C#3"));
   assert.equal(r.gk_all.work.label, "Dancer");
-  assert.equal(r.gk_all.lens.label, "Marriage");
-  assert.equal(r.gk_all.field.label, "Love & Community");
+  assert.equal(r.gk_all.lens.label, "Passion & Relationships");
+  assert.equal(r.gk_all.field.label, "Friendship");
   assert.equal(r.gk_all.call.label, "Breath");
 });
 
@@ -161,10 +161,10 @@ test("Mismatched lines render per-slot labels (no pretense of pair unity)", () =
     birthdate: "1988-04-23",
     compass: {
       work: { gk_num: "34", gk_line: "5" }, // Fixer
-      lens: { gk_num: "11", gk_line: "2" }, // Marriage
+      lens: { gk_num: "11", gk_line: "2" }, // Passion & Relationships
     },
   });
-  assert.ok(r.label.includes("Challenge 5: Fixer / 2: Marriage"), r.label);
+  assert.ok(r.label.includes("Challenge 5: Fixer / 2: Passion & Relationships"), r.label);
 });
 
 test("Missing line on one half of the pair still surfaces the other", () => {
@@ -177,7 +177,7 @@ test("Missing line on one half of the pair still surfaces the other", () => {
     },
   });
   assert.ok(r.label.includes("Challenge 2: Dancer"), r.label);
-  assert.ok(!r.label.includes("Marriage"));
+  assert.ok(!r.label.includes("Passion & Relationships"));
 });
 
 test("Manual Hz feeds resonance display via frequency_signature.dominant_hz", () => {
