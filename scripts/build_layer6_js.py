@@ -30,6 +30,9 @@ def main():
             "// Source: data/om_cipher/*.json\n"
             "// Regenerate via: python3 scripts/build_layer6_js.py\n"
             "\"use strict\";\n\n"
+            "// IIFE-wrapped so top-level `const _exports` does not collide with the\n"
+            "// Om Cipher SDK when both files load as plain <script> tags in the browser.\n"
+            "(function () {\n\n"
         )
         f.write("const MANTRA_TABLE = " + json.dumps(mantras, ensure_ascii=False) + ";\n\n")
         f.write("const ARCHETYPAL_STORIES = " + json.dumps(stories, ensure_ascii=False) + ";\n\n")
@@ -37,7 +40,8 @@ def main():
         f.write(
             "const _exports = { MANTRA_TABLE, ARCHETYPAL_STORIES, CONTEMPLATIONS };\n"
             "if (typeof module !== \"undefined\" && module.exports) module.exports = _exports;\n"
-            "if (typeof window !== \"undefined\") window.cuOmCipherLayer6 = _exports;\n"
+            "if (typeof window !== \"undefined\") window.cuOmCipherLayer6 = _exports;\n\n"
+            "})();\n"
         )
     print("wrote", out_path)
 

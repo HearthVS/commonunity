@@ -42,6 +42,12 @@
 
 "use strict";
 
+// IIFE-wrapped so top-level `const _exports` does not collide with the
+// Layer 6 sidecar (`om_cipher_layer6_data.js`) when both files load as
+// plain <script> tags in the browser. Module.exports and window assignments
+// inside the IIFE preserve Node `require` and browser global access.
+(function () {
+
 // ─────────────────────────────────────────────────────────────────────────
 // Feature flag — env-driven, opt-in. Honour an explicit override too so the
 // browser bridge can pass the flag from a config payload rather than the
@@ -1012,3 +1018,5 @@ if (typeof module !== "undefined" && module.exports) {
 if (typeof window !== "undefined") {
   window.cuOmCipher = _exports;
 }
+
+})();
