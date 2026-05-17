@@ -360,10 +360,46 @@ test('cipher seed surface shows canonical engine seed (58b2ea61…f388784)', () 
     'short cipher seed must derive from canonical engine seed, not input fingerprint');
   assert.equal(seedShort.getAttribute('data-cu-om-cipher-seed-full'), CANONICAL_SEED,
     'data-cu-om-cipher-seed-full carries the full canonical seed');
-  // Full 64-char surface mirrors the canonical seed verbatim.
+  // Full 64-char surface — explicitly prefixed `Cipher seed:` so the
+  // hash is locatable as text (label + value on one line). Without
+  // the prefix the bare hash was easy to miss in live acceptance
+  // scrapes that landed only on the short caption / wrong region.
   const sealFull = sec.querySelector('[data-cu-om-cipher-seal-full]');
-  assert.equal(sealFull.textContent, CANONICAL_SEED,
-    'oc-seal-full text is the canonical Om Cipher seed');
+  assert.equal(sealFull.textContent, 'Cipher seed: ' + CANONICAL_SEED,
+    'oc-seal-full text is the labelled canonical Om Cipher seed');
+  assert.equal(sealFull.getAttribute('data-cu-om-cipher-seed-full'), CANONICAL_SEED,
+    'oc-seal-full carries the bare hash on data-cu-om-cipher-seed-full');
+});
+
+// ── 11b. Visible OM panel text MUST include the canonical seed prefix
+//         `58b2ea61` somewhere in the rendered section text. This is
+//         the live-acceptance regression: PR #16 passed unit tests but
+//         the live page text did not surface `58b2ea61` because the
+//         full-hash block had no label and a low-contrast style; the
+//         scraper missed it. A literal substring check on the section's
+//         text content pins the visible-text contract directly.
+test('visible OM panel text contains canonical seed prefix `58b2ea61`', () => {
+  const win = makeWindow(FIXTURE);
+  const r = makeRenderer(win);
+  const sec = buildSection();
+  r.render({}, sec);
+  // Collect all visible text inside the section, mimicking what a
+  // textContent / innerText scrape would yield.
+  function collectText(el) {
+    if (!el) return '';
+    let out = (el.textContent != null ? el.textContent : '') + ' ';
+    for (const c of (el.children || [])) out += collectText(c) + ' ';
+    return out;
+  }
+  const visible = collectText(sec);
+  assert.ok(/58b2ea61/.test(visible),
+    'canonical seed prefix `58b2ea61` must appear in visible OM panel text; ' +
+    'got (truncated): ' + visible.slice(0, 800));
+  // And it must appear with a label so a human + a text scraper can
+  // tell what they are looking at.
+  assert.ok(/Cipher seed:\s*58b2ea61/.test(visible),
+    'canonical seed must appear under a `Cipher seed:` label in visible text; ' +
+    'got (truncated): ' + visible.slice(0, 800));
 });
 
 // ── 12. Input fingerprint surfaces rec.input_hash, clearly separate
