@@ -4547,6 +4547,81 @@ function tropicalSunSign(year, month, day) {
   return '';
 }
 
+// ============================================================
+// SETUP → state.profile BRIDGE
+// ============================================================
+// Pulls the values the user typed on the Setup screen (guide name,
+// companion name, dob/tob/pob) into state.profile so the OM Cipher
+// modal and the identity-chart calculator see them. POB is resolved
+// against the vendored place gazetteer to fill latitude / longitude /
+// timezone offset, which the HD engine and CommonUnityAstro require
+// for type / strategy / authority / profile / cross / Rising / Lagna.
+// Conservative: never overwrites a non-empty profile value.
+function syncSetupIntoProfile() {
+  state.profile = state.profile || {};
+
+  // dob / tob / pob — make sure state mirrors the visible inputs
+  // even if the user blurred a field without firing 'input'.
+  ['dob','tob','pob'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.value && !state[id]) state[id] = el.value;
+    if (el && el.value)               state[id] = el.value;
+  });
+
+  // Guide name → profile.last_name (family/legal name fallback). We
+  // only fill blanks: if the user typed a different family name into
+  // the OM Cipher modal, leave it alone.
+  var guideEl = document.getElementById('guide-name');
+  var guide   = guideEl ? (guideEl.value || '').trim() : '';
+  if (guide && !(state.profile.last_name || '').trim()) {
+    state.profile.last_name = guide;
+  }
+  state.guide = state.guide || guide;
+
+  // POB → current_cities (array) + current_location (joined string).
+  // Only writes when the user hasn't already entered something.
+  var pob = (state.pob || '').trim();
+  if (pob) {
+    var hasCities = Array.isArray(state.profile.current_cities) &&
+                    state.profile.current_cities.length > 0;
+    if (!hasCities) {
+      state.profile.current_cities  = [pob];
+      state.profile.current_location = pob;
+    }
+  }
+
+  // POB → birth_latitude / birth_longitude / birth_tz_offset_minutes
+  // via the vendored gazetteer. The gazetteer returns standard-time
+  // offsets (no DST guessing); the HD engine treats those as sealed.
+  if (pob &&
+      typeof window !== 'undefined' &&
+      window.CommonUnityPlaces &&
+      typeof window.CommonUnityPlaces.resolve === 'function') {
+    try {
+      var resolved = window.CommonUnityPlaces.resolve(pob);
+      if (resolved) {
+        if (state.profile.birth_latitude == null || state.profile.birth_latitude === '') {
+          state.profile.birth_latitude = resolved.latitude;
+        }
+        if (state.profile.birth_longitude == null || state.profile.birth_longitude === '') {
+          state.profile.birth_longitude = resolved.longitude;
+        }
+        if (state.profile.birth_tz_offset_minutes == null ||
+            state.profile.birth_tz_offset_minutes === '') {
+          state.profile.birth_tz_offset_minutes = resolved.tzOffsetMinutes;
+        }
+        state.profile.birth_coordinates = state.profile.birth_coordinates || {
+          latitude:          resolved.latitude,
+          longitude:         resolved.longitude,
+          tz_offset_minutes: resolved.tzOffsetMinutes,
+          iana:              resolved.iana,
+          resolved_from:     pob
+        };
+      }
+    } catch (_) { /* keep blanks on failure */ }
+  }
+}
+
 function calcGeneKeys() {
   const dobVal = document.getElementById('dob').value;
   const tobVal = document.getElementById('tob').value;
@@ -4627,6 +4702,12 @@ function calcGeneKeys() {
       lookupGK(point);
     }
   });
+
+  // Setup screen → state.profile bridge. Guide name, place of birth,
+  // and birth coordinates (resolved from POB via the vendored
+  // gazetteer) must reach state.profile so the OM Cipher modal — and
+  // the downstream HD / tropical / Vedic calculator — see them.
+  syncSetupIntoProfile();
 
   // ── OM Cipher mirror — populate identity-source readouts from the
   // same birthdate calculation. Gene Keys activation lines are written
@@ -4866,6 +4947,22 @@ function openCompass() {
 
   state.guide     = guide;
   state.companion = companion;
+
+  // Ensure setup-screen values reach state.profile even if the user
+  // skipped "Reveal my profile" (btn-calc) and went straight to
+  // "Open as Guide". Without this, the OM Cipher modal opens with
+  // blank fields because state.profile.last_name / current_cities /
+  // birth_* never got written from the Setup inputs.
+  syncSetupIntoProfile();
+  // Re-run identity chart now that we may have just resolved
+  // POB → lat/lng/tz — so HD type/strategy/authority/profile/cross
+  // are filled by the time the user opens the OM Cipher modal.
+  if (typeof calcIdentityChartFromState === 'function') {
+    try { calcIdentityChartFromState(); } catch (_) {}
+  }
+  if (typeof autoPopulateGeneKeysFromState === 'function' && state.dob) {
+    try { autoPopulateGeneKeysFromState(); } catch (_) {}
+  }
 
   // Refresh all data-key fields from state (catches any imports done on setup screen)
   document.querySelectorAll('[data-key]').forEach(el => {
@@ -7047,6 +7144,15 @@ function initProfileModal() {
     if (modal) modal.style.display = 'flex';
     const menu = document.getElementById('more-dropdown');
     if (menu) menu.classList.remove('open');
+    // Defence-in-depth: pull the latest setup-screen values into
+    // state.profile (resolving POB → lat/lng/tz) before the modal
+    // populates. The Setup → Compass → OM Cipher path already calls
+    // syncSetupIntoProfile() upstream; doing it again here means a
+    // user who edits the Setup inputs and opens the modal via the
+    // more-menu still sees current values.
+    if (typeof syncSetupIntoProfile === 'function') {
+      try { syncSetupIntoProfile(); } catch (_) {}
+    }
     // Re-populate every [data-profile] input from the current state so
     // values that were saved (either via the modal itself or auto-
     // calculated by Reveal / import flows) always appear when the modal
