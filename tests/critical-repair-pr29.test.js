@@ -114,8 +114,8 @@ assert(
   console.log('\n3. Identity source card · labels');
   // Family name is required, not optional.
   assert(
-    /Family name \/ Surname\s*<span[^>]*>—\s*required<\/span>/.test(indexSrc),
-    'Family name / Surname label reads "— required" (not "optional")'
+    /Family name\s*<span[^>]*>—\s*required<\/span>/.test(indexSrc),
+    'Family name label reads "— required" (not "optional")'
   );
   assert(
     /id="profile-last-name"[^>]*\brequired\b/.test(indexSrc),
