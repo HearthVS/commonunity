@@ -61,6 +61,35 @@ assert(
   'pill button uses .om-cipher-pill-btn class (Living-Profile-style pill)'
 );
 
+// Setup-screen pill: lives inside #screen-setup (default-visible),
+// so the OM Cipher is reachable before the user opens the Compass.
+// Guards against the regression where the only pill was inside
+// #screen-compass which defaults to display:none.
+{
+  const setupOpen   = indexSrc.indexOf('<div id="screen-setup">');
+  const setupClose  = setupOpen >= 0
+    ? indexSrc.indexOf('<div id="screen-compass">', setupOpen)
+    : -1;
+  const setupBlock  = (setupOpen >= 0 && setupClose > setupOpen)
+    ? indexSrc.slice(setupOpen, setupClose)
+    : '';
+  assert(
+    /id="btn-open-om-cipher-setup"/.test(setupBlock),
+    'Setup screen contains the #btn-open-om-cipher-setup pill (visible without entering Compass)'
+  );
+  assert(
+    /id="setup-toolbar"/.test(setupBlock),
+    'Setup screen toolbar wrapper #setup-toolbar exists'
+  );
+  // Toolbar appears before .logo-block so the pill is at the top.
+  const toolbarIdx = setupBlock.indexOf('id="setup-toolbar"');
+  const logoIdx    = setupBlock.indexOf('class="logo-block"');
+  assert(
+    toolbarIdx >= 0 && logoIdx > toolbarIdx,
+    'Setup toolbar is placed before the logo block (top-of-screen)'
+  );
+}
+
 console.log('\nOM Cipher — identity-engine source fields');
 assert(
   /data-profile="bhramari_baseline_hz"/.test(indexSrc),
