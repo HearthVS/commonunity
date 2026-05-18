@@ -1173,6 +1173,12 @@ _sdk_dir = pathlib.Path(__file__).parent / "sdk"
 if _sdk_dir.exists():
     app.mount("/sdk", StaticFiles(directory=str(_sdk_dir)), name="sdk")
 
+# Serve vendored data assets (city / timezone gazetteer used by the
+# OM Cipher modal's Human Design + astrology engines).
+_data_dir = pathlib.Path(__file__).parent / "data"
+if _data_dir.exists():
+    app.mount("/data", StaticFiles(directory=str(_data_dir)), name="data")
+
 @app.get("/studio")
 async def serve_studio():
     studio = pathlib.Path(__file__).parent / "studio.html"

@@ -3999,6 +3999,20 @@ body.companion-mode .companion-mode-banner { display: block; }
 <script src="/sdk/genekeys.js"></script>
 <script src="/sdk/astronomy.js"></script>
 <script src="/sdk/human_design.js"></script>
+<script src="/sdk/place_gazetteer.js"></script>
+<script>
+  // Preload the vendored city / timezone dataset so the OM Cipher
+  // modal can resolve free-form birth-place strings (e.g. "Sudbury
+  // ontario canada") to { lat, lng, tzOffsetMinutes } the moment a
+  // user opens the modal — no runtime network calls.
+  (function () {
+    if (typeof window === 'undefined' || !window.CommonUnityPlaces) return;
+    try {
+      window.CommonUnityPlaces.preload('/data/places/city_timezones.json')
+        .then(function (ok) { window.__cuPlacesReady = !!ok; });
+    } catch (_) {}
+  })();
+</script>
 <script>
 'use strict';
 
