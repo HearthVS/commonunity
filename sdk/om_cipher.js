@@ -1060,6 +1060,50 @@ function buildOmCipherBlock(input, internals) {
     life_path: lp ? lp.reduced : null,
   });
 
+  // ── Source data (auxiliary, captured-but-not-driving inputs) ──
+  // Tropical Sun/Moon/Rising, Vedic sidereal Sun/Moon/Lagna, and birth
+  // coordinates / timezone offset are captured in Compass and preserved
+  // here so they round-trip with the structured block. They are NOT
+  // currently primary inputs to the v1.1 sigil or the emergent cipher
+  // name — those still flow from numerology, HD authority + Sun gate,
+  // and the Gene Keys cs/us/ce/ue slots. Surfacing them under
+  // `source_data` keeps the data available for later layers (vedic
+  // mantra matching, transit overlays, etc.) without changing the
+  // current algorithm.
+  function _trimOrNull(v) {
+    if (v == null) return null;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') { var t = v.trim(); return t ? t : null; }
+    return null;
+  }
+  function _numOrNull(v) {
+    var n = Number(v); return Number.isFinite(n) ? n : null;
+  }
+  var astroIn = input.astrology || null;
+  var vedicIn = input.vedic     || null;
+  var coordIn = input.birth_coordinates || null;
+  var source_data = null;
+  if (astroIn || vedicIn || coordIn) {
+    source_data = {
+      astrology: astroIn ? {
+        sun:    _trimOrNull(astroIn.sun),
+        moon:   _trimOrNull(astroIn.moon),
+        rising: _trimOrNull(astroIn.rising),
+      } : null,
+      vedic: vedicIn ? {
+        sun:       _trimOrNull(vedicIn.sun),
+        moon:      _trimOrNull(vedicIn.moon),
+        ascendant: _trimOrNull(vedicIn.ascendant),
+      } : null,
+      birth_coordinates: coordIn ? {
+        latitude:           _numOrNull(coordIn.latitude),
+        longitude:          _numOrNull(coordIn.longitude),
+        tz_offset_minutes:  _numOrNull(coordIn.tz_offset_minutes),
+      } : null,
+      note: "Auxiliary captured inputs. Not driving the v1.1 sigil / emergent name; preserved for later layers.",
+    };
+  }
+
   return {
     version: "1.1",
     layer1,
@@ -1068,6 +1112,7 @@ function buildOmCipherBlock(input, internals) {
     layer4: layer4 || null,
     layer5,
     layer6,
+    source_data,
     notes: {
       hebrew_gematria_excluded: true,
       personal_year_excluded_from_sealed: true,

@@ -6223,6 +6223,56 @@ input, textarea { font: inherit; color: inherit; }
   font-style: italic;
 }
 
+/* ── OM Cipher · Source Data (auxiliary captured fields) ───────────
+   Tropical / Vedic / Gene Keys activation sequence / birth coords.
+   Visually lighter than the locked Cipher Foundation block above so
+   it reads as preserved context, not primary input. */
+.oc-source-data-block { gap: clamp(var(--space-2), 1vw, var(--space-3)); }
+.oc-source-data-helper {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+.oc-source-data-group { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.oc-source-data-heading {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.oc-source-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.oc-source-data-item {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: color-mix(in srgb, var(--input-bg) 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.oc-source-data-item dt {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.oc-source-data-item dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.35;
+}
+.oc-source-data-item.is-empty dd { color: var(--text-faint); font-style: italic; }
+
 @media (max-width: 820px) {
   .lp-om-cipher-section .oc-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .lp-om-cipher-section .oc-hero { gap: clamp(var(--space-4), 4vw, var(--space-6)); }
@@ -13166,7 +13216,10 @@ if (document.readyState === 'loading') {
         return it;
       });
       // Inject derived Sun sign (date-range lookup) and pending notes
-      // for Moon / Rising.
+      // for Moon / Rising. Moon / Rising / Vedic values themselves are
+      // surfaced in the dedicated oc-source-data-block below; we only
+      // keep the lightweight pending note here when those values are
+      // genuinely absent from the captured profile.
       try {
         var ocBd = (function () {
           for (var i = 0; i < foundationItems.length; i++) {
@@ -13178,8 +13231,135 @@ if (document.readyState === 'loading') {
         if (sun) {
           foundationItems.push({ key: 'Sun sign', val: sun, field: 'sun_sign' });
         }
-        ocPendingNotes.push('Moon · Rising · pending full chart calculation · v1.1');
+        var _astroForNote = (profile && (profile.astrology || (profile.foundation && profile.foundation.astrology))) || {};
+        var _hasMoon = !!String(_astroForNote.moon || '').trim();
+        var _hasRising = !!String(_astroForNote.rising || '').trim();
+        if (!_hasMoon || !_hasRising) {
+          ocPendingNotes.push('Moon · Rising · pending full chart calculation · v1.1');
+        }
       } catch (_) {}
+
+      // ── Source data (auxiliary) ─────────────────────────────
+      // Astrology, vedic / sidereal, birth coordinates / timezone, and
+      // the full Gene Keys activation sequence are captured in Compass
+      // and exported under profile.astrology / profile.vedic /
+      // profile.birth_coordinates / profile.gene_keys + the structured
+      // om_cipher.layer2 block. They are NOT primary inputs to the
+      // current v1.1 sigil / emergent name — those are derived from
+      // numerology, HD authority + Sun gate, and Gene Keys cs/us/ce/ue
+      // slots. We surface them here so the captured data is visible and
+      // preserved for later layers (Vedic mantra matching, transit
+      // overlays, etc.) rather than dropped from the visible profile.
+      function ocSourceDataItems() {
+        var astro = (profile && (profile.astrology || (profile.foundation && profile.foundation.astrology))) || {};
+        var vedic = (profile && (profile.vedic     || (profile.foundation && profile.foundation.vedic)))     || {};
+        var coord = (profile && (profile.birth_coordinates
+                                  || (profile.foundation && profile.foundation.birth_coordinates))) || {};
+        var gk    = (profile && (profile.gene_keys || (profile.foundation && profile.foundation.gene_keys))) || {};
+        var pts   = (window.state && window.state.compassData && window.state.compassData.points) || {};
+
+        function s(v) {
+          if (v == null) return '';
+          if (typeof v === 'number') return String(v);
+          if (typeof v === 'string') return v.trim();
+          return '';
+        }
+        function gkFromSlot(slot, label) {
+          var num = '', line = '';
+          if (slot && (slot.gk_num || slot.gk_line)) {
+            num = String(slot.gk_num || '');
+            line = String(slot.gk_line || '');
+          }
+          if (!num) return null;
+          return { label: label, val: 'GK ' + num + (line ? '.' + line : '') };
+        }
+        var rows = [];
+        // Tropical astrology trio — directly preserves the
+        // sun/moon/rising the user can supply (or that the in-browser
+        // identity-chart calculator wrote to profile.astrology).
+        if (s(astro.sun) || s(astro.moon) || s(astro.rising)) {
+          rows.push({ group: 'tropical', key: 'Tropical Sun',    val: s(astro.sun) });
+          rows.push({ group: 'tropical', key: 'Tropical Moon',   val: s(astro.moon) });
+          rows.push({ group: 'tropical', key: 'Tropical Rising', val: s(astro.rising) });
+        }
+        // Vedic / sidereal trio — extension-point strings, surfaced
+        // verbatim when Compass captured them.
+        if (s(vedic.sun) || s(vedic.moon) || s(vedic.ascendant)) {
+          rows.push({ group: 'vedic', key: 'Sidereal Sun',           val: s(vedic.sun) });
+          rows.push({ group: 'vedic', key: 'Sidereal Moon · Nakshatra', val: s(vedic.moon) });
+          rows.push({ group: 'vedic', key: 'Lagna (Ascendant)',      val: s(vedic.ascendant) });
+        }
+        // Birth coordinates + timezone offset (minutes) — already on
+        // profile.birth_coordinates when entered.
+        var lat = (typeof coord.latitude  === 'number') ? coord.latitude  : null;
+        var lng = (typeof coord.longitude === 'number') ? coord.longitude : null;
+        var tz  = (typeof coord.tz_offset_minutes === 'number') ? coord.tz_offset_minutes : null;
+        if (lat != null || lng != null || tz != null) {
+          if (lat != null) rows.push({ group: 'coords', key: 'Latitude',  val: lat.toFixed(4) + '°' });
+          if (lng != null) rows.push({ group: 'coords', key: 'Longitude', val: lng.toFixed(4) + '°' });
+          if (tz  != null) {
+            var sign = tz >= 0 ? '+' : '−';
+            var abs  = Math.abs(tz);
+            var hh   = Math.floor(abs / 60);
+            var mm   = abs - hh * 60;
+            var tzLab = 'UTC' + sign + (hh < 10 ? '0' + hh : hh) + ':' + (mm < 10 ? '0' + mm : mm);
+            rows.push({ group: 'coords', key: 'Timezone offset', val: tzLab });
+          }
+        }
+        // Gene Keys activation sequence — Life Work / Evolution /
+        // Radiance / Purpose from gk_profile (the canonical Compass
+        // slots) when available, falling back to the compass `points`
+        // rooms when only those are populated.
+        var gkProfile = (window.state && window.state.compassData && window.state.compassData.gk_profile) || {};
+        function gkFromProfile(prefix, label) {
+          var num  = gkProfile[prefix];
+          var line = gkProfile[prefix + 'Line'];
+          if (num == null || num === '') return null;
+          return { label: label, val: 'GK ' + num + (line != null && line !== '' ? '.' + line : '') };
+        }
+        var seq = [
+          gkFromProfile('cs', 'Life Work') || gkFromSlot(pts.work,  'Life Work'),
+          gkFromProfile('ce', 'Evolution') || gkFromSlot(pts.lens,  'Evolution'),
+          gkFromProfile('us', 'Radiance')  || gkFromSlot(pts.field, 'Radiance'),
+          gkFromProfile('ue', 'Purpose')   || gkFromSlot(pts.call,  'Purpose'),
+        ];
+        var anyGk = seq.some(function (r) { return !!r; });
+        if (anyGk) {
+          seq.forEach(function (r) {
+            if (r) rows.push({ group: 'genekeys', key: r.label, val: r.val });
+          });
+        }
+        return rows;
+      }
+      var ocSourceRows = ocSourceDataItems();
+      function ocRowsGroup(rows, name, heading) {
+        var subset = rows.filter(function (r) { return r.group === name; });
+        if (!subset.length) return '';
+        return '<div class="oc-source-data-group" data-cu-om-cipher-source-group="' + lpEscape(name) + '">' +
+          '<h5 class="oc-source-data-heading">' + lpEscape(heading) + '</h5>' +
+          '<dl class="oc-source-data-grid">' +
+            subset.map(function (r) {
+              var has = !!r.val;
+              return '<div class="oc-source-data-item' + (has ? '' : ' is-empty') + '">' +
+                '<dt>' + lpEscape(r.key) + '</dt>' +
+                '<dd>' + lpEscape(has ? r.val : 'Pending') + '</dd>' +
+              '</div>';
+            }).join('') +
+          '</dl>' +
+        '</div>';
+      }
+      var ocSourceDataHtml = '';
+      if (ocSourceRows.length) {
+        ocSourceDataHtml =
+          '<div class="oc-source-block oc-source-data-block" data-cu-om-cipher-source-data="1">' +
+            '<h4 class="oc-source-title">Source Data <span class="oc-source-sub">· captured, preserved for later layers</span></h4>' +
+            '<p class="oc-source-data-helper">These values are captured in Compass and round-trip with your export. They are not primary inputs to the current sigil or emergent cipher name — they are preserved for later matching and context.</p>' +
+            ocRowsGroup(ocSourceRows, 'tropical', 'Tropical astrology') +
+            ocRowsGroup(ocSourceRows, 'vedic',    'Vedic · sidereal') +
+            ocRowsGroup(ocSourceRows, 'genekeys', 'Gene Keys · activation sequence') +
+            ocRowsGroup(ocSourceRows, 'coords',   'Birth coordinates · technical') +
+          '</div>';
+      }
       var placeholderCipherName  = 'Awaiting Compass seal';
       var placeholderMantra      = 'Derived once source data is sealed — the evolving personal mantra lives in your Living Profile.';
       var placeholderField       = 'Pending source data';
@@ -13378,6 +13558,7 @@ if (document.readyState === 'loading') {
               '</ul>'
             : '') +
         '</div>' +
+        ocSourceDataHtml +
         '</details>' +
       '</section>';
 
