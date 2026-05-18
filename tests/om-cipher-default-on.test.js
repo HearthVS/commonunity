@@ -121,7 +121,9 @@ test('engine derives full canonical record from Markus fixture (no pending surfa
   assert.equal(rec.metadata.life_path.value, 22);
   assert.equal(rec.metadata.expression.value, 8);
   assert.equal(rec.metadata.soul_urge.value, 6);
-  assert.equal(rec.metadata.personality.value, 2);
+  // Master 11 preserved in the visible Source-Pattern card (raw 29 → 11).
+  assert.equal(rec.metadata.personality.value, 11);
+  assert.equal(rec.metadata.personality.is_master, true);
   assert.equal(rec.metadata.lunar_phase.value, 6);
   assert.equal(rec.metadata.solar_quarter.value, 3);
   assert.equal(rec.metadata.temporal_gate.value, 1);

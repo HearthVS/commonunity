@@ -23,7 +23,11 @@ const EXPECTED = {
   life_path_is_master: true,
   expression: 8,
   soul_urge: 6,
-  personality: 2,
+  // Personality displays the master 11 (gematria 29 → 11 → 2). The
+  // canonical seed below still uses the single-digit 2 (`PE:2`) so the
+  // sealed seed stays stable; the visible Source-Pattern card reads 11.
+  personality: 11,
+  personality_is_master: true,
   lunar_phase: 6,
   solar_quarter: 3,
   temporal_gate: 1,
@@ -50,7 +54,10 @@ test("Life Path 22 (Master Builder) — preserved, not reduced to 4", () => {
 
 test("Expression 8", () => assert.equal(r.metadata.expression.value, EXPECTED.expression));
 test("Soul Urge 6",   () => assert.equal(r.metadata.soul_urge.value,   EXPECTED.soul_urge));
-test("Personality 2", () => assert.equal(r.metadata.personality.value, EXPECTED.personality));
+test("Personality 11 (master preserved in display)", () => {
+  assert.equal(r.metadata.personality.value,     EXPECTED.personality);
+  assert.equal(r.metadata.personality.is_master, EXPECTED.personality_is_master);
+});
 
 test("Lunar Phase 6",   () => assert.equal(r.metadata.lunar_phase.value,   EXPECTED.lunar_phase));
 test("Solar Quarter 3", () => assert.equal(r.metadata.solar_quarter.value, EXPECTED.solar_quarter));

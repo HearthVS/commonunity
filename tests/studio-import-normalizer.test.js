@@ -140,7 +140,10 @@ test('normalized output drives OM cipher to sealed Markus baseline', () => {
   assert.equal(rec.metadata.life_path.is_master, true);
   assert.equal(rec.metadata.expression.value, 8);
   assert.equal(rec.metadata.soul_urge.value, 6);
-  assert.equal(rec.metadata.personality.value, 2);
+  // Personality preserves the master 11 in the visible card; the
+  // canonical seed (asserted below) continues to use single-digit 2.
+  assert.equal(rec.metadata.personality.value, 11);
+  assert.equal(rec.metadata.personality.is_master, true);
   // Stable seal hash (acceptance criterion).
   assert.equal(rec.seed,
     '58b2ea613f7d3c7522bf0df86e1826e4200ab64a7f31c319810eb3701f388784');

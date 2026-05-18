@@ -5501,7 +5501,22 @@ function buildCompassExport(s) {
   try {
     var _ocEngine = (typeof window !== 'undefined') ? window.cuOmCipher : null;
     if (_ocEngine && typeof _ocEngine.generate === 'function') {
-      var _ocInput = _buildOmCipherInputFromCompass(s);
+      // Build engine input against the original state for name/dob/place
+      // resolution (so `s.guide` and DOM fields still flow), but graft on
+      // the freshly-derived structured astrology / vedic / birth_coordinates
+      // / human_design blocks from `out.profile` so the canonical engine
+      // sees them and round-trips them as om_cipher.source_data — even
+      // when the original state only carried flat aliases like
+      // astrology_sun / vedic_moon / birth_latitude / human_design_type.
+      var _ocSrc = Object.assign({}, s, {
+        profile: Object.assign({}, (s && s.profile) || {}, {
+          astrology:           out.profile && out.profile.astrology           || (s && s.profile && s.profile.astrology)           || undefined,
+          vedic:               out.profile && out.profile.vedic               || (s && s.profile && s.profile.vedic)               || undefined,
+          birth_coordinates:   out.profile && out.profile.birth_coordinates   || (s && s.profile && s.profile.birth_coordinates)   || undefined,
+          human_design:        out.profile && out.profile.human_design        || (s && s.profile && s.profile.human_design)        || undefined,
+        }),
+      });
+      var _ocInput = _buildOmCipherInputFromCompass(_ocSrc);
       if (_ocInput) {
         var _ocRec = _ocEngine.generate(_ocInput, { featureFlag: true });
         if (_ocRec && !_ocRec.pending && _ocRec.om_cipher_block) {

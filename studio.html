@@ -13251,10 +13251,36 @@ if (document.readyState === 'loading') {
       // preserved for later layers (Vedic mantra matching, transit
       // overlays, etc.) rather than dropped from the visible profile.
       function ocSourceDataItems() {
-        var astro = (profile && (profile.astrology || (profile.foundation && profile.foundation.astrology))) || {};
-        var vedic = (profile && (profile.vedic     || (profile.foundation && profile.foundation.vedic)))     || {};
-        var coord = (profile && (profile.birth_coordinates
-                                  || (profile.foundation && profile.foundation.birth_coordinates))) || {};
+        // Prefer the structured `om_cipher.source_data` mirror when present
+        // — it is the canonical round-trip surface for tropical / vedic /
+        // birth_coordinates and survives JSON import/export untouched.
+        // Fall back to the legacy profile.* shape so old exports (no
+        // om_cipher.source_data) still render correctly.
+        var ocSd = null;
+        try {
+          var sdRoots = [
+            (window.state && window.state.compassData && window.state.compassData.om_cipher),
+            (profile && profile.om_cipher),
+            (profile && profile.foundation && profile.foundation.om_cipher),
+          ];
+          for (var i = 0; i < sdRoots.length; i++) {
+            var r = sdRoots[i];
+            if (r && r.source_data && typeof r.source_data === 'object') {
+              ocSd = r.source_data;
+              break;
+            }
+          }
+        } catch (_) { ocSd = null; }
+        var astro = (ocSd && ocSd.astrology)
+          || (profile && (profile.astrology || (profile.foundation && profile.foundation.astrology)))
+          || {};
+        var vedic = (ocSd && ocSd.vedic)
+          || (profile && (profile.vedic     || (profile.foundation && profile.foundation.vedic)))
+          || {};
+        var coord = (ocSd && ocSd.birth_coordinates)
+          || (profile && (profile.birth_coordinates
+                                  || (profile.foundation && profile.foundation.birth_coordinates)))
+          || {};
         var gk    = (profile && (profile.gene_keys || (profile.foundation && profile.foundation.gene_keys))) || {};
         var pts   = (window.state && window.state.compassData && window.state.compassData.points) || {};
 
