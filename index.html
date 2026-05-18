@@ -5232,14 +5232,50 @@ function _buildOmCipherInputFromCompass(s) {
     else                           birthPlace = { city: _bpTitle(src.place_of_birth) };
   }
   var prof = (s && s.profile) || {};
+  // Source-data passthroughs — captured in Compass and round-tripped to
+  // the structured om_cipher block as `source_data`. NOT primary engine
+  // inputs (the v1.1 sigil/emergent name are still driven by numerology,
+  // HD authority + Sun gate, and Gene Keys cs/us/ce/ue slots); these
+  // fields are preserved so later layers (vedic mantra matching, transit
+  // overlays, etc.) can use them without re-asking the user.
+  function _str(v) {
+    if (v == null) return null;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'string') { var t = v.trim(); return t ? t : null; }
+    return null;
+  }
+  var _astro = prof.astrology || (prof.foundation && prof.foundation.astrology) || {};
+  var _vedic = prof.vedic     || (prof.foundation && prof.foundation.vedic)     || {};
+  var _coord = prof.birth_coordinates
+                || (prof.foundation && prof.foundation.birth_coordinates) || {};
+  var astrologyInput = (_astro.sun || _astro.moon || _astro.rising)
+    ? { sun: _str(_astro.sun), moon: _str(_astro.moon), rising: _str(_astro.rising) }
+    : null;
+  var vedicInput = (_vedic.sun || _vedic.moon || _vedic.ascendant)
+    ? { sun: _str(_vedic.sun), moon: _str(_vedic.moon), ascendant: _str(_vedic.ascendant) }
+    : null;
+  function _num(v) {
+    var n = Number(v); return Number.isFinite(n) ? n : null;
+  }
+  var coordsInput = null;
+  if (_coord.latitude != null || _coord.longitude != null || _coord.tz_offset_minutes != null) {
+    coordsInput = {
+      latitude:           _num(_coord.latitude),
+      longitude:          _num(_coord.longitude),
+      tz_offset_minutes:  _num(_coord.tz_offset_minutes),
+    };
+  }
   return {
     birth_date:     src.date_of_birth,
     birth_time:     src.birth_time || null,
     birth_place:    birthPlace,
+    birth_coordinates: coordsInput,
     legal_name:     src.full_name || null,
     preferred_name: src.first_name || null,
     compass:        compassSlots,
     human_design:   prof.human_design || null,
+    astrology:      astrologyInput,
+    vedic:          vedicInput,
     seed_syllable:  prof.seed_syllable || 'Om',
     bhramari_baseline: null
   };
