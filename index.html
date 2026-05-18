@@ -2330,6 +2330,38 @@ body.companion-mode .companion-mode-banner { display: block; }
 .om-cipher-card .field-group { margin-top: 0; }
 .om-cipher-card .field-group + .field-group { margin-top: var(--space-2); }
 
+/* Calculated-value inputs (Gene Keys, Human Design, Tropical, Vedic) hold
+   strings such as "GK 14 · Competence (Line 2)" that overflow the default
+   text-base sizing on narrow viewports. Use a slightly smaller, fluid
+   size with tighter horizontal padding so the full label is readable
+   without focus / horizontal scroll. */
+.om-cipher-card .field-input--calc {
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  line-height: 1.35;
+  letter-spacing: 0.005em;
+  text-overflow: ellipsis;
+}
+.om-cipher-card .field-input--calc:focus {
+  text-overflow: clip;
+}
+@media (max-width: 480px) {
+  .om-cipher-card .field-input--calc {
+    font-size: calc(var(--text-xs) * 0.95);
+  }
+}
+/* Stack calculated rows on narrow screens so each value gets full width
+   instead of two cramped halves. */
+@media (max-width: 600px) {
+  .om-cipher-card .calc-row { grid-template-columns: 1fr; }
+}
+/* Three-column row for Sun · Moon · Rising / Sidereal trios. Collapses
+   to one column on narrow screens via the rule above. */
+.om-cipher-card .calc-row--triple { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 600px) {
+  .om-cipher-card .calc-row--triple { grid-template-columns: 1fr; }
+}
+
 /* ── OM Cipher modal · lower-section breathing room ──────────────
    Adds vertical rhythm to the Additional Information block, where
    labels/inputs were nearly touching and chip groups felt dense.
@@ -4610,13 +4642,27 @@ function syncSetupIntoProfile() {
     if (el && el.value)               state[id] = el.value;
   });
 
-  // Guide name → profile.last_name (family/legal name fallback). We
-  // only fill blanks: if the user typed a different family name into
-  // the OM Cipher modal, leave it alone.
+  // Guide name → profile.first_name + profile.last_name + profile.legal_name.
+  // The setup screen collects a single "Your name" string; we split it
+  // into given_name (first token) and family_name (remaining tokens) so
+  // the identity engine receives canonical inputs and OM Cipher shows
+  // editable given/family fields. We only fill blanks: if the user
+  // already typed a different value into the OM Cipher modal, leave it.
   var guideEl = document.getElementById('guide-name');
   var guide   = guideEl ? (guideEl.value || '').trim() : '';
-  if (guide && !(state.profile.last_name || '').trim()) {
-    state.profile.last_name = guide;
+  if (guide) {
+    var nameParts = guide.split(/\s+/).filter(Boolean);
+    var givenFromGuide  = nameParts[0] || '';
+    var familyFromGuide = nameParts.slice(1).join(' ');
+    if (givenFromGuide && !(state.profile.first_name || '').trim()) {
+      state.profile.first_name = givenFromGuide;
+    }
+    if (familyFromGuide && !(state.profile.last_name || '').trim()) {
+      state.profile.last_name = familyFromGuide;
+    }
+    if (!(state.profile.legal_name || '').trim()) {
+      state.profile.legal_name = guide;
+    }
   }
   state.guide = state.guide || guide;
 
@@ -5076,19 +5122,25 @@ function buildCompassExport(s) {
   const profile = Object.assign({}, s.profile || {});
 
   // Name split — companion is often "First Last"; honour any explicit
-  // first/last already in profile.
+  // first/last already in profile. Tokens after the first form the
+  // family name so multi-word surnames like "van der Berg" stay intact.
   const companion = (s.companion || '').trim();
-  const spaceIdx  = companion.indexOf(' ');
+  const companionParts = companion ? companion.split(/\s+/).filter(Boolean) : [];
   const derivedFirst = profile.first_name ||
-    (spaceIdx > 0 ? companion.slice(0, spaceIdx) : companion);
+    (companionParts[0] || '');
   const derivedLast  = profile.last_name ||
-    (spaceIdx > 0 ? companion.slice(spaceIdx + 1).trim() : '');
+    (companionParts.length > 1 ? companionParts.slice(1).join(' ') : '');
   if (derivedFirst) profile.first_name = derivedFirst;
   if (derivedLast)  profile.last_name  = derivedLast;
-  // full_name kept in sync (single source of truth for Studio).
-  if (!profile.full_name) {
-    profile.full_name = [derivedFirst, derivedLast].filter(Boolean).join(' ').trim() || companion;
-  }
+  // full_name + legal_name kept in sync. legal_name is the canonical
+  // input the OM Cipher identity engine reads (preferred over a single
+  // ambiguous display name); given_name / family_name aliases mirror
+  // first_name / last_name for downstream consumers that expect those.
+  const composedFullName = [derivedFirst, derivedLast].filter(Boolean).join(' ').trim() || companion;
+  if (!profile.full_name)   profile.full_name   = composedFullName;
+  if (!profile.legal_name)  profile.legal_name  = composedFullName;
+  if (!profile.given_name)  profile.given_name  = derivedFirst || undefined;
+  if (!profile.family_name) profile.family_name = derivedLast  || undefined;
 
   // Birth + location aliases — derive from existing dob/tob/pob inputs.
   if (s.dob && !profile.birthdate)       profile.birthdate       = s.dob;
@@ -5200,6 +5252,9 @@ function buildCompassExport(s) {
   profile.foundation = Object.assign({
     first_name:            profile.first_name,
     last_name:             profile.last_name,
+    given_name:            profile.given_name,
+    family_name:           profile.family_name,
+    legal_name:            profile.legal_name,
     full_name:             profile.full_name,
     birthdate:             profile.birthdate,
     date_of_birth:         profile.date_of_birth,
@@ -5320,6 +5375,36 @@ function loadJSON(file) {
       Object.keys(inFound || {}).forEach(k => {
         if (state.profile[k] === undefined) state.profile[k] = inFound[k];
       });
+      // Name normalisation — accept legacy exports where `last_name`
+      // held the full name (pre-name-split builds), promote
+      // given_name / family_name aliases when present, and ensure
+      // legal_name has a value so the identity engine never falls
+      // back to a single ambiguous display string.
+      (function normaliseProfileNames() {
+        var p = state.profile;
+        // Pull given/family aliases into first/last when first/last absent.
+        if (!p.first_name && p.given_name)  p.first_name = p.given_name;
+        if (!p.last_name  && p.family_name) p.last_name  = p.family_name;
+        // Legacy: full name was stuffed into last_name. If first_name
+        // is empty and last_name contains whitespace, split it.
+        if (!p.first_name && typeof p.last_name === 'string' && /\s/.test(p.last_name.trim())) {
+          var parts = p.last_name.trim().split(/\s+/);
+          p.first_name = parts.shift();
+          p.last_name  = parts.join(' ');
+        }
+        // Mirror first/last into given/family so downstream consumers
+        // that read those aliases keep working.
+        if (!p.given_name  && p.first_name) p.given_name  = p.first_name;
+        if (!p.family_name && p.last_name)  p.family_name = p.last_name;
+        // legal_name fallback — prefer existing legal_name, then full_name,
+        // then first + last, then a single-token first/last.
+        if (!p.legal_name) {
+          var composed = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+          p.legal_name = p.full_name || composed || p.first_name || p.last_name || undefined;
+        }
+        if (!p.full_name && p.legal_name) p.full_name = p.legal_name;
+      })();
+
       // Flatten nested human_design/astrology back to the input-bound keys.
       const hd = state.profile.human_design || {};
       if (hd.type      && !state.profile.human_design_type)      state.profile.human_design_type      = hd.type;
@@ -5354,12 +5439,14 @@ function loadJSON(file) {
       if (bc.latitude          !== undefined && state.profile.birth_latitude          === undefined) state.profile.birth_latitude          = bc.latitude;
       if (bc.longitude         !== undefined && state.profile.birth_longitude         === undefined) state.profile.birth_longitude         = bc.longitude;
       if (bc.tz_offset_minutes !== undefined && state.profile.birth_tz_offset_minutes === undefined) state.profile.birth_tz_offset_minutes = bc.tz_offset_minutes;
-      // Companion fallback from first/last name when missing.
+      // Companion fallback from first/last name when missing. Prefer
+      // legal_name > first+last > full_name.
       if (!state.companion) {
         const fn = (state.profile.first_name || '').trim();
         const ln = (state.profile.last_name  || '').trim();
         const composed = [fn, ln].filter(Boolean).join(' ');
-        if (composed) state.companion = composed;
+        if (state.profile.legal_name) state.companion = String(state.profile.legal_name).trim();
+        else if (composed) state.companion = composed;
         else if (state.profile.full_name) state.companion = String(state.profile.full_name).trim();
       }
       // Birth/location top-level fallbacks.
@@ -7296,9 +7383,19 @@ function initProfileModal() {
       <div class="om-cipher-section-head">
         <h3 class="om-cipher-card-title">Identity source</h3>
       </div>
+      <div class="calc-row">
+        <div class="field-group">
+          <label class="field-label" for="profile-first-name">Given name / First name</label>
+          <input class="field-input" id="profile-first-name" type="text" placeholder="Given name…" data-profile="first_name" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-last-name">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— required</span></label>
+          <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off" required aria-required="true">
+        </div>
+      </div>
       <div class="field-group">
-        <label class="field-label" for="profile-last-name">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— required</span></label>
-        <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off" required aria-required="true">
+        <label class="field-label" for="profile-legal-name">Full legal name <span style="color:var(--text-faint);font-size:var(--text-xs);">— used by the identity engine</span></label>
+        <input class="field-input" id="profile-legal-name" type="text" placeholder="As it appears on legal documents…" data-profile="legal_name" autocomplete="off">
       </div>
       <div class="field-group">
         <label class="field-label" for="profile-current-cities">What city or cities do you currently live in?</label>
@@ -7316,7 +7413,7 @@ function initProfileModal() {
         <button class="info-button" type="button" id="birth-coords-info-btn" aria-label="Why birth coordinates" aria-expanded="false" aria-controls="birth-coords-info-disclosure">i</button>
       </div>
       <div class="info-disclosure" id="birth-coords-info-disclosure" role="region" aria-label="Birth coordinates explanation">
-        Birth date / time are entered on the Setup screen. Adding latitude, longitude, and timezone here unlocks Moon, Rising, sidereal Lagna and the Human Design profile lines — all calculated locally, no network.
+        Auto-filled from your place of birth. Edit any field to override — all chart math runs locally, no network.
       </div>
       <div class="calc-row">
         <div class="field-group">
@@ -7332,7 +7429,6 @@ function initProfileModal() {
         <label class="field-label" for="profile-birth-tz">Timezone offset at birth <span style="color:var(--text-faint);font-size:var(--text-xs);">— minutes from UTC (e.g. -300 = EST, +330 = IST)</span></label>
         <input class="field-input" id="profile-birth-tz" type="number" step="15" placeholder="e.g. -300" data-profile="birth_tz_offset_minutes" autocomplete="off">
       </div>
-      <p class="om-cipher-card-hint">No coordinates lookup is performed. Find your birth city on a map or in your existing chart and copy the values.</p>
     </div>
 
     <!-- ============================================================
@@ -7358,12 +7454,24 @@ function initProfileModal() {
         <span style="color:var(--text-faint);font-size:var(--text-xs);">calculated from birth data</span>
       </div>
       <div class="calc-row">
-        <input class="field-input" id="profile-gk-cs" type="text" placeholder="Life's Work — calculated from birth data" readonly data-profile="gene_keys_life_work" autocomplete="off">
-        <input class="field-input" id="profile-gk-ce" type="text" placeholder="Evolution — calculated from birth data" readonly data-profile="gene_keys_evolution" autocomplete="off">
+        <div class="field-group">
+          <label class="field-label" for="profile-gk-cs">Life's Work <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated</span></label>
+          <input class="field-input field-input--calc" id="profile-gk-cs" type="text" placeholder="GK # · Name (Line N)" readonly data-profile="gene_keys_life_work" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-gk-ce">Evolution <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated</span></label>
+          <input class="field-input field-input--calc" id="profile-gk-ce" type="text" placeholder="GK # · Name (Line N)" readonly data-profile="gene_keys_evolution" autocomplete="off">
+        </div>
       </div>
       <div class="calc-row">
-        <input class="field-input" id="profile-gk-us" type="text" placeholder="Radiance — calculated from birth data" readonly data-profile="gene_keys_radiance" autocomplete="off">
-        <input class="field-input" id="profile-gk-ue" type="text" placeholder="Purpose — calculated from birth data" readonly data-profile="gene_keys_purpose" autocomplete="off">
+        <div class="field-group">
+          <label class="field-label" for="profile-gk-us">Radiance <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated</span></label>
+          <input class="field-input field-input--calc" id="profile-gk-us" type="text" placeholder="GK # · Name (Line N)" readonly data-profile="gene_keys_radiance" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-gk-ue">Purpose <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated</span></label>
+          <input class="field-input field-input--calc" id="profile-gk-ue" type="text" placeholder="GK # · Name (Line N)" readonly data-profile="gene_keys_purpose" autocomplete="off">
+        </div>
       </div>
     </div>
 
@@ -7379,20 +7487,26 @@ function initProfileModal() {
         Profile, Type, Strategy, Authority, and Incarnation Cross are calculated locally from your birth date, time, and timezone offset using a deterministic bodygraph engine (Personality + Design positions for 13 planetary activations, defined gates, channels, and centers). Birth time is required; latitude/longitude are not. You can override any field manually — the calculator only fills blanks.
       </div>
       <div class="field-group">
-        <label class="field-label">Profile <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
-        <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile — calculated from birth date + time" data-profile="human_design_profile" autocomplete="off">
+        <label class="field-label" for="profile-hd-profile">Profile <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
+        <input class="field-input field-input--calc" id="profile-hd-profile" type="text" placeholder="Calculated from birth date + time" data-profile="human_design_profile" autocomplete="off">
       </div>
-      <div class="field-group">
-        <label class="field-label">Type · Strategy · Authority <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
-        <div class="calc-row">
-          <input class="field-input" id="profile-hd-type" type="text" placeholder="Type — calculated from birth date + time" data-profile="human_design_type" autocomplete="off">
-          <input class="field-input" id="profile-hd-strategy" type="text" placeholder="Strategy — calculated from birth date + time" data-profile="human_design_strategy" autocomplete="off">
+      <div class="calc-row calc-row--triple">
+        <div class="field-group">
+          <label class="field-label" for="profile-hd-type">Type</label>
+          <input class="field-input field-input--calc" id="profile-hd-type" type="text" placeholder="Calculated" data-profile="human_design_type" autocomplete="off">
         </div>
-        <input class="field-input" id="profile-hd-authority" type="text" placeholder="Authority — calculated from birth date + time" data-profile="human_design_authority" style="margin-top:var(--space-2);" autocomplete="off">
+        <div class="field-group">
+          <label class="field-label" for="profile-hd-strategy">Strategy</label>
+          <input class="field-input field-input--calc" id="profile-hd-strategy" type="text" placeholder="Calculated" data-profile="human_design_strategy" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-hd-authority">Authority</label>
+          <input class="field-input field-input--calc" id="profile-hd-authority" type="text" placeholder="Calculated" data-profile="human_design_authority" autocomplete="off">
+        </div>
       </div>
       <div class="field-group">
-        <label class="field-label">Incarnation Cross <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
-        <input class="field-input" id="profile-hd-cross" type="text" placeholder="Incarnation Cross — calculated from birth date + time" data-profile="human_design_incarnation_cross" autocomplete="off">
+        <label class="field-label" for="profile-hd-cross">Incarnation Cross <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated</span></label>
+        <input class="field-input field-input--calc" id="profile-hd-cross" type="text" placeholder="Calculated from birth date + time" data-profile="human_design_incarnation_cross" autocomplete="off">
       </div>
     </div>
 
@@ -7407,12 +7521,18 @@ function initProfileModal() {
       <div class="info-disclosure" id="tropical-info-disclosure" role="region" aria-label="Tropical astrology explanation">
         Sun is calculated from birth date alone. Moon needs birth time (UTC-corrected via the timezone offset above). Rising / Ascendant additionally needs latitude and longitude. All computed locally using Meeus low-precision formulas.
       </div>
-      <div class="field-group">
-        <label class="field-label">Sun · Moon · Rising</label>
-        <div class="calc-row">
-          <input class="field-input" id="profile-astro-sun" type="text" placeholder="Sun — calculated from birth data" data-profile="astrology_sun" autocomplete="off">
-          <input class="field-input" id="profile-astro-moon" type="text" placeholder="Moon — requires birth time" data-profile="astrology_moon" autocomplete="off">
-          <input class="field-input" id="profile-astro-rising" type="text" placeholder="Rising — requires birth time + coordinates" data-profile="astrology_rising" autocomplete="off">
+      <div class="calc-row calc-row--triple">
+        <div class="field-group">
+          <label class="field-label" for="profile-astro-sun">Sun</label>
+          <input class="field-input field-input--calc" id="profile-astro-sun" type="text" placeholder="Calculated from birth date" data-profile="astrology_sun" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-astro-moon">Moon</label>
+          <input class="field-input field-input--calc" id="profile-astro-moon" type="text" placeholder="Requires birth time" data-profile="astrology_moon" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-astro-rising">Rising</label>
+          <input class="field-input field-input--calc" id="profile-astro-rising" type="text" placeholder="Requires birth time + coords" data-profile="astrology_rising" autocomplete="off">
         </div>
       </div>
     </div>
@@ -7428,14 +7548,21 @@ function initProfileModal() {
       <div class="info-disclosure" id="vedic-info-disclosure" role="region" aria-label="Vedic astrology explanation">
         Sidereal positions use an approximate Lahiri ayanamsha (linear precession model anchored on J2000). Within ~0.05° of full Swiss-Ephemeris Lahiri across the 20th and 21st centuries — sufficient for sign and nakshatra assignment. Sun is calculated from birth date alone; Moon and Lagna require birth time and coordinates.
       </div>
-      <div class="field-group">
-        <label class="field-label">Sun · Moon · Ascendant (Lagna) <span style="color:var(--text-faint);font-size:var(--text-xs);">— Lahiri (approx.)</span></label>
-        <div class="calc-row">
-          <input class="field-input" id="profile-vedic-sun" type="text" placeholder="Sidereal Sun — calculated from birth data" data-profile="vedic_sun" autocomplete="off">
-          <input class="field-input" id="profile-vedic-moon" type="text" placeholder="Sidereal Moon · Nakshatra — requires birth time" data-profile="vedic_moon" autocomplete="off">
-          <input class="field-input" id="profile-vedic-ascendant" type="text" placeholder="Lagna — requires birth time + coordinates" data-profile="vedic_ascendant" autocomplete="off">
+      <div class="calc-row calc-row--triple">
+        <div class="field-group">
+          <label class="field-label" for="profile-vedic-sun">Sidereal Sun</label>
+          <input class="field-input field-input--calc" id="profile-vedic-sun" type="text" placeholder="Calculated from birth date" data-profile="vedic_sun" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-vedic-moon">Sidereal Moon · Nakshatra</label>
+          <input class="field-input field-input--calc" id="profile-vedic-moon" type="text" placeholder="Requires birth time" data-profile="vedic_moon" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="profile-vedic-ascendant">Lagna (Ascendant)</label>
+          <input class="field-input field-input--calc" id="profile-vedic-ascendant" type="text" placeholder="Requires birth time + coords" data-profile="vedic_ascendant" autocomplete="off">
         </div>
       </div>
+      <p class="om-cipher-card-hint">Lahiri ayanamsha (approx.).</p>
     </div>
 
     <!-- ============================================================
