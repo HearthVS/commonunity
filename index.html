@@ -4078,6 +4078,9 @@ body.companion-mode .companion-mode-banner { display: block; }
 <script src="/sdk/astronomy.js"></script>
 <script src="/sdk/human_design.js"></script>
 <script src="/sdk/place_gazetteer.js"></script>
+<script>window.CU_OM_CIPHER_ENABLED = true;</script>
+<script src="/sdk/om_cipher_layer6_data.js"></script>
+<script src="/sdk/om_cipher.js"></script>
 <script>
   // Preload the vendored city / timezone dataset so the OM Cipher
   // modal can resolve free-form birth-place strings (e.g. "Sudbury
@@ -5121,7 +5124,132 @@ function backToSetup() {
 // birthplace/place_of_birth, current_location, human_design.{type,profile},
 // astrology.{sun,moon,rising}). Derived values do not overwrite an
 // explicit value already on state.profile.
+// Resolve identity inputs from either the DOM (root Compass runtime) or
+// the in-memory state object (Studio / import path). Returns a flat
+// {first_name, full_name, date_of_birth, birth_time, place_of_birth}
+// bag that downstream consumers can read without guarding for undefined.
+function _resolveCompassSource(s) {
+  function fld(id) {
+    try {
+      var el = (typeof document !== 'undefined') ? document.getElementById(id) : null;
+      return (el && typeof el.value === 'string') ? el.value.trim() : '';
+    } catch (_) { return ''; }
+  }
+  var domDob   = fld('dob')            || fld('date_of_birth');
+  var domTob   = fld('tob')            || fld('birth_time');
+  var domPob   = fld('pob')            || fld('place_of_birth');
+  var domFirst = fld('companion-name') || fld('profile-given-name') || fld('first_name');
+  var domFull  = fld('guide-name')     || fld('full_name');
+
+  var stateProfile = (s && s.profile && typeof s.profile === 'object') ? s.profile : {};
+  var stateFnd     = (stateProfile.foundation && typeof stateProfile.foundation === 'object')
+    ? stateProfile.foundation : {};
+
+  function pick() {
+    for (var i = 0; i < arguments.length; i++) {
+      var v = arguments[i];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return '';
+  }
+  var firstName = pick(
+    domFirst,
+    stateProfile.first_name, stateProfile.given_name, stateProfile.preferred_name,
+    stateFnd.first_name, stateFnd.given_name, stateFnd.preferred_name,
+    s && s.companion,
+    (domFull && domFull.split(/\s+/)[0]) || ''
+  );
+  var fullName = pick(
+    domFull,
+    stateProfile.legal_name, stateProfile.full_name,
+    stateFnd.legal_name, stateFnd.full_name,
+    s && s.guide,
+    firstName
+  );
+  return {
+    first_name:     firstName,
+    full_name:      fullName,
+    date_of_birth:  pick(domDob, stateProfile.date_of_birth, stateProfile.birthdate, stateFnd.date_of_birth, stateFnd.birthdate, s && s.dob),
+    birth_time:     pick(domTob, stateProfile.birth_time, stateFnd.birth_time, s && s.tob),
+    place_of_birth: pick(domPob, stateProfile.place_of_birth, stateProfile.birthplace, stateFnd.place_of_birth, stateFnd.birthplace, s && s.pob)
+  };
+}
+
+// Merge GK slot data from points[] (UI calc-body) and gk_profile (engine)
+// into the canonical compass.{work,lens,field,call} shape that the OM
+// Cipher engine expects. Mirrors studio.html's cuMergeGeneKeysSlots so
+// the root Compass path produces the same structured Gene Keys mapping.
+function _mergeCompassGeneKeysSlots(points, gkProfile) {
+  var slotMap = { work: ['cs','csLine'], lens: ['ce','ceLine'],
+                  field: ['us','usLine'], call: ['ue','ueLine'] };
+  var pts = points || {};
+  var gk  = gkProfile || {};
+  var out = {};
+  Object.keys(slotMap).forEach(function (slot) {
+    var pair = slotMap[slot];
+    var src  = pts[slot] || null;
+    var numKey  = pair[0], lineKey = pair[1];
+    var slotNum  = src && src.gk_num  != null && String(src.gk_num)  !== '' ? src.gk_num  : null;
+    var slotLine = src && src.gk_line != null && String(src.gk_line) !== '' ? src.gk_line : null;
+    var profNum  = gk[numKey]  != null && String(gk[numKey])  !== '' ? gk[numKey]  : null;
+    var profLine = gk[lineKey] != null && String(gk[lineKey]) !== '' ? gk[lineKey] : null;
+    var num  = slotNum  != null ? slotNum  : profNum;
+    var line = slotLine != null ? slotLine : profLine;
+    if (num == null && line == null && !src) { out[slot] = null; return; }
+    var merged = {};
+    if (src && typeof src === 'object') Object.keys(src).forEach(function (k) { merged[k] = src[k]; });
+    if (num  != null) merged.gk_num  = num;
+    if (line != null) merged.gk_line = line;
+    out[slot] = merged;
+  });
+  return out;
+}
+
+// Build the canonical OM Cipher engine input from root Compass state +
+// DOM. Safe on both paths: reads from the resolver, gk_profile, and
+// points without ever touching `compassData.profile` directly.
+function _buildOmCipherInputFromCompass(s) {
+  var src = _resolveCompassSource(s);
+  if (!src.date_of_birth) return null;
+  var pts = (s && s.points) || {};
+  var compassSlots = _mergeCompassGeneKeysSlots(pts, s && s.gk_profile);
+  // Parse free-form place into structured slots — engine canonical seed
+  // ignores birth_place but downstream layers surface it.
+  var birthPlace = null;
+  if (src.place_of_birth) {
+    var bpParts = String(src.place_of_birth).split(',').map(function (p) { return p.trim(); }).filter(Boolean);
+    if (bpParts.length === 1) {
+      var bpToks = bpParts[0].split(/\s+/);
+      if (bpToks.length >= 3) {
+        bpParts = [bpToks.slice(0, bpToks.length - 2).join(' '), bpToks[bpToks.length - 2], bpToks[bpToks.length - 1]];
+      }
+    }
+    function _bpTitle(t) {
+      return t.replace(/\b([a-z])([a-z']*)/gi, function (_m, a, b) { return a.toUpperCase() + b.toLowerCase(); });
+    }
+    if (bpParts.length >= 3)      birthPlace = { city: _bpTitle(bpParts[0]), province: _bpTitle(bpParts[1]), country: _bpTitle(bpParts[2]) };
+    else if (bpParts.length === 2) birthPlace = { city: _bpTitle(bpParts[0]), country: _bpTitle(bpParts[1]) };
+    else                           birthPlace = { city: _bpTitle(src.place_of_birth) };
+  }
+  var prof = (s && s.profile) || {};
+  return {
+    birth_date:     src.date_of_birth,
+    birth_time:     src.birth_time || null,
+    birth_place:    birthPlace,
+    legal_name:     src.full_name || null,
+    preferred_name: src.first_name || null,
+    compass:        compassSlots,
+    human_design:   prof.human_design || null,
+    seed_syllable:  prof.seed_syllable || 'Om',
+    bhramari_baseline: null
+  };
+}
+
 function buildCompassExport(s) {
+  // Default to global state so callers can invoke buildCompassExport()
+  // without args from the page (the root Compass runtime is DOM/state
+  // driven and the user-facing repro is `buildCompassExport()`).
+  s = s || (typeof state !== 'undefined' ? state : {}) || {};
   // Defensive copy of the existing profile (CV fields, communities, etc.).
   const profile = Object.assign({}, s.profile || {});
 
@@ -5328,6 +5456,25 @@ function buildCompassExport(s) {
   if (profile.current_location && !out.current_location) {
     out.current_location = profile.current_location;
   }
+
+  // Structured om_cipher v1.1 block — additive, backward-compatible.
+  // Derived from canonical state via the engine; reads gk_profile
+  // directly (engine values) rather than the display strings on
+  // profile.gene_keys. Master numbers preserved (Markus: LP22).
+  // Hebrew gematria intentionally excluded; personal_year not sealed.
+  try {
+    var _ocEngine = (typeof window !== 'undefined') ? window.cuOmCipher : null;
+    if (_ocEngine && typeof _ocEngine.generate === 'function') {
+      var _ocInput = _buildOmCipherInputFromCompass(s);
+      if (_ocInput) {
+        var _ocRec = _ocEngine.generate(_ocInput, { featureFlag: true });
+        if (_ocRec && !_ocRec.pending && _ocRec.om_cipher_block) {
+          out.om_cipher = _ocRec.om_cipher_block;
+        }
+      }
+    }
+  } catch (_) { /* graceful — never block a save */ }
+
   return out;
 }
 
