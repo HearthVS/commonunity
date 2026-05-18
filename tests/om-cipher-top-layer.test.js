@@ -131,26 +131,35 @@ assert(
     /data-profile="gene_keys_purpose"/.test(indexSrc),
   'Gene Keys activation-sequence readouts (life_work / evolution / radiance / purpose) present'
 );
+// After the calculator enhancement, placeholders use precise per-field
+// states. Tropical/Vedic/HD fields that ARE calculated read "calculated
+// from birth data"; the still-pending Human Design subfields use the
+// dedicated "requires bodygraph" label; chart-time/coords requirements
+// say "requires birth time" or "requires birth time + coordinates".
 assert(
-  /pending full chart calculation/.test(indexSrc),
-  'pending placeholders use the "pending full chart calculation" wording (no invented data)'
+  /calculated from birth data/.test(indexSrc),
+  'derived placeholders use "calculated from birth data" wording'
+);
+assert(
+  /requires bodygraph/.test(indexSrc),
+  'bodygraph-requiring HD subfields use "requires bodygraph" wording'
 );
 
-// Vedic / sidereal — extension-point fields so JSON round-trip carries
-// them verbatim. No fake auto-fill (we don't run a Jyotish ephemeris).
+// Vedic / sidereal — these are now derived locally via approximate
+// Lahiri ayanamsha. Inputs still round-trip if filled manually.
 assert(
   /data-profile="vedic_sun"/.test(indexSrc) &&
     /data-profile="vedic_moon"/.test(indexSrc) &&
     /data-profile="vedic_ascendant"/.test(indexSrc),
-  'Vedic astrology extension-point fields (sun / moon / ascendant) are present'
+  'Vedic astrology fields (sun / moon / ascendant) are present'
 );
 assert(
-  /Vedic Astrology[\s\S]{0,200}requires full chart calculation/.test(indexSrc),
-  'Vedic Astrology section is labelled "requires full chart calculation"'
+  /Vedic Astrology[\s\S]{0,1500}(Lahiri|requires birth time)/.test(indexSrc),
+  'Vedic Astrology section declares Lahiri ayanamsha or birth-time requirement'
 );
 assert(
-  /Human Design[\s\S]{0,200}requires full chart calculation/.test(indexSrc),
-  'Human Design section is labelled "requires full chart calculation" (not vaguely "optional")'
+  /Human Design[\s\S]{0,1500}requires bodygraph/.test(indexSrc),
+  'Human Design section declares bodygraph-required subfields (Type / Strategy / Authority / Cross)'
 );
 assert(
   !/Optional, fillable in your own time/.test(indexSrc),
