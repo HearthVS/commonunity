@@ -9242,6 +9242,25 @@ function studioSaveJSON() {
     rooms: {}
   };
 
+  // Structured om_cipher block (v1.1). Additive: derived deterministically
+  // from canonical state via the engine so there's no duplicate user input.
+  // Backward-compatible: legacy consumers ignore the field; v1.1 consumers
+  // read it. Hebrew gematria intentionally excluded; personal_year is NOT
+  // sealed here (it is computed annually at render time elsewhere).
+  try {
+    if (typeof window.cuBuildOmCipherInput === 'function'
+        && typeof window.cuOmCipher === 'object'
+        && typeof window.cuOmCipher.generate === 'function') {
+      var _ocInput = window.cuBuildOmCipherInput(null);
+      if (_ocInput) {
+        var _ocRec = window.cuOmCipher.generate(_ocInput, { featureFlag: true });
+        if (_ocRec && !_ocRec.pending && _ocRec.om_cipher_block) {
+          exportData.om_cipher = _ocRec.om_cipher_block;
+        }
+      }
+    }
+  } catch (_) { /* graceful — never block a save */ }
+
   // Rooms — include entries and mirror history, exclude large voice data
   ['work','lens','field','call'].forEach(room => {
     const r = state.rooms[room] || {};
@@ -14997,11 +15016,20 @@ if (document.readyState === 'loading') {
         section.setAttribute('data-cu-om-cipher-state', sealed ? 'sealed' : 'draft');
 
         // ── Canonical SVG sigil ───────────────────────────────
+        // Prefer the v1.1 hexagonal / Lissajous / crack sigil from the
+        // structured om_cipher_block when present. Falls back to the
+        // legacy radial-yantra sigil_svg gracefully so a partial record
+        // still paints something rather than breaking the page.
         var slot = section.querySelector('.lp-hero-slot.is-sigil');
-        if (slot && rec.sigil_svg && !slot.classList.contains('has-image')) {
-          slot.innerHTML = rec.sigil_svg;
+        var hexSvg = rec.om_cipher_block && rec.om_cipher_block.layer6
+                       && rec.om_cipher_block.layer6.svg;
+        var chosenSvg = hexSvg || rec.sigil_svg;
+        if (slot && chosenSvg && !slot.classList.contains('has-image')) {
+          slot.innerHTML = chosenSvg;
           slot.classList.add('cu-om-cipher-sigil-rendered');
           slot.setAttribute('data-cu-om-cipher-sigil', '1');
+          slot.setAttribute('data-cu-om-cipher-sigil-form',
+            hexSvg ? 'hex-lissajous-crack' : 'legacy-yantra');
         }
         // Seal hash (short). Labelled as Draft until Compass-sealed so
         // the surface tells the truth about its provenance. The full

@@ -95,7 +95,10 @@ ok('"Bhramari resonance" header present',              /Bhramari resonance/.test
 console.log('\ncanonical SVG sigil injection (engine-driven)');
 ok('renderer reads rec.sigil_svg into slot',           /rec\.sigil_svg/.test(src));
 ok('renderer overwrites slot innerHTML with engine SVG',
-   /slot\.innerHTML\s*=\s*rec\.sigil_svg/.test(src));
+   // v1.1: renderer prefers rec.om_cipher_block.layer6.svg (hex sigil)
+   // and falls back to rec.sigil_svg via `chosenSvg`. Either path writes
+   // into slot.innerHTML deterministically from engine output.
+   /slot\.innerHTML\s*=\s*(rec\.sigil_svg|chosenSvg)/.test(src));
 ok('renderer tags slot with cu-om-cipher-sigil-rendered marker',
    /cu-om-cipher-sigil-rendered/.test(src));
 ok('renderer gated by window.CU_OM_CIPHER_ENABLED',    /window\.CU_OM_CIPHER_ENABLED\s*!==\s*true/.test(src));
