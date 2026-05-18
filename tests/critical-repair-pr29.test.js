@@ -118,12 +118,12 @@ assert(
     'Family name label reads "— required" (not "optional")'
   );
   assert(
-    /id="profile-last-name"[^>]*\brequired\b/.test(indexSrc),
-    '#profile-last-name input carries the HTML `required` attribute'
+    /id="profile-family-name"[^>]*\brequired\b/.test(indexSrc),
+    '#profile-family-name input carries the HTML `required` attribute'
   );
   assert(
-    /id="profile-last-name"[^>]*aria-required="true"/.test(indexSrc),
-    '#profile-last-name input carries aria-required="true"'
+    /id="profile-family-name"[^>]*aria-required="true"/.test(indexSrc),
+    '#profile-family-name input carries aria-required="true"'
   );
   // Multi-city question — exact user-facing label.
   assert(

@@ -129,16 +129,23 @@ assert(
 // ── 4. Identity source card · first_name + last_name + legal_name
 console.log('\n4. Identity source card · given / family / legal name inputs');
 assert(
-  /id="profile-first-name"[^>]*data-profile="first_name"/.test(indexSrc),
-  '#profile-first-name input bound to data-profile="first_name"'
+  /id="profile-given-name"[^>]*data-profile="first_name"/.test(indexSrc),
+  '#profile-given-name input bound to data-profile="first_name"'
 );
 assert(
-  /id="profile-last-name"[^>]*data-profile="last_name"/.test(indexSrc),
-  '#profile-last-name input bound to data-profile="last_name"'
+  /id="profile-family-name"[^>]*data-profile="last_name"/.test(indexSrc),
+  '#profile-family-name input bound to data-profile="last_name"'
+);
+// legal_name is derived state, not a visible DOM input. The OM Cipher
+// modal must NOT render a third name input (Full Legal Name) — it lives
+// in state.profile.legal_name only, composed from first + last on input.
+assert(
+  !/id="profile-legal-name"/.test(indexSrc),
+  'no #profile-legal-name input is rendered (legal_name lives in state only)'
 );
 assert(
-  /id="profile-legal-name"[^>]*data-profile="legal_name"/.test(indexSrc),
-  '#profile-legal-name input bound to data-profile="legal_name"'
+  !/Full legal name/i.test(indexSrc.replace(/<!--[\s\S]*?-->/g, '')),
+  'no visible "Full legal name" label appears in markup'
 );
 
 // ── 5. syncSetupIntoProfile · splits guide-name into given/family + legal ─
