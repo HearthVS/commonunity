@@ -190,8 +190,21 @@ test('Cipher Foundation filters out `current_location` ("Currently In")', () => 
     'current_location must be filtered from the locked-data card');
 });
 
-test('Human Design surfaces as pending-v1.1 note rather than "Not set yet" in locked card', () => {
-  assert.ok(/Human Design · pending full chart calculation · v1\.1/.test(STUDIO));
+test('Human Design pending wording differentiates missing inputs (not the legacy "pending full chart calculation")', () => {
+  // After the HD engine + place gazetteer landed, the OM Cipher
+  // foundation card no longer falls back to "pending full chart
+  // calculation". When the engine can't run it surfaces precise
+  // missing-input wording — birth date / birth time / birth
+  // coordinates·timezone — so the user knows what to provide.
+  assert.ok(/requires birth date · v1\.1/.test(STUDIO));
+  assert.ok(/requires birth time · v1\.1/.test(STUDIO));
+  assert.ok(/requires birth coordinates\/timezone · v1\.1/.test(STUDIO));
+  // The HD-specific "Human Design · pending full chart calculation"
+  // line is gone; the residual "Moon · Rising · pending full chart
+  // calculation" string remains for astrology subfields and is
+  // checked separately.
+  assert.ok(!/Human Design · pending full chart calculation/.test(STUDIO),
+    'legacy HD "pending full chart calculation" wording is gone');
 });
 
 test('Moon · Rising surface as pending v1.1 note outside the locked grid', () => {

@@ -7420,6 +7420,31 @@ input, textarea { font: inherit; color: inherit; }
      fields (Tropical/Vedic chart, Human Design bodygraph). -->
 <script src="/sdk/astronomy.js"></script>
 <script src="/sdk/human_design.js"></script>
+<!-- Place gazetteer — vendored city-timezones dataset for resolving
+     free-form birth-place strings to { lat, lng, tzOffsetMinutes }
+     deterministically offline. Preloaded at boot so the HD engine
+     can run during import. -->
+<script src="/sdk/place_gazetteer.js"></script>
+<script>
+  (function () {
+    if (typeof window === 'undefined' || !window.CommonUnityPlaces) return;
+    try {
+      window.CommonUnityPlaces.preload('/data/places/city_timezones.json')
+        .then(function (ok) {
+          window.__cuPlacesReady = !!ok;
+          if (ok && typeof window.cuRenderOmCipherSection === 'function') {
+            try {
+              var root = document.getElementById('living-profile-modal');
+              if (root && root.classList && root.classList.contains('is-open')
+                  && typeof window.openLivingProfile === 'function') {
+                window.openLivingProfile();
+              }
+            } catch (_) {}
+          }
+        });
+    } catch (_) { /* preload is best-effort */ }
+  })();
+</script>
 <!-- Canonical OM Cipher engine — exposes window.cuOmCipher.
      Loaded eagerly so the Living Profile render can call generate()
      synchronously when the modal opens. Gated by window.CU_OM_CIPHER_ENABLED. -->
@@ -12309,9 +12334,101 @@ if (document.readyState === 'loading') {
           (points.work.gk_line ? '.' + points.work.gk_line : '');
       }
 
-      // Human Design: type + profile.
+      // Human Design: type + profile. If the imported profile JSON
+      // didn't bring a precomputed bodygraph but we have birth date +
+      // time, run the local HD engine here (using the place gazetteer
+      // to resolve free-form `pob` strings to a tz offset). The
+      // engine output is persisted into compassData.profile so
+      // downstream readers / exports pick it up.
       var hdType    = strOrEmpty(hd.type || hd.energy_type);
       var hdProfile = strOrEmpty(hd.profile);
+      var hdAuthority = strOrEmpty(hd.authority);
+      var hdStrategy  = strOrEmpty(hd.strategy);
+      var hdCross   = '';
+      if (hd.incarnation_cross) {
+        hdCross = typeof hd.incarnation_cross === 'string'
+          ? hd.incarnation_cross
+          : (hd.incarnation_cross.label || '');
+      }
+      var hdNeedsCalc = !(hdType && hdProfile);
+      if (hdNeedsCalc && typeof window !== 'undefined'
+          && window.CommonUnityHumanDesign
+          && typeof window.CommonUnityHumanDesign.computeChart === 'function') {
+        try {
+          // Birth date + time pulled from the same alias pool as
+          // birthday/birthtime below.
+          var _bd = (p.birthdate || p.birth_date || p.date_of_birth || p.dob ||
+                     foundationBlock.birthdate || foundationBlock.birth_date || foundationBlock.dob ||
+                     cd.birthdate || cd.birth_date || cd.dob || cd.date_of_birth ||
+                     bd.dob || '');
+          var _bt = (p.birth_time || p.birthtime || p.time_of_birth ||
+                     foundationBlock.birth_time || foundationBlock.birthtime ||
+                     cd.birth_time || cd.birthtime || cd.tob ||
+                     bd.tob || '');
+          var _bp = (p.birthplace || p.place_of_birth || p.birth_place || p.pob ||
+                     foundationBlock.birthplace || foundationBlock.place_of_birth || foundationBlock.pob ||
+                     cd.birthplace || cd.place_of_birth || cd.pob || bd.pob || null);
+          var _bcBlock = p.birth_coordinates || foundationBlock.birth_coordinates || {};
+          var _bcTz = (p.birth_tz_offset_minutes != null ? p.birth_tz_offset_minutes
+                       : (foundationBlock.birth_tz_offset_minutes != null ? foundationBlock.birth_tz_offset_minutes
+                          : _bcBlock.tz_offset_minutes));
+          var _resolved = null;
+          if (_bcTz == null && _bp && window.CommonUnityPlaces
+              && typeof window.CommonUnityPlaces.resolve === 'function') {
+            try { _resolved = window.CommonUnityPlaces.resolve(_bp); } catch (_) {}
+            if (_resolved) _bcTz = _resolved.tzOffsetMinutes;
+          }
+          if (_bd && _bt && _bcTz != null) {
+            var _bdParts = String(_bd).split('-').map(Number);
+            var _btParts = String(_bt).split(':').map(Number);
+            if (_bdParts[0] && _bdParts[1] && _bdParts[2] && !Number.isNaN(_btParts[0])) {
+              var _chart = window.CommonUnityHumanDesign.computeChart({
+                year: _bdParts[0], month: _bdParts[1], day: _bdParts[2],
+                hour: _btParts[0] | 0,
+                minute: _btParts[1] | 0,
+                tzOffsetMinutes: Number(_bcTz)
+              });
+              if (_chart && _chart.ok) {
+                hd = {
+                  type:               _chart.type,
+                  strategy:           _chart.strategy,
+                  authority:          _chart.authority,
+                  profile:            _chart.profile,
+                  incarnation_cross:  _chart.incarnation_cross,
+                  gates:              _chart.gates,
+                  channels:           _chart.channels,
+                  centers:            _chart.centers,
+                  calculation_method: _chart.method,
+                  precision:          _chart.precision,
+                  resolved_place:     _resolved || null
+                };
+                hdType      = _chart.type;
+                hdProfile   = _chart.profile;
+                hdAuthority = _chart.authority;
+                hdStrategy  = _chart.strategy;
+                hdCross     = (_chart.incarnation_cross && _chart.incarnation_cross.label) || '';
+                // Persist for downstream consumers / JSON export.
+                try {
+                  if (window.state) {
+                    window.state.compassData = window.state.compassData || {};
+                    window.state.compassData.profile = window.state.compassData.profile || {};
+                    window.state.compassData.profile.human_design = hd;
+                    if (_resolved && !window.state.compassData.profile.birth_coordinates) {
+                      window.state.compassData.profile.birth_coordinates = {
+                        latitude:          _resolved.latitude,
+                        longitude:         _resolved.longitude,
+                        tz_offset_minutes: _resolved.tzOffsetMinutes,
+                        iana:              _resolved.iana,
+                        resolved_from:     String(_bp)
+                      };
+                    }
+                  }
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) { /* HD auto-calc is best-effort */ }
+      }
       var hdLine    = joinNonEmpty([hdType, hdProfile ? hdProfile + ' profile' : '']);
 
       // Each row falls back through: profile field → nested foundation
@@ -12935,12 +13052,60 @@ if (document.readyState === 'loading') {
       //     derivable from birth_date and is added here; Moon/Rising
       //     require a full chart and surface as a pending v1.1 note.
       var ocPendingNotes = [];
+      // Pull the (possibly auto-calculated) HD block off the live
+      // profile so we can build a richer foundation line and decide
+      // pending-message wording precisely.
+      var ocLiveHd = ((window.state && window.state.compassData &&
+                       window.state.compassData.profile &&
+                       window.state.compassData.profile.human_design)
+                      || (profile && profile.human_design)
+                      || (profile && profile.foundation && profile.foundation.human_design)
+                      || null);
+      // Did the user supply at least dob + tob (the engine's hard
+      // input requirements)? If yes but place couldn't be resolved
+      // and tz is missing, the surface should say
+      // "requires birth coordinates/timezone" — not the old generic
+      // "pending full chart calculation".
+      var ocBirthDateRaw = (profile && (profile.birth_date || profile.birthdate
+                                         || profile.date_of_birth || profile.dob))
+                            || (window.state && window.state.birthData && window.state.birthData.dob)
+                            || ((window.state && window.state.compassData)
+                                  ? (window.state.compassData.dob || window.state.compassData.birth_date)
+                                  : null);
+      var ocBirthTimeRaw = (profile && (profile.birth_time || profile.birthtime))
+                            || (window.state && window.state.birthData && window.state.birthData.tob)
+                            || ((window.state && window.state.compassData)
+                                  ? (window.state.compassData.tob || window.state.compassData.birth_time)
+                                  : null);
       var foundationItems = (model.foundation || []).filter(function (it) {
         if (!it) return false;
         if (it.field === 'current_location') return false;
         if (it.field === 'human_design') {
           if (!it.val) {
-            ocPendingNotes.push('Human Design · pending full chart calculation · v1.1');
+            // Build a precise pending message based on what's missing.
+            var msg;
+            if (ocLiveHd && (ocLiveHd.type || ocLiveHd.profile)) {
+              // Engine already produced fields — surface them.
+              var bits = [];
+              if (ocLiveHd.type)      bits.push(ocLiveHd.type);
+              if (ocLiveHd.profile)   bits.push(ocLiveHd.profile + ' profile');
+              if (ocLiveHd.authority) bits.push(ocLiveHd.authority);
+              if (ocLiveHd.incarnation_cross) {
+                var lab = typeof ocLiveHd.incarnation_cross === 'string'
+                            ? ocLiveHd.incarnation_cross
+                            : (ocLiveHd.incarnation_cross.label || '');
+                if (lab) bits.push(lab);
+              }
+              return Object.assign({}, it, { val: bits.join(' · ') });
+            }
+            if (!ocBirthDateRaw) {
+              msg = 'Human Design · requires birth date · v1.1';
+            } else if (!ocBirthTimeRaw) {
+              msg = 'Human Design · requires birth time · v1.1';
+            } else {
+              msg = 'Human Design · requires birth coordinates/timezone · v1.1';
+            }
+            ocPendingNotes.push(msg);
             return false;
           }
         }
@@ -14569,32 +14734,67 @@ if (document.readyState === 'loading') {
 
         // ── Auto-compute Human Design bodygraph when missing ────────
         // If the imported profile JSON doesn't carry a calculated
-        // human_design block but we have a birth date + time + tz,
-        // run the deterministic HD engine here so the OM Cipher record
-        // (and Living Profile foundation) gets canonical type / strategy
-        // / authority / profile / incarnation_cross. Lat/lng are NOT
-        // required for the HD engine.
+        // human_design block but we have a birth date + time, run the
+        // deterministic HD engine here so the OM Cipher record (and
+        // Living Profile foundation) gets canonical type / strategy /
+        // authority / profile / incarnation_cross.
+        //
+        // tz / lat / lng resolution order:
+        //   1. explicit profile.birth_tz_offset_minutes / lat / lng
+        //   2. profile.birth_coordinates.{tz_offset_minutes,latitude,longitude}
+        //   3. CommonUnityPlaces.resolve(birthPlace) — vendored gazetteer
+        //      lookup against the city-timezones dataset.
+        //
+        // The HD engine only requires tz to produce a deterministic
+        // Personality + Design instant — lat/lng are passed through for
+        // downstream tropical-astrology Rising / Lagna but not required.
         var hdBlock = prof.human_design || fnd.human_design || null;
         var hdHasFields = !!(hdBlock && (hdBlock.type || hdBlock.profile ||
                                          hdBlock.authority || hdBlock.strategy));
+        var resolvedPlace = null;
+        var bcBlock = prof.birth_coordinates || fnd.birth_coordinates || {};
+        var bcTz = (prof.birth_tz_offset_minutes != null
+                      ? prof.birth_tz_offset_minutes
+                      : (fnd.birth_tz_offset_minutes != null
+                          ? fnd.birth_tz_offset_minutes
+                          : bcBlock.tz_offset_minutes));
+        var bcLat = (prof.birth_latitude != null
+                       ? prof.birth_latitude
+                       : (fnd.birth_latitude != null
+                           ? fnd.birth_latitude
+                           : bcBlock.latitude));
+        var bcLng = (prof.birth_longitude != null
+                       ? prof.birth_longitude
+                       : (fnd.birth_longitude != null
+                           ? fnd.birth_longitude
+                           : bcBlock.longitude));
+        if ((bcTz == null || bcLat == null || bcLng == null)
+            && birthPlace
+            && typeof window !== 'undefined'
+            && window.CommonUnityPlaces
+            && typeof window.CommonUnityPlaces.resolve === 'function') {
+          try {
+            resolvedPlace = window.CommonUnityPlaces.resolve(birthPlace);
+          } catch (_) { resolvedPlace = null; }
+          if (resolvedPlace) {
+            if (bcTz  == null) bcTz  = resolvedPlace.tzOffsetMinutes;
+            if (bcLat == null) bcLat = resolvedPlace.latitude;
+            if (bcLng == null) bcLng = resolvedPlace.longitude;
+          }
+        }
+
         if ((!hdHasFields) && birthDate && birthTime &&
+            bcTz != null &&
             typeof CommonUnityHumanDesign !== 'undefined') {
           try {
             var bdParts = String(birthDate).split('-').map(Number);
             var btParts = String(birthTime).split(':').map(Number);
-            var bcBlock = prof.birth_coordinates || fnd.birth_coordinates || {};
-            var bcTz = Number(prof.birth_tz_offset_minutes != null
-                              ? prof.birth_tz_offset_minutes
-                              : (fnd.birth_tz_offset_minutes != null
-                                 ? fnd.birth_tz_offset_minutes
-                                 : (bcBlock.tz_offset_minutes != null
-                                    ? bcBlock.tz_offset_minutes : 0)));
             if (bdParts[0] && bdParts[1] && bdParts[2] && !Number.isNaN(btParts[0])) {
               var hdChart = CommonUnityHumanDesign.computeChart({
                 year: bdParts[0], month: bdParts[1], day: bdParts[2],
                 hour: btParts[0] | 0,
                 minute: btParts[1] | 0,
-                tzOffsetMinutes: Number.isFinite(bcTz) ? bcTz : 0
+                tzOffsetMinutes: Number(bcTz)
               });
               if (hdChart && hdChart.ok) {
                 hdBlock = {
@@ -14607,8 +14807,29 @@ if (document.readyState === 'loading') {
                   channels:           hdChart.channels,
                   centers:            hdChart.centers,
                   calculation_method: hdChart.method,
-                  precision:          hdChart.precision
+                  precision:          hdChart.precision,
+                  resolved_place:     resolvedPlace || null
                 };
+                // Persist back into state so downstream readers
+                // (buildFoundationItems, Living Profile foundation rows,
+                // JSON export) see the calculated block on subsequent
+                // reads without recomputing.
+                try {
+                  if (window.state) {
+                    window.state.compassData = window.state.compassData || {};
+                    window.state.compassData.profile = window.state.compassData.profile || {};
+                    window.state.compassData.profile.human_design = hdBlock;
+                    if (resolvedPlace) {
+                      window.state.compassData.profile.birth_coordinates = {
+                        latitude:          resolvedPlace.latitude,
+                        longitude:         resolvedPlace.longitude,
+                        tz_offset_minutes: resolvedPlace.tzOffsetMinutes,
+                        iana:              resolvedPlace.iana,
+                        resolved_from:     birthPlace
+                      };
+                    }
+                  }
+                } catch (_) {}
               }
             }
           } catch (_) { /* leave hdBlock as-is on any failure */ }
