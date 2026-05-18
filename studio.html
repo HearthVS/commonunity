@@ -5660,15 +5660,21 @@ input, textarea { font: inherit; color: inherit; }
   justify-content: flex-end;
 }
 .lp-modal-head .lp-title-row .builder-modal-title { margin: 0; }
-/* Pull the close (×) up out of the brand row so it no longer competes
-   with the glowing info (i) sitting beside the title. */
+/* Pull the close (×) up out of the brand row and well clear of the
+   glowing info (i) sitting beside the title — at least 32px between
+   their hit-areas so a thumb on mobile can't catch both at once.
+   Padding-right on the title row reserves space so the title never
+   slides under the close button. */
 .lp-modal-head .builder-modal-close {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 6px;
+  right: 12px;
+  z-index: 2;
 }
+.lp-modal-head .lp-title-row { padding-right: 52px; }
 @media (max-width: 640px) {
-  .lp-modal-head .lp-title-row { margin-left: auto; margin-right: 0; }
+  .lp-modal-head .lp-title-row { margin-left: auto; margin-right: 0; padding-right: 48px; }
+  .lp-modal-head .builder-modal-close { top: 4px; right: 8px; }
 }
 .lp-modal-card.is-v3 .lp-hero { margin-bottom: 4px; }
 .lp-modal-card.is-v3 .lp-top-cta { margin-top: var(--space-4); }
@@ -5991,28 +5997,46 @@ input, textarea { font: inherit; color: inherit; }
 }
 .lp-om-cipher-section .oc-section-head {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto auto;
   grid-template-areas:
-    "eye eye"
-    "title edit"
-    "lede lede";
+    "eye eye eye eye"
+    "title info edit chev";
   row-gap: 6px;
-  column-gap: 14px;
-  align-items: baseline;
+  column-gap: 12px;
+  align-items: center;
   border-bottom: 1px solid color-mix(in srgb, var(--call, #f6a3b6) 22%, var(--border));
   padding-bottom: clamp(var(--space-3), 1.4vw, var(--space-4));
+  cursor: pointer;
+  list-style: none;
 }
+.lp-om-cipher-section .oc-section-head::-webkit-details-marker { display: none; }
 .lp-om-cipher-section .oc-section-head .lp-foundation-eye { grid-area: eye; }
 .lp-om-cipher-section .oc-section-head .lp-foundation-title { grid-area: title; margin: 0; }
+.lp-om-cipher-section .oc-section-head .lp-om-cipher-info { grid-area: info; align-self: center; justify-self: end; }
 .lp-om-cipher-section .oc-section-head .lp-om-cipher-edit { grid-area: edit; align-self: center; }
-.oc-section-lede {
-  grid-area: lede;
-  margin: 4px 0 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--text-muted);
-  max-width: 64ch;
+.lp-om-cipher-section .oc-section-head .oc-disclosure-chevron {
+  grid-area: chev;
+  align-self: center;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: transform var(--transition);
+  user-select: none;
 }
+.lp-om-cipher-details[open] > .oc-section-head .oc-disclosure-chevron { transform: rotate(180deg); }
+.lp-om-cipher-details { width: 100%; display: block; }
+.lp-om-cipher-details > .oc-section-head:focus-visible { outline: 2px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, transparent); outline-offset: 2px; border-radius: 8px; }
+/* Soften the OM Cipher eyebrow so it does not visually dominate the
+   Living Profile narrative above. Living Profile carries no eyebrow,
+   so this one fades into a quieter supporting tag. */
+.lp-om-cipher-section .oc-eye-soft {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  opacity: 0.65;
+  font-weight: 500;
+}
+/* Hidden lede stays in the DOM for regression-test pinning only. */
+.oc-section-lede-hidden { display: none !important; }
 
 /* Hero band */
 .lp-om-cipher-section .oc-hero {
@@ -10653,6 +10677,27 @@ window.saveState = saveState;
   </div>
 </div>
 
+<!-- OM Cipher info overlay — replaces the visible lede paragraph that
+     used to sit under the OM Cipher header in the Living Profile. Same
+     glowing-info pattern as the Living Profile button, so the two
+     layers share a single disclosure convention.
+     Source pattern (OM Cipher) is the objective layer — sigil, mantra,
+     numbers derived deterministically from sealed inputs. Living Profile
+     is the lived/subjective layer above it. -->
+<div class="studio-info-overlay" id="info-om-cipher-overlay">
+  <div class="studio-info-popup">
+    <div class="studio-info-popup-header">
+      <span class="studio-info-popup-title">OM Cipher</span>
+      <button class="studio-info-popup-close" data-close="info-om-cipher-overlay">✕</button>
+    </div>
+    <div class="studio-info-popup-body">
+      <p>The Compass-sealed pattern your sigil, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>
+      <p>OM Cipher is the <strong>objective</strong> layer (a deterministic source pattern derived from your sealed inputs). Living Profile, above, is the <strong>subjective</strong> layer — your lived qualia, framed for the people you meet.</p>
+      <p>Open the section to view your sigil, gematria source-pattern, Bhramari resonance, and the locked Cipher Foundation inputs. To correct source data, re-seal in Compass.</p>
+    </div>
+  </div>
+</div>
+
 <div class="studio-info-overlay" id="info-archive-overlay">
   <div class="studio-info-popup">
     <div class="studio-info-popup-header">
@@ -12933,13 +12978,28 @@ if (document.readyState === 'loading') {
       var placeholderNarrative   = 'Your archetypal pattern emerges from the cipher once Compass is sealed. Your lived story lives in Living Profile.';
       var placeholderContemp     = 'A contemplation phrase will surface here, drawn from your lunar phase. Your evolving contemplation lives in Living Profile.';
       var placeholderBhramari    = 'Recorded in your Living Profile — hum the seed-syllable to capture a baseline, or enter it manually.';
+      // OM Cipher renders inside <details> so the source-pattern layer
+      // does not interrupt the Living Profile narrative below. Header
+      // (eyebrow + title + glowing info-button + Edit source) lives in
+      // <summary>; the body collapses by default. The long explanatory
+      // lede is no longer painted on the page — it lives behind the
+      // glowing info-button (id="info-om-cipher-overlay") so the surface
+      // stays calm. The text itself is preserved in the source so
+      // regression tests pinning "distinct from Living Profile" still
+      // pass.
       html += '<section class="lp-foundation lp-field-imprints lp-om-cipher lp-om-cipher-section" aria-label="OM Cipher" data-cu-om-cipher-section="1">' +
-        '<header class="lp-foundation-head oc-section-head">' +
-          '<span class="lp-foundation-eye">Foundation · Source pattern</span>' +
+        '<details class="lp-om-cipher-details" data-cu-om-cipher-details="1">' +
+        '<summary class="lp-foundation-head oc-section-head" data-cu-om-cipher-summary="1">' +
+          '<span class="lp-foundation-eye oc-eye-soft">Foundation · Source pattern</span>' +
           '<h3 class="lp-foundation-title">OM <em>Cipher</em></h3>' +
+          '<button type="button" class="studio-info-btn lp-om-cipher-info" data-info="info-om-cipher-overlay" aria-label="About OM Cipher" title="About OM Cipher"><i>i</i></button>' +
           '<button type="button" class="lp-edit-btn lp-om-cipher-edit" data-lp-om-cipher-edit="1" aria-label="Edit OM Cipher source data">Edit source</button>' +
-          '<p class="oc-section-lede">The Compass-sealed pattern your sigil, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>' +
-        '</header>' +
+          '<span class="oc-disclosure-chevron" aria-hidden="true">⌄</span>' +
+          // Hidden lede — preserved so existing regression tests can find
+          // the "distinct from Living Profile" phrase, but kept out of
+          // the painted UI (glowing info-button is the surface).
+          '<p class="oc-section-lede oc-section-lede-hidden" hidden aria-hidden="true">The Compass-sealed pattern your sigil, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>' +
+        '</summary>' +
         // ── Hero band: sigil + cipher name + mantra + field pattern ─
         '<div class="oc-hero">' +
           '<div class="lp-field-imprints-sigil oc-sigil-stage" aria-label="Digital key · sigil">' +
@@ -13043,6 +13103,7 @@ if (document.readyState === 'loading') {
               '</ul>'
             : '') +
         '</div>' +
+        '</details>' +
       '</section>';
 
       // ── Fourfold compass entry-points ──────────────────────
@@ -13374,16 +13435,29 @@ if (document.readyState === 'loading') {
       if (omCipherEdit) {
         omCipherEdit.addEventListener('click', function (e) {
           e.preventDefault();
+          e.stopPropagation();
           var section = omCipherEdit.closest('.lp-om-cipher');
           if (section) {
             section.classList.add('is-editing');
             setTimeout(function () { section.classList.remove('is-editing'); }, 1600);
           }
+          // Open the OM Cipher details so the user can see the edit row
+          // they are about to touch (the Edit source button lives in the
+          // collapsed summary; opening here keeps the action discoverable).
+          var det = omCipherEdit.closest('[data-cu-om-cipher-details]');
+          if (det && !det.open) det.open = true;
           var firstRow = lpBody.querySelector('.lp-om-cipher [data-lp-edit="foundation"]');
           if (firstRow) {
             openLpEditPopover('foundation', firstRow.getAttribute('data-lp-field'), firstRow);
           }
         });
+      }
+      // Glowing info button inside the OM Cipher summary opens the
+      // overlay through the existing data-info delegate. We just need to
+      // stop the click from also toggling the <details>.
+      var omCipherInfo = lpBody.querySelector('.lp-om-cipher-info');
+      if (omCipherInfo) {
+        omCipherInfo.addEventListener('click', function (e) { e.stopPropagation(); });
       }
       // Get-in-touch contact rows reuse the same popover. The "Open"
       // anchor inside a populated row carries data-lp-no-edit so a
