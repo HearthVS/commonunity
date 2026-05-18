@@ -525,6 +525,474 @@ function buildSigilSvg(pointCount, seedHex, palette) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Structured om_cipher block (additive — sits alongside the legacy record).
+//
+// Backward compatibility: the legacy record fields (seed, seed_string,
+// seed_identity, metadata, sigil_svg, palette) are untouched. The
+// structured block is attached as `record.om_cipher_block` and carries
+// the six-layer projection v1.1 callers expect. Master numbers 11/22/33
+// are preserved here on expression / soul_urge / personality / birthday
+// (the legacy `metadata.*` fields stay single-digit so existing baseline
+// hashes / tests remain valid).
+// ─────────────────────────────────────────────────────────────────────────
+
+// Master-preserving Pythagorean gematria. Used by the structured block
+// (not the legacy seed_string which stays single-digit).
+function gematriaSumPythKeepMaster(name, filter) {
+  const cleaned = normaliseName(name);
+  if (!cleaned) return null;
+  let sum = 0;
+  for (const ch of cleaned) {
+    if (filter && !filter(ch)) continue;
+    const v = PYTHAGOREAN[ch];
+    if (v) sum += v;
+  }
+  if (sum === 0) return null;
+  return { raw: sum, reduced: digitalRootKeepMaster(sum) };
+}
+
+// English ordinal gematria — A=1..Z=26. Returns { raw, reduced } where
+// reduced applies a single-digit reduction (masters NOT preserved here:
+// the ordinal "root" is canonically single-digit, by convention).
+function ordinalGematria(name) {
+  const cleaned = normaliseName(name);
+  if (!cleaned) return null;
+  let sum = 0;
+  for (const ch of cleaned) sum += (ch.charCodeAt(0) - 64);
+  if (sum === 0) return null;
+  return { raw: sum, reduced: digitalRoot(sum) };
+}
+
+// Birthday number — day-of-month, master-preserving.
+function birthdayNumber(isoDate) {
+  if (!isoDate) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(isoDate));
+  if (!m) return null;
+  const day = parseInt(m[3], 10);
+  return { raw: day, reduced: digitalRootKeepMaster(day) };
+}
+
+// Octave / law-of-three from life_path. Deterministic, concise.
+// Octave (1..7 of the diatonic scale) = ((lp - 1) % 7) + 1. For master
+// numbers we reduce to a non-master root only for octave indexing so the
+// table stays within the 7-tone scale.
+const OCTAVE_NOTES = { 1:"C", 2:"D", 3:"E", 4:"F", 5:"G", 6:"A", 7:"B" };
+const LAW_OF_THREE = {
+  1: { triad: "Active",   role: "initiator" },
+  2: { triad: "Passive",  role: "receiver" },
+  3: { triad: "Neutral",  role: "reconciler" },
+  4: { triad: "Active",   role: "stabiliser" },
+  5: { triad: "Passive",  role: "messenger" },
+  6: { triad: "Neutral",  role: "harmoniser" },
+  7: { triad: "Active",   role: "investigator" },
+  8: { triad: "Passive",  role: "manifestor" },
+  9: { triad: "Neutral",  role: "completer" },
+};
+
+function temporalOctave(lifePathReduced, dominantGate) {
+  if (lifePathReduced == null) return null;
+  const root = lifePathReduced > 9
+    ? digitalRoot(lifePathReduced)
+    : lifePathReduced;
+  const octaveIdx = ((root - 1) % 7) + 1;
+  const note = OCTAVE_NOTES[octaveIdx] || null;
+  const law = LAW_OF_THREE[root] || null;
+  return {
+    octave: octaveIdx,
+    octave_note: note,
+    law_of_three: law,
+    dominant_gate: dominantGate || null,
+  };
+}
+
+// Vibrational mapping — palette hue + authority resonance. Authority
+// labels are deterministic look-ups; no narrative content.
+const AUTHORITY_RESONANCE = {
+  "Emotional Solar Plexus": { current: "wave", pace: "ride the wave to clarity" },
+  "Sacral":                 { current: "response", pace: "respond in the moment" },
+  "Splenic":                { current: "intuition", pace: "answer in the now" },
+  "Ego (Heart)":            { current: "will", pace: "commit when willing" },
+  "Self-Projected":         { current: "voice", pace: "speak to discover" },
+  "Mental (Outer)":         { current: "environment", pace: "decide in right place" },
+  "Lunar (Reflector)":      { current: "lunar cycle", pace: "wait a full lunar cycle" },
+};
+
+function vibrationalLayer(palette, authorityLabel, baselineHz) {
+  if (!palette) return null;
+  const out = {
+    primary_hue: palette.primary_hue,
+    secondary_hue: palette.secondary_hue,
+    palette: palette.palette || null,
+  };
+  if (authorityLabel && AUTHORITY_RESONANCE[authorityLabel]) {
+    out.authority_resonance = Object.assign(
+      { authority: authorityLabel },
+      AUTHORITY_RESONANCE[authorityLabel]
+    );
+  } else if (authorityLabel) {
+    out.authority_resonance = { authority: authorityLabel };
+  }
+  if (baselineHz) {
+    const tone = hzToSemitone(baselineHz);
+    out.bhramari = {
+      baseline_hz: roundHz(baselineHz),
+      nearest_semitone: tone ? `${tone.note}${tone.octave}` : null,
+      octave_visible_hue_deg: hzToVisibleHueDeg(baselineHz),
+    };
+  }
+  return out;
+}
+
+// Minimal deterministic phoneme lookup for all 64 gates. We map gate
+// number to a Sanskrit-bija-flavoured short syllable seeded from the
+// gate value so every gate has a stable, non-narrative phoneme. This
+// is not a translation table; it is a deterministic placeholder so the
+// structured block surfaces SOMETHING for every member without
+// hardcoding only Markus.
+const PHONEME_TABLE = (function () {
+  const consonants = ["K","KH","G","GH","NG","CH","J","JH","T","TH","D","DH","N",
+                      "P","PH","B","BH","M","Y","R","L","V","SH","S","H"];
+  const vowels = ["A","I","U","E","O","AM","AH","AU"];
+  const out = {};
+  for (let g = 1; g <= 64; g++) {
+    const c = consonants[(g - 1) % consonants.length];
+    const v = vowels[Math.floor((g - 1) / consonants.length) % vowels.length];
+    out[g] = c + v;
+  }
+  return out;
+})();
+
+function phonemeForGate(gate) {
+  const g = Number(gate);
+  if (!Number.isFinite(g) || g < 1 || g > 64) return null;
+  return PHONEME_TABLE[g];
+}
+
+// Map a Compass-merged slot input to the canonical GK label. The slot
+// names (work/lens/field/call) are Compass UI; the canonical GK names
+// (cs/ce/us/ue → Life Work / Evolution / Radiance / Purpose) are what
+// downstream consumers expect on the structured block.
+const GK_SPHERE = {
+  work:  { canonical: "cs", label: "Life Work",  sphere: "challenge", line_role_set: "work" },
+  lens:  { canonical: "ce", label: "Evolution",  sphere: "challenge", line_role_set: "lens" },
+  field: { canonical: "us", label: "Radiance",   sphere: "stability", line_role_set: "field" },
+  call:  { canonical: "ue", label: "Purpose",    sphere: "stability", line_role_set: "call" },
+};
+
+function geneKeysStructured(compassSlots) {
+  if (!compassSlots) return null;
+  const out = {};
+  Object.keys(GK_SPHERE).forEach(function (slot) {
+    const meta = GK_SPHERE[slot];
+    const p = compassSlots[slot];
+    if (!p) { out[meta.canonical] = null; return; }
+    const g = parseGate(p.gk_num, p.gk_line);
+    if (!g) { out[meta.canonical] = null; return; }
+    out[meta.canonical] = {
+      gate: g.gate,
+      line: g.line,
+      label: meta.label,
+      line_label: g.line ? (GK_LINE_NAMES[meta.line_role_set][g.line] || null) : null,
+    };
+  });
+  // Empty block when every slot is null.
+  const hasAny = Object.keys(out).some(function (k) { return out[k] != null; });
+  return hasAny ? out : null;
+}
+
+function humanDesignStructured(hd) {
+  if (!hd) return null;
+  const ic = hd.incarnation_cross || null;
+  const crossLabel = (ic && typeof ic === 'object' && ic.label) ||
+                     (typeof ic === 'string' ? ic : null);
+  const crossGates = (ic && typeof ic === 'object' && ic.gates) || null;
+  return {
+    type: hd.type || null,
+    profile: hd.profile || null,
+    authority: hd.authority || null,
+    strategy: hd.strategy || null,
+    definition: hd.definition || null,
+    incarnation_cross: crossLabel || null,
+    incarnation_cross_gates: crossGates || null,
+    gates: hd.gates || null,
+    channels: hd.channels || null,
+    centers: hd.centers || null,
+  };
+}
+
+function buildOmCipherBlock(input, internals) {
+  // internals: { lp, name, gk, gkRaw (compass slots), temporal, palette,
+  //              primaryGate, baselineHz, seed }
+  const lp = internals.lp;
+  const masterName = nameResonanceKeepMaster(input.legal_name || input.preferred_name);
+  const ord = ordinalGematria(input.legal_name || input.preferred_name);
+  const bday = birthdayNumber(input.birth_date);
+
+  const layer1 = {
+    life_path: lp ? {
+      value: lp.reduced,
+      raw: lp.raw,
+      is_master: lp.reduced === 11 || lp.reduced === 22 || lp.reduced === 33,
+      method: "commonunity_component_preserve_master",
+      components: { day: lp.day, month: lp.month, year: lp.year },
+    } : null,
+    expression: masterName && masterName.expression ? {
+      value: masterName.expression.reduced,
+      raw: masterName.expression.raw,
+      is_master: [11,22,33].indexOf(masterName.expression.reduced) >= 0,
+    } : null,
+    soul_urge: masterName && masterName.soul_urge ? {
+      value: masterName.soul_urge.reduced,
+      raw: masterName.soul_urge.raw,
+      is_master: [11,22,33].indexOf(masterName.soul_urge.reduced) >= 0,
+    } : null,
+    personality: masterName && masterName.personality ? {
+      value: masterName.personality.reduced,
+      raw: masterName.personality.raw,
+      is_master: [11,22,33].indexOf(masterName.personality.reduced) >= 0,
+    } : null,
+    birthday_number: bday,
+    gematria_ordinal: ord ? ord.raw : null,
+    gematria_ordinal_root: ord ? ord.reduced : null,
+  };
+
+  const layer2 = {
+    human_design: humanDesignStructured(input.human_design),
+    gene_keys: geneKeysStructured(internals.gkRaw),
+  };
+
+  const layer3 = temporalOctave(
+    lp ? lp.reduced : null,
+    internals.primaryGate
+  );
+  if (layer3 && internals.temporal) {
+    layer3.lunar_phase = internals.temporal.lunar_phase;
+    layer3.solar_quarter = internals.temporal.solar_quarter;
+    layer3.temporal_gate = internals.temporal.temporal_gate;
+  }
+
+  const layer4 = vibrationalLayer(
+    internals.palette,
+    layer2.human_design && layer2.human_design.authority,
+    internals.baselineHz
+  );
+
+  const fullName = input.legal_name || input.preferred_name || null;
+  // Dominant phoneme — derived from personality Sun gate if HD present,
+  // else from the gk Life Work gate, else null. Never narrative.
+  let dominantPhoneme = null;
+  if (input.human_design && input.human_design.activations
+      && input.human_design.activations.personality
+      && input.human_design.activations.personality.Sun) {
+    dominantPhoneme = phonemeForGate(
+      input.human_design.activations.personality.Sun.gate
+    );
+  }
+  if (!dominantPhoneme && internals.primaryGate) {
+    dominantPhoneme = phonemeForGate(internals.primaryGate);
+  }
+  const layer5 = {
+    current_name: fullName,
+    given_name: input.preferred_name || (fullName ? String(fullName).trim().split(/\s+/)[0] : null),
+    family_name: (function () {
+      if (!fullName) return null;
+      const parts = String(fullName).trim().split(/\s+/);
+      if (parts.length < 2) return null;
+      return parts.slice(1).join(' ');
+    })(),
+    gematria_ordinal: ord ? ord.raw : null,
+    gematria_ordinal_root: ord ? ord.reduced : null,
+    dominant_phoneme: dominantPhoneme,
+    cipher_name: deriveCipherName(
+      input.preferred_name || (fullName ? String(fullName).trim().split(/\s+/)[0] : null),
+      internals.temporal ? internals.temporal.solar_quarter : null,
+      internals.temporal ? internals.temporal.lunar_phase : null
+    ),
+  };
+
+  // Layer 6 — hexagonal / Lissajous / crack sigil. Built last so it
+  // can read deterministically from layers 1-5.
+  const layer6 = buildHexLissajousCrackSigil({
+    seed: internals.seed,
+    palette: internals.palette,
+    cross_gates: layer2.human_design && layer2.human_design.incarnation_cross_gates,
+    octave: layer3 ? layer3.octave : null,
+    radiance_gate: layer2.gene_keys && layer2.gene_keys.us
+                    ? layer2.gene_keys.us.gate : null,
+    life_path: lp ? lp.reduced : null,
+  });
+
+  return {
+    version: "1.1",
+    layer1,
+    layer2,
+    layer3: layer3 || null,
+    layer4: layer4 || null,
+    layer5,
+    layer6,
+    notes: {
+      hebrew_gematria_excluded: true,
+      personal_year_excluded_from_sealed: true,
+      master_preserved_in: ["life_path","expression","soul_urge","personality","birthday_number"],
+    },
+  };
+}
+
+// Master-preserving variant of nameResonance for the structured block.
+function nameResonanceKeepMaster(legalName) {
+  if (!legalName) return null;
+  return {
+    expression:  gematriaSumPythKeepMaster(legalName),
+    soul_urge:   gematriaSumPythKeepMaster(legalName, ch => VOWELS.has(ch)),
+    personality: gematriaSumPythKeepMaster(legalName, ch => !VOWELS.has(ch)),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Hexagonal / Lissajous / Crack sigil (Layer 6, preferred form).
+//
+// Deterministic SVG generated from sealed structured-block data.
+//   - Hexagonal base ring (6-fold symmetry) — fixed geometry.
+//   - Incarnation cross gates encoded as 4 axis markers (NE/NW/SW/SE).
+//   - Inner Lissajous waveform parameters seeded from octave + life_path.
+//   - Crack at the Radiance / growth-edge gate axis (slot us).
+//   - Colours read deterministically from the palette layer.
+//   - When data is incomplete, render the base ring + omit missing
+//     elements gracefully (no crashes, no random/un-seeded paths).
+// ─────────────────────────────────────────────────────────────────────────
+function buildHexLissajousCrackSigil(args) {
+  const cx = 256, cy = 256;
+  const R  = 200;
+  const palette = args.palette || null;
+  const primary = (palette && palette.palette && palette.palette[0]) || "oklch(0.55 0.227 72)";
+  const secondary = (palette && palette.palette && palette.palette[1]) || "oklch(0.55 0.227 252)";
+  const primaryHue = (palette && palette.primary_hue != null) ? palette.primary_hue : 72;
+
+  // ── Hexagonal base ring ─────────────────────────────────────────────
+  const hexPts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (-Math.PI / 2) + i * (Math.PI / 3);
+    hexPts.push({
+      x: +(cx + R * Math.cos(a)).toFixed(3),
+      y: +(cy + R * Math.sin(a)).toFixed(3),
+    });
+  }
+  const hexD = hexPts.map((p, i) => (i === 0 ? "M" : "L") + p.x + "," + p.y).join(" ") + " Z";
+  const hexagon =
+    `<path class="cu-sigil-hex" d="${hexD}" fill="none" ` +
+    `stroke="${primary}" stroke-width="2.5" stroke-linejoin="round" opacity="0.9"/>`;
+
+  // ── Cross-gate axis markers ─────────────────────────────────────────
+  // Map gates to axis angles. Cross = personality_sun (top), personality_earth
+  // (bottom), design_sun (right), design_earth (left). Each marker is a
+  // small disc at radius 0.92R on its axis, with the gate number written
+  // beside it. Missing gates degrade silently to no marker.
+  const cg = args.cross_gates || {};
+  const axes = [
+    { key: "personality_sun",   gate: cg.personality_sun || null,   angle: -Math.PI / 2 },
+    { key: "design_sun",        gate: cg.design_sun || null,         angle: 0 },
+    { key: "personality_earth", gate: cg.personality_earth || null,  angle:  Math.PI / 2 },
+    { key: "design_earth",      gate: cg.design_earth || null,       angle:  Math.PI },
+  ];
+  let axisMarkers = "";
+  axes.forEach(function (ax) {
+    if (!ax.gate) return;
+    const r = R * 0.94;
+    const x = +(cx + r * Math.cos(ax.angle)).toFixed(3);
+    const y = +(cy + r * Math.sin(ax.angle)).toFixed(3);
+    axisMarkers +=
+      `<circle class="cu-sigil-cross-marker" data-axis="${ax.key}" data-gate="${ax.gate}" ` +
+      `cx="${x}" cy="${y}" r="6" fill="${primary}" opacity="0.95"/>` +
+      `<text x="${x}" y="${(y + (ax.angle === -Math.PI/2 ? -10 : 16)).toFixed(3)}" ` +
+      `fill="${primary}" font-size="11" text-anchor="middle" opacity="0.85">` +
+      String(ax.gate) +
+      `</text>`;
+  });
+
+  // ── Inner Lissajous wave ────────────────────────────────────────────
+  // x(t) = A sin(a t + δ); y(t) = B sin(b t). Ratios derived from
+  // life_path and octave so the curve is deterministic per member.
+  // Defaults keep the figure pleasing when data is incomplete.
+  const lp  = Number.isFinite(args.life_path) ? args.life_path : 1;
+  const oct = Number.isFinite(args.octave) ? args.octave : 3;
+  const a = Math.max(1, ((lp - 1) % 7) + 1);
+  const b = Math.max(1, ((oct - 1) % 7) + 1);
+  const delta = (lp % 6) * (Math.PI / 6);
+  const innerR = R * 0.55;
+  const samples = 240;
+  let lissD = "";
+  for (let i = 0; i <= samples; i++) {
+    const t = (i / samples) * 2 * Math.PI;
+    const x = +(cx + innerR * Math.sin(a * t + delta)).toFixed(3);
+    const y = +(cy + innerR * Math.sin(b * t)).toFixed(3);
+    lissD += (i === 0 ? "M" : "L") + x + "," + y + " ";
+  }
+  const lissajous =
+    `<path class="cu-sigil-lissajous" d="${lissD.trim()}" fill="none" ` +
+    `stroke="${secondary}" stroke-width="1.5" stroke-linejoin="round" ` +
+    `stroke-linecap="round" opacity="0.75"/>`;
+
+  // ── Growth-edge crack ───────────────────────────────────────────────
+  // Stylised jagged line from the centre outward along the Radiance
+  // gate axis (mapped to top-right diagonal for visual balance). The
+  // crack is drawn whenever a Radiance gate is present; otherwise
+  // omitted gracefully.
+  let crack = "";
+  if (args.radiance_gate) {
+    const ang = -Math.PI / 4; // upper-right diagonal, fixed for hex base
+    const steps = 6;
+    const seedNum = parseInt(String(args.seed || "0").slice(0, 8), 16) || 1;
+    let cd = `M${cx},${cy}`;
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      const baseR = R * 0.95 * t;
+      // Deterministic jitter from seed bytes per step.
+      const jit  = ((seedNum >> (s * 3)) & 0xff) / 255 - 0.5;
+      const jit2 = ((seedNum >> (s * 5)) & 0xff) / 255 - 0.5;
+      const px = +(cx + baseR * Math.cos(ang + jit * 0.45) + jit2 * 8).toFixed(3);
+      const py = +(cy + baseR * Math.sin(ang + jit * 0.45) + jit2 * 8).toFixed(3);
+      cd += ` L${px},${py}`;
+    }
+    crack =
+      `<path class="cu-sigil-crack" data-radiance-gate="${args.radiance_gate}" ` +
+      `d="${cd}" fill="none" stroke="${primary}" stroke-width="2.25" ` +
+      `stroke-linecap="round" stroke-linejoin="miter" opacity="0.9"/>`;
+  }
+
+  // Centre node + subtle glow.
+  const center = `<circle class="cu-sigil-center" cx="${cx}" cy="${cy}" r="6" fill="${primary}"/>`;
+  const glowColor = `oklch(0.55 0.227 ${primaryHue} / 0.30)`;
+  const defs =
+    `<defs><filter id="cu-hex-sigil-glow" x="-20%" y="-20%" width="140%" height="140%">` +
+    `<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>` +
+    `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+    `</filter></defs>`;
+
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" ` +
+    `class="cu-om-cipher-sigil-svg cu-om-cipher-sigil-hex" ` +
+    `data-cu-sigil-form="hex-lissajous-crack" ` +
+    `style="filter:drop-shadow(0 0 6px ${glowColor})">` +
+    defs +
+    `<g filter="url(#cu-hex-sigil-glow)">` +
+    hexagon + lissajous + axisMarkers + crack + center +
+    `</g>` +
+    `</svg>`;
+
+  return {
+    form: "hex-lissajous-crack",
+    svg,
+    params: {
+      hex: 6,
+      lissajous: { a, b, delta: +delta.toFixed(4) },
+      cross_axes_drawn: axes.filter(function (ax) { return ax.gate; }).map(function (ax) { return ax.key; }),
+      crack_drawn: !!args.radiance_gate,
+      primary_hue: primaryHue,
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Compass-sealed input hash. SHA-256 of the canonical JSON projection of
 // the identity-only fields (Bhramari excluded). Stable across engines.
 // ─────────────────────────────────────────────────────────────────────────
@@ -739,6 +1207,24 @@ function generate(input, options) {
     };
   }
 
+  // Structured om_cipher block (v1.1) — additive, backward-compatible.
+  // Derived from the same canonical state used for the legacy fields so
+  // there is no duplicate user input. Master numbers preserved here on
+  // numerology values; legacy `metadata.*` values stay single-digit so
+  // existing baseline hashes and tests are not disturbed.
+  let om_cipher_block = null;
+  try {
+    om_cipher_block = buildOmCipherBlock(input, {
+      lp,
+      gkRaw: input.compass,
+      temporal,
+      palette,
+      primaryGate,
+      baselineHz,
+      seed,
+    });
+  } catch (_) { om_cipher_block = null; }
+
   return {
     version: 1,
     pending: false,
@@ -749,6 +1235,7 @@ function generate(input, options) {
     input_hash,
     palette,
     sigil_svg,
+    om_cipher_block,
     metadata,
     sealed_inputs: {
       birth_date: input.birth_date,
@@ -1043,6 +1530,14 @@ const _exports = {
   temporalPhrase,
   deriveCipherName,
   TEMPORAL_PHRASES,
+  // Structured om_cipher block (v1.1).
+  buildOmCipherBlock,
+  nameResonanceKeepMaster,
+  ordinalGematria,
+  birthdayNumber,
+  phonemeForGate,
+  buildHexLissajousCrackSigil,
+  PHONEME_TABLE,
   // labels — public so the studio adapter can render without re-encoding.
   NUMEROLOGY_LABELS,
   LUNAR_PHASE_LABELS,
