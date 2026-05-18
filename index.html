@@ -2330,6 +2330,45 @@ body.companion-mode .companion-mode-banner { display: block; }
 .om-cipher-card .field-group { margin-top: 0; }
 .om-cipher-card .field-group + .field-group { margin-top: var(--space-2); }
 
+/* ── OM Cipher modal · lower-section breathing room ──────────────
+   Adds vertical rhythm to the Additional Information block, where
+   labels/inputs were nearly touching and chip groups felt dense.
+   Spacing only — no colour, layout, or hierarchy changes. */
+#profile-modal .additional-info-section {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+#profile-modal .additional-info-section > h3 {
+  margin-bottom: var(--space-2);
+}
+#profile-modal .additional-info-section > p {
+  margin-bottom: var(--space-3);
+}
+#profile-modal .additional-info-section .field-group {
+  gap: var(--space-3);
+}
+#profile-modal .additional-info-section .field-group + .field-group {
+  margin-top: var(--space-2);
+}
+#profile-modal .additional-info-section textarea.field-input {
+  line-height: 1.55;
+  padding: var(--space-3) var(--space-4);
+}
+#profile-modal .additional-info-section .practice-pills {
+  margin-top: var(--space-3);
+  gap: var(--space-2) var(--space-2);
+  row-gap: var(--space-3);
+}
+#profile-modal .additional-info-section .practice-pill {
+  padding: var(--space-2) var(--space-3);
+}
+#profile-modal .additional-info-section #practice-custom {
+  margin-top: var(--space-4);
+}
+
 /* Glowing info button + popover */
 .info-button {
   display: inline-flex;
@@ -2598,14 +2637,17 @@ body.companion-mode .companion-mode-banner { display: block; }
     </div>
 
     <!-- Profile Calculator Collapsible -->
+    <!-- Open by default: birth date/time/place are the OM Cipher engine
+         inputs; hiding them behind a toggle made visible-setup fills
+         (incl. test automation) silently miss the canonical fields. -->
     <div>
-      <div class="collapsible-header" id="calc-toggle">
+      <div class="collapsible-header open" id="calc-toggle">
         <span class="collapsible-title">When did you take your first breath?</span>
         <svg class="collapsible-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
-      <div class="collapsible-body" id="calc-body">
+      <div class="collapsible-body open" id="calc-body">
         <div class="calc-row">
           <div class="field-group">
             <label class="field-label" for="dob">Date of birth</label>
@@ -7403,7 +7445,7 @@ function initProfileModal() {
          identity-engine source above; these inform The Work, Lens,
          Field, Call rooms but are not core engine inputs.
          ============================================================ -->
-    <div class="additional-info-section" style="border-top:1px solid var(--border);padding-top:var(--space-4);">
+    <div class="additional-info-section" style="border-top:1px solid var(--border);">
       <h3 style="font-size:var(--text-sm);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin:0 0 var(--space-2);">Additional Information</h3>
       <p style="font-size:var(--text-xs);color:var(--text-faint);margin:0 0 var(--space-4);line-height:1.5;">
         Professional and contextual notes the AI can draw on for The Work, Lens, Field, and Call. Optional.
