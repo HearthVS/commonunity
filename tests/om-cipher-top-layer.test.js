@@ -61,10 +61,9 @@ assert(
   'pill button uses .om-cipher-pill-btn class (Living-Profile-style pill)'
 );
 
-// Setup-screen pill: lives inside #screen-setup (default-visible),
-// so the OM Cipher is reachable before the user opens the Compass.
-// Guards against the regression where the only pill was inside
-// #screen-compass which defaults to display:none.
+// Setup-screen MUST NOT carry an OM Cipher pill — keeping Setup pure
+// is the explicit product decision. The Cipher lives in the Compass
+// header and becomes accessible once the user enters Compass.
 {
   const setupOpen   = indexSrc.indexOf('<div id="screen-setup">');
   const setupClose  = setupOpen >= 0
@@ -74,19 +73,31 @@ assert(
     ? indexSrc.slice(setupOpen, setupClose)
     : '';
   assert(
-    /id="btn-open-om-cipher-setup"/.test(setupBlock),
-    'Setup screen contains the #btn-open-om-cipher-setup pill (visible without entering Compass)'
+    !/id="btn-open-om-cipher-setup"/.test(setupBlock),
+    'Setup screen does NOT contain a #btn-open-om-cipher-setup pill (Setup stays pure)'
   );
   assert(
-    /id="setup-toolbar"/.test(setupBlock),
-    'Setup screen toolbar wrapper #setup-toolbar exists'
+    !/id="setup-toolbar"/.test(setupBlock),
+    'Setup screen has no #setup-toolbar wrapper (Setup stays pure)'
   );
-  // Toolbar appears before .logo-block so the pill is at the top.
-  const toolbarIdx = setupBlock.indexOf('id="setup-toolbar"');
-  const logoIdx    = setupBlock.indexOf('class="logo-block"');
   assert(
-    toolbarIdx >= 0 && logoIdx > toolbarIdx,
-    'Setup toolbar is placed before the logo block (top-of-screen)'
+    !/om-cipher-pill-btn/.test(setupBlock),
+    'Setup screen contains no .om-cipher-pill-btn anywhere'
+  );
+}
+
+// Compass-screen pill: this is the only pill the user can click.
+{
+  const compassOpen  = indexSrc.indexOf('<div id="screen-compass">');
+  const compassClose = compassOpen >= 0
+    ? indexSrc.indexOf('</div><!-- /screen-compass -->', compassOpen)
+    : -1;
+  const compassBlock = (compassOpen >= 0 && compassClose > compassOpen)
+    ? indexSrc.slice(compassOpen, compassClose)
+    : '';
+  assert(
+    /id="btn-open-om-cipher"/.test(compassBlock),
+    'Compass screen contains the #btn-open-om-cipher pill (visible once user enters Compass)'
   );
 }
 
@@ -123,6 +134,27 @@ assert(
 assert(
   /pending full chart calculation/.test(indexSrc),
   'pending placeholders use the "pending full chart calculation" wording (no invented data)'
+);
+
+// Vedic / sidereal — extension-point fields so JSON round-trip carries
+// them verbatim. No fake auto-fill (we don't run a Jyotish ephemeris).
+assert(
+  /data-profile="vedic_sun"/.test(indexSrc) &&
+    /data-profile="vedic_moon"/.test(indexSrc) &&
+    /data-profile="vedic_ascendant"/.test(indexSrc),
+  'Vedic astrology extension-point fields (sun / moon / ascendant) are present'
+);
+assert(
+  /Vedic Astrology[\s\S]{0,200}requires full chart calculation/.test(indexSrc),
+  'Vedic Astrology section is labelled "requires full chart calculation"'
+);
+assert(
+  /Human Design[\s\S]{0,200}requires full chart calculation/.test(indexSrc),
+  'Human Design section is labelled "requires full chart calculation" (not vaguely "optional")'
+);
+assert(
+  !/Optional, fillable in your own time/.test(indexSrc),
+  'misleading "Optional, fillable in your own time" framing is gone from the modal intro'
 );
 
 console.log('\nOM Cipher — Additional Information section');
@@ -206,7 +238,10 @@ if (!exportMatch) {
       human_design_incarnation_cross: 'Right Angle Cross of Tension',
       astrology_sun: 'Taurus',
       astrology_moon: 'Pisces',
-      astrology_rising: 'Leo'
+      astrology_rising: 'Leo',
+      vedic_sun: 'Aries (Mesha)',
+      vedic_moon: 'Revati nakshatra',
+      vedic_ascendant: 'Cancer (Karka lagna)'
     }
   };
   const out = fn(state);
@@ -245,6 +280,19 @@ if (!exportMatch) {
       p.astrology.moon === 'Pisces' &&
       p.astrology.rising === 'Leo',
     'astrology.sun/moon/rising round-trip'
+  );
+  assert(
+    p.vedic &&
+      p.vedic.sun === 'Aries (Mesha)' &&
+      p.vedic.moon === 'Revati nakshatra' &&
+      p.vedic.ascendant === 'Cancer (Karka lagna)',
+    'vedic.sun/moon/ascendant round-trip (extension-point fields preserved verbatim)'
+  );
+  assert(
+    p.foundation && p.foundation.vedic &&
+      p.foundation.vedic.sun === 'Aries (Mesha)' &&
+      p.foundation.vedic.ascendant === 'Cancer (Karka lagna)',
+    'vedic block is mirrored onto profile.foundation for legacy importers'
   );
 
   // Empty bhramari shouldn't leak a NaN onto the export.

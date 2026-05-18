@@ -1,23 +1,22 @@
-/* OM Cipher pill — runtime visibility & accessibility
+/* OM Cipher pill — visibility on Setup vs. Compass
  *
- * Verifies that the OM Cipher pill button is actually visible and
- * clickable on the page the user lands on, not just present in the
- * DOM with display:none on a hidden screen. The bug this guards:
+ * The Setup screen is kept pure: no OM Cipher pill. The pill lives
+ * inside the Compass header so it's reachable as soon as the user
+ * has entered Compass, and not before. This test guards that split:
  *
- *   - #btn-open-om-cipher lived only inside #screen-compass, which
- *     defaults to display:none. A fresh user on the Setup screen
- *     saw no OM Cipher affordance at all (boundingBox was null,
- *     isVisible was false).
- *
- * Strategy: use jsdom to load index.html with the full stylesheet,
- * then assert that *at least one* OM Cipher pill is laid-out
- * (boundingClientRect non-zero / not display:none) on the
- * default page state and after the welcome overlay is dismissed.
+ *   - #btn-open-om-cipher-setup must NOT exist (Setup stays clean).
+ *   - #screen-setup contains no .om-cipher-pill-btn at all.
+ *   - The Compass-header pill #btn-open-om-cipher is present in
+ *     the DOM under #screen-compass.
+ *   - On the default page state (Setup visible, Compass hidden)
+ *     the Compass pill is NOT laid out — expected, it's behind
+ *     display:none until Compass opens. When we flip the screen
+ *     visibility manually (mirroring what openCompass() does),
+ *     the pill becomes laid out.
  *
  * jsdom is treated as optional, mirroring tests/studio-layout-and-
  * resize.test.js: if it isn't installed locally or under /tmp, the
  * test logs a skip notice and exits 0 so CI without jsdom is happy.
- * The CI environment that does install jsdom catches the regression.
  *
  *   Local run:
  *     npm install --prefix /tmp/jsdom-tmp jsdom
@@ -33,7 +32,6 @@ let JSDOM;
 try {
   ({ JSDOM } = require('jsdom'));
 } catch (_) {
-  // Try a couple of common local fallback locations.
   const fallbacks = [
     '/tmp/jsdom-tmp/node_modules/jsdom',
     path.resolve(__dirname, '..', 'node_modules', 'jsdom'),
@@ -59,7 +57,7 @@ function pass(msg) { console.log('  ok  ' + msg); }
 function fail(msg) { console.error('  FAIL ' + msg); failed++; }
 function assert(cond, msg) { cond ? pass(msg) : fail(msg); }
 
-console.log('OM Cipher pill — runtime visibility on Setup screen');
+console.log('OM Cipher pill — Setup stays pure, Compass carries the pill');
 
 // Strip <script> tags so jsdom doesn't try to execute the full
 // application (it depends on browser APIs / external scripts that
@@ -79,8 +77,6 @@ const { document } = window;
 
 function isLaidOut(el) {
   if (!el) return false;
-  // jsdom does not compute full layout, but it does honour
-  // display:none / visibility:hidden via getComputedStyle.
   let node = el;
   while (node && node !== document.documentElement) {
     const cs = window.getComputedStyle(node);
@@ -91,71 +87,71 @@ function isLaidOut(el) {
   return true;
 }
 
-// ── DOM presence (regression of the original PR) ──────────────────
-const setupPill   = document.getElementById('btn-open-om-cipher-setup');
-const compassPill = document.getElementById('btn-open-om-cipher');
-
-assert(!!setupPill,   'setup-screen pill #btn-open-om-cipher-setup is present');
-assert(!!compassPill, 'compass-header pill #btn-open-om-cipher is present');
-
-// ── Critical fix: the setup-screen pill must be visible on the
-// initial page state (welcome overlay closed, screen-setup shown,
-// screen-compass hidden). This is the state a fresh user lands on
-// after "Begin". The welcome overlay is hidden by default (display:
-// none unless .open class is added) so on a return visit the setup
-// pill should be immediately visible.
+// ── Setup screen must stay pure: no OM Cipher pill, no toolbar. ───
 const setupScreen = document.getElementById('screen-setup');
+const compassPill = document.getElementById('btn-open-om-cipher');
+const setupPill   = document.getElementById('btn-open-om-cipher-setup');
+const setupToolbar = document.getElementById('setup-toolbar');
+
+assert(!!setupScreen, '#screen-setup exists');
+assert(!setupPill,    'setup-screen pill #btn-open-om-cipher-setup is removed');
+assert(!setupToolbar, '#setup-toolbar wrapper is removed');
+if (setupScreen) {
+  const pillsInSetup = setupScreen.querySelectorAll('.om-cipher-pill-btn');
+  assert(
+    pillsInSetup.length === 0,
+    'no .om-cipher-pill-btn inside #screen-setup (Setup stays clean)'
+  );
+}
+
+// ── Compass header pill is present in the DOM. ────────────────────
+assert(!!compassPill, 'compass-header pill #btn-open-om-cipher is present in DOM');
+
+// ── Default page state: Compass is hidden, so its pill is too.
+//    This is the intentional behavior — pill is gated behind entering
+//    the Compass. ─────────────────────────────────────────────────
 assert(
   isLaidOut(setupScreen),
   '#screen-setup is laid out (default page state)'
 );
 assert(
-  isLaidOut(setupPill),
-  'setup-screen OM Cipher pill is visible on the default page state'
+  !isLaidOut(compassPill),
+  'compass-header pill stays hidden under #screen-compass until Compass opens'
 );
 
-// The Compass-header pill correctly stays hidden behind #screen-
-// compass on initial load — that's the existing behavior we keep.
-assert(
-  !isLaidOut(compassPill),
-  'compass-header pill stays hidden under #screen-compass until Compass opens (intentional)'
-);
+// ── After Compass is shown (mirroring openCompass()), the pill is
+//    visible/clickable. ─────────────────────────────────────────────
+const compassScreen = document.getElementById('screen-compass');
+if (setupScreen && compassScreen) {
+  setupScreen.style.display   = 'none';
+  compassScreen.style.display = 'flex';
+  assert(
+    isLaidOut(compassPill),
+    'compass-header pill is laid out once Compass is shown'
+  );
+}
 
 // ── Pill markup: same pattern as Studio's Living Profile pill ─────
-assert(
-  setupPill.classList.contains('om-cipher-pill-btn'),
-  'setup pill carries the .om-cipher-pill-btn class'
-);
-assert(
-  /OM Cipher/.test(setupPill.textContent || ''),
-  'setup pill text reads "OM Cipher"'
-);
-assert(
-  !/Companion Profile/.test(setupPill.textContent || ''),
-  'setup pill does not render the legacy "Companion Profile" label'
-);
-assert(
-  (setupPill.getAttribute('title') || '').toLowerCase().includes('om cipher'),
-  'setup pill title attr mentions OM Cipher'
-);
-assert(
-  setupPill.querySelector('.ocp-dot'),
-  'setup pill has the .ocp-dot indicator (matches the Studio pill pattern)'
-);
-
-// ── The toolbar wrapping the pill is positioned at the top of the
-// Setup screen (before .logo-block) so the user encounters it
-// without scrolling. We check structural order, not pixel layout
-// (jsdom doesn't compute pixel layout). ─────────────────────────────
-const toolbar = document.getElementById('setup-toolbar');
-assert(!!toolbar, '#setup-toolbar wrapper exists');
-if (toolbar && setupScreen) {
-  const children = Array.from(setupScreen.children);
-  const toolbarIdx = children.indexOf(toolbar);
-  const logoIdx    = children.findIndex(c => c.classList.contains('logo-block'));
+if (compassPill) {
   assert(
-    toolbarIdx >= 0 && (logoIdx === -1 || toolbarIdx < logoIdx),
-    'setup toolbar appears before the logo block in DOM order'
+    compassPill.classList.contains('om-cipher-pill-btn'),
+    'compass pill carries the .om-cipher-pill-btn class'
+  );
+  assert(
+    /OM Cipher/.test(compassPill.textContent || ''),
+    'compass pill text reads "OM Cipher"'
+  );
+  assert(
+    !/Companion Profile/.test(compassPill.textContent || ''),
+    'compass pill does not render the legacy "Companion Profile" label'
+  );
+  assert(
+    (compassPill.getAttribute('title') || '').toLowerCase().includes('om cipher'),
+    'compass pill title attr mentions OM Cipher'
+  );
+  assert(
+    compassPill.querySelector('.ocp-dot'),
+    'compass pill has the .ocp-dot indicator (matches the Studio pill pattern)'
   );
 }
 
@@ -195,8 +191,16 @@ if (modal) {
     'modal contains astrology sun input'
   );
   assert(
-    /Astrology/.test(modalHTML),
-    'Astrology section heading is present in the modal'
+    /Tropical Astrology/.test(modalHTML),
+    'Tropical Astrology section heading is present in the modal'
+  );
+  assert(
+    /Vedic Astrology/.test(modalHTML),
+    'Vedic Astrology section heading is present in the modal (extension point)'
+  );
+  assert(
+    modal.querySelector('#profile-vedic-sun'),
+    'modal contains Vedic sun input (extension-point field)'
   );
   assert(
     /Additional Information/.test(modalHTML),
@@ -208,7 +212,8 @@ if (modal) {
   const idxAddInfo  = modalHTML.indexOf('Additional Information');
   const idxBhramari = modalHTML.indexOf('Bhramari baseline (Hz)');
   const idxHD       = modalHTML.indexOf('Human Design');
-  const idxAstro    = modalHTML.indexOf('Astrology');
+  const idxAstro    = modalHTML.indexOf('Tropical Astrology');
+  const idxVedic    = modalHTML.indexOf('Vedic Astrology');
   assert(
     idxBhramari >= 0 && idxBhramari < idxAddInfo,
     'Bhramari section is rendered above "Additional Information"'
@@ -219,16 +224,32 @@ if (modal) {
   );
   assert(
     idxAstro >= 0 && idxAstro < idxAddInfo,
-    'Astrology section is rendered above "Additional Information"'
+    'Tropical Astrology section is rendered above "Additional Information"'
+  );
+  assert(
+    idxVedic >= 0 && idxVedic < idxAddInfo,
+    'Vedic Astrology section is rendered above "Additional Information"'
+  );
+
+  // Label honesty: HD / Vedic must say "requires full chart calculation"
+  // somewhere on the section, not be vaguely framed as just "optional".
+  assert(
+    /Human Design[\s\S]{0,200}requires full chart calculation/.test(modalHTML),
+    'Human Design section label declares "requires full chart calculation"'
+  );
+  assert(
+    /Vedic Astrology[\s\S]{0,200}requires full chart calculation/.test(modalHTML),
+    'Vedic Astrology section label declares "requires full chart calculation"'
+  );
+  assert(
+    !/Optional, fillable in your own time/.test(modalHTML),
+    'the misleading "Optional, fillable in your own time" framing is gone'
   );
 }
 
 // ── Modal default state: closed. The modal opens only on click,
 // not on page load — important for "not a required gate." ─────────
 if (modal) {
-  // Inline display:none on the modal element keeps it dismissed
-  // until the click handler flips it to flex. Computed style should
-  // therefore be 'none' on default page state.
   const cs = window.getComputedStyle(modal);
   assert(
     cs.display === 'none',
@@ -240,4 +261,4 @@ if (failed > 0) {
   console.error('\nFAILED: ' + failed + ' check(s).');
   process.exit(1);
 }
-console.log('\nOK: OM Cipher pill visibility regressions pass.');
+console.log('\nOK: OM Cipher pill visibility checks pass.');

@@ -2182,20 +2182,6 @@ body.companion-mode .companion-mode-banner { display: block; }
   text-transform: uppercase;
 }
 
-/* Setup-screen toolbar — anchors the OM Cipher pill at the very
-   top of #screen-setup so it's reachable on the first page after
-   Begin (before the user has opened the Compass). */
-.setup-toolbar {
-  width: 100%;
-  max-width: 1100px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0 auto var(--space-4);
-  padding: 0 var(--space-2);
-}
-
 .mt-4 { margin-top: var(--space-4); }
 .text-muted { color: var(--text-muted); }
 .text-faint { color: var(--text-faint); font-size: var(--text-sm); }
@@ -2467,18 +2453,9 @@ body.companion-mode .companion-mode-banner { display: block; }
 
 <div id="screen-setup">
 
-  <!-- Setup-screen toolbar — keeps the OM Cipher (identity-engine
-       source layer) one click away from the moment the user lands
-       on Setup, mirroring the Studio Living Profile pill pattern.
-       Not a gate: the modal is purely optional. -->
-  <div class="setup-toolbar" id="setup-toolbar">
-    <button type="button" class="om-cipher-pill-btn" id="btn-open-om-cipher-setup"
-            title="Open OM Cipher — your identity-engine source data">
-      <span class="ocp-dot" aria-hidden="true"></span>
-      OM Cipher
-      <span class="ocp-tag">L1</span>
-    </button>
-  </div>
+  <!-- Setup screen intentionally has no OM Cipher pill. The Cipher
+       belongs inside the Compass once the user has entered it — Setup
+       is kept pure (atmosphere, breath, names, transcripts). -->
 
   <!-- Logo Block -->
   <div class="logo-block">
@@ -4730,6 +4707,24 @@ function buildCompassExport(s) {
       profile.astrology || {}
     );
   }
+
+  // Vedic / sidereal — extension-point fields. Full Jyotish chart
+  // calculation (ayanamsa-corrected longitudes, nakshatra, lagna) is
+  // not run in-browser; if the user fills these from an existing
+  // reading we round-trip the strings verbatim under profile.vedic.
+  const vedicSun       = (profile.vedic_sun       || '').trim();
+  const vedicMoon      = (profile.vedic_moon      || '').trim();
+  const vedicAscendant = (profile.vedic_ascendant || '').trim();
+  if (vedicSun || vedicMoon || vedicAscendant) {
+    profile.vedic = Object.assign(
+      {
+        sun:       vedicSun       || undefined,
+        moon:      vedicMoon      || undefined,
+        ascendant: vedicAscendant || undefined
+      },
+      profile.vedic || {}
+    );
+  }
   // Gene Keys: surface the work-stream activation as life_work so the
   // foundation row has a value even without a custom title.
   const gkWorkNum  = s.points && s.points.work && s.points.work.gk_num;
@@ -4754,6 +4749,7 @@ function buildCompassExport(s) {
     current_location:      profile.current_location,
     human_design:          profile.human_design,
     astrology:             profile.astrology,
+    vedic:                 profile.vedic,
     gene_keys:             profile.gene_keys,
     bhramari_baseline_hz:  (typeof profile.bhramari_baseline_hz === 'number')
                               ? profile.bhramari_baseline_hz
@@ -4870,6 +4866,10 @@ function loadJSON(file) {
       if (astro.sun    && !state.profile.astrology_sun)    state.profile.astrology_sun    = astro.sun;
       if (astro.moon   && !state.profile.astrology_moon)   state.profile.astrology_moon   = astro.moon;
       if (astro.rising && !state.profile.astrology_rising) state.profile.astrology_rising = astro.rising;
+      const vedic = state.profile.vedic || {};
+      if (vedic.sun       && !state.profile.vedic_sun)       state.profile.vedic_sun       = vedic.sun;
+      if (vedic.moon      && !state.profile.vedic_moon)      state.profile.vedic_moon      = vedic.moon;
+      if (vedic.ascendant && !state.profile.vedic_ascendant) state.profile.vedic_ascendant = vedic.ascendant;
       // Companion fallback from first/last name when missing.
       if (!state.companion) {
         const fn = (state.profile.first_name || '').trim();
@@ -6662,7 +6662,6 @@ function initProfileModal() {
   const closeBtn   = document.getElementById('profile-modal-close');
   const menuBtn    = document.getElementById('menu-profile');
   const pillBtn    = document.getElementById('btn-open-om-cipher');
-  const setupPill  = document.getElementById('btn-open-om-cipher-setup');
 
   function openOmCipherModal() {
     if (modal) modal.style.display = 'flex';
@@ -6672,7 +6671,6 @@ function initProfileModal() {
 
   if (menuBtn)   menuBtn.addEventListener('click',   openOmCipherModal);
   if (pillBtn)   pillBtn.addEventListener('click',   openOmCipherModal);
-  if (setupPill) setupPill.addEventListener('click', openOmCipherModal);
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -6699,7 +6697,7 @@ function initProfileModal() {
       <button class="profile-modal-close" id="profile-modal-close" aria-label="Close OM Cipher">✕</button>
     </div>
     <p style="font-size:var(--text-xs);color:var(--text-faint);margin:-4px 0 var(--space-4);line-height:1.5;">
-      Your identity-engine source data. Birth, name, design, and resonance — the inputs the OM Cipher and Compass build from. Optional, fillable in your own time.
+      Identity-engine source data — the inputs the OM Cipher and Compass build from. Some fields are calculated from your birth date (sun sign, Gene Keys activation sequence); others require full chart calculation and can be filled in by hand from an existing reading.
     </p>
 
     <!-- ============================================================
@@ -6761,7 +6759,7 @@ function initProfileModal() {
            current calc derives; the rest expose clear "pending full chart
            calculation" placeholders so we never invent data. -->
       <div class="field-group">
-        <label class="field-label">Human Design <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
+        <label class="field-label">Human Design <span style="color:var(--text-faint);font-size:var(--text-xs);">— requires full chart calculation</span></label>
         <div class="calc-row">
           <input class="field-input" id="profile-hd-type" type="text" placeholder="Type (e.g. Generator)" data-profile="human_design_type" autocomplete="off">
           <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile (e.g. 2/4)" data-profile="human_design_profile" autocomplete="off">
@@ -6777,11 +6775,25 @@ function initProfileModal() {
            require full birth time + place chart, which we don't compute
            in-app, so they stay as pending placeholders the user can fill. -->
       <div class="field-group">
-        <label class="field-label">Astrology — Sun · Moon · Rising <span style="color:var(--text-faint);font-size:var(--text-xs);">— sun from birthdate; moon/rising pending</span></label>
+        <label class="field-label">Tropical Astrology — Sun · Moon · Rising <span style="color:var(--text-faint);font-size:var(--text-xs);">— sun from birthdate; moon/rising require full chart calculation</span></label>
         <div class="calc-row">
           <input class="field-input" id="profile-astro-sun" type="text" placeholder="Sun — auto from birthdate" data-profile="astrology_sun" autocomplete="off">
           <input class="field-input" id="profile-astro-moon" type="text" placeholder="Moon — pending full chart calculation" data-profile="astrology_moon" autocomplete="off">
           <input class="field-input" id="profile-astro-rising" type="text" placeholder="Rising — pending full chart calculation" data-profile="astrology_rising" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Vedic / Sidereal astrology — full Jyotish requires an
+           ephemeris and ayanamsa correction we don't run in-browser.
+           Exposed as a clear extension point so the JSON round-trip
+           carries the fields verbatim if the user fills them from an
+           existing reading; no fake auto-fills. -->
+      <div class="field-group">
+        <label class="field-label">Vedic Astrology — Sun · Moon · Ascendant <span style="color:var(--text-faint);font-size:var(--text-xs);">— requires full chart calculation</span></label>
+        <div class="calc-row">
+          <input class="field-input" id="profile-vedic-sun" type="text" placeholder="Sidereal Sun — pending full chart calculation" data-profile="vedic_sun" autocomplete="off">
+          <input class="field-input" id="profile-vedic-moon" type="text" placeholder="Sidereal Moon / Nakshatra — pending full chart calculation" data-profile="vedic_moon" autocomplete="off">
+          <input class="field-input" id="profile-vedic-ascendant" type="text" placeholder="Lagna / Ascendant — pending full chart calculation" data-profile="vedic_ascendant" autocomplete="off">
         </div>
       </div>
     </div>
