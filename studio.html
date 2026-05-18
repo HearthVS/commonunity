@@ -14964,15 +14964,22 @@ if (document.readyState === 'loading') {
     }
     window.cuBuildOmCipherInput = cuBuildOmCipherInput;
 
-    // Cipher Name: prefer the engine-derived `cipher_name` (e.g. "Markus
-    // of the Autumn Gate"). The three-part description (Markus · Master
-    // Builder · Last Quarter) is preserved as a subtitle so the existing
-    // label still surfaces — just not as the primary name.
+    // Cipher Name: prefer the emergent v1.1 cipher name (e.g. "MAVARA")
+    // derived from gate + authority + line. The structured block on
+    // rec.om_cipher_block.layer5 carries the canonical syllabic form;
+    // the legacy temporal descriptor ("Markus of the Autumn Gate") is
+    // preserved on rec.metadata.cipher_name only as a fallback when the
+    // sealed inputs lack HD authority + gate + line.
     function cuCipherNameFromRecord(rec, input) {
       if (!rec || rec.pending) return null;
+      var l5 = rec.om_cipher_block && rec.om_cipher_block.layer5;
+      // Prefer the syllabic display form (e.g. MA·VA·RA) when present;
+      // otherwise fall back to the continuous uppercase form (MAVARA).
+      if (l5 && l5.cipher_name_display) return l5.cipher_name_display;
+      if (l5 && l5.cipher_name) return l5.cipher_name;
       var meta = rec.metadata || {};
+      if (meta.cipher_name_display) return meta.cipher_name_display;
       if (meta.cipher_name) return meta.cipher_name;
-      // Fallback (engine pre-cipher_name) — keep the older descriptor.
       var lp = meta.life_path && meta.life_path.label;
       var lun = meta.lunar_phase && meta.lunar_phase.label;
       var preferred = (input && input.preferred_name) || (input && input.legal_name);
@@ -14983,6 +14990,39 @@ if (document.readyState === 'loading') {
       if (lun) bits.push(lun.split(' — ')[0]);
       if (!bits.length) return null;
       return bits.join(' · ');
+    }
+
+    // Etymology line for the emergent cipher name. Returns a short
+    // explanatory phrase such as `MA · Gate 14 / VA · Solar Plexus seed
+    // / RA · Line 2 resonance` when the structured block is present.
+    function cuCipherEtymologyFromRecord(rec) {
+      if (!rec || rec.pending) return null;
+      var l5 = rec.om_cipher_block && rec.om_cipher_block.layer5;
+      var ety = (l5 && l5.cipher_name_etymology)
+                || (rec.metadata && rec.metadata.cipher_name_etymology);
+      if (!ety) return null;
+      var parts = [];
+      if (ety.part_1 && ety.part_1.phoneme) {
+        var s1 = ety.part_1.phoneme;
+        var src1 = ety.part_1.source || '';
+        // Trim long titles — keep `Gate N`.
+        var g1 = src1.match(/Gate\s+\d+/);
+        parts.push(s1 + ' · ' + (g1 ? g1[0] : src1));
+      }
+      if (ety.part_2 && ety.part_2.fragment) {
+        var s2 = ety.part_2.fragment;
+        var src2 = ety.part_2.source || '';
+        // Trim long authority labels — drop the trailing "— SEED seed".
+        var a2 = src2.split('—')[0].replace(/authority/i, '').trim();
+        parts.push(s2 + ' · ' + (a2 || 'authority seed'));
+      }
+      if (ety.part_3 && ety.part_3.syllable) {
+        var s3 = ety.part_3.syllable;
+        var src3 = ety.part_3.source || '';
+        var l3 = src3.match(/Line\s+\d+/);
+        parts.push(s3 + ' · ' + (l3 ? (l3[0] + ' resonance') : 'line resonance'));
+      }
+      return parts.length ? parts.join(' / ') : null;
     }
 
     // Subtitle (descriptive): `[Preferred] · [LP label] · [Lunar label]`.
@@ -15112,10 +15152,16 @@ if (document.readyState === 'loading') {
             nameEl.classList.add('is-pending');
           }
         }
-        // Subtitle: keep the 3-part descriptor as a secondary label.
+        // Subtitle: prefer the cipher-name etymology so the visible page
+        // explains where the syllables come from (MA · Gate 14 / VA ·
+        // Solar Plexus seed / RA · Line 2 resonance). Falls back to the
+        // legacy three-part numerology descriptor when the etymology is
+        // unavailable (no HD authority / gate / line resolved yet).
         var subEl = section.querySelector('[data-cu-om-cipher-subtitle]');
         if (subEl) {
-          var sub = cuCipherSubtitleFromRecord(rec, input);
+          var ety = (typeof cuCipherEtymologyFromRecord === 'function')
+                      ? cuCipherEtymologyFromRecord(rec) : null;
+          var sub = ety || cuCipherSubtitleFromRecord(rec, input);
           if (sub) {
             subEl.textContent = sub;
             subEl.classList.remove('is-pending');
@@ -15213,6 +15259,78 @@ if (document.readyState === 'loading') {
 
         // ── Source-pattern numbers (gematria) ─────────────────
         var meta = rec.metadata || {};
+        // Concise, user-facing insight per source-pattern value. Keyed
+        // by `${grid_key}_${value}`. The body is one or two sentences
+        // — enough to give the visible card real meaning without the
+        // weight of an essay.
+        var CU_OM_INSIGHTS = {
+          // ── Life Path ───────────────────────────────────────────
+          life_path_1:  'Initiator. Your path leads through original action; the work is to break new ground while staying connected.',
+          life_path_2:  'Mediator. Your path moves through partnership, patience, and the unseen work of holding balance between others.',
+          life_path_3:  'Expresser. Your path lives in creative voice and play; the work is to keep speech faithful to feeling and not scatter into noise.',
+          life_path_4:  'Builder. Your path is structure and discipline; the work is to make daily systems that hold something larger than yourself.',
+          life_path_5:  'Voyager. Your path moves through change and experience; the work is to stay free without losing your centre.',
+          life_path_6:  'Nurturer. Your path is care, harmony, and responsibility; the work is to serve without losing your own ground.',
+          life_path_7:  'Seeker. Your path moves through study and inner work; the work is to translate insight into something you can share.',
+          life_path_8:  'Manifestor. Your path concentrates power and material mastery; the work is to wield influence as stewardship rather than control.',
+          life_path_9:  'Completer. Your path is release, compassion, and finishing what others leave open; the work is to give without depleting.',
+          life_path_11: 'Illuminator. Your path carries an amplified intuitive current; the work is to ground vision so others can use the light you channel.',
+          life_path_22: 'Master Builder. Your path carries the pressure to turn vision into material form; the work is to build structures that can hold others, not only yourself.',
+          life_path_33: 'Master Teacher. Your path is devotional service through love-in-action; the work is to teach by becoming the example, not the speech.',
+          // ── Expression ──────────────────────────────────────────
+          expression_1:  'Independence as expression. This name pattern pushes self-direction and original action — the gift is initiative, the cost is isolation if used unchecked.',
+          expression_2:  'Cooperation as expression. This name pattern naturally tunes to others; the gift is diplomacy, the cost is over-merging when your own voice goes quiet.',
+          expression_3:  'Creative voice as expression. This name pattern wants to speak, make, and entertain; the gift is connection through joy, the cost is scattering if depth is skipped.',
+          expression_4:  'Structure as expression. This name pattern works through method and craft; the gift is reliability, the cost is rigidity when something asks you to bend.',
+          expression_5:  'Movement as expression. This name pattern thrives on change and signal; the gift is adaptability, the cost is restlessness without an anchor.',
+          expression_6:  'Care as expression. This name pattern shows up through responsibility for others; the gift is making places people belong, the cost is martyrdom.',
+          expression_7:  'Inquiry as expression. This name pattern reaches through study and quiet attention; the gift is depth, the cost is withdrawal when intimacy is asked of you.',
+          expression_8:  'Power through stewardship. This name pattern concentrates leadership, discernment, and material responsibility; it asks that influence be used as service.',
+          expression_9:  'Compassion as expression. This name pattern reaches widely; the gift is humanitarian range, the cost is losing the close ones while serving the far ones.',
+          expression_11: 'Vision as expression. This name pattern carries an intuitive charge that arrives before reasons do; the work is to give that current a vessel others can use.',
+          expression_22: 'Material vision realised. This name pattern joins idealism with infrastructure; the work is to build what the dream actually needs, not what is easiest to start.',
+          expression_33: 'Devotional craft. This name pattern asks that work itself become an offering; the gift is healing through presence, the cost is over-giving.',
+          // ── Soul Urge ───────────────────────────────────────────
+          soul_urge_1:  'The inner pull is sovereignty and originality. Your deeper motivation is to make your own path, even when company would be easier.',
+          soul_urge_2:  'The inner pull is union and gentle attunement. Your deeper motivation is to make shared peace, not to win.',
+          soul_urge_3:  'The inner pull is expression and play. Your deeper motivation is to be felt through what you make.',
+          soul_urge_4:  'The inner pull is steadiness and lasting form. Your deeper motivation is to make something that holds.',
+          soul_urge_5:  'The inner pull is freedom and signal. Your deeper motivation is direct experience, not received belief.',
+          soul_urge_6:  'The inner pull is harmony, care, and devotion. Your deeper motivation is to make beauty and belonging practical.',
+          soul_urge_7:  'The inner pull is meaning, depth, and inner truth. Your deeper motivation is to know — quietly, on your own terms.',
+          soul_urge_8:  'The inner pull is mastery and right use of power. Your deeper motivation is to build influence that earns its keep.',
+          soul_urge_9:  'The inner pull is service to the larger field. Your deeper motivation is to lift more than you take.',
+          soul_urge_11: 'The inner pull is illumination. Your deeper motivation is to live close to the source you sense, even when it asks more than is comfortable.',
+          soul_urge_22: 'The inner pull is to make vision material. Your deeper motivation is to do the practical work of dreams.',
+          soul_urge_33: 'The inner pull is loving service. Your deeper motivation is to be useful in the quiet places where care is actually needed.',
+          // ── Personality ────────────────────────────────────────
+          personality_1:  'Others read you as direct, self-starting, set on your own course. The task is to keep that aliveness without armouring against company.',
+          personality_2:  'Others read you as gentle, perceptive, easy to be near. The task is to hold your edges so attunement does not become disappearance.',
+          personality_3:  'Others read you as expressive and warm — language and play arrive before introductions do. The task is to let depth land without retreating to wit.',
+          personality_4:  'Others read you as solid, exacting, dependable. The task is to soften the form enough that closeness can reach you.',
+          personality_5:  'Others read you as alive to movement and signal. The task is to stay long enough for the meaning to land before you leave.',
+          personality_6:  'Others read you as caring and present, the one who notices what needs tending. The task is to keep your own ground while you tend to others.',
+          personality_7:  'Others read you as inward, considered, slightly elsewhere. The task is to let the world see your reasoning rather than only your conclusions.',
+          personality_8:  'Others read you as composed and capable of weight. The task is to keep the warmth visible so authority does not read as distance.',
+          personality_9:  'Others read you as wide-hearted and far-seeing. The task is to stay close enough to the near ones that the far ones are not a refuge from them.',
+          personality_11: 'Others may sense an amplified intuitive charge before they understand it. The task is to become clear enough that inspiration can be trusted.',
+          personality_22: 'Others read you as someone who could actually build what others only describe. The task is to use that weight as a vessel, not a wall.',
+          personality_33: 'Others read you as carrying a steady devotional current. The task is to remain a person, not become a role.',
+          // ── Lunar Phase ────────────────────────────────────────
+          lunar_phase_0: 'Born on the New Moon — your rhythm begins in the dark. The seasonal current here is seeding: trust beginnings that do not yet have language.',
+          lunar_phase_1: 'Born on the Waxing Crescent — your rhythm carries quiet momentum. Intention is the work; protect the new thing before it can defend itself.',
+          lunar_phase_2: 'Born on the First Quarter — your rhythm meets resistance and pushes through. Decision is the work; the friction is part of the form.',
+          lunar_phase_3: 'Born on the Waxing Gibbous — your rhythm refines what is almost ready. The work is honest revision, not perfectionism.',
+          lunar_phase_4: 'Born on the Full Moon — your rhythm is illumination and visibility. The work is to be seen without performing.',
+          lunar_phase_5: 'Born on the Waning Gibbous — your rhythm is the share-back. The work is teaching what you have already lived.',
+          lunar_phase_6: 'Born on the Last Quarter — your rhythm releases what no longer serves. The work is honest endings that make room for what is next.',
+          lunar_phase_7: 'Born on the Waning Crescent — your rhythm rests and listens. The work is fallow time as a real form of action.',
+          // ── Solar Quarter ──────────────────────────────────────
+          solar_quarter_0: 'Born in Winter — your seasonal note is incubation. The current here is interior; the gifts ripen slowly, away from spectacle.',
+          solar_quarter_1: 'Born in Spring — your seasonal note is emergence. The current here is fresh form; the gift is starting cleanly.',
+          solar_quarter_2: 'Born in Summer — your seasonal note is fullness. The current here is visibility; the gift is being seen at full light without contracting.',
+          solar_quarter_3: 'Born in Autumn — your seasonal note is harvest. The current here is gathering; the gift is to keep what is true and release what was only useful.',
+        };
         function paintItem(key, valObj) {
           var el = section.querySelector('[data-cu-om-cipher-gematria="' + key + '"]');
           if (!el) return;
@@ -15225,6 +15343,36 @@ if (document.readyState === 'loading') {
             el.classList.remove('is-pending');
             if (valObj.is_master) el.classList.add('is-master');
             else el.classList.remove('is-master');
+            // ── Insight: 1–2 sentence concise interpretation ──
+            // The insight node is appended once per render. Subsequent
+            // re-renders update its text in place so the DOM does not
+            // grow on hot-reload.
+            var insightKey = key + '_' + valObj.value;
+            var insightText = CU_OM_INSIGHTS[insightKey] || null;
+            // Temporal Gate is a clock window, not a 1..N pattern card;
+            // skip the insight there to keep the grid honest.
+            if (insightText && key !== 'temporal_gate') {
+              var ins = el.querySelector('[data-cu-om-cipher-insight]');
+              if (!ins) {
+                ins = (typeof document !== 'undefined' && document.createElement)
+                        ? document.createElement('p')
+                        : null;
+                if (ins) {
+                  ins.setAttribute('data-cu-om-cipher-insight', '1');
+                  ins.className = 'oc-source-insight';
+                  if (ins.style) {
+                    try {
+                      ins.style.marginTop = '0.35rem';
+                      ins.style.fontSize = '0.85em';
+                      ins.style.lineHeight = '1.45';
+                      ins.style.opacity = '0.88';
+                    } catch (_) {}
+                  }
+                  el.appendChild(ins);
+                }
+              }
+              if (ins) ins.textContent = insightText;
+            }
           } else {
             el.classList.add('is-pending');
             el.classList.remove('is-master');

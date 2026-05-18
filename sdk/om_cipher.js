@@ -668,6 +668,201 @@ function phonemeForGate(gate) {
   return PHONEME_TABLE[g];
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Emergent Cipher Name generator (om-cipher-name-generator.md spec).
+//
+// The cipher name is NOT derived from the birth name. It emerges from
+// three sealed inputs:
+//   Part 1 — Gate Phoneme       (dominant I Ching gate / Life Work)
+//   Part 2 — Seed Syllable      (HD authority / dominant center)
+//   Part 3 — Line Resonance     (Life Work profile line)
+// Two people with the same gate+authority+line share the same name —
+// that is correct: they are resonant beings.
+// ─────────────────────────────────────────────────────────────────────────
+const GATE_PHONEME_TABLE = {
+  1:"AH",  2:"HU",  3:"MA",  4:"MI",  5:"MU",  6:"ME",  7:"MO",  8:"HA",
+  9:"KA", 10:"KI", 11:"KU", 12:"KE", 13:"KO", 14:"MA", 15:"GA", 16:"GI",
+ 17:"NA", 18:"NI", 19:"NU", 20:"NE", 21:"NO", 22:"LA", 23:"LI", 24:"LU",
+ 25:"SA", 26:"SI", 27:"SU", 28:"SE", 29:"SO", 30:"ZA", 31:"ZI", 32:"ZU",
+ 33:"RA", 34:"RI", 35:"RU", 36:"RE", 37:"RO", 38:"DA", 39:"DI", 40:"DU",
+ 41:"VA", 42:"VI", 43:"VU", 44:"VE", 45:"VO", 46:"BA", 47:"BI", 48:"BU",
+ 49:"TA", 50:"TI", 51:"TU", 52:"TE", 53:"TO", 54:"THA",55:"THI",56:"THU",
+ 57:"THE",58:"THO",59:"OMA",60:"OMI",61:"OMU",62:"OME",63:"OMO",64:"AHA",
+};
+
+const GATE_TITLES = {
+  1:"The Creative", 2:"The Receptive", 3:"Difficulty at the Beginning",
+  4:"Youthful Folly", 5:"Waiting", 6:"Conflict", 7:"The Army",
+  8:"Holding Together", 9:"The Taming Power of the Small", 10:"Treading",
+  11:"Peace", 12:"Standstill", 13:"Fellowship", 14:"Possession in Great Measure",
+  15:"Modesty", 16:"Enthusiasm", 17:"Following", 18:"Work on the Decayed",
+  19:"Approach", 20:"Contemplation", 21:"Biting Through", 22:"Grace",
+  23:"Splitting Apart", 24:"Return", 25:"Innocence",
+  26:"The Taming Power of the Great", 27:"The Corners of the Mouth",
+  28:"Preponderance of the Great", 29:"The Abysmal", 30:"The Clinging",
+  31:"Influence", 32:"Duration", 33:"Retreat", 34:"The Power of the Great",
+  35:"Progress", 36:"Darkening of the Light", 37:"The Family", 38:"Opposition",
+  39:"Obstruction", 40:"Deliverance", 41:"Decrease", 42:"Increase",
+  43:"Breakthrough", 44:"Coming to Meet", 45:"Gathering Together",
+  46:"Pushing Upward", 47:"Oppression", 48:"The Well", 49:"Revolution",
+  50:"The Cauldron", 51:"The Arousing", 52:"Keeping Still", 53:"Development",
+  54:"The Marrying Maiden", 55:"Abundance", 56:"The Wanderer", 57:"The Gentle",
+  58:"The Joyous", 59:"Dispersion", 60:"Limitation", 61:"Inner Truth",
+  62:"Preponderance of the Small", 63:"After Completion", 64:"Before Completion",
+};
+
+// Authority → seed fragment. The fragment is the first two letters of
+// the seed syllable (LAM→LA, VAM→VA, AUM→AU). Matching is tolerant of
+// the rendered HD label (e.g. "Emotional · Solar Plexus", "Sacral",
+// "Splenic", "Self / G-Center") and reduces case + punctuation.
+const AUTHORITY_SEED_TABLE = [
+  { match: ["root"],                       seed: "LAM", fragment: "LA", center: "Root Center",        label: "Root authority — LAM seed" },
+  { match: ["emotional", "solar plexus"],  seed: "VAM", fragment: "VA", center: "Solar Plexus",       label: "Emotional Solar Plexus authority — VAM seed" },
+  { match: ["sacral"],                     seed: "VAM", fragment: "VA", center: "Sacral Center",      label: "Sacral authority — VAM seed" },
+  { match: ["splenic", "spleen"],          seed: "RAM", fragment: "RA", center: "Spleen Center",      label: "Splenic authority — RAM seed" },
+  { match: ["heart", "ego"],               seed: "YAM", fragment: "YA", center: "Heart Center",       label: "Heart/Ego authority — YAM seed" },
+  { match: ["self", "g-center", "g center","g/center"], seed: "HAM", fragment: "HA", center: "G-Center", label: "Self/G-Center authority — HAM seed" },
+  { match: ["throat"],                     seed: "HAM", fragment: "HA", center: "Throat Center",      label: "Throat authority — HAM seed" },
+  { match: ["mental", "head", "ajna", "outer", "outer vision"], seed: "AUM", fragment: "AU", center: "Ajna/Head", label: "Mental authority — AUM seed" },
+  { match: ["lunar", "none", "no authority", "reflector"], seed: "OM", fragment: "O", center: "Lunar (no defined center)", label: "Lunar (no authority) — OM seed" },
+];
+// Keep the public name from the spec (AUTHORITY_SEED_FRAGMENT_TABLE)
+// as an alias so external test code matches the documentation.
+const AUTHORITY_SEED_FRAGMENT_TABLE = AUTHORITY_SEED_TABLE;
+
+function _normAuthority(label) {
+  if (label == null) return "";
+  return String(label).toLowerCase().replace(/[·/_,.-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function authoritySeed(authorityLabel) {
+  const norm = _normAuthority(authorityLabel);
+  if (!norm) return AUTHORITY_SEED_TABLE[AUTHORITY_SEED_TABLE.length - 1]; // lunar fallback
+  // Order matters: "emotional · solar plexus" should match the Emotional
+  // row before the Sacral row.
+  for (const row of AUTHORITY_SEED_TABLE) {
+    for (const tok of row.match) {
+      if (norm.indexOf(tok) >= 0) return row;
+    }
+  }
+  return AUTHORITY_SEED_TABLE[AUTHORITY_SEED_TABLE.length - 1];
+}
+
+const LINE_RESONANCE_TABLE = {
+  1: { syllable: "KI", archetype: "Investigator", quality: "Foundation, inward, research" },
+  2: { syllable: "RA", archetype: "Hermit",       quality: "Solar, natural talent, called out" },
+  3: { syllable: "TE", archetype: "Martyr",       quality: "Trial, experiential, resilient" },
+  4: { syllable: "SO", archetype: "Opportunist",  quality: "Social, network, external" },
+  5: { syllable: "LU", archetype: "Heretic",      quality: "Universal, projected, field" },
+  6: { syllable: "OM", archetype: "Role Model",   quality: "Transcendent, exemplar, witness" },
+};
+
+// Pronunciation mapping per syllable.
+const _PRON_MAP = {
+  "AH":"AH",  "HU":"HOO",  "MA":"MAH",  "MI":"MEE", "MU":"MOO", "ME":"MAY",
+  "MO":"MOH", "HA":"HAH",  "KA":"KAH",  "KI":"KEE", "KU":"KOO", "KE":"KAY",
+  "KO":"KOH", "GA":"GAH",  "GI":"GHEE", "NA":"NAH", "NI":"NEE", "NU":"NOO",
+  "NE":"NAY", "NO":"NOH",  "LA":"LAH",  "LI":"LEE", "LU":"LOO", "SA":"SAH",
+  "SI":"SEE", "SU":"SOO",  "SE":"SAY",  "SO":"SOH", "ZA":"ZAH", "ZI":"ZEE",
+  "ZU":"ZOO", "RA":"RAH",  "RI":"REE",  "RU":"ROO", "RE":"RAY", "RO":"ROH",
+  "DA":"DAH", "DI":"DEE",  "DU":"DOO",  "VA":"VAH", "VI":"VEE", "VU":"VOO",
+  "VE":"VAY", "VO":"VOH",  "BA":"BAH",  "BI":"BEE", "BU":"BOO", "TA":"TAH",
+  "TI":"TEE", "TU":"TOO",  "TE":"TAY",  "TO":"TOH", "THA":"TAH","THI":"TEE",
+  "THU":"TOO","THE":"TAY", "THO":"TOH", "OMA":"OH-MAH","OMI":"OH-MEE",
+  "OMU":"OH-MOO","OME":"OH-MAY","OMO":"OH-MOH","AHA":"AH-HAH",
+  "YA":"YAH", "AU":"OW",   "O":"OH",    "OM":"OHM",
+};
+function _pronOfSyllable(syl) {
+  if (!syl) return "";
+  if (_PRON_MAP[syl]) return _PRON_MAP[syl];
+  // Compound (e.g. concatenated fragments) — fall back to letter cluster
+  return String(syl).toUpperCase();
+}
+
+const _VOWEL_SET = "AEIOU";
+function _endsWithVowel(s) {
+  if (!s) return false;
+  const c = s[s.length - 1].toUpperCase();
+  return _VOWEL_SET.indexOf(c) >= 0;
+}
+function _startsWithVowel(s) {
+  if (!s) return false;
+  return _VOWEL_SET.indexOf(s[0].toUpperCase()) >= 0;
+}
+function _trailingVowels(s) {
+  let i = s.length;
+  while (i > 0 && _VOWEL_SET.indexOf(s[i - 1].toUpperCase()) >= 0) i--;
+  return s.slice(i).toUpperCase();
+}
+function _leadingVowels(s) {
+  let i = 0;
+  while (i < s.length && _VOWEL_SET.indexOf(s[i].toUpperCase()) >= 0) i++;
+  return s.slice(0, i).toUpperCase();
+}
+
+// Collision rule (per spec):
+//   If Part 1 ends with the same vowel that Part 2 begins with, drop
+//   Part 2's leading vowel cluster:
+//     VA + AH         → VAH       (drop "A" from "AH")
+//     AHA + AU + OM   → AHA + (—) + OM → AHAOM  (drop "AU" from "AU")
+//   The leading vowel cluster of Part 2 is removed in full when the
+//   first vowel matches Part 1's last vowel — this yields the open
+//   single-syllable hand-off the spec illustrates.
+function _joinWithCollision(a, b) {
+  if (!a) return b || "";
+  if (!b) return a;
+  const aLast = a[a.length - 1].toUpperCase();
+  if (_VOWEL_SET.indexOf(aLast) >= 0 && _startsWithVowel(b)) {
+    const bHead = _leadingVowels(b);
+    if (bHead[0] === aLast) {
+      return a + b.slice(bHead.length);
+    }
+  }
+  return a + b;
+}
+
+function generateCipherName(gate, authority, line) {
+  const g = Number(gate);
+  const l = Number(line);
+  const gateKey = Number.isFinite(g) ? g : null;
+  const part1 = gateKey != null ? GATE_PHONEME_TABLE[gateKey] : null;
+  const seedRow = authoritySeed(authority);
+  const part2 = seedRow ? seedRow.fragment : null;
+  const lineRow = Number.isFinite(l) ? LINE_RESONANCE_TABLE[l] : null;
+  const part3 = lineRow ? lineRow.syllable : null;
+  if (!part1 || !part2 || !part3) return null;
+
+  // Assemble with collision handling at each boundary.
+  const joinedAB = _joinWithCollision(part1, part2);
+  const name = _joinWithCollision(joinedAB, part3);
+
+  const syllables = [part1, part2, part3];
+  const display = syllables.join("·"); // middle-dot for UI display
+  const pronunciation = syllables.map(_pronOfSyllable).join("-");
+
+  return {
+    name,
+    display_name: display,
+    display_syllables: display,
+    syllables,
+    etymology: {
+      part_1: {
+        source: "Gate " + gateKey + (GATE_TITLES[gateKey] ? " — " + GATE_TITLES[gateKey] : ""),
+        phoneme: part1,
+      },
+      part_2: {
+        source: seedRow.label,
+        fragment: part2,
+      },
+      part_3: {
+        source: "Line " + l + " — " + lineRow.archetype + " / " + lineRow.quality,
+        syllable: part3,
+      },
+    },
+    pronunciation,
+  };
+}
+
 // Map a Compass-merged slot input to the canonical GK label. The slot
 // names (work/lens/field/call) are Compass UI; the canonical GK names
 // (cs/ce/us/ue → Life Work / Evolution / Radiance / Purpose) are what
@@ -791,6 +986,41 @@ function buildOmCipherBlock(input, internals) {
   if (!dominantPhoneme && internals.primaryGate) {
     dominantPhoneme = phonemeForGate(internals.primaryGate);
   }
+  // ── Emergent Cipher Name (gate + authority + line) ──
+  // The cipher name emerges from the sealed cipher layers, not the birth
+  // name. Resolution order:
+  //   gate     ← HD personality Sun → primary GK Life Work → null
+  //   authority← HD authority label  (no fallback; null → lunar/OM)
+  //   line     ← personality Sun line → primary GK Life Work line
+  //             → first digit of HD profile
+  let cipherGate = null, cipherLine = null;
+  if (input.human_design && input.human_design.activations
+      && input.human_design.activations.personality
+      && input.human_design.activations.personality.Sun) {
+    const sun = input.human_design.activations.personality.Sun;
+    cipherGate = sun.gate != null ? Number(sun.gate) : null;
+    cipherLine = sun.line != null ? Number(sun.line) : null;
+  }
+  if (cipherGate == null && internals.primaryGate) {
+    cipherGate = Number(internals.primaryGate);
+  }
+  if (cipherLine == null && layer2 && layer2.gene_keys
+      && layer2.gene_keys.cs && layer2.gene_keys.cs.line != null) {
+    cipherLine = Number(layer2.gene_keys.cs.line);
+  }
+  if (cipherLine == null && input.human_design && input.human_design.profile) {
+    const m = String(input.human_design.profile).match(/(\d)/);
+    if (m) cipherLine = Number(m[1]);
+  }
+  const authorityLabel = (layer2.human_design && layer2.human_design.authority) || null;
+  // Only emit the emergent name when a real HD authority is sealed —
+  // falling back to the "lunar/OM" default for an unknown authority
+  // would produce a misleading sonic identity (e.g. MA·O·RA instead of
+  // MA·VA·RA when Markus' Emotional · Solar Plexus authority is missing).
+  const cipherEmergent = authorityLabel
+    ? generateCipherName(cipherGate, authorityLabel, cipherLine)
+    : null;
+
   const layer5 = {
     current_name: fullName,
     given_name: input.preferred_name || (fullName ? String(fullName).trim().split(/\s+/)[0] : null),
@@ -803,7 +1033,15 @@ function buildOmCipherBlock(input, internals) {
     gematria_ordinal: ord ? ord.raw : null,
     gematria_ordinal_root: ord ? ord.reduced : null,
     dominant_phoneme: dominantPhoneme,
-    cipher_name: deriveCipherName(
+    // Emergent cipher name (v1.1) — gate · authority · line.
+    cipher_name: cipherEmergent ? cipherEmergent.name : null,
+    cipher_name_display: cipherEmergent ? cipherEmergent.display_name : null,
+    cipher_name_syllables: cipherEmergent ? cipherEmergent.syllables : null,
+    cipher_name_pronunciation: cipherEmergent ? cipherEmergent.pronunciation : null,
+    cipher_name_etymology: cipherEmergent ? cipherEmergent.etymology : null,
+    // Legacy temporal phrase preserved as a secondary descriptor so
+    // existing surfaces that read it can keep functioning.
+    cipher_name_temporal: deriveCipherName(
       input.preferred_name || (fullName ? String(fullName).trim().split(/\s+/)[0] : null),
       internals.temporal ? internals.temporal.solar_quarter : null,
       internals.temporal ? internals.temporal.lunar_phase : null
@@ -1177,11 +1415,80 @@ function generate(input, options) {
     cipher_contemplation: temporal
       ? cipherContemplation(temporal.lunar_phase, temporal.solar_quarter)
       : null,
-    cipher_name: deriveCipherName(
-      input.preferred_name || (input.legal_name ? String(input.legal_name).trim().split(/\s+/)[0] : null),
-      temporal ? temporal.solar_quarter : null,
-      temporal ? temporal.lunar_phase : null
-    ),
+    cipher_name: (function () {
+      // Prefer the emergent cipher name (gate + authority + line) when
+      // the sealed inputs allow it. Fall back to the legacy temporal
+      // descriptor only when the emergent inputs are incomplete.
+      let mGate = null, mLine = null;
+      if (input.human_design && input.human_design.activations
+          && input.human_design.activations.personality
+          && input.human_design.activations.personality.Sun) {
+        const s = input.human_design.activations.personality.Sun;
+        mGate = s.gate != null ? Number(s.gate) : null;
+        mLine = s.line != null ? Number(s.line) : null;
+      }
+      if (mGate == null && primaryGate) mGate = Number(primaryGate);
+      if (mLine == null && gk && gk.work && gk.work.line != null) mLine = Number(gk.work.line);
+      if (mLine == null && input.human_design && input.human_design.profile) {
+        const m = String(input.human_design.profile).match(/(\d)/);
+        if (m) mLine = Number(m[1]);
+      }
+      const auth = (input.human_design && input.human_design.authority) || null;
+      // Skip the emergent generator when no HD authority is sealed —
+      // it would otherwise default to the lunar/OM row and produce a
+      // misleading cipher name.
+      const em = auth ? generateCipherName(mGate, auth, mLine) : null;
+      if (em && em.name) return em.name;
+      return deriveCipherName(
+        input.preferred_name || (input.legal_name ? String(input.legal_name).trim().split(/\s+/)[0] : null),
+        temporal ? temporal.solar_quarter : null,
+        temporal ? temporal.lunar_phase : null
+      );
+    })(),
+    cipher_name_display: (function () {
+      let mGate = null, mLine = null;
+      if (input.human_design && input.human_design.activations
+          && input.human_design.activations.personality
+          && input.human_design.activations.personality.Sun) {
+        const s = input.human_design.activations.personality.Sun;
+        mGate = s.gate != null ? Number(s.gate) : null;
+        mLine = s.line != null ? Number(s.line) : null;
+      }
+      if (mGate == null && primaryGate) mGate = Number(primaryGate);
+      if (mLine == null && gk && gk.work && gk.work.line != null) mLine = Number(gk.work.line);
+      if (mLine == null && input.human_design && input.human_design.profile) {
+        const m = String(input.human_design.profile).match(/(\d)/);
+        if (m) mLine = Number(m[1]);
+      }
+      const auth = (input.human_design && input.human_design.authority) || null;
+      // Skip the emergent generator when no HD authority is sealed —
+      // it would otherwise default to the lunar/OM row and produce a
+      // misleading cipher name.
+      const em = auth ? generateCipherName(mGate, auth, mLine) : null;
+      return em ? em.display_name : null;
+    })(),
+    cipher_name_etymology: (function () {
+      let mGate = null, mLine = null;
+      if (input.human_design && input.human_design.activations
+          && input.human_design.activations.personality
+          && input.human_design.activations.personality.Sun) {
+        const s = input.human_design.activations.personality.Sun;
+        mGate = s.gate != null ? Number(s.gate) : null;
+        mLine = s.line != null ? Number(s.line) : null;
+      }
+      if (mGate == null && primaryGate) mGate = Number(primaryGate);
+      if (mLine == null && gk && gk.work && gk.work.line != null) mLine = Number(gk.work.line);
+      if (mLine == null && input.human_design && input.human_design.profile) {
+        const m = String(input.human_design.profile).match(/(\d)/);
+        if (m) mLine = Number(m[1]);
+      }
+      const auth = (input.human_design && input.human_design.authority) || null;
+      // Skip the emergent generator when no HD authority is sealed —
+      // it would otherwise default to the lunar/OM row and produce a
+      // misleading cipher name.
+      const em = auth ? generateCipherName(mGate, auth, mLine) : null;
+      return em ? em.etymology : null;
+    })(),
     palette_rationale:
       `Hue ${palette.primary_hue}° from Life Path ${lp ? lp.reduced : "-"}; ` +
       `lunar phase ${temporal ? temporal.lunar_phase : "-"} modulates saturation; ` +
@@ -1538,6 +1845,13 @@ const _exports = {
   phonemeForGate,
   buildHexLissajousCrackSigil,
   PHONEME_TABLE,
+  // Emergent Cipher Name (spec: om-cipher-name-generator.md).
+  generateCipherName,
+  authoritySeed,
+  GATE_PHONEME_TABLE,
+  GATE_TITLES,
+  AUTHORITY_SEED_FRAGMENT_TABLE,
+  LINE_RESONANCE_TABLE,
   // labels — public so the studio adapter can render without re-encoding.
   NUMEROLOGY_LABELS,
   LUNAR_PHASE_LABELS,
