@@ -13081,23 +13081,14 @@ if (document.readyState === 'loading') {
         if (!it) return false;
         if (it.field === 'current_location') return false;
         if (it.field === 'human_design') {
-          if (!it.val) {
-            // Build a precise pending message based on what's missing.
+          // The bodygraph lives in its own dedicated summary card above
+          // (oc-hd-summary-block). We drop it from the locked source-
+          // data grid to avoid showing a truncated "Generator · 2/4
+          // profile" row alongside the full 5-field summary. If the
+          // engine couldn't run we still surface a precise pending
+          // note below the grid.
+          if (!ocLiveHd || !(ocLiveHd.type || ocLiveHd.profile)) {
             var msg;
-            if (ocLiveHd && (ocLiveHd.type || ocLiveHd.profile)) {
-              // Engine already produced fields — surface them.
-              var bits = [];
-              if (ocLiveHd.type)      bits.push(ocLiveHd.type);
-              if (ocLiveHd.profile)   bits.push(ocLiveHd.profile + ' profile');
-              if (ocLiveHd.authority) bits.push(ocLiveHd.authority);
-              if (ocLiveHd.incarnation_cross) {
-                var lab = typeof ocLiveHd.incarnation_cross === 'string'
-                            ? ocLiveHd.incarnation_cross
-                            : (ocLiveHd.incarnation_cross.label || '');
-                if (lab) bits.push(lab);
-              }
-              return Object.assign({}, it, { val: bits.join(' · ') });
-            }
             if (!ocBirthDateRaw) {
               msg = 'Human Design · requires birth date · v1.1';
             } else if (!ocBirthTimeRaw) {
@@ -13106,8 +13097,8 @@ if (document.readyState === 'loading') {
               msg = 'Human Design · requires birth coordinates/timezone · v1.1';
             }
             ocPendingNotes.push(msg);
-            return false;
           }
+          return false;
         }
         if (it.field === 'astrology') {
           // Replace combined Sun·Moon·Rising with Sun-only (derived from
@@ -13246,6 +13237,73 @@ if (document.readyState === 'loading') {
         '<div class="oc-source-block oc-bhramari-block">' +
           '<h4 class="oc-source-title">Bhramari resonance <span class="oc-source-sub">· from Living Profile</span></h4>' +
           '<p class="oc-bhramari-line" data-cu-om-cipher-bhramari>' + lpEscape(placeholderBhramari) + '</p>' +
+        '</div>' +
+        // ── Human Design bodygraph summary ────────────────────
+        // Compact card surfacing the five canonical bodygraph
+        // values (Type / Strategy / Authority / Profile / Cross)
+        // when the engine has produced them. Filled later by
+        // cuRenderOmCipherHdSummary() against state.compassData
+        // .profile.human_design (set by cuBuildOmCipherInput and
+        // buildFoundationItems). When inputs are missing or the
+        // engine can't run, the card stays in its pending state and
+        // surfaces a precise reason instead of a blanket placeholder.
+        '<div class="oc-source-block oc-hd-summary-block"' +
+            ' data-cu-om-cipher-hd-summary="1"' +
+            (ocLiveHd && (ocLiveHd.type || ocLiveHd.profile)
+              ? ' data-cu-om-cipher-hd-state="calculated"'
+              : ' data-cu-om-cipher-hd-state="pending"') + '>' +
+          '<h4 class="oc-source-title">Human Design <span class="oc-source-sub">· calculated from birth date + time + place</span></h4>' +
+          (function () {
+            if (!ocLiveHd || !(ocLiveHd.type || ocLiveHd.profile)) {
+              var msg = 'Pending — provide birth date, time, and a recognisable place.';
+              if (!ocBirthDateRaw) msg = 'Pending — birth date required.';
+              else if (!ocBirthTimeRaw) msg = 'Pending — birth time required.';
+              else msg = 'Pending — birth coordinates / timezone could not be resolved from the place string.';
+              return '<p class="oc-hd-summary-pending"' +
+                ' style="margin:0;font-size:13px;color:rgba(241,245,249,0.6);">' +
+                lpEscape(msg) + '</p>';
+            }
+            var hdType      = lpEscape(ocLiveHd.type || '');
+            var hdStrategy  = lpEscape(ocLiveHd.strategy || '');
+            var hdAuthority = lpEscape(ocLiveHd.authority || '');
+            var hdProfile   = lpEscape(ocLiveHd.profile || '');
+            var hdCrossLab  = '';
+            if (ocLiveHd.incarnation_cross) {
+              hdCrossLab = lpEscape(typeof ocLiveHd.incarnation_cross === 'string'
+                ? ocLiveHd.incarnation_cross
+                : (ocLiveHd.incarnation_cross.label || ''));
+            }
+            var rows = '';
+            function row(label, val, key) {
+              if (!val) return '';
+              return '<div class="oc-hd-summary-row"' +
+                  (key ? ' data-cu-hd-field="' + key + '"' : '') +
+                  ' style="display:flex;gap:10px;margin:4px 0;font-size:13px;">' +
+                '<dt style="min-width:88px;color:rgba(241,245,249,0.55);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin:2px 0 0;">' +
+                  lpEscape(label) + '</dt>' +
+                '<dd style="margin:0;color:rgba(241,245,249,0.92);">' + val + '</dd>' +
+              '</div>';
+            }
+            rows += row('Type',              hdType,      'type');
+            rows += row('Strategy',          hdStrategy,  'strategy');
+            rows += row('Authority',         hdAuthority, 'authority');
+            rows += row('Profile',           hdProfile,   'profile');
+            rows += row('Incarnation Cross', hdCrossLab,  'incarnation_cross');
+            var meta = '';
+            if (ocLiveHd.resolved_place && ocLiveHd.resolved_place.city) {
+              var rp = ocLiveHd.resolved_place;
+              var locBits = [rp.city, rp.province, rp.country].filter(Boolean).join(', ');
+              if (rp.iana) locBits += ' · ' + rp.iana;
+              meta = '<p class="oc-hd-summary-resolved"' +
+                ' style="margin:8px 0 0;font-size:11px;letter-spacing:0.04em;color:rgba(241,245,249,0.5);">' +
+                'Resolved from birth place · ' + lpEscape(locBits) + '</p>';
+            }
+            return '<dl class="oc-hd-summary-grid"' +
+              ' style="margin:0;display:block;">' +
+              rows +
+              '</dl>' +
+              meta;
+          })() +
         '</div>' +
         // ── Foundation data grid (birth date / time / place / etc.) ──
         '<div class="oc-source-block oc-foundation-block">' +
