@@ -4078,6 +4078,11 @@ body.companion-mode .companion-mode-banner { display: block; }
 <script src="/sdk/astronomy.js"></script>
 <script src="/sdk/human_design.js"></script>
 <script src="/sdk/place_gazetteer.js"></script>
+<!-- Layer 6 sidecar must load BEFORE om_cipher.js: the SDK reads
+     window.cuOmCipherLayer6 at module-evaluation time. -->
+<script src="/sdk/om_cipher_layer6_data.js"></script>
+<script src="/sdk/om_cipher.js"></script>
+<script>window.CU_OM_CIPHER_ENABLED = true;</script>
 <script>
   // Preload the vendored city / timezone dataset so the OM Cipher
   // modal can resolve free-form birth-place strings (e.g. "Sudbury
@@ -5122,6 +5127,13 @@ function backToSetup() {
 // astrology.{sun,moon,rising}). Derived values do not overwrite an
 // explicit value already on state.profile.
 function buildCompassExport(s) {
+  // Default to the live root Compass state so console invocations
+  // (`buildCompassExport()` with no argument) do not throw on
+  // `s.profile`. Studio passes its own state object; root Compass
+  // passes `state` directly. Either way `s` must be a real object
+  // with at least the fields buildCompassExport reads — `profile`,
+  // `points`, `guide`, `companion`, `dob`, `tob`, `pob`, `gk_profile`.
+  if (!s || typeof s !== 'object') s = (typeof state === 'object' && state) || {};
   // Defensive copy of the existing profile (CV fields, communities, etc.).
   const profile = Object.assign({}, s.profile || {});
 
@@ -5328,6 +5340,83 @@ function buildCompassExport(s) {
   if (profile.current_location && !out.current_location) {
     out.current_location = profile.current_location;
   }
+
+  // ── Structured om_cipher block (v1.1) — additive, backward-compatible.
+  // Derived from canonical root-Compass state (s.guide / s.companion /
+  // s.dob / s.tob / s.pob / s.gk_profile / s.points). The engine is
+  // invoked only when the SDK is loaded on the page (window.cuOmCipher);
+  // otherwise the field is omitted gracefully and the rest of the
+  // export remains valid. Never throws.
+  try {
+    if (typeof window !== 'undefined' && window.cuOmCipher
+        && typeof window.cuOmCipher.generate === 'function') {
+      // Prefer the richest multi-token name available for gematria so
+      // Expression / Soul Urge / Personality / ordinal gematria read
+      // the FULL sealed name (e.g. "Markus Lehto") rather than the
+      // single-token preferred name ("Markus"). Mirrors the multi-token
+      // selector used by Studio's cuBuildOmCipherInput.
+      function _isMultiToken(v) {
+        return typeof v === 'string' && v.trim().split(/\s+/).length >= 2;
+      }
+      function _pickMultiToken(cands) {
+        for (var i = 0; i < cands.length; i++) {
+          if (_isMultiToken(cands[i])) return cands[i].trim();
+        }
+        for (var j = 0; j < cands.length; j++) {
+          if (cands[j] && String(cands[j]).trim()) return String(cands[j]).trim();
+        }
+        return null;
+      }
+      const _legalName = _pickMultiToken([
+        profile.legal_name, profile.full_name,
+        s.guide, s.companion,
+      ]);
+      const _preferredName = (profile.preferred_name || profile.first_name ||
+                              (s.companion && String(s.companion).trim()) ||
+                              (_legalName ? String(_legalName).split(/\s+/)[0] : null));
+      const _gk = (s.gk_profile && typeof s.gk_profile === 'object') ? s.gk_profile : {};
+      const _pts = (s.points && typeof s.points === 'object') ? s.points : {};
+      function _slotNum(slot, gkKey) {
+        const p = _pts[slot] || {};
+        const v = (p.gk_num !== undefined && p.gk_num !== null && String(p.gk_num) !== '')
+                    ? p.gk_num : _gk[gkKey];
+        if (v === undefined || v === null || String(v) === '') return null;
+        return v;
+      }
+      function _slotLine(slot, gkLineKey) {
+        const p = _pts[slot] || {};
+        const v = (p.gk_line !== undefined && p.gk_line !== null && String(p.gk_line) !== '')
+                    ? p.gk_line : _gk[gkLineKey];
+        if (v === undefined || v === null || String(v) === '') return null;
+        return v;
+      }
+      const _compass = {
+        work:  { gk_num: _slotNum('work',  'cs'), gk_line: _slotLine('work',  'csLine') },
+        lens:  { gk_num: _slotNum('lens',  'ce'), gk_line: _slotLine('lens',  'ceLine') },
+        field: { gk_num: _slotNum('field', 'us'), gk_line: _slotLine('field', 'usLine') },
+        call:  { gk_num: _slotNum('call',  'ue'), gk_line: _slotLine('call',  'ueLine') },
+      };
+      const _hz = Number(profile.bhramari_baseline_hz || 0);
+      const _input = {
+        birth_date:     s.dob || profile.birthdate || profile.date_of_birth || null,
+        birth_time:     s.tob || profile.birth_time || null,
+        birth_place:    s.pob || profile.birthplace || profile.place_of_birth || null,
+        legal_name:     _legalName,
+        preferred_name: _preferredName,
+        compass:        _compass,
+        human_design:   profile.human_design || null,
+        seed_syllable:  profile.seed_syllable || 'Om',
+        bhramari_baseline: _hz > 0 ? { hz: _hz, metadata: null } : null,
+      };
+      if (_input.birth_date) {
+        const _rec = window.cuOmCipher.generate(_input, { featureFlag: true });
+        if (_rec && !_rec.pending && _rec.om_cipher_block) {
+          out.om_cipher = _rec.om_cipher_block;
+        }
+      }
+    }
+  } catch (_) { /* graceful — never block an export */ }
+
   return out;
 }
 
