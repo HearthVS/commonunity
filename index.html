@@ -4673,6 +4673,55 @@ function calcGeneKeys() {
 }
 
 // ============================================================
+// SILENT GENE KEYS AUTO-POPULATION
+// ============================================================
+// Mirrors calcGeneKeys' core derivation but writes into the modal
+// + state.profile only — no toast, no calc-results panel reveal,
+// no scroll. Intended to run when the OM Cipher modal opens, so
+// users who never clicked "Reveal my profile" still see populated
+// Gene Key activation fields when they look at their identity
+// source data. Conservative: only fills blank state.profile keys.
+function autoPopulateGeneKeysFromState() {
+  if (!state || !state.dob) return;
+  if (typeof dateToJD !== 'function' || typeof jdToSolarLongitude !== 'function'
+      || typeof longitudeToGateLine !== 'function') return;
+  var timeStr = state.tob || '12:00';
+  var parts = state.dob.split('-').map(Number);
+  var yr = parts[0], mo = parts[1], dy = parts[2];
+  var tparts = timeStr.split(':').map(Number);
+  var hr = tparts[0] | 0, mn = tparts[1] | 0;
+  if (!yr || !mo || !dy) return;
+  var birthUTC = new Date(Date.UTC(yr, mo - 1, dy, hr, mn, 0));
+  if (isNaN(birthUTC.getTime())) return;
+  var jdBirth   = dateToJD(birthUTC);
+  var csLon     = jdToSolarLongitude(jdBirth);
+  var csResult  = longitudeToGateLine(csLon);
+  var ceResult  = longitudeToGateLine((csLon + 180) % 360);
+  var usSunLon  = ((csLon - 88) + 360) % 360;
+  var usResult  = longitudeToGateLine(usSunLon);
+  var ueResult  = longitudeToGateLine((usSunLon + 180) % 360);
+  state.profile = state.profile || {};
+  function fmtGK(r) {
+    var gk = (typeof GENE_KEYS !== 'undefined') ? GENE_KEYS[r.gate] : null;
+    return 'GK ' + r.gate + ' · ' + (gk ? gk.gift : '?') + ' (Line ' + r.line + ')';
+  }
+  var rows = [
+    { key: 'gene_keys_life_work', el: 'profile-gk-cs', val: fmtGK(csResult) },
+    { key: 'gene_keys_evolution', el: 'profile-gk-ce', val: fmtGK(ceResult) },
+    { key: 'gene_keys_radiance',  el: 'profile-gk-us', val: fmtGK(usResult) },
+    { key: 'gene_keys_purpose',   el: 'profile-gk-ue', val: fmtGK(ueResult) }
+  ];
+  rows.forEach(function (r) {
+    if (!state.profile[r.key]) {
+      state.profile[r.key] = r.val;
+    }
+    var el = document.getElementById(r.el);
+    if (el && !el.value) el.value = state.profile[r.key];
+  });
+  if (typeof saveToStorage === 'function') saveToStorage();
+}
+
+// ============================================================
 // IDENTITY CHART — tropical / Vedic / HD profile from birth data
 // ============================================================
 // Reads dob/tob from state, lat/lng/tz from state.profile.birth_*,
@@ -5020,6 +5069,7 @@ function buildCompassExport(s) {
     place_of_birth:        profile.place_of_birth,
     birth_coordinates:     profile.birth_coordinates,
     current_location:      profile.current_location,
+    current_cities:        Array.isArray(profile.current_cities) ? profile.current_cities : undefined,
     human_design:          profile.human_design,
     astrology:             profile.astrology,
     vedic:                 profile.vedic,
@@ -5150,6 +5200,16 @@ function loadJSON(file) {
       if (vedic.sun       && !state.profile.vedic_sun)       state.profile.vedic_sun       = vedic.sun;
       if (vedic.moon      && !state.profile.vedic_moon)      state.profile.vedic_moon      = vedic.moon;
       if (vedic.ascendant && !state.profile.vedic_ascendant) state.profile.vedic_ascendant = vedic.ascendant;
+      // current_cities (array) ↔ current_location (string) normalization
+      // so imports written by either shape hydrate consistently.
+      if (Array.isArray(state.profile.current_cities)) {
+        if (!state.profile.current_location && state.profile.current_cities.length) {
+          state.profile.current_location = state.profile.current_cities.join(', ');
+        }
+      } else if (state.profile.current_location) {
+        state.profile.current_cities = String(state.profile.current_location)
+          .split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      }
       // Birth coordinates — flatten nested into flat keys for the inputs.
       const bc = state.profile.birth_coordinates || {};
       if (bc.latitude          !== undefined && state.profile.birth_latitude          === undefined) state.profile.birth_latitude          = bc.latitude;
@@ -5857,11 +5917,46 @@ function initProfile() {
 
   // Restore profile fields
   if (!state.profile) state.profile = {};
+  // current_cities ↔ current_location bridge. The legacy single-string
+  // `current_location` is preserved for export/import round-trip and
+  // downstream consumers (foundation grid, OM Cipher), while a richer
+  // `current_cities` array is the authoritative model so the user can
+  // record more than one place at a time. On restore we hydrate the
+  // textarea from whichever side has data.
+  function ccArrToText(arr) {
+    if (!Array.isArray(arr)) return '';
+    return arr.filter(function (s) { return s && String(s).trim(); }).join('\n');
+  }
+  function ccTextToArr(txt) {
+    return String(txt || '')
+      .split(/[\n,]+/)
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+  }
+  if (!Array.isArray(state.profile.current_cities)) {
+    if (state.profile.current_location) {
+      state.profile.current_cities = ccTextToArr(state.profile.current_location);
+    } else {
+      state.profile.current_cities = [];
+    }
+  } else if (!state.profile.current_location && state.profile.current_cities.length) {
+    state.profile.current_location = state.profile.current_cities.join(', ');
+  }
   document.querySelectorAll('[data-profile]').forEach(el => {
     const key = el.dataset.profile;
-    el.value = state.profile[key] || '';
+    if (key === 'current_cities') {
+      el.value = ccArrToText(state.profile.current_cities);
+    } else {
+      el.value = state.profile[key] || '';
+    }
     el.addEventListener('input', () => {
-      state.profile[key] = el.value;
+      if (key === 'current_cities') {
+        const arr = ccTextToArr(el.value);
+        state.profile.current_cities  = arr;
+        state.profile.current_location = arr.join(', ');
+      } else {
+        state.profile[key] = el.value;
+      }
       saveToStorage();
     });
   });
@@ -6952,6 +7047,40 @@ function initProfileModal() {
     if (modal) modal.style.display = 'flex';
     const menu = document.getElementById('more-dropdown');
     if (menu) menu.classList.remove('open');
+    // Re-populate every [data-profile] input from the current state so
+    // values that were saved (either via the modal itself or auto-
+    // calculated by Reveal / import flows) always appear when the modal
+    // opens. Empty source-data inputs no longer surprise the user after
+    // a hard refresh.
+    if (state && state.profile) {
+      document.querySelectorAll('#profile-modal [data-profile]').forEach(function (el) {
+        var key = el.dataset.profile;
+        if (key && state.profile[key] != null && el.value === '') {
+          el.value = state.profile[key];
+        }
+      });
+    }
+    // Auto-derive identity-chart values that depend only on birth date
+    // (sun sign, Gene Keys activation sequence) and any chart fields
+    // unlocked by latitude/longitude/timezone. fill() inside the
+    // calculator is conservative — it never overwrites an existing
+    // value — so this is safe to invoke on every modal open.
+    if (state && state.dob) {
+      autoPopulateGeneKeysFromState();
+    }
+    if (typeof calcIdentityChartFromState === 'function') {
+      calcIdentityChartFromState();
+    }
+    // Re-sync after any auto-population so the visible <input> values
+    // reflect anything just written to state.profile.
+    if (state && state.profile) {
+      document.querySelectorAll('#profile-modal [data-profile]').forEach(function (el) {
+        var key = el.dataset.profile;
+        if (key && state.profile[key] != null && el.value === '') {
+          el.value = state.profile[key];
+        }
+      });
+    }
   }
 
   if (menuBtn)   menuBtn.addEventListener('click',   openOmCipherModal);
@@ -7020,12 +7149,13 @@ function initProfileModal() {
         <h3 class="om-cipher-card-title">Identity source</h3>
       </div>
       <div class="field-group">
-        <label class="field-label">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-        <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off">
+        <label class="field-label" for="profile-last-name">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— required</span></label>
+        <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off" required aria-required="true">
       </div>
       <div class="field-group">
-        <label class="field-label">Currently in <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-        <input class="field-input" id="profile-current-location" type="text" placeholder="City, Country…" data-profile="current_location" autocomplete="off">
+        <label class="field-label" for="profile-current-cities">What city or cities do you currently live in?</label>
+        <textarea class="field-input" id="profile-current-cities" rows="2" placeholder="e.g. Helsinki, Finland · Lisbon, Portugal" data-profile="current_cities" autocomplete="off" style="resize:vertical;min-height:2.5em;"></textarea>
+        <p class="om-cipher-card-hint" style="margin-top:6px;">Multiple cities welcome — separate with a comma or a new line.</p>
       </div>
     </div>
 

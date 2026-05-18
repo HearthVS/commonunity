@@ -13052,6 +13052,12 @@ if (document.readyState === 'loading') {
       //     derivable from birth_date and is added here; Moon/Rising
       //     require a full chart and surface as a pending v1.1 note.
       var ocPendingNotes = [];
+      // Live Compass profile — the source of truth for sealed source-
+      // data lookups below. `profile` is referenced unqualified across
+      // this block; declaring it here keeps openLivingProfile from
+      // throwing `profile is not defined` after PR #28 added these
+      // references without a scope binding.
+      var profile = ((window.state && window.state.compassData) || {}).profile || {};
       // Pull the (possibly auto-calculated) HD block off the live
       // profile so we can build a richer foundation line and decide
       // pending-message wording precisely.
