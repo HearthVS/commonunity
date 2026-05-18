@@ -2125,7 +2125,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 
 
-/* ── Companion Profile menu item ─────────────────────────────────────────── */
+/* ── OM Cipher menu item ────────────────────────────────────────────────── */
 #menu-profile {
   background: color-mix(in srgb, var(--setup-accent) 10%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--setup-accent) 20%, var(--border));
@@ -2138,6 +2138,48 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 #menu-profile svg {
   color: var(--setup-accent);
+}
+
+/* ── OM Cipher pill button (top-level access in Compass header) ─────────────
+   Mirrors the pill pattern used by Studio's Living Profile button so the
+   OM Cipher identity-engine layer is a single-click affordance, not buried
+   in the ··· overflow menu. */
+.om-cipher-pill-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--setup-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--setup-accent) 40%, var(--border));
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.om-cipher-pill-btn:hover,
+.om-cipher-pill-btn:focus-visible {
+  background: color-mix(in srgb, var(--setup-accent) 18%, transparent);
+  border-color: var(--setup-accent);
+  outline: none;
+}
+.om-cipher-pill-btn .ocp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--setup-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--setup-accent) 60%, transparent);
+  flex-shrink: 0;
+}
+.om-cipher-pill-btn .ocp-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--setup-accent) 75%, var(--text-muted));
+  text-transform: uppercase;
 }
 
 .mt-4 { margin-top: var(--space-4); }
@@ -2630,6 +2672,15 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="compass-actions">
       <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
 
+      <!-- OM Cipher pill — top-level access to the identity-engine
+           source data; mirrors the Studio Living Profile pill pattern. -->
+      <button type="button" class="om-cipher-pill-btn" id="btn-open-om-cipher"
+              title="Open OM Cipher — your identity-engine source data">
+        <span class="ocp-dot" aria-hidden="true"></span>
+        OM Cipher
+        <span class="ocp-tag">L1</span>
+      </button>
+
       <!-- Search box -->
       <div class="search-box" id="search-box">
         <span class="search-icon">
@@ -2656,7 +2707,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <div class="more-dropdown" id="more-dropdown">
           <button class="more-dropdown-item" id="menu-profile">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Companion Profile
+            OM Cipher
           </button>
           <div class="more-dropdown-divider"></div>
           <button class="more-dropdown-item" id="btn-generate-all">
@@ -4367,6 +4418,28 @@ function dateToJD(date)           { return CommonUnityGK.dateToJD(date); }
 function jdToSolarLongitude(jd)   { return CommonUnityGK.jdToSolarLongitude(jd); }
 function longitudeToGateLine(lon) { return CommonUnityGK.longitudeToGateLine(lon); }
 
+// Tropical sun sign from month/day. Moon and rising require full
+// time-of-birth + place-of-birth chart calculation, which is out of
+// scope for this lightweight derivation — those stay pending.
+function tropicalSunSign(year, month, day) {
+  if (!month || !day) return '';
+  // Boundaries are inclusive on the start day; the year is ignored.
+  var d = month * 100 + day; // e.g. Mar 21 -> 321
+  if (d >= 321 && d <= 419) return 'Aries';
+  if (d >= 420 && d <= 520) return 'Taurus';
+  if (d >= 521 && d <= 620) return 'Gemini';
+  if (d >= 621 && d <= 722) return 'Cancer';
+  if (d >= 723 && d <= 822) return 'Leo';
+  if (d >= 823 && d <= 922) return 'Virgo';
+  if (d >= 923 && d <= 1022) return 'Libra';
+  if (d >= 1023 && d <= 1121) return 'Scorpio';
+  if (d >= 1122 && d <= 1221) return 'Sagittarius';
+  if (d >= 1222 || d <= 119) return 'Capricorn';
+  if (d >= 120 && d <= 218) return 'Aquarius';
+  if (d >= 219 && d <= 320) return 'Pisces';
+  return '';
+}
+
 function calcGeneKeys() {
   const dobVal = document.getElementById('dob').value;
   const tobVal = document.getElementById('tob').value;
@@ -4447,6 +4520,39 @@ function calcGeneKeys() {
       lookupGK(point);
     }
   });
+
+  // ── OM Cipher mirror — populate identity-source readouts from the
+  // same birthdate calculation. Gene Keys activation lines are written
+  // back to the read-only fields in the OM Cipher modal so the user
+  // sees the derived values without re-running anything. Sun sign is
+  // derived from the tropical zodiac (month/day boundaries) when the
+  // existing profile.astrology_sun is blank — we never overwrite a
+  // value the user has typed.
+  state.profile = state.profile || {};
+  function fmtGK(r) {
+    var gk = GENE_KEYS[r.gate];
+    return 'GK ' + r.gate + ' · ' + (gk ? gk.gift : '?') + ' (Line ' + r.line + ')';
+  }
+  var gkFields = [
+    { key: 'gene_keys_life_work', el: 'profile-gk-cs', val: fmtGK(csResult) },
+    { key: 'gene_keys_evolution', el: 'profile-gk-ce', val: fmtGK(ceResult) },
+    { key: 'gene_keys_radiance',  el: 'profile-gk-us', val: fmtGK(usResult) },
+    { key: 'gene_keys_purpose',   el: 'profile-gk-ue', val: fmtGK(ueResult) }
+  ];
+  gkFields.forEach(function (f) {
+    state.profile[f.key] = f.val;
+    var el = document.getElementById(f.el);
+    if (el) el.value = f.val;
+  });
+
+  // Sun sign — derived from tropical zodiac month/day boundaries.
+  // Only auto-fills when the user has not entered a value.
+  var sunSign = tropicalSunSign(yr, mo, dy);
+  if (sunSign && !(state.profile.astrology_sun || '').trim()) {
+    state.profile.astrology_sun = sunSign;
+    var sunEl = document.getElementById('profile-astro-sun');
+    if (sunEl) sunEl.value = sunSign;
+  }
 
   saveToStorage();
   showToast(`Calculated · CS: GK ${csResult.gate} · CE: GK ${ceResult.gate}`);
@@ -4554,13 +4660,35 @@ function buildCompassExport(s) {
   if (s.pob && !profile.place_of_birth)  profile.place_of_birth  = s.pob;
 
   // Nested human_design / astrology / gene_keys blocks from flat inputs.
-  const hdType    = (profile.human_design_type    || '').trim();
-  const hdProfile = (profile.human_design_profile || '').trim();
-  if (hdType || hdProfile) {
+  const hdType      = (profile.human_design_type      || '').trim();
+  const hdProfile   = (profile.human_design_profile   || '').trim();
+  const hdStrategy  = (profile.human_design_strategy  || '').trim();
+  const hdAuthority = (profile.human_design_authority || '').trim();
+  const hdCross     = (profile.human_design_incarnation_cross || '').trim();
+  if (hdType || hdProfile || hdStrategy || hdAuthority || hdCross) {
     profile.human_design = Object.assign(
-      { type: hdType || undefined, profile: hdProfile || undefined },
+      {
+        type:               hdType      || undefined,
+        profile:            hdProfile   || undefined,
+        strategy:           hdStrategy  || undefined,
+        authority:          hdAuthority || undefined,
+        incarnation_cross:  hdCross     || undefined
+      },
       profile.human_design || {}
     );
+  }
+
+  // Bhramari baseline — keep as a top-level identity-engine input on
+  // profile.bhramari_baseline_hz (and mirror under foundation.* below).
+  // Studio additionally mirrors this into profile.frequency_signature
+  // .dominant_hz on its own save path; we don't write that here so we
+  // don't fight that flow.
+  const bhramariRaw = profile.bhramari_baseline_hz;
+  if (bhramariRaw !== undefined && bhramariRaw !== '' && bhramariRaw !== null) {
+    const bhramariNum = Number(bhramariRaw);
+    if (Number.isFinite(bhramariNum) && bhramariNum > 0) {
+      profile.bhramari_baseline_hz = bhramariNum;
+    }
   }
   const astroSun    = (profile.astrology_sun    || '').trim();
   const astroMoon   = (profile.astrology_moon   || '').trim();
@@ -4588,18 +4716,21 @@ function buildCompassExport(s) {
 
   // Nested foundation block — older importers look for this shape.
   profile.foundation = Object.assign({
-    first_name:       profile.first_name,
-    last_name:        profile.last_name,
-    full_name:        profile.full_name,
-    birthdate:        profile.birthdate,
-    date_of_birth:    profile.date_of_birth,
-    birth_time:       profile.birth_time,
-    birthplace:       profile.birthplace,
-    place_of_birth:   profile.place_of_birth,
-    current_location: profile.current_location,
-    human_design:     profile.human_design,
-    astrology:        profile.astrology,
-    gene_keys:        profile.gene_keys
+    first_name:            profile.first_name,
+    last_name:             profile.last_name,
+    full_name:             profile.full_name,
+    birthdate:             profile.birthdate,
+    date_of_birth:         profile.date_of_birth,
+    birth_time:            profile.birth_time,
+    birthplace:            profile.birthplace,
+    place_of_birth:        profile.place_of_birth,
+    current_location:      profile.current_location,
+    human_design:          profile.human_design,
+    astrology:             profile.astrology,
+    gene_keys:             profile.gene_keys,
+    bhramari_baseline_hz:  (typeof profile.bhramari_baseline_hz === 'number')
+                              ? profile.bhramari_baseline_hz
+                              : undefined
   }, profile.foundation || {});
 
   // Structured contact block — collected so Studio's Living Profile
@@ -6503,14 +6634,16 @@ function initProfileModal() {
   const modal = document.getElementById('profile-modal');
   const closeBtn = document.getElementById('profile-modal-close');
   const menuBtn  = document.getElementById('menu-profile');
+  const pillBtn  = document.getElementById('btn-open-om-cipher');
 
-  if (menuBtn) {
-    menuBtn.addEventListener('click', () => {
-      if (modal) modal.style.display = 'flex';
-      const menu = document.getElementById('more-dropdown');
-      if (menu) menu.classList.remove('open');
-    });
+  function openOmCipherModal() {
+    if (modal) modal.style.display = 'flex';
+    const menu = document.getElementById('more-dropdown');
+    if (menu) menu.classList.remove('open');
   }
+
+  if (menuBtn) menuBtn.addEventListener('click', openOmCipherModal);
+  if (pillBtn) pillBtn.addEventListener('click', openOmCipherModal);
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -6530,115 +6663,191 @@ function initProfileModal() {
 <!-- ============================================================
      PROFILE MODAL
      ============================================================ -->
-<div id="profile-modal" role="dialog" aria-modal="true" aria-label="Companion Profile" style="display:none;position:fixed;inset:0;z-index:200;align-items:flex-start;justify-content:center;padding:2rem 1rem;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
+<div id="profile-modal" role="dialog" aria-modal="true" aria-label="OM Cipher" style="display:none;position:fixed;inset:0;z-index:200;align-items:flex-start;justify-content:center;padding:2rem 1rem;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
   <div class="profile-modal-inner">
     <div class="profile-modal-header">
-      <span class="profile-modal-title">Companion Profile</span>
-      <button class="profile-modal-close" id="profile-modal-close" aria-label="Close profile">✕</button>
+      <span class="profile-modal-title">OM Cipher</span>
+      <button class="profile-modal-close" id="profile-modal-close" aria-label="Close OM Cipher">✕</button>
     </div>
+    <p style="font-size:var(--text-xs);color:var(--text-faint);margin:-4px 0 var(--space-4);line-height:1.5;">
+      Your identity-engine source data. Birth, name, design, and resonance — the inputs the OM Cipher and Compass build from. Optional, fillable in your own time.
+    </p>
 
-    <!-- CV upload -->
-    <div class="field-group">
-      <label class="field-label">CV or LinkedIn PDF</label>
-      <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);line-height:1.5;">Upload a CV or LinkedIn PDF. The AI will extract professional background for The Work and The Lens.</p>
-      <div id="cv-dropzone" style="border:1.5px dashed var(--border);border-radius:var(--radius-md);padding:var(--space-4);text-align:center;cursor:pointer;transition:all var(--transition);">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint);margin:0 auto var(--space-2);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span style="font-size:var(--text-xs);color:var(--text-muted);">Drop file or <span style="color:var(--setup-accent);text-decoration:underline;">browse</span></span>
-        <input type="file" id="cv-file-input" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg" style="display:none">
+    <!-- ============================================================
+         OM CIPHER — Identity-engine source data
+         These fields feed the OM Cipher seal, Gene Keys activation
+         sequence, and Studio Living Profile foundation row. Birth
+         data is the canonical input for derived HD / astrology /
+         gene-keys calculations.
+         ============================================================ -->
+    <div class="om-cipher-section" style="margin-bottom:var(--space-5);">
+      <h3 style="font-size:var(--text-sm);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--setup-accent);margin:0 0 var(--space-3);">Identity source</h3>
+
+      <!-- Name & current location -->
+      <div class="field-group">
+        <label class="field-label">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
+        <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off">
       </div>
-      <div id="cv-status" style="display:none;margin-top:var(--space-2);"></div>
-    </div>
-
-    <!-- Brand Reference -->
-    <div class="field-group">
-      <label class="field-label">Brand Voice Reference <span style="color:var(--text-faint);font-size:var(--text-xs);">— Layer 3</span></label>
-      <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);line-height:1.5;">Upload existing website copy or a bio (.pdf or .txt). The AI will use it to match voice in Layer 3.</p>
-      <div id="brand-ref-dropzone" style="border:1.5px dashed var(--border);border-radius:var(--radius-md);padding:var(--space-4);text-align:center;cursor:pointer;transition:all var(--transition);">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint);margin:0 auto var(--space-2);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <span style="font-size:var(--text-xs);color:var(--text-muted);">Drop file or <span style="color:var(--setup-accent);text-decoration:underline;">browse</span></span>
-        <input type="file" id="brand-ref-input" accept=".pdf,.txt,.md" style="display:none">
+      <div class="field-group">
+        <label class="field-label">Currently in <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
+        <input class="field-input" id="profile-current-location" type="text" placeholder="City, Country…" data-profile="current_location" autocomplete="off">
       </div>
-      <div id="brand-ref-status" style="margin-top:var(--space-2);display:none;"></div>
-    </div>
 
-    <!-- LinkedIn URL -->
-    <div class="field-group">
-      <label class="field-label" for="linkedin-url">LinkedIn URL (optional)</label>
-      <input class="field-input" id="linkedin-url" type="url" placeholder="https://linkedin.com/in/yourname" data-profile="linkedin_url">
-    </div>
-
-    <!-- Professional background -->
-    <div class="field-group">
-      <label class="field-label">Professional Background <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Work</span></label>
-      <textarea class="field-input" id="profile-work-bg" data-profile="work_background" placeholder="Current and past roles, key skills, what you're known for professionally…" rows="3" style="resize:vertical;"></textarea>
-    </div>
-
-    <!-- Education -->
-    <div class="field-group">
-      <label class="field-label">Education &amp; Training <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Lens</span></label>
-      <textarea class="field-input" id="profile-education" data-profile="education" placeholder="Degrees, certifications, courses, self-directed learning, mentors…" rows="3" style="resize:vertical;"></textarea>
-    </div>
-
-    <!-- Active practices -->
-    <div class="field-group">
-      <label class="field-label">Active Practices <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Field</span></label>
-      <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);">Select all that apply, then add your own.</p>
-      <div class="practice-pills" id="practice-pills">
-        <span class="practice-pill" data-practice="Yoga">Yoga</span>
-        <span class="practice-pill" data-practice="Meditation">Meditation</span>
-        <span class="practice-pill" data-practice="Breathwork">Breathwork</span>
-        <span class="practice-pill" data-practice="Running">Running</span>
-        <span class="practice-pill" data-practice="Strength training">Strength training</span>
-        <span class="practice-pill" data-practice="Pilates">Pilates</span>
-        <span class="practice-pill" data-practice="Swimming">Swimming</span>
-        <span class="practice-pill" data-practice="Cycling">Cycling</span>
-        <span class="practice-pill" data-practice="Martial arts">Martial arts</span>
-        <span class="practice-pill" data-practice="Dance">Dance</span>
-        <span class="practice-pill" data-practice="Cold exposure">Cold exposure</span>
-        <span class="practice-pill" data-practice="Nature immersion">Nature immersion</span>
-        <span class="practice-pill" data-practice="Journaling">Journaling</span>
-        <span class="practice-pill" data-practice="Sound healing">Sound healing</span>
-        <span class="practice-pill" data-practice="Gene Keys">Gene Keys</span>
-        <span class="practice-pill" data-practice="Human Design">Human Design</span>
+      <!-- Birth data note — birth date/time/place are entered on the
+           Setup screen and feed Gene Keys, HD, and astrology here. -->
+      <div class="field-group">
+        <p style="font-size:var(--text-xs);color:var(--text-faint);margin:0;line-height:1.5;">
+          Birth date, time, and place are entered on the Setup screen
+          (<em>When did you take your first breath?</em>) and feed the
+          calculations below. Run <strong>Reveal my profile</strong> there
+          to populate Gene Keys, sun sign, and Human Design fields.
+        </p>
       </div>
-      <input class="field-input" id="practice-custom" type="text" placeholder="Add your own (press Enter)…" style="margin-top:var(--space-3);" autocomplete="off">
-    </div>
 
-    <!-- Communities -->
-    <div class="field-group">
-      <label class="field-label">Communities &amp; Belonging <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Field</span></label>
-      <textarea class="field-input" id="profile-communities" data-profile="communities" placeholder="Groups, networks, tribes, places of belonging…" rows="2" style="resize:vertical;"></textarea>
-    </div>
-
-    <!-- Foundation / Identity (optional — feeds Studio Living Profile) -->
-    <div class="field-group">
-      <label class="field-label">Family name / Surname <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-      <input class="field-input" id="profile-last-name" type="text" placeholder="Family name…" data-profile="last_name" autocomplete="off">
-    </div>
-    <div class="field-group">
-      <label class="field-label">Currently in <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-      <input class="field-input" id="profile-current-location" type="text" placeholder="City, Country…" data-profile="current_location" autocomplete="off">
-    </div>
-    <div class="field-group">
-      <label class="field-label">Human Design <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-      <div class="calc-row">
-        <input class="field-input" id="profile-hd-type" type="text" placeholder="Type (e.g. Generator)" data-profile="human_design_type" autocomplete="off">
-        <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile (e.g. 2/4)" data-profile="human_design_profile" autocomplete="off">
+      <!-- Bhramari baseline — measured resonance, optional. Stored at
+           profile.bhramari_baseline_hz; Studio also mirrors this to
+           profile.frequency_signature.dominant_hz on save. -->
+      <div class="field-group">
+        <label class="field-label" for="profile-bhramari-hz">Bhramari baseline (Hz) <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
+        <input class="field-input" id="profile-bhramari-hz" type="number" step="0.1" min="0" placeholder="e.g. 136.1" data-profile="bhramari_baseline_hz" autocomplete="off">
+        <p style="font-size:var(--text-xs);color:var(--text-faint);margin-top:var(--space-1);line-height:1.5;">Hum the seed-syllable and read the dominant frequency, or enter a measured baseline. Used as source data for the OM Cipher.</p>
       </div>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Astrology — Sun · Moon · Rising <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
-      <div class="calc-row">
-        <input class="field-input" id="profile-astro-sun" type="text" placeholder="Sun" data-profile="astrology_sun" autocomplete="off">
-        <input class="field-input" id="profile-astro-moon" type="text" placeholder="Moon" data-profile="astrology_moon" autocomplete="off">
-        <input class="field-input" id="profile-astro-rising" type="text" placeholder="Rising" data-profile="astrology_rising" autocomplete="off">
+
+      <!-- Gene Keys activation sequence summary — read-only mirror of
+           what the Setup "Reveal my profile" calculator produced. -->
+      <div class="field-group">
+        <label class="field-label">Gene Keys · Activation Sequence <span style="color:var(--text-faint);font-size:var(--text-xs);">— from birthdate</span></label>
+        <div class="calc-row">
+          <input class="field-input" id="profile-gk-cs" type="text" placeholder="Life's Work — pending" readonly data-profile="gene_keys_life_work" autocomplete="off">
+          <input class="field-input" id="profile-gk-ce" type="text" placeholder="Evolution — pending" readonly data-profile="gene_keys_evolution" autocomplete="off">
+        </div>
+        <div class="calc-row" style="margin-top:var(--space-2);">
+          <input class="field-input" id="profile-gk-us" type="text" placeholder="Radiance — pending" readonly data-profile="gene_keys_radiance" autocomplete="off">
+          <input class="field-input" id="profile-gk-ue" type="text" placeholder="Purpose — pending" readonly data-profile="gene_keys_purpose" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Human Design — type, strategy, authority, profile, incarnation
+           cross. Auto-fill stays at type/profile because that's all the
+           current calc derives; the rest expose clear "pending full chart
+           calculation" placeholders so we never invent data. -->
+      <div class="field-group">
+        <label class="field-label">Human Design <span style="color:var(--text-faint);font-size:var(--text-xs);">— optional</span></label>
+        <div class="calc-row">
+          <input class="field-input" id="profile-hd-type" type="text" placeholder="Type (e.g. Generator)" data-profile="human_design_type" autocomplete="off">
+          <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile (e.g. 2/4)" data-profile="human_design_profile" autocomplete="off">
+        </div>
+        <div class="calc-row" style="margin-top:var(--space-2);">
+          <input class="field-input" id="profile-hd-strategy" type="text" placeholder="Strategy — pending full chart calculation" data-profile="human_design_strategy" autocomplete="off">
+          <input class="field-input" id="profile-hd-authority" type="text" placeholder="Authority — pending full chart calculation" data-profile="human_design_authority" autocomplete="off">
+        </div>
+        <input class="field-input" id="profile-hd-cross" type="text" placeholder="Incarnation Cross — pending full chart calculation" data-profile="human_design_incarnation_cross" style="margin-top:var(--space-2);" autocomplete="off">
+      </div>
+
+      <!-- Astrology — sun is derivable from birthdate; moon/rising
+           require full birth time + place chart, which we don't compute
+           in-app, so they stay as pending placeholders the user can fill. -->
+      <div class="field-group">
+        <label class="field-label">Astrology — Sun · Moon · Rising <span style="color:var(--text-faint);font-size:var(--text-xs);">— sun from birthdate; moon/rising pending</span></label>
+        <div class="calc-row">
+          <input class="field-input" id="profile-astro-sun" type="text" placeholder="Sun — auto from birthdate" data-profile="astrology_sun" autocomplete="off">
+          <input class="field-input" id="profile-astro-moon" type="text" placeholder="Moon — pending full chart calculation" data-profile="astrology_moon" autocomplete="off">
+          <input class="field-input" id="profile-astro-rising" type="text" placeholder="Rising — pending full chart calculation" data-profile="astrology_rising" autocomplete="off">
+        </div>
       </div>
     </div>
 
-    <!-- Purpose projects -->
-    <div class="field-group">
-      <label class="field-label">Projects &amp; Vision <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Call</span></label>
-      <textarea class="field-input" id="profile-purpose" data-profile="purpose_projects" placeholder="What you're building, contributing to, or dreaming toward…" rows="2" style="resize:vertical;"></textarea>
+    <!-- ============================================================
+         ADDITIONAL INFORMATION
+         Secondary personal/contextual data — CV, LinkedIn, brand
+         notes, practices, projects. Distinct from the OM Cipher
+         identity-engine source above; these inform The Work, Lens,
+         Field, Call rooms but are not core engine inputs.
+         ============================================================ -->
+    <div class="additional-info-section" style="border-top:1px solid var(--border);padding-top:var(--space-4);">
+      <h3 style="font-size:var(--text-sm);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin:0 0 var(--space-2);">Additional Information</h3>
+      <p style="font-size:var(--text-xs);color:var(--text-faint);margin:0 0 var(--space-4);line-height:1.5;">
+        Professional and contextual notes the AI can draw on for The Work, Lens, Field, and Call. Optional.
+      </p>
+
+      <!-- CV upload -->
+      <div class="field-group">
+        <label class="field-label">CV or LinkedIn PDF</label>
+        <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);line-height:1.5;">Upload a CV or LinkedIn PDF. The AI will extract professional background for The Work and The Lens.</p>
+        <div id="cv-dropzone" style="border:1.5px dashed var(--border);border-radius:var(--radius-md);padding:var(--space-4);text-align:center;cursor:pointer;transition:all var(--transition);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint);margin:0 auto var(--space-2);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">Drop file or <span style="color:var(--setup-accent);text-decoration:underline;">browse</span></span>
+          <input type="file" id="cv-file-input" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg" style="display:none">
+        </div>
+        <div id="cv-status" style="display:none;margin-top:var(--space-2);"></div>
+      </div>
+
+      <!-- Brand Reference -->
+      <div class="field-group">
+        <label class="field-label">Brand Voice Reference <span style="color:var(--text-faint);font-size:var(--text-xs);">— Layer 3</span></label>
+        <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);line-height:1.5;">Upload existing website copy or a bio (.pdf or .txt). The AI will use it to match voice in Layer 3.</p>
+        <div id="brand-ref-dropzone" style="border:1.5px dashed var(--border);border-radius:var(--radius-md);padding:var(--space-4);text-align:center;cursor:pointer;transition:all var(--transition);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint);margin:0 auto var(--space-2);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">Drop file or <span style="color:var(--setup-accent);text-decoration:underline;">browse</span></span>
+          <input type="file" id="brand-ref-input" accept=".pdf,.txt,.md" style="display:none">
+        </div>
+        <div id="brand-ref-status" style="margin-top:var(--space-2);display:none;"></div>
+      </div>
+
+      <!-- LinkedIn URL -->
+      <div class="field-group">
+        <label class="field-label" for="linkedin-url">LinkedIn URL (optional)</label>
+        <input class="field-input" id="linkedin-url" type="url" placeholder="https://linkedin.com/in/yourname" data-profile="linkedin_url">
+      </div>
+
+      <!-- Professional background -->
+      <div class="field-group">
+        <label class="field-label">Professional Background <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Work</span></label>
+        <textarea class="field-input" id="profile-work-bg" data-profile="work_background" placeholder="Current and past roles, key skills, what you're known for professionally…" rows="3" style="resize:vertical;"></textarea>
+      </div>
+
+      <!-- Education -->
+      <div class="field-group">
+        <label class="field-label">Education &amp; Training <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Lens</span></label>
+        <textarea class="field-input" id="profile-education" data-profile="education" placeholder="Degrees, certifications, courses, self-directed learning, mentors…" rows="3" style="resize:vertical;"></textarea>
+      </div>
+
+      <!-- Active practices -->
+      <div class="field-group">
+        <label class="field-label">Active Practices <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Field</span></label>
+        <p style="font-size:var(--text-xs);color:var(--text-faint);margin-bottom:var(--space-2);">Select all that apply, then add your own.</p>
+        <div class="practice-pills" id="practice-pills">
+          <span class="practice-pill" data-practice="Yoga">Yoga</span>
+          <span class="practice-pill" data-practice="Meditation">Meditation</span>
+          <span class="practice-pill" data-practice="Breathwork">Breathwork</span>
+          <span class="practice-pill" data-practice="Running">Running</span>
+          <span class="practice-pill" data-practice="Strength training">Strength training</span>
+          <span class="practice-pill" data-practice="Pilates">Pilates</span>
+          <span class="practice-pill" data-practice="Swimming">Swimming</span>
+          <span class="practice-pill" data-practice="Cycling">Cycling</span>
+          <span class="practice-pill" data-practice="Martial arts">Martial arts</span>
+          <span class="practice-pill" data-practice="Dance">Dance</span>
+          <span class="practice-pill" data-practice="Cold exposure">Cold exposure</span>
+          <span class="practice-pill" data-practice="Nature immersion">Nature immersion</span>
+          <span class="practice-pill" data-practice="Journaling">Journaling</span>
+          <span class="practice-pill" data-practice="Sound healing">Sound healing</span>
+          <span class="practice-pill" data-practice="Gene Keys">Gene Keys</span>
+          <span class="practice-pill" data-practice="Human Design">Human Design</span>
+        </div>
+        <input class="field-input" id="practice-custom" type="text" placeholder="Add your own (press Enter)…" style="margin-top:var(--space-3);" autocomplete="off">
+      </div>
+
+      <!-- Communities -->
+      <div class="field-group">
+        <label class="field-label">Communities &amp; Belonging <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Field</span></label>
+        <textarea class="field-input" id="profile-communities" data-profile="communities" placeholder="Groups, networks, tribes, places of belonging…" rows="2" style="resize:vertical;"></textarea>
+      </div>
+
+      <!-- Purpose projects -->
+      <div class="field-group">
+        <label class="field-label">Projects &amp; Vision <span style="color:var(--text-faint);font-size:var(--text-xs);">— The Call</span></label>
+        <textarea class="field-input" id="profile-purpose" data-profile="purpose_projects" placeholder="What you're building, contributing to, or dreaming toward…" rows="2" style="resize:vertical;"></textarea>
+      </div>
     </div>
 
   </div>
