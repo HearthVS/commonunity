@@ -221,16 +221,18 @@ if (modal) {
   assert(sections.vedicAstro,    'modal contains Vedic Astrology section');
   assert(sections.additional,    'modal contains Additional Information section');
 
-  // Label honesty — HD and Vedic must declare "requires full chart
-  // calculation"; the misleading "Optional, fillable in your own time"
-  // intro must be gone.
+  // Label honesty — after the calculator enhancement, fields are
+  // labelled per subfield ("calculated from birth data" / "requires
+  // birth time" / "requires birth time + coordinates" / "requires
+  // bodygraph calculation") instead of a single blanket "requires
+  // full chart calculation" across the section.
   assert(
-    /Human Design[\s\S]{0,200}requires full chart calculation/.test(modalHTML),
-    'Human Design section declares "requires full chart calculation"'
+    /Human Design[\s\S]{0,1500}requires bodygraph/.test(modalHTML),
+    'Human Design section declares bodygraph-required subfields'
   );
   assert(
-    /Vedic Astrology[\s\S]{0,200}requires full chart calculation/.test(modalHTML),
-    'Vedic Astrology section declares "requires full chart calculation"'
+    /Vedic Astrology[\s\S]{0,1500}(Lahiri|requires birth time)/.test(modalHTML),
+    'Vedic Astrology section declares Lahiri ayanamsha or birth-time requirement'
   );
   assert(
     !/Optional, fillable in your own time/.test(modalHTML),
