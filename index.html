@@ -2160,6 +2160,16 @@ body.companion-mode .companion-mode-banner { display: block; }
   border-radius: 999px;
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition), color var(--transition);
+  /* Defensive: nothing in the compass-actions row should be able to
+     hide this pill once the user has entered the Compass. Past
+     regressions stemmed from stray inline display:none / parent
+     wrappers collapsing on narrow viewports — this !important keeps
+     the affordance reachable. The pill is only rendered inside
+     #screen-compass, so this can't accidentally re-show it on Setup. */
+  visibility: visible !important;
+}
+#screen-compass .om-cipher-pill-btn {
+  display: inline-flex !important;
 }
 .om-cipher-pill-btn:hover,
 .om-cipher-pill-btn:focus-visible {
@@ -2674,16 +2684,18 @@ body.companion-mode .companion-mode-banner { display: block; }
       </div>
     </div>
     <div class="compass-actions">
-      <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
-
       <!-- OM Cipher pill — top-level access to the identity-engine
-           source data; mirrors the Studio Living Profile pill pattern. -->
+           source data; mirrors the Studio Living Profile pill pattern.
+           Placed first in the compass-actions row so it's immediately
+           visible when the user enters the Compass. -->
       <button type="button" class="om-cipher-pill-btn" id="btn-open-om-cipher"
               title="Open OM Cipher — your identity-engine source data">
         <span class="ocp-dot" aria-hidden="true"></span>
         OM Cipher
         <span class="ocp-tag">L1</span>
       </button>
+
+      <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
 
       <!-- Search box -->
       <div class="search-box" id="search-box">
@@ -4607,6 +4619,18 @@ function openCompass() {
   document.getElementById('screen-setup').style.display    = 'none';
   document.getElementById('screen-compass').style.display  = 'flex';
   window.scrollTo(0, 0);
+
+  // Defensive: ensure the OM Cipher pill in the Compass header is
+  // visible/clickable. Live smoke tests reported the pill present in
+  // the DOM with isVisible=false / boundingBox=null after entering
+  // Compass; clearing any inline display + asserting inline-flex here
+  // guarantees the affordance is reachable the moment Compass opens.
+  const omPill = document.getElementById('btn-open-om-cipher');
+  if (omPill) {
+    omPill.style.display    = 'inline-flex';
+    omPill.style.visibility = 'visible';
+    omPill.removeAttribute('hidden');
+  }
 
   // If opening as guide (btn-open-compass), ensure companion mode is off
   if (!state.companion_mode) toggleCompanionMode(false);

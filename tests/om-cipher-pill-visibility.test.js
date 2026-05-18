@@ -120,16 +120,40 @@ assert(
 );
 
 // ── After Compass is shown (mirroring openCompass()), the pill is
-//    visible/clickable. ─────────────────────────────────────────────
+//    visible/clickable. We also clear inline display the way the
+//    production openCompass() does so the test reproduces the live
+//    runtime state. ─────────────────────────────────────────────────
 const compassScreen = document.getElementById('screen-compass');
 if (setupScreen && compassScreen) {
   setupScreen.style.display   = 'none';
   compassScreen.style.display = 'flex';
+  if (compassPill) {
+    compassPill.style.display    = 'inline-flex';
+    compassPill.style.visibility = 'visible';
+  }
   assert(
     isLaidOut(compassPill),
     'compass-header pill is laid out once Compass is shown'
   );
 }
+
+// ── Pill is the first action in the compass-actions row so it's
+//    immediately visible upon entering Compass (regression guard:
+//    PR #21 + live smoke flagged pill invisible at boundingBox=null,
+//    so we now also pin its position + assert defensive CSS). ────
+const compassActions = document.querySelector('.compass-actions');
+assert(!!compassActions, '.compass-actions wrapper exists in Compass header');
+if (compassActions) {
+  const firstChild = compassActions.firstElementChild;
+  assert(
+    firstChild && firstChild.id === 'btn-open-om-cipher',
+    'OM Cipher pill is the first child of .compass-actions (top slot)'
+  );
+}
+assert(
+  /#screen-compass\s+\.om-cipher-pill-btn\s*\{\s*display:\s*inline-flex\s*!important/.test(indexSrc),
+  'defensive CSS pins the pill display inside #screen-compass'
+);
 
 // ── Pill markup: same pattern as Studio's Living Profile pill ─────
 if (compassPill) {
