@@ -232,7 +232,7 @@ test('compass slots populated from gk_profile: GK14.2 / GK8.2 / GK29.4 / GK30.4'
 
 // ── 4. Canonical engine on the fixture input matches the Markus
 //      baseline (Life Path 22, Expression 8, Soul 6, Personality 2). ─
-test('canonical engine on fixture matches Markus baseline (LP22 / Ex8 / SU6 / Pe2)', () => {
+test('canonical engine on fixture matches Markus baseline (LP22 / Ex8 / SU6 / Pe11)', () => {
   const win = makeWindow(FIXTURE);
   const r = makeRenderer(win);
   const input = r.buildInput(null);
@@ -241,7 +241,10 @@ test('canonical engine on fixture matches Markus baseline (LP22 / Ex8 / SU6 / Pe
   assert.equal(rec.metadata.life_path.is_master, true);
   assert.equal(rec.metadata.expression.value, 8);
   assert.equal(rec.metadata.soul_urge.value, 6);
-  assert.equal(rec.metadata.personality.value, 2);
+  // Master 11 preserved in the visible card (raw 29 → 11). Canonical seed
+  // string still uses single-digit `PE:2` to keep the sealed seed stable.
+  assert.equal(rec.metadata.personality.value, 11);
+  assert.equal(rec.metadata.personality.is_master, true);
 });
 
 // ── 5. Renderer paints a real SVG sigil (not the static ॐ badge). ─
@@ -271,7 +274,7 @@ test('section state is "sealed" + seed shows hash (no Draft/pending)', () => {
 });
 
 // ── 7. Gematria grid populated; Life Path is 22 + master. ─────────
-test('gematria grid filled — Life Path 22 (master), Expression 8, Soul 6, Personality 2', () => {
+test('gematria grid filled — Life Path 22 (master), Expression 8, Soul 6, Personality 11 (master)', () => {
   const win = makeWindow(FIXTURE);
   const r = makeRenderer(win);
   const sec = buildSection();
@@ -285,6 +288,13 @@ test('gematria grid filled — Life Path 22 (master), Expression 8, Soul 6, Pers
     assert.ok(el.querySelector('dd').textContent.length > 0, k + ' painted');
     assert.ok(!el.classList.contains('is-pending'), k + ' not pending');
   });
+  // Personality master is preserved in display (Markus = 11, not the
+  // single-digit 2 used inside the canonical seed string).
+  const pe = sec.querySelector('[data-cu-om-cipher-gematria="personality"]');
+  assert.ok(pe.querySelector('dd').textContent.startsWith('11'),
+    'Personality card should read 11 for Markus, got: ' + pe.querySelector('dd').textContent);
+  assert.ok(pe.classList.contains('is-master'),
+    'Personality card should carry the is-master class for Markus');
 });
 
 // ── 8. Activation Sequence line surfaces all four GK pair labels. ──

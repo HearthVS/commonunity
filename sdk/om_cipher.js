@@ -1333,6 +1333,12 @@ function generate(input, options) {
 
   const lp = lifePath(input.birth_date);
   const name = nameResonance(input.legal_name || input.preferred_name);
+  // Master-preserving mirror of the name resonance. The seed (below) still
+  // uses the single-digit `name` values to keep the canonical seed stable;
+  // this variant exists so visible Source-Pattern cards can show 11/22/33
+  // when the raw gematria reduces through a master (e.g. Markus Lehto
+  // personality = 29 → 11 → 2: the displayed card must read 11, not 2).
+  const nameMaster = nameResonanceKeepMaster(input.legal_name || input.preferred_name);
   const gk = gkLayer(input.compass);
   const temporal = temporalLayer(input.birth_date, input.birth_time || null);
   const primaryGate = gk && gk.work ? gk.work.gate : (gk && gk.lens && gk.lens.gate) || null;
@@ -1396,20 +1402,23 @@ function generate(input, options) {
     // small set of pre-existing consumers (studio bridge, badge). New
     // code should read `life_path` directly.
     digital_root: lp ? { value: lp.reduced, raw: lp.raw } : null,
-    expression: name && name.expression ? {
-      value: name.expression.reduced,
-      raw: name.expression.raw,
-      label: NUMEROLOGY_LABELS[name.expression.reduced] || null,
+    expression: nameMaster && nameMaster.expression ? {
+      value: nameMaster.expression.reduced,
+      raw: nameMaster.expression.raw,
+      is_master: [11,22,33].indexOf(nameMaster.expression.reduced) >= 0,
+      label: NUMEROLOGY_LABELS[nameMaster.expression.reduced] || null,
     } : null,
-    soul_urge: name && name.soul_urge ? {
-      value: name.soul_urge.reduced,
-      raw: name.soul_urge.raw,
-      label: NUMEROLOGY_LABELS[name.soul_urge.reduced] || null,
+    soul_urge: nameMaster && nameMaster.soul_urge ? {
+      value: nameMaster.soul_urge.reduced,
+      raw: nameMaster.soul_urge.raw,
+      is_master: [11,22,33].indexOf(nameMaster.soul_urge.reduced) >= 0,
+      label: NUMEROLOGY_LABELS[nameMaster.soul_urge.reduced] || null,
     } : null,
-    personality: name && name.personality ? {
-      value: name.personality.reduced,
-      raw: name.personality.raw,
-      label: NUMEROLOGY_LABELS[name.personality.reduced] || null,
+    personality: nameMaster && nameMaster.personality ? {
+      value: nameMaster.personality.reduced,
+      raw: nameMaster.personality.raw,
+      is_master: [11,22,33].indexOf(nameMaster.personality.reduced) >= 0,
+      label: NUMEROLOGY_LABELS[nameMaster.personality.reduced] || null,
     } : null,
     gk_primary: gk && gk.work ? gk.work : null,
     gk_all: gk || null,

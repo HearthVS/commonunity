@@ -165,6 +165,32 @@ def name_resonance(legal_name: Optional[str]) -> Optional[dict]:
     }
 
 
+def _gematria_sum_keep_master(name: str, vowels_only: Optional[bool] = None) -> Optional[dict]:
+    cleaned = _normalise_name(name)
+    if not cleaned:
+        return None
+    total = 0
+    for ch in cleaned:
+        if vowels_only is True and ch not in _VOWELS:
+            continue
+        if vowels_only is False and ch in _VOWELS:
+            continue
+        total += _PYTHAGOREAN.get(ch, 0)
+    if total == 0:
+        return None
+    return {"raw": total, "reduced": _digital_root_keep_master(total)}
+
+
+def name_resonance_keep_master(legal_name: Optional[str]) -> Optional[dict]:
+    if not legal_name:
+        return None
+    return {
+        "expression":  _gematria_sum_keep_master(legal_name),
+        "soul_urge":   _gematria_sum_keep_master(legal_name, vowels_only=True),
+        "personality": _gematria_sum_keep_master(legal_name, vowels_only=False),
+    }
+
+
 # ── Gene Keys / I Ching ─────────────────────────────────────────────────
 
 # Activation Sequence sphere → canonical line names. `lens` = Evolution,
@@ -861,6 +887,11 @@ def generate(payload: dict, *, feature_flag: Optional[bool] = None,
 
     lp = life_path(payload.get("birth_date"))
     name = name_resonance(payload.get("legal_name") or payload.get("preferred_name"))
+    # Master-preserving mirror used for visible Source-Pattern cards. The
+    # canonical seed (below) still uses single-digit `name` values to keep
+    # the sealed seed stable; this variant exists so e.g. Markus Lehto's
+    # Personality reads 11 instead of 2 in the UI.
+    name_master = name_resonance_keep_master(payload.get("legal_name") or payload.get("preferred_name"))
     gk = gk_layer(payload.get("compass"))
     temporal = temporal_layer(payload.get("birth_date"), payload.get("birth_time"))
     primary_gate = None
@@ -927,20 +958,23 @@ def generate(payload: dict, *, feature_flag: Optional[bool] = None,
         # Back-compat alias.
         "digital_root": ({"value": lp["reduced"], "raw": lp["raw"]}) if lp else None,
         "expression": ({
-            "value": name["expression"]["reduced"],
-            "raw": name["expression"]["raw"],
-            "label": NUMEROLOGY_LABELS.get(name["expression"]["reduced"]),
-        }) if name and name.get("expression") else None,
+            "value": name_master["expression"]["reduced"],
+            "raw": name_master["expression"]["raw"],
+            "is_master": name_master["expression"]["reduced"] in (11, 22, 33),
+            "label": NUMEROLOGY_LABELS.get(name_master["expression"]["reduced"]),
+        }) if name_master and name_master.get("expression") else None,
         "soul_urge": ({
-            "value": name["soul_urge"]["reduced"],
-            "raw": name["soul_urge"]["raw"],
-            "label": NUMEROLOGY_LABELS.get(name["soul_urge"]["reduced"]),
-        }) if name and name.get("soul_urge") else None,
+            "value": name_master["soul_urge"]["reduced"],
+            "raw": name_master["soul_urge"]["raw"],
+            "is_master": name_master["soul_urge"]["reduced"] in (11, 22, 33),
+            "label": NUMEROLOGY_LABELS.get(name_master["soul_urge"]["reduced"]),
+        }) if name_master and name_master.get("soul_urge") else None,
         "personality": ({
-            "value": name["personality"]["reduced"],
-            "raw": name["personality"]["raw"],
-            "label": NUMEROLOGY_LABELS.get(name["personality"]["reduced"]),
-        }) if name and name.get("personality") else None,
+            "value": name_master["personality"]["reduced"],
+            "raw": name_master["personality"]["raw"],
+            "is_master": name_master["personality"]["reduced"] in (11, 22, 33),
+            "label": NUMEROLOGY_LABELS.get(name_master["personality"]["reduced"]),
+        }) if name_master and name_master.get("personality") else None,
         "gk_primary": gk.get("work") if gk else None,
         "gk_all": gk,
         "hd_type": (payload.get("human_design") or {}).get("type"),
