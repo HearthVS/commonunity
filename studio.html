@@ -9191,6 +9191,161 @@ function normalizeImportedStudioOrCompassJson(data) {
 }
 try { if (typeof window !== 'undefined') window.normalizeImportedStudioOrCompassJson = normalizeImportedStudioOrCompassJson; } catch (_) {}
 
+// ──────────────────────────────────────────────────────────────────────
+// Source-data backfill for imported sessions.
+//
+// Older Studio/Compass exports (pre-#40/#41) carry only `dob/tob/pob` and
+// gk_profile/points — no `om_cipher.source_data`, no
+// `profile.astrology`, `profile.vedic`, or `profile.birth_coordinates`.
+// On import, the OM Cipher Source-Data section in Studio reads those
+// fields and shows pending placeholders for Moon · Rising · Vedic when
+// they're missing.
+//
+// This backfill function reruns the same deterministic calculators the
+// root Compass uses on btn-calc (CommonUnityPlaces.resolve →
+// lat/lng/tz; CommonUnityAstro.computeIdentityChart → tropical + vedic)
+// and writes the results into `state.compassData.profile.*` ONLY when
+// the target field is blank. User-entered values are never overwritten;
+// truly incomplete inputs (no time, no resolvable place) degrade
+// gracefully to the existing pending-source rendering.
+//
+// Safe to call multiple times. Safe in environments where the
+// calculators or place gazetteer are not loaded (no-op).
+function cuBackfillSourceDataFromBirth() {
+  try {
+    var cd = (typeof state !== 'undefined' && state && state.compassData)
+      ? state.compassData : null;
+    if (!cd) return;
+    cd.profile = cd.profile || {};
+    var prof = cd.profile;
+    // Foundation is the legacy bucket older exports may write into; use
+    // it as a fallback when the flat profile fields are bare.
+    var fnd  = (prof.foundation && typeof prof.foundation === 'object') ? prof.foundation : {};
+
+    function s(v) {
+      if (v == null) return '';
+      if (typeof v === 'number') return String(v);
+      return (typeof v === 'string') ? v.trim() : '';
+    }
+    function num(v) {
+      var n = Number(v); return Number.isFinite(n) ? n : null;
+    }
+
+    // ── Resolve dob/tob/pob from the same alias surface the engine reads.
+    var dob = s(cd.dob) || s(cd.date_of_birth)
+           || s(prof.date_of_birth) || s(prof.birthdate)
+           || s(fnd.date_of_birth)  || s(fnd.birthdate);
+    var tob = s(cd.tob) || s(cd.birth_time)
+           || s(prof.birth_time)    || s(fnd.birth_time);
+    var pob = s(cd.pob) || s(cd.place_of_birth)
+           || s(prof.place_of_birth) || s(prof.birthplace)
+           || s(fnd.place_of_birth)  || s(fnd.birthplace);
+    if (!dob) return;
+
+    // ── Coordinates — resolve from pob via the vendored gazetteer when
+    //    the profile doesn't already carry lat/lng/tz. Existing user-
+    //    entered values win; we only fill blanks.
+    var existingCoords = (prof.birth_coordinates && typeof prof.birth_coordinates === 'object')
+      ? prof.birth_coordinates
+      : ((fnd.birth_coordinates && typeof fnd.birth_coordinates === 'object') ? fnd.birth_coordinates : {});
+    var lat = num(prof.birth_latitude)        != null ? num(prof.birth_latitude)
+            : num(existingCoords.latitude);
+    var lng = num(prof.birth_longitude)       != null ? num(prof.birth_longitude)
+            : num(existingCoords.longitude);
+    var tz  = num(prof.birth_tz_offset_minutes) != null ? num(prof.birth_tz_offset_minutes)
+            : num(existingCoords.tz_offset_minutes);
+    var iana          = existingCoords.iana          || null;
+    var resolvedFrom  = existingCoords.resolved_from || null;
+
+    if ((lat == null || lng == null || tz == null) && pob
+        && typeof window !== 'undefined'
+        && window.CommonUnityPlaces
+        && typeof window.CommonUnityPlaces.resolve === 'function') {
+      try {
+        var r = window.CommonUnityPlaces.resolve(pob);
+        if (r) {
+          if (lat == null && typeof r.latitude === 'number')          lat = r.latitude;
+          if (lng == null && typeof r.longitude === 'number')         lng = r.longitude;
+          if (tz  == null && typeof r.tzOffsetMinutes === 'number')   tz  = r.tzOffsetMinutes;
+          if (!iana && r.iana)                                        iana = r.iana;
+          if (!resolvedFrom)                                          resolvedFrom = pob;
+        }
+      } catch (_) { /* keep blanks on failure */ }
+    }
+    if (lat != null && prof.birth_latitude == null)                prof.birth_latitude = lat;
+    if (lng != null && prof.birth_longitude == null)               prof.birth_longitude = lng;
+    if (tz  != null && prof.birth_tz_offset_minutes == null)       prof.birth_tz_offset_minutes = tz;
+    if (lat != null || lng != null || tz != null) {
+      var nextCoords = Object.assign({}, existingCoords);
+      if (lat != null && nextCoords.latitude          == null) nextCoords.latitude          = lat;
+      if (lng != null && nextCoords.longitude         == null) nextCoords.longitude         = lng;
+      if (tz  != null && nextCoords.tz_offset_minutes == null) nextCoords.tz_offset_minutes = tz;
+      if (iana && !nextCoords.iana)                            nextCoords.iana              = iana;
+      if (resolvedFrom && !nextCoords.resolved_from)           nextCoords.resolved_from     = resolvedFrom;
+      prof.birth_coordinates = nextCoords;
+    }
+
+    // ── Tropical + vedic — run the identity-chart calculator. Sun is
+    //    always derivable from the date; Moon needs a birth time;
+    //    Rising/Lagna need both birth time AND coordinates. The
+    //    calculator degrades gracefully when inputs are missing.
+    if (typeof window !== 'undefined'
+        && window.CommonUnityAstro
+        && typeof window.CommonUnityAstro.computeIdentityChart === 'function') {
+      try {
+        var dobParts = dob.split('-').map(Number);
+        var yr = dobParts[0], mo = dobParts[1], dy = dobParts[2];
+        if (yr && mo && dy) {
+          var hasTime = !!tob;
+          var hr = 12, mn = 0;
+          if (hasTime) {
+            var tparts = tob.split(':').map(Number);
+            hr = tparts[0] | 0; mn = tparts[1] | 0;
+          }
+          var chart = window.CommonUnityAstro.computeIdentityChart({
+            year: yr, month: mo, day: dy,
+            hour:   hasTime ? hr : undefined,
+            minute: hasTime ? mn : undefined,
+            tzOffsetMinutes: (tz != null ? tz : 0),
+            lat: (lat != null ? lat : undefined),
+            lng: (lng != null ? lng : undefined),
+          });
+          if (chart && chart.ok) {
+            // Tropical — preserve any existing values; otherwise fill the
+            // structured `profile.astrology` block (Studio's renderer
+            // reads from there or from `om_cipher.source_data`).
+            var astro = (prof.astrology && typeof prof.astrology === 'object') ? prof.astrology : {};
+            if (!s(astro.sun)    && s(chart.tropical.sun))    astro.sun    = chart.tropical.sun;
+            if (!s(astro.moon)   && s(chart.tropical.moon))   astro.moon   = chart.tropical.moon;
+            if (!s(astro.rising) && s(chart.tropical.rising)) astro.rising = chart.tropical.rising;
+            if (s(astro.sun) || s(astro.moon) || s(astro.rising)) {
+              prof.astrology = astro;
+            }
+            // Vedic — same conservative fill pattern.
+            var vedic = (prof.vedic && typeof prof.vedic === 'object') ? prof.vedic : {};
+            if (!s(vedic.sun)       && s(chart.vedic.sun))       vedic.sun       = chart.vedic.sun;
+            if (!s(vedic.moon)      && s(chart.vedic.moon))      vedic.moon      = chart.vedic.moon;
+            if (!s(vedic.ascendant) && s(chart.vedic.ascendant)) vedic.ascendant = chart.vedic.ascendant;
+            if (s(vedic.sun) || s(vedic.moon) || s(vedic.ascendant)) {
+              prof.vedic = vedic;
+            }
+            // Preserve the structured longitudes / precision metadata
+            // alongside the strings so downstream readers can tell the
+            // values are derived (not user-typed).
+            if (!prof.astrology_longitudes && chart.longitudes) {
+              prof.astrology_longitudes = chart.longitudes;
+            }
+            if (!prof.astrology_precision && chart.precision) {
+              prof.astrology_precision = chart.precision;
+            }
+          }
+        }
+      } catch (_) { /* gracefully leave astro fields blank */ }
+    }
+  } catch (_) { /* never block the import on backfill failures */ }
+}
+try { if (typeof window !== 'undefined') window.cuBackfillSourceDataFromBirth = cuBackfillSourceDataFromBirth; } catch (_) {}
+
 function initImportModal() {
   const modal = document.getElementById('import-modal');
   const dropzone = document.getElementById('import-dropzone');
@@ -9247,6 +9402,10 @@ function processCompassImport(file) {
           }
         });
       }
+      // Backfill tropical / vedic / coordinates for older exports that
+      // never carried these fields. Conservative: never overwrites
+      // user-entered values; degrades gracefully on missing inputs.
+      try { cuBackfillSourceDataFromBirth(); } catch (_) {}
       saveState();
       document.getElementById('import-modal').classList.remove('open');
       showToast('Session imported — welcome, ' + (displayName || 'explorer'));
@@ -9381,6 +9540,11 @@ function studioLoadJSON(file) {
           }
         });
       }
+      // Backfill astrology / vedic / coordinates for older Studio
+      // exports that lack om_cipher.source_data and profile.{astrology,
+      // vedic,birth_coordinates}. Same calculators as the Compass
+      // calc-button flow; only fills blank target fields.
+      try { cuBackfillSourceDataFromBirth(); } catch (_) {}
       saveState();
 
       // Update UI
