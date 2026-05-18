@@ -7415,6 +7415,11 @@ input, textarea { font: inherit; color: inherit; }
      at module-evaluation time (no lazy lookup), so a later load leaves
      mantra/story/contemplation pending. -->
 <script src="/sdk/om_cipher_layer6_data.js"></script>
+<!-- Astronomy + Human Design engines — deterministic, local, no
+     network. Required for the OM Cipher modal's calculated identity
+     fields (Tropical/Vedic chart, Human Design bodygraph). -->
+<script src="/sdk/astronomy.js"></script>
+<script src="/sdk/human_design.js"></script>
 <!-- Canonical OM Cipher engine — exposes window.cuOmCipher.
      Loaded eagerly so the Living Profile render can call generate()
      synchronously when the modal opens. Gated by window.CU_OM_CIPHER_ENABLED. -->
@@ -14561,6 +14566,53 @@ if (document.readyState === 'loading') {
         }
         var hz = Number(fs.dominant_hz || prof.bhramari_baseline_hz || fnd.bhramari_baseline_hz || 0);
         var compassSlots = cuMergeGeneKeysSlots(pts, cd.gk_profile);
+
+        // ── Auto-compute Human Design bodygraph when missing ────────
+        // If the imported profile JSON doesn't carry a calculated
+        // human_design block but we have a birth date + time + tz,
+        // run the deterministic HD engine here so the OM Cipher record
+        // (and Living Profile foundation) gets canonical type / strategy
+        // / authority / profile / incarnation_cross. Lat/lng are NOT
+        // required for the HD engine.
+        var hdBlock = prof.human_design || fnd.human_design || null;
+        var hdHasFields = !!(hdBlock && (hdBlock.type || hdBlock.profile ||
+                                         hdBlock.authority || hdBlock.strategy));
+        if ((!hdHasFields) && birthDate && birthTime &&
+            typeof CommonUnityHumanDesign !== 'undefined') {
+          try {
+            var bdParts = String(birthDate).split('-').map(Number);
+            var btParts = String(birthTime).split(':').map(Number);
+            var bcBlock = prof.birth_coordinates || fnd.birth_coordinates || {};
+            var bcTz = Number(prof.birth_tz_offset_minutes != null
+                              ? prof.birth_tz_offset_minutes
+                              : (fnd.birth_tz_offset_minutes != null
+                                 ? fnd.birth_tz_offset_minutes
+                                 : (bcBlock.tz_offset_minutes != null
+                                    ? bcBlock.tz_offset_minutes : 0)));
+            if (bdParts[0] && bdParts[1] && bdParts[2] && !Number.isNaN(btParts[0])) {
+              var hdChart = CommonUnityHumanDesign.computeChart({
+                year: bdParts[0], month: bdParts[1], day: bdParts[2],
+                hour: btParts[0] | 0,
+                minute: btParts[1] | 0,
+                tzOffsetMinutes: Number.isFinite(bcTz) ? bcTz : 0
+              });
+              if (hdChart && hdChart.ok) {
+                hdBlock = {
+                  type:               hdChart.type,
+                  strategy:           hdChart.strategy,
+                  authority:          hdChart.authority,
+                  profile:            hdChart.profile,
+                  incarnation_cross:  hdChart.incarnation_cross,
+                  gates:              hdChart.gates,
+                  channels:           hdChart.channels,
+                  centers:            hdChart.centers,
+                  calculation_method: hdChart.method,
+                  precision:          hdChart.precision
+                };
+              }
+            }
+          } catch (_) { /* leave hdBlock as-is on any failure */ }
+        }
         // Treat as Compass-sealed only when the profile carries an
         // explicit identity name AND birth date. Otherwise the engine
         // still generates — we mark the output as a draft so the UI
@@ -14576,7 +14628,7 @@ if (document.readyState === 'loading') {
           legal_name: legalName,
           preferred_name: preferredName,
           compass: compassSlots,
-          human_design: prof.human_design || null,
+          human_design: hdBlock,
           seed_syllable: cd.seed_syllable || prof.seed_syllable || 'Om',
           bhramari_baseline: hz > 0 ? { hz: hz, metadata: null } : null,
           // Non-canonical UI hint (engine ignores it — see canonicalInputJson):

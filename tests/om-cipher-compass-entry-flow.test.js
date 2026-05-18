@@ -221,14 +221,17 @@ if (modal) {
   assert(sections.vedicAstro,    'modal contains Vedic Astrology section');
   assert(sections.additional,    'modal contains Additional Information section');
 
-  // Label honesty — after the calculator enhancement, fields are
-  // labelled per subfield ("calculated from birth data" / "requires
-  // birth time" / "requires birth time + coordinates" / "requires
-  // bodygraph calculation") instead of a single blanket "requires
-  // full chart calculation" across the section.
+  // Label honesty — after the bodygraph engine landed, Human Design
+  // fields are calculated locally from birth date + time. Labels read
+  // "calculated from birth date + time" rather than the legacy
+  // "requires bodygraph calculation" wording.
   assert(
-    /Human Design[\s\S]{0,1500}requires bodygraph/.test(modalHTML),
-    'Human Design section declares bodygraph-required subfields'
+    /Human Design[\s\S]{0,1500}calculated from birth date \+ time/.test(modalHTML),
+    'Human Design section advertises calculated-from-birth-date-+-time subfields'
+  );
+  assert(
+    !/requires bodygraph/.test(modalHTML),
+    'Human Design section no longer carries the legacy "requires bodygraph" label'
   );
   assert(
     /Vedic Astrology[\s\S]{0,1500}(Lahiri|requires birth time)/.test(modalHTML),

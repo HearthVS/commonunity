@@ -107,8 +107,8 @@ assert(/\.om-cipher-card\s*\{[^}]*gap:\s*var\(--space-[0-9]+\)/.test(indexSrc),
 // ── HD profile is calculated, not pending ─────────────────────────
 const hdProfile = document.getElementById('profile-hd-profile');
 assert(hdProfile !== null, '#profile-hd-profile exists');
-assert(hdProfile && /calculated from birth data/i.test(hdProfile.getAttribute('placeholder') || ''),
-  'HD profile placeholder says "calculated from birth data"');
+assert(hdProfile && /calculated from birth (data|date \+ time)/i.test(hdProfile.getAttribute('placeholder') || ''),
+  'HD profile placeholder advertises calculated-from-birth-* state');
 
 // HD type/strategy/authority/cross stay as bodygraph-required.
 const hdType = document.getElementById('profile-hd-type');
