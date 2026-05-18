@@ -173,8 +173,18 @@ test('Layer 5 — dominant_phoneme deterministic for every gate (not just Markus
   }
 });
 
-test('Layer 5 — cipher_name resolves to "Markus of the Autumn Gate"', () => {
-  assert.equal(blk.layer5.cipher_name, 'Markus of the Autumn Gate');
+test('Layer 5 — cipher_name resolves to the emergent "MAVARA" (gate 14 + Emotional · SP + line 2)', () => {
+  // Per om-cipher-name-generator.md the cipher name emerges from the
+  // sealed cipher layers, not the birth name. Markus' inputs (gate 14
+  // / Emotional Solar Plexus authority / line 2) produce MAVARA. The
+  // legacy temporal descriptor ("Markus of the Autumn Gate") moves to
+  // `cipher_name_temporal` so older surfaces can still read it.
+  assert.equal(blk.layer5.cipher_name, 'MAVARA');
+  assert.equal(blk.layer5.cipher_name_display, 'MA·VA·RA');
+  assert.deepEqual(blk.layer5.cipher_name_syllables, ['MA', 'VA', 'RA']);
+  assert.equal(blk.layer5.cipher_name_pronunciation, 'MAH-VAH-RAH');
+  assert.ok(blk.layer5.cipher_name_etymology, 'etymology surfaced');
+  assert.equal(blk.layer5.cipher_name_temporal, 'Markus of the Autumn Gate');
 });
 
 // ── Layer 6 — hexagonal / Lissajous / crack sigil ─────────────────────

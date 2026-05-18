@@ -524,6 +524,182 @@ def derive_cipher_name(preferred_name: Optional[str],
     return f"{who} {phrase}" if phrase else who
 
 
+# ── Emergent Cipher Name (om-cipher-name-generator.md) ─────────────────
+# The cipher name emerges from sealed cipher layers, not the birth name:
+#   Part 1 — Gate Phoneme    (dominant I Ching gate / Life Work)
+#   Part 2 — Seed Syllable   (HD authority / dominant center)
+#   Part 3 — Line Resonance  (Life Work profile line)
+# See `sdk/om_cipher.js` for the canonical JS implementation; this is the
+# Python parity port so server-side renders match the browser engine.
+
+GATE_PHONEME_TABLE = {
+    1: "AH",  2: "HU",  3: "MA",  4: "MI",  5: "MU",  6: "ME",  7: "MO",  8: "HA",
+    9: "KA", 10: "KI", 11: "KU", 12: "KE", 13: "KO", 14: "MA", 15: "GA", 16: "GI",
+    17: "NA",18: "NI",19: "NU", 20: "NE", 21: "NO", 22: "LA", 23: "LI", 24: "LU",
+    25: "SA",26: "SI",27: "SU", 28: "SE", 29: "SO", 30: "ZA", 31: "ZI", 32: "ZU",
+    33: "RA",34: "RI",35: "RU", 36: "RE", 37: "RO", 38: "DA", 39: "DI", 40: "DU",
+    41: "VA",42: "VI",43: "VU", 44: "VE", 45: "VO", 46: "BA", 47: "BI", 48: "BU",
+    49: "TA",50: "TI",51: "TU", 52: "TE", 53: "TO", 54: "THA",55: "THI",56: "THU",
+    57: "THE",58:"THO",59: "OMA",60: "OMI",61: "OMU",62: "OME",63: "OMO",64: "AHA",
+}
+
+GATE_TITLES = {
+    1: "The Creative", 2: "The Receptive", 3: "Difficulty at the Beginning",
+    4: "Youthful Folly", 5: "Waiting", 6: "Conflict", 7: "The Army",
+    8: "Holding Together", 9: "The Taming Power of the Small", 10: "Treading",
+    11: "Peace", 12: "Standstill", 13: "Fellowship",
+    14: "Possession in Great Measure", 15: "Modesty", 16: "Enthusiasm",
+    17: "Following", 18: "Work on the Decayed", 19: "Approach",
+    20: "Contemplation", 21: "Biting Through", 22: "Grace",
+    23: "Splitting Apart", 24: "Return", 25: "Innocence",
+    26: "The Taming Power of the Great", 27: "The Corners of the Mouth",
+    28: "Preponderance of the Great", 29: "The Abysmal", 30: "The Clinging",
+    31: "Influence", 32: "Duration", 33: "Retreat",
+    34: "The Power of the Great", 35: "Progress",
+    36: "Darkening of the Light", 37: "The Family", 38: "Opposition",
+    39: "Obstruction", 40: "Deliverance", 41: "Decrease", 42: "Increase",
+    43: "Breakthrough", 44: "Coming to Meet", 45: "Gathering Together",
+    46: "Pushing Upward", 47: "Oppression", 48: "The Well",
+    49: "Revolution", 50: "The Cauldron", 51: "The Arousing",
+    52: "Keeping Still", 53: "Development", 54: "The Marrying Maiden",
+    55: "Abundance", 56: "The Wanderer", 57: "The Gentle", 58: "The Joyous",
+    59: "Dispersion", 60: "Limitation", 61: "Inner Truth",
+    62: "Preponderance of the Small", 63: "After Completion",
+    64: "Before Completion",
+}
+
+# Order matters: rows are matched top-down against the normalised label
+# so `Emotional · Solar Plexus` matches Emotional before Sacral/Splenic.
+AUTHORITY_SEED_FRAGMENT_TABLE = [
+    {"match": ["root"],                          "seed": "LAM", "fragment": "LA", "label": "Root authority — LAM seed"},
+    {"match": ["emotional", "solar plexus"],     "seed": "VAM", "fragment": "VA", "label": "Emotional Solar Plexus authority — VAM seed"},
+    {"match": ["sacral"],                        "seed": "VAM", "fragment": "VA", "label": "Sacral authority — VAM seed"},
+    {"match": ["splenic", "spleen"],             "seed": "RAM", "fragment": "RA", "label": "Splenic authority — RAM seed"},
+    {"match": ["heart", "ego"],                  "seed": "YAM", "fragment": "YA", "label": "Heart/Ego authority — YAM seed"},
+    {"match": ["self", "g-center", "g center", "g/center"], "seed": "HAM", "fragment": "HA", "label": "Self/G-Center authority — HAM seed"},
+    {"match": ["throat"],                        "seed": "HAM", "fragment": "HA", "label": "Throat authority — HAM seed"},
+    {"match": ["mental", "head", "ajna"],        "seed": "AUM", "fragment": "AU", "label": "Mental authority — AUM seed"},
+    {"match": ["lunar", "none", "no authority", "reflector"], "seed": "OM",  "fragment": "O",  "label": "Lunar (no authority) — OM seed"},
+]
+
+
+def _norm_authority(label: Optional[str]) -> str:
+    if not label:
+        return ""
+    s = str(label).lower()
+    for ch in "·/_,.-":
+        s = s.replace(ch, " ")
+    return " ".join(s.split())
+
+
+def authority_seed(authority_label: Optional[str]) -> dict:
+    norm = _norm_authority(authority_label)
+    if norm:
+        for row in AUTHORITY_SEED_FRAGMENT_TABLE:
+            for tok in row["match"]:
+                if tok in norm:
+                    return row
+    # Fallback to lunar/OM (last entry).
+    return AUTHORITY_SEED_FRAGMENT_TABLE[-1]
+
+
+LINE_RESONANCE_TABLE = {
+    1: {"syllable": "KI", "archetype": "Investigator", "quality": "Foundation, inward, research"},
+    2: {"syllable": "RA", "archetype": "Hermit",       "quality": "Solar, natural talent, called out"},
+    3: {"syllable": "TE", "archetype": "Martyr",       "quality": "Trial, experiential, resilient"},
+    4: {"syllable": "SO", "archetype": "Opportunist",  "quality": "Social, network, external"},
+    5: {"syllable": "LU", "archetype": "Heretic",      "quality": "Universal, projected, field"},
+    6: {"syllable": "OM", "archetype": "Role Model",   "quality": "Transcendent, exemplar, witness"},
+}
+
+_PRON_MAP = {
+    "AH": "AH",  "HU": "HOO", "MA": "MAH", "MI": "MEE", "MU": "MOO", "ME": "MAY",
+    "MO": "MOH", "HA": "HAH", "KA": "KAH", "KI": "KEE", "KU": "KOO", "KE": "KAY",
+    "KO": "KOH", "GA": "GAH", "GI": "GHEE","NA": "NAH", "NI": "NEE", "NU": "NOO",
+    "NE": "NAY", "NO": "NOH", "LA": "LAH", "LI": "LEE", "LU": "LOO", "SA": "SAH",
+    "SI": "SEE", "SU": "SOO", "SE": "SAY", "SO": "SOH", "ZA": "ZAH", "ZI": "ZEE",
+    "ZU": "ZOO", "RA": "RAH", "RI": "REE", "RU": "ROO", "RE": "RAY", "RO": "ROH",
+    "DA": "DAH", "DI": "DEE", "DU": "DOO", "VA": "VAH", "VI": "VEE", "VU": "VOO",
+    "VE": "VAY", "VO": "VOH", "BA": "BAH", "BI": "BEE", "BU": "BOO", "TA": "TAH",
+    "TI": "TEE", "TU": "TOO", "TE": "TAY", "TO": "TOH", "THA":"TAH","THI":"TEE",
+    "THU":"TOO","THE":"TAY", "THO":"TOH", "OMA":"OH-MAH","OMI":"OH-MEE",
+    "OMU":"OH-MOO","OME":"OH-MAY","OMO":"OH-MOH","AHA":"AH-HAH",
+    "YA": "YAH", "AU": "OW",  "O":  "OH",  "OM": "OHM",
+}
+
+_VOWEL_SET = set("AEIOU")
+
+
+def _starts_with_vowel(s: str) -> bool:
+    return bool(s) and s[0].upper() in _VOWEL_SET
+
+
+def _leading_vowels(s: str) -> str:
+    i = 0
+    while i < len(s) and s[i].upper() in _VOWEL_SET:
+        i += 1
+    return s[:i].upper()
+
+
+def _join_with_collision(a: str, b: str) -> str:
+    """Drop Part 2's leading vowel cluster when Part 1's last char is the
+    same vowel — `VA + AH → VAH`; `AHA + AU → AHA`."""
+    if not a:
+        return b or ""
+    if not b:
+        return a
+    a_last = a[-1].upper()
+    if a_last in _VOWEL_SET and _starts_with_vowel(b):
+        b_head = _leading_vowels(b)
+        if b_head and b_head[0] == a_last:
+            return a + b[len(b_head):]
+    return a + b
+
+
+def generate_cipher_name(gate: Optional[int],
+                         authority: Optional[str],
+                         line: Optional[int]) -> Optional[dict]:
+    try:
+        g = int(gate) if gate is not None else None
+    except (TypeError, ValueError):
+        g = None
+    try:
+        l = int(line) if line is not None else None
+    except (TypeError, ValueError):
+        l = None
+    part1 = GATE_PHONEME_TABLE.get(g) if g is not None else None
+    seed_row = authority_seed(authority)
+    part2 = seed_row.get("fragment") if seed_row else None
+    line_row = LINE_RESONANCE_TABLE.get(l) if l is not None else None
+    part3 = line_row.get("syllable") if line_row else None
+    if not (part1 and part2 and part3):
+        return None
+    joined_ab = _join_with_collision(part1, part2)
+    name = _join_with_collision(joined_ab, part3)
+    syllables = [part1, part2, part3]
+    pronunciation = "-".join(_PRON_MAP.get(s, s.upper()) for s in syllables)
+    return {
+        "name": name,
+        "display_name": "·".join(syllables),
+        "syllables": syllables,
+        "etymology": {
+            "part_1": {
+                "source": f"Gate {g} — {GATE_TITLES.get(g, '')}".rstrip(" —"),
+                "phoneme": part1,
+            },
+            "part_2": {
+                "source": seed_row.get("label"),
+                "fragment": part2,
+            },
+            "part_3": {
+                "source": f"Line {l} — {line_row['archetype']} / {line_row['quality']}",
+                "syllable": part3,
+            },
+        },
+        "pronunciation": pronunciation,
+    }
+
+
 # ── Layer 6 — Contemplative outputs ─────────────────────────────────────
 
 def _load_layer6_assets() -> dict:
@@ -629,6 +805,47 @@ def cipher_contemplation(lunar_phase_value: Optional[int],
 
 
 # ── Entry points ────────────────────────────────────────────────────────
+
+def _resolve_emergent_cipher_name(payload: dict, gk: Optional[dict],
+                                  primary_gate: Optional[int]) -> Optional[dict]:
+    """Resolve (gate, authority, line) from the sealed payload and call the
+    emergent generator. Returns None when inputs are insufficient."""
+    hd = payload.get("human_design") or {}
+    m_gate = None
+    m_line = None
+    activations = (hd.get("activations") or {})
+    pers = (activations.get("personality") or {})
+    sun = pers.get("Sun") or {}
+    if sun.get("gate") is not None:
+        try:
+            m_gate = int(sun["gate"])
+        except (TypeError, ValueError):
+            m_gate = None
+    if sun.get("line") is not None:
+        try:
+            m_line = int(sun["line"])
+        except (TypeError, ValueError):
+            m_line = None
+    if m_gate is None and primary_gate is not None:
+        try:
+            m_gate = int(primary_gate)
+        except (TypeError, ValueError):
+            m_gate = None
+    if m_line is None and gk and gk.get("work") and gk["work"].get("line") is not None:
+        try:
+            m_line = int(gk["work"]["line"])
+        except (TypeError, ValueError):
+            m_line = None
+    if m_line is None and hd.get("profile"):
+        m = re.search(r"(\d)", str(hd["profile"]))
+        if m:
+            m_line = int(m.group(1))
+    auth = hd.get("authority")
+    if not auth:
+        # No HD authority sealed → defer to the legacy temporal descriptor.
+        return None
+    return generate_cipher_name(m_gate, auth, m_line)
+
 
 def generate(payload: dict, *, feature_flag: Optional[bool] = None,
              bhramari_flag: Optional[bool] = None,
@@ -760,12 +977,27 @@ def generate(payload: dict, *, feature_flag: Optional[bool] = None,
         "cipher_contemplation": cipher_contemplation(
             temporal["lunar_phase"], temporal["solar_quarter"]
         ) if temporal else None,
-        "cipher_name": derive_cipher_name(
-            payload.get("preferred_name")
-            or (str(payload["legal_name"]).strip().split()[0]
-                if payload.get("legal_name") else None),
-            temporal["solar_quarter"] if temporal else None,
-            temporal["lunar_phase"] if temporal else None,
+        "cipher_name": (lambda: (
+            # Prefer the emergent v1.1 cipher name (gate + authority + line);
+            # fall back to the legacy temporal descriptor when the emergent
+            # inputs are incomplete.
+            (lambda em: em["name"] if em else derive_cipher_name(
+                payload.get("preferred_name")
+                or (str(payload["legal_name"]).strip().split()[0]
+                    if payload.get("legal_name") else None),
+                temporal["solar_quarter"] if temporal else None,
+                temporal["lunar_phase"] if temporal else None,
+            ))(_resolve_emergent_cipher_name(payload, gk, primary_gate))
+        ))(),
+        "cipher_name_display": (
+            (lambda em: em["display_name"] if em else None)(
+                _resolve_emergent_cipher_name(payload, gk, primary_gate)
+            )
+        ),
+        "cipher_name_etymology": (
+            (lambda em: em["etymology"] if em else None)(
+                _resolve_emergent_cipher_name(payload, gk, primary_gate)
+            )
         ),
         "palette_rationale": (
             f"Hue {palette['primary_hue']}° from Life Path "
