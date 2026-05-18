@@ -12947,7 +12947,11 @@ if (document.readyState === 'loading') {
               '<span class="lp-hero-slot-glyph" aria-hidden="true">ॐ</span>' +
               '<span class="lp-hero-slot-label">Digital key<br>· sigil</span>' +
             '</div>' +
-            '<div class="oc-sigil-caption" data-cu-om-cipher-seed-hash>Cipher seed: <em data-cu-om-cipher-seed>pending</em></div>' +
+            // Technical cipher-seed caption — preserved in the DOM so the
+            // renderer can still populate data-cu-om-cipher-seed-full for
+            // debugging/provenance, but hidden from members. Hashes are
+            // confusing and irrelevant for human use.
+            '<div class="oc-sigil-caption" data-cu-om-cipher-seed-hash hidden aria-hidden="true" style="display:none;">Cipher seed: <em data-cu-om-cipher-seed>pending</em></div>' +
           '</div>' +
           '<div class="oc-identity">' +
             '<div class="oc-id-row">' +
@@ -12995,7 +12999,14 @@ if (document.readyState === 'loading') {
         // beside the sigil (oc-field-pattern) to avoid duplication —
         // this block carries provenance + an aria-hidden activation line
         // retained as a stable hook for downstream consumers.
-        '<div class="oc-source-block oc-seal-block">' +
+        // Technical cipher-seed + input-fingerprint block — hidden from
+        // members. Hashes are confusing and irrelevant for human use, but
+        // the elements remain in the DOM so the renderer can populate
+        // data-cu-om-cipher-seed-full / data-cu-om-cipher-input-fingerprint-full
+        // for debugging and provenance. The activation-line span inside
+        // is already aria-hidden and stays as a stable hook for downstream
+        // consumers.
+        '<div class="oc-source-block oc-seal-block" hidden aria-hidden="true" style="display:none;">' +
           '<h4 class="oc-source-title">Cipher seed <span class="oc-source-sub">· canonical deterministic hash</span></h4>' +
           '<p class="oc-seal-full" data-cu-om-cipher-seal-full title="The canonical Om Cipher seed: SHA-256 of LP:_|EX:_|SU:_|PE:_|LUN:_|SOL:_|TG:_. Same inputs → same seed, always.">Cipher seed: pending derivation.</p>' +
           '<p class="oc-seal-fingerprint" data-cu-om-cipher-input-fingerprint title="Separate SHA-256 over the raw sealed-input bundle (name + birth data + Bhramari). Distinct from the Cipher seed; useful for proving the inputs themselves match." style="margin:6px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:0.6;word-break:break-all;">Input fingerprint: pending.</p>' +

@@ -53,31 +53,34 @@ console.log('\nRevision 8 — duplicate activation removed below sigil');
 ok('below-sigil block is now the Cipher seed block (not a 2nd activation header)',
    /oc-seal-block/.test(src));
 
-console.log('\nRevision 9 — copyable cipher seed + tooltip');
-ok('seed element has canonical-seed tooltip',
-   /Same inputs\s*[→-]\s*same seed/.test(src) ||
-   /canonical Om Cipher seed/i.test(src));
-ok('renderer wires clipboard copy on the seed element',
+console.log('\nRevision 13 — technical hashes hidden from default UI');
+// The Cipher seed (short caption + full 64-char hash) and Input
+// fingerprint are confusing and irrelevant for member-facing use, so
+// they are hidden from the default Living Profile / OM Cipher panel.
+// The elements remain in the DOM so the renderer can still populate
+// data-* attributes for debugging/provenance.
+ok('sigil caption "Cipher seed:" line is hidden by default (hidden attribute)',
+   /data-cu-om-cipher-seed-hash[^>]*\bhidden\b/.test(src));
+ok('sigil caption "Cipher seed:" line is hidden by default (display:none)',
+   /data-cu-om-cipher-seed-hash[^>]*display:\s*none/i.test(src));
+ok('oc-seal-block (Cipher seed + Input fingerprint surfaces) is hidden by default',
+   /oc-seal-block[^>]*\bhidden\b/.test(src) ||
+   /oc-source-block[^"]*oc-seal-block[^>]*\bhidden\b/.test(src));
+ok('oc-seal-block uses display:none so it never paints in the UI',
+   /oc-seal-block[^>]*display:\s*none/i.test(src));
+
+console.log('\nRevision 13 — internal data preserved for debugging');
+// Even though the surfaces are hidden, the renderer still writes the
+// canonical seed and input fingerprint to data attributes on the same
+// elements so debugging tools (and downstream consumers) can read them.
+ok('renderer still wires clipboard copy / seed-full data attribute on the seed element',
    /navigator\.clipboard/.test(src) && /data-cu-om-cipher-seed-full/.test(src));
-ok('full 64-char seed hash surface present in below-sigil block',
+ok('full 64-char seed hash surface still present in DOM (for debugging)',
    /data-cu-om-cipher-seal-full/.test(src));
-
-console.log('\nRevision 11 — Cipher seed vs Input fingerprint disambiguation');
-ok('caption labels the visible hash as "Cipher seed" (not Cipher seal)',
-   /Cipher seed:\s*<em data-cu-om-cipher-seed>/.test(src));
-ok('lower block title says "Cipher seed · canonical deterministic hash"',
-   /Cipher seed\s*<span[^>]*>·\s*canonical deterministic hash/.test(src));
-ok('separate "Input fingerprint" surface exists below the seed',
+ok('input fingerprint surface still present in DOM (for debugging)',
    /data-cu-om-cipher-input-fingerprint(?:\b|")/.test(src));
-ok('renderer paints rec.input_hash into the input fingerprint surface',
+ok('renderer still paints rec.input_hash into the input fingerprint surface',
    /data-cu-om-cipher-input-fingerprint[\s\S]{0,400}rec\.input_hash/.test(src));
-
-console.log('\nRevision 12 — visible canonical seed under "Cipher seed:" label');
-ok('renderer prefixes the seal-full text with "Cipher seed: " so the hash is locatable',
-   /sealFullEl\.textContent\s*=\s*['"`]?Cipher seed:\s*['"`]?\s*\+\s*fullHash|sealLabel\s*=\s*['"`]Cipher seed:\s/.test(src));
-ok('template placeholder is also labelled (no bare "Pending derivation.")',
-   /Cipher seed:\s*pending derivation/i.test(src) &&
-   !/>\s*Pending derivation\.\s*</.test(src));
 
 console.log('\nRevision 10 — temporal gate label uses local birth time');
 ok('engine temporal_gate label uses "local birth time" wording',

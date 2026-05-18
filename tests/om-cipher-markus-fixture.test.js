@@ -344,83 +344,66 @@ test('narrative surface renders the Layer 6 archetypal story seed (keyed 8_6)', 
     'story content must not contain UI instruction text');
 });
 
-// ── 11. Cipher seed surface = canonical engine seed (NOT input_hash).
-//        For Markus the canonical seed is sha256("LP:22|EX:8|SU:6|PE:2|
-//        LUN:6|SOL:3|TG:1") = 58b2ea61…f388784.
-test('cipher seed surface shows canonical engine seed (58b2ea61…f388784)', () => {
+// ── 11. Cipher seed: canonical engine seed (NOT input_hash) is preserved
+//        on data-* attributes for debugging/provenance, but the
+//        member-facing UI does NOT display it. For Markus the canonical
+//        seed is sha256("LP:22|EX:8|SU:6|PE:2|LUN:6|SOL:3|TG:1")
+//        = 58b2ea61…f388784.
+test('cipher seed preserved on data-* attributes for debugging (canonical 58b2ea61…f388784)', () => {
   const CANONICAL_SEED = '58b2ea613f7d3c7522bf0df86e1826e4200ab64a7f31c319810eb3701f388784';
   const win = makeWindow(FIXTURE);
   const r = makeRenderer(win);
   const sec = buildSection();
   r.render({}, sec);
-  // Short caption form: <first8>…<last4>.
+  // Internal/debug surface: the short seed element still carries the
+  // canonical seed on data-cu-om-cipher-seed-full so debugging tooling
+  // can read it even though the visible caption is hidden.
   const seedShort = sec.querySelector('[data-cu-om-cipher-seed]');
-  assert.equal(seedShort.textContent,
-    CANONICAL_SEED.slice(0, 8) + '…' + CANONICAL_SEED.slice(-4),
-    'short cipher seed must derive from canonical engine seed, not input fingerprint');
   assert.equal(seedShort.getAttribute('data-cu-om-cipher-seed-full'), CANONICAL_SEED,
     'data-cu-om-cipher-seed-full carries the full canonical seed');
-  // Full 64-char surface — explicitly prefixed `Cipher seed:` so the
-  // hash is locatable as text (label + value on one line). Without
-  // the prefix the bare hash was easy to miss in live acceptance
-  // scrapes that landed only on the short caption / wrong region.
+  // The full 64-char seal element still exists in the DOM and carries
+  // the bare canonical hash on its data attribute, even though the
+  // surrounding oc-seal-block is hidden from members in the template.
   const sealFull = sec.querySelector('[data-cu-om-cipher-seal-full]');
-  assert.equal(sealFull.textContent, 'Cipher seed: ' + CANONICAL_SEED,
-    'oc-seal-full text is the labelled canonical Om Cipher seed');
   assert.equal(sealFull.getAttribute('data-cu-om-cipher-seed-full'), CANONICAL_SEED,
-    'oc-seal-full carries the bare hash on data-cu-om-cipher-seed-full');
+    'oc-seal-full carries the bare canonical hash on data-cu-om-cipher-seed-full');
 });
 
-// ── 11b. Visible OM panel text MUST include the canonical seed prefix
-//         `58b2ea61` somewhere in the rendered section text. This is
-//         the live-acceptance regression: PR #16 passed unit tests but
-//         the live page text did not surface `58b2ea61` because the
-//         full-hash block had no label and a low-contrast style; the
-//         scraper missed it. A literal substring check on the section's
-//         text content pins the visible-text contract directly.
-test('visible OM panel text contains canonical seed prefix `58b2ea61`', () => {
-  const win = makeWindow(FIXTURE);
-  const r = makeRenderer(win);
-  const sec = buildSection();
-  r.render({}, sec);
-  // Collect all visible text inside the section, mimicking what a
-  // textContent / innerText scrape would yield.
-  function collectText(el) {
-    if (!el) return '';
-    let out = (el.textContent != null ? el.textContent : '') + ' ';
-    for (const c of (el.children || [])) out += collectText(c) + ' ';
-    return out;
-  }
-  const visible = collectText(sec);
-  assert.ok(/58b2ea61/.test(visible),
-    'canonical seed prefix `58b2ea61` must appear in visible OM panel text; ' +
-    'got (truncated): ' + visible.slice(0, 800));
-  // And it must appear with a label so a human + a text scraper can
-  // tell what they are looking at.
-  assert.ok(/Cipher seed:\s*58b2ea61/.test(visible),
-    'canonical seed must appear under a `Cipher seed:` label in visible text; ' +
-    'got (truncated): ' + visible.slice(0, 800));
+// ── 11b. The default member-facing OM Cipher panel must NOT display
+//         `Cipher seed:`, `Input fingerprint:`, the canonical-seed prefix
+//         `58b2ea61`, or the full input fingerprint. These technical
+//         hashes are preserved on data-* attributes for debugging only.
+test('default member-facing UI hides Cipher seed / Input fingerprint surfaces', () => {
+  // The template marks the caption + oc-seal-block as hidden so they
+  // never paint in the member-facing UI. Verify the studio.html source
+  // carries that contract.
+  assert.ok(/data-cu-om-cipher-seed-hash[^>]*\bhidden\b/.test(html),
+    'sigil caption (data-cu-om-cipher-seed-hash) must be marked hidden in template');
+  assert.ok(/data-cu-om-cipher-seed-hash[^>]*display:\s*none/i.test(html),
+    'sigil caption must use display:none in template');
+  assert.ok(/oc-seal-block[^>]*\bhidden\b/.test(html),
+    'oc-seal-block (Cipher seed + Input fingerprint) must be marked hidden in template');
+  assert.ok(/oc-seal-block[^>]*display:\s*none/i.test(html),
+    'oc-seal-block must use display:none in template');
 });
 
-// ── 12. Input fingerprint surfaces rec.input_hash, clearly separate
-//        from the canonical Cipher seed. ──────────────────────────
-test('input fingerprint surface = rec.input_hash, labelled "Input fingerprint:"', () => {
+// ── 12. Input fingerprint preserved on data-* for debugging, distinct
+//        from the canonical Cipher seed, but not surfaced in default UI.
+test('input fingerprint preserved on data-* attribute (distinct from canonical seed)', () => {
   const win = makeWindow(FIXTURE);
   const r = makeRenderer(win);
   const sec = buildSection();
   r.render({}, sec);
 
   // Re-derive what the engine should produce for the fixture so we can
-  // compare against the rendered surface.
+  // compare against the data attribute on the (hidden) surface.
   const input = r.buildInput(null);
   const rec = om.generate(input, { featureFlag: true });
   const fp = sec.querySelector('[data-cu-om-cipher-input-fingerprint]');
   assert.ok(rec.input_hash && rec.input_hash.length === 64,
     'engine input_hash present');
-  assert.ok(fp.textContent.startsWith('Input fingerprint: '),
-    'fingerprint surface prefixed by explicit label');
   assert.equal(fp.getAttribute('data-cu-om-cipher-input-fingerprint-full'),
-    rec.input_hash, 'fingerprint surface stores full input_hash');
+    rec.input_hash, 'fingerprint surface stores full input_hash on data attribute');
   // Critically — the input fingerprint must NOT equal the canonical seed.
   assert.notEqual(rec.input_hash, rec.seed,
     'input fingerprint is distinct from canonical Cipher seed');
