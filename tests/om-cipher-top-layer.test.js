@@ -131,18 +131,24 @@ assert(
     /data-profile="gene_keys_purpose"/.test(indexSrc),
   'Gene Keys activation-sequence readouts (life_work / evolution / radiance / purpose) present'
 );
-// After the calculator enhancement, placeholders use precise per-field
-// states. Tropical/Vedic/HD fields that ARE calculated read "calculated
-// from birth data"; the still-pending Human Design subfields use the
-// dedicated "requires bodygraph" label; chart-time/coords requirements
-// say "requires birth time" or "requires birth time + coordinates".
+// After the bodygraph engine landed, all OM Cipher identity fields
+// are computed locally. Placeholders use precise per-field states:
+// Tropical / Vedic / HD profile fields read "calculated from birth
+// data" or "calculated from birth date + time" (HD-specific). The
+// older "requires bodygraph calculation" wording is gone — Type /
+// Strategy / Authority / Profile / Incarnation Cross are derived
+// from the deterministic engine in sdk/human_design.js.
 assert(
   /calculated from birth data/.test(indexSrc),
   'derived placeholders use "calculated from birth data" wording'
 );
 assert(
-  /requires bodygraph/.test(indexSrc),
-  'bodygraph-requiring HD subfields use "requires bodygraph" wording'
+  !/requires bodygraph/.test(indexSrc),
+  'bodygraph engine has landed — no field still says "requires bodygraph"'
+);
+assert(
+  /calculated from birth date \+ time/.test(indexSrc),
+  'HD subfields advertise their birth-date + time precision label'
 );
 
 // Vedic / sidereal — these are now derived locally via approximate
@@ -158,8 +164,8 @@ assert(
   'Vedic Astrology section declares Lahiri ayanamsha or birth-time requirement'
 );
 assert(
-  /Human Design[\s\S]{0,1500}requires bodygraph/.test(indexSrc),
-  'Human Design section declares bodygraph-required subfields (Type / Strategy / Authority / Cross)'
+  /Human Design[\s\S]{0,1500}calculated from birth date \+ time/.test(indexSrc),
+  'Human Design section advertises that Type / Strategy / Authority / Cross are calculated from birth date + time'
 );
 assert(
   !/Optional, fillable in your own time/.test(indexSrc),

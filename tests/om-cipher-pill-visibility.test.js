@@ -256,14 +256,19 @@ if (modal) {
   );
 
   // Label honesty: HD / Vedic must precisely label what is calculated
-  // vs what requires a fuller engine. After the calculator enhancement,
-  // we no longer slap a single "requires full chart calculation" label
-  // across whole sections — each subfield is now labelled with one of:
+  // vs what requires a fuller engine. After the bodygraph engine
+  // landed, Human Design fields are derived locally from birth date +
+  // time (no lat/lng needed). Each subfield label reads one of:
+  //   "calculated from birth date + time" /
   //   "calculated from birth data" / "requires birth time" /
-  //   "requires birth time + coordinates" / "requires bodygraph calculation".
+  //   "requires birth time + coordinates".
   assert(
-    /Human Design[\s\S]{0,1500}requires bodygraph/.test(modalHTML),
-    'Human Design section declares bodygraph-required subfields'
+    /Human Design[\s\S]{0,1500}calculated from birth date \+ time/.test(modalHTML),
+    'Human Design section advertises calculated-from-birth-date-+-time subfields'
+  );
+  assert(
+    !/requires bodygraph/.test(modalHTML),
+    'Human Design section no longer carries the legacy "requires bodygraph" label'
   );
   assert(
     /Vedic Astrology[\s\S]{0,400}(Lahiri|requires birth time)/.test(modalHTML),

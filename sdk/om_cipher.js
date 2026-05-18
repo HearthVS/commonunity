@@ -666,6 +666,16 @@ function generate(input, options) {
     hd_authority: input.human_design && input.human_design.authority || null,
     hd_profile: input.human_design && input.human_design.profile || null,
     hd_definition: input.human_design && input.human_design.definition || null,
+    hd_strategy: input.human_design && input.human_design.strategy || null,
+    hd_incarnation_cross: input.human_design && (
+      (input.human_design.incarnation_cross && input.human_design.incarnation_cross.label) ||
+      (typeof input.human_design.incarnation_cross === 'string'
+        ? input.human_design.incarnation_cross : null)
+    ) || null,
+    hd_gates: input.human_design && input.human_design.gates || null,
+    hd_channels: input.human_design && input.human_design.channels || null,
+    hd_centers: input.human_design && input.human_design.centers || null,
+    hd_calculation_method: input.human_design && input.human_design.calculation_method || null,
     seed_syllable: input.seed_syllable || null,
     lunar_phase: temporal ? {
       value: temporal.lunar_phase,

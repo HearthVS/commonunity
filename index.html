@@ -3998,6 +3998,7 @@ body.companion-mode .companion-mode-banner { display: block; }
      ============================================================ -->
 <script src="/sdk/genekeys.js"></script>
 <script src="/sdk/astronomy.js"></script>
+<script src="/sdk/human_design.js"></script>
 <script>
 'use strict';
 
@@ -4716,28 +4717,62 @@ function calcIdentityChartFromState() {
   fill('vedic_moon',       'profile-vedic-moon',      chart.vedic.moon);
   fill('vedic_ascendant',  'profile-vedic-ascendant', chart.vedic.ascendant);
 
-  // ── Human Design Profile — personality Sun line / Design Sun line.
-  // This uses the same JD + ±88° construction the Gene Keys engine
-  // already runs, but reads the line number off the gate-wheel
-  // position. Requires birth time to be meaningful — without one,
-  // the line is the noon-approximation line which can be wrong by
-  // ±1, so we leave the field alone when no birth time is present.
-  if (hasTime && typeof CommonUnityGK !== 'undefined') {
+  // ── Human Design bodygraph — full chart from the deterministic
+  // engine in /sdk/human_design.js (CommonUnityHumanDesign). Computes
+  // Personality + Design planetary activations, defined gates,
+  // channels, centers, then derives Type / Strategy / Authority /
+  // Profile / Incarnation Cross. Requires birth time + birth date to
+  // be meaningful; Type/Authority depend on the full ±88° construction
+  // which itself depends on a known birth instant. Without a birth
+  // time we leave the bodygraph-derived fields blank.
+  if (hasTime && typeof CommonUnityHumanDesign !== 'undefined') {
     try {
-      var localUTC = new Date(Date.UTC(yr, mo - 1, dy, hr, mn, 0));
-      localUTC = new Date(localUTC.getTime() - (tz !== null ? tz : 0) * 60000);
-      var jd = CommonUnityGK.dateToJD(localUTC);
-      var sunLon = CommonUnityGK.jdToSolarLongitude(jd);
-      var persSun = CommonUnityGK.longitudeToGateLine(sunLon);
-      var designSunLon = ((sunLon - 88) + 360) % 360;
-      var designSun = CommonUnityGK.longitudeToGateLine(designSunLon);
-      var hdProfile = persSun.line + '/' + designSun.line;
-      if (!(state.profile.human_design_profile || '').trim()) {
-        state.profile.human_design_profile = hdProfile;
-        var hpEl = document.getElementById('profile-hd-profile');
-        if (hpEl) hpEl.value = hdProfile;
+      var hdChart = CommonUnityHumanDesign.computeChart({
+        year: yr, month: mo, day: dy,
+        hour: hr, minute: mn,
+        tzOffsetMinutes: (tz !== null ? tz : 0)
+      });
+      if (hdChart && hdChart.ok) {
+        function fillHd(key, elId, val) {
+          if (!val) return;
+          if (!(state.profile[key] || '').trim()) {
+            state.profile[key] = val;
+            var el = document.getElementById(elId);
+            if (el) el.value = val;
+          }
+        }
+        fillHd('human_design_profile',   'profile-hd-profile',   hdChart.profile);
+        fillHd('human_design_type',      'profile-hd-type',      hdChart.type);
+        fillHd('human_design_strategy',  'profile-hd-strategy',  hdChart.strategy);
+        fillHd('human_design_authority', 'profile-hd-authority', hdChart.authority);
+        fillHd('human_design_incarnation_cross', 'profile-hd-cross',
+               hdChart.incarnation_cross && hdChart.incarnation_cross.label);
+
+        // Structured bodygraph block — picked up by the OM Cipher
+        // input builder (foundation.human_design + profile.human_design)
+        // and round-trips through JSON export/import.
+        state.profile.human_design = {
+          type:               hdChart.type,
+          strategy:           hdChart.strategy,
+          authority:          hdChart.authority,
+          profile:            hdChart.profile,
+          incarnation_cross:  hdChart.incarnation_cross,
+          gates:              hdChart.gates,
+          channels:           hdChart.channels,
+          centers:            hdChart.centers,
+          calculation_method: hdChart.method,
+          precision:          hdChart.precision
+        };
+        state.profile.foundation = state.profile.foundation || {};
+        state.profile.foundation.human_design = {
+          type:      hdChart.type,
+          profile:   hdChart.profile,
+          authority: hdChart.authority,
+          strategy:  hdChart.strategy,
+          incarnation_cross: hdChart.incarnation_cross && hdChart.incarnation_cross.label
+        };
       }
-    } catch (_) { /* leave HD profile blank on any failure */ }
+    } catch (_) { /* leave HD fields blank on any failure */ }
   }
 
   // Persist the structured chart longitudes so downstream code can
@@ -5084,8 +5119,15 @@ function loadJSON(file) {
       });
       // Flatten nested human_design/astrology back to the input-bound keys.
       const hd = state.profile.human_design || {};
-      if (hd.type    && !state.profile.human_design_type)    state.profile.human_design_type    = hd.type;
-      if (hd.profile && !state.profile.human_design_profile) state.profile.human_design_profile = hd.profile;
+      if (hd.type      && !state.profile.human_design_type)      state.profile.human_design_type      = hd.type;
+      if (hd.profile   && !state.profile.human_design_profile)   state.profile.human_design_profile   = hd.profile;
+      if (hd.strategy  && !state.profile.human_design_strategy)  state.profile.human_design_strategy  = hd.strategy;
+      if (hd.authority && !state.profile.human_design_authority) state.profile.human_design_authority = hd.authority;
+      const hdCrossLabel = (hd.incarnation_cross && hd.incarnation_cross.label)
+        || (typeof hd.incarnation_cross === 'string' ? hd.incarnation_cross : '');
+      if (hdCrossLabel && !state.profile.human_design_incarnation_cross) {
+        state.profile.human_design_incarnation_cross = hdCrossLabel;
+      }
       const astro = state.profile.astrology || {};
       if (astro.sun    && !state.profile.astrology_sun)    state.profile.astrology_sun    = astro.sun;
       if (astro.moon   && !state.profile.astrology_moon)   state.profile.astrology_moon   = astro.moon;
@@ -7042,23 +7084,23 @@ function initProfileModal() {
         <button class="info-button" type="button" id="hd-info-btn" aria-label="About Human Design fields" aria-expanded="false" aria-controls="hd-info-disclosure">i</button>
       </div>
       <div class="info-disclosure" id="hd-info-disclosure" role="region" aria-label="Human Design explanation">
-        Profile (e.g. 2/4) is calculated locally from personality + design Sun lines once birth time is set. Type, Strategy, Authority, and Incarnation Cross require a full bodygraph engine and can be filled in from an existing reading.
+        Profile, Type, Strategy, Authority, and Incarnation Cross are calculated locally from your birth date, time, and timezone offset using a deterministic bodygraph engine (Personality + Design positions for 13 planetary activations, defined gates, channels, and centers). Birth time is required; latitude/longitude are not. You can override any field manually — the calculator only fills blanks.
       </div>
       <div class="field-group">
-        <label class="field-label">Profile <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth data (requires birth time)</span></label>
-        <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile — calculated from birth data" data-profile="human_design_profile" autocomplete="off">
+        <label class="field-label">Profile <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
+        <input class="field-input" id="profile-hd-profile" type="text" placeholder="Profile — calculated from birth date + time" data-profile="human_design_profile" autocomplete="off">
       </div>
       <div class="field-group">
-        <label class="field-label">Type · Strategy · Authority <span style="color:var(--text-faint);font-size:var(--text-xs);">— requires bodygraph calculation</span></label>
+        <label class="field-label">Type · Strategy · Authority <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
         <div class="calc-row">
-          <input class="field-input" id="profile-hd-type" type="text" placeholder="Type (e.g. Generator)" data-profile="human_design_type" autocomplete="off">
-          <input class="field-input" id="profile-hd-strategy" type="text" placeholder="Strategy — requires bodygraph" data-profile="human_design_strategy" autocomplete="off">
+          <input class="field-input" id="profile-hd-type" type="text" placeholder="Type — calculated from birth date + time" data-profile="human_design_type" autocomplete="off">
+          <input class="field-input" id="profile-hd-strategy" type="text" placeholder="Strategy — calculated from birth date + time" data-profile="human_design_strategy" autocomplete="off">
         </div>
-        <input class="field-input" id="profile-hd-authority" type="text" placeholder="Authority — requires bodygraph" data-profile="human_design_authority" style="margin-top:var(--space-2);" autocomplete="off">
+        <input class="field-input" id="profile-hd-authority" type="text" placeholder="Authority — calculated from birth date + time" data-profile="human_design_authority" style="margin-top:var(--space-2);" autocomplete="off">
       </div>
       <div class="field-group">
-        <label class="field-label">Incarnation Cross <span style="color:var(--text-faint);font-size:var(--text-xs);">— requires bodygraph calculation</span></label>
-        <input class="field-input" id="profile-hd-cross" type="text" placeholder="Incarnation Cross — requires bodygraph" data-profile="human_design_incarnation_cross" autocomplete="off">
+        <label class="field-label">Incarnation Cross <span style="color:var(--text-faint);font-size:var(--text-xs);">— calculated from birth date + time</span></label>
+        <input class="field-input" id="profile-hd-cross" type="text" placeholder="Incarnation Cross — calculated from birth date + time" data-profile="human_design_incarnation_cross" autocomplete="off">
       </div>
     </div>
 
