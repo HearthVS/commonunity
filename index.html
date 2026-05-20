@@ -223,6 +223,132 @@ html {
 }
 
 /* ============================================================
+   OM CIPHER PALETTE LAYER
+   When initThresholdContract finds a completed contract it sets
+   data-cipher-palette="active" on <html> together with the raw
+   --cipher-primary / --cipher-secondary / --cipher-accent tokens.
+   These rules derive a small family of bloom / tint / border
+   tokens from that palette and bind them to cOMpass surfaces so
+   the person's palette is visible (not just an accent).
+
+   Restraint: every tint is mixed with the current theme's dark
+   neutral (--bg / --card / --card-alt / --border) so legibility
+   on body text and labels is preserved. We never reassign --text
+   or --text-muted from the palette.
+
+   Semantic quadrant tokens (--work / --lens / --field / --call)
+   are left untouched on purpose — they carry meaning.
+   ============================================================ */
+[data-cipher-palette="active"] {
+  /* Soft field-blooms behind the compass screen */
+  --cipher-bg-bloom-primary:   color-mix(in srgb, var(--cipher-primary,   var(--setup-accent)) 22%, transparent);
+  --cipher-bg-bloom-secondary: color-mix(in srgb, var(--cipher-secondary, var(--setup-accent)) 16%, transparent);
+  --cipher-bg-bloom-accent:    color-mix(in srgb, var(--cipher-accent,    var(--setup-accent)) 14%, transparent);
+
+  /* Panel / surface tints — kept under 18% to preserve text contrast */
+  --cipher-panel-tint:        color-mix(in srgb, var(--card)     86%, var(--cipher-primary,   var(--setup-accent)) 14%);
+  --cipher-panel-tint-alt:    color-mix(in srgb, var(--card-alt) 84%, var(--cipher-secondary, var(--setup-accent)) 16%);
+  --cipher-panel-border:      color-mix(in srgb, var(--border)   55%, var(--cipher-primary,   var(--setup-accent)) 45%);
+  --cipher-panel-border-soft: color-mix(in srgb, var(--border)   75%, var(--cipher-secondary, var(--setup-accent)) 25%);
+
+  /* Header / banner / pill — slightly stronger because they sit
+     on top of dark neutrals and read as decorative chrome */
+  --cipher-header-glow:       color-mix(in srgb, var(--cipher-primary,   var(--setup-accent)) 28%, transparent);
+  --cipher-header-border:     color-mix(in srgb, var(--border)   40%, var(--cipher-primary,   var(--setup-accent)) 60%);
+  --cipher-active-surface:    color-mix(in srgb, var(--card)     78%, var(--cipher-primary,   var(--setup-accent)) 22%);
+
+  /* Button gradient — primary call-to-action surface */
+  --cipher-button-gradient:   linear-gradient(135deg,
+                                 var(--cipher-primary,   var(--setup-accent)) 0%,
+                                 color-mix(in srgb, var(--cipher-secondary, var(--cipher-primary, var(--setup-accent))) 60%, var(--cipher-primary, var(--setup-accent))) 100%);
+
+  /* Re-tint the existing card-glow tokens so .compass-card.active
+     bloom inherits the palette without changing the rule itself */
+  --card-glow:        color-mix(in srgb, var(--cipher-primary,   var(--setup-accent)) 18%, transparent);
+  --card-glow-strong: color-mix(in srgb, var(--cipher-secondary, var(--cipher-primary, var(--setup-accent))) 28%, transparent);
+}
+
+/* Field-bloom behind the compass screen: two soft radial washes
+   anchored top-left (primary) and bottom-right (secondary). The
+   washes layer on top of the existing --bg-gradient so the dark
+   neutral underneath keeps text legible. */
+[data-cipher-palette="active"] body {
+  background-image:
+    radial-gradient(ellipse at 12% 8%,  var(--cipher-bg-bloom-primary)   0%, transparent 55%),
+    radial-gradient(ellipse at 88% 92%, var(--cipher-bg-bloom-secondary) 0%, transparent 60%),
+    var(--bg-gradient, none);
+}
+
+/* Compass header — palette-tinted underline + a subtle glow above
+   the border. Title text stays --text, so contrast is unchanged. */
+[data-cipher-palette="active"] #screen-compass .compass-header {
+  border-bottom-color: var(--cipher-header-border);
+  box-shadow: 0 1px 0 0 var(--cipher-header-glow);
+}
+
+/* Compass cards — palette-tinted surface + border. Card text and
+   semantic accent-bar (--work / --lens / etc.) are untouched, so
+   the four-direction semantics remain readable. */
+[data-cipher-palette="active"] #screen-compass .compass-card {
+  background: var(--cipher-panel-tint);
+  border-color: var(--cipher-panel-border-soft);
+}
+[data-cipher-palette="active"] #screen-compass .compass-card-header {
+  border-bottom-color: var(--cipher-panel-border-soft);
+}
+
+/* Layer tabs strip — picks up the secondary tint */
+[data-cipher-palette="active"] #screen-compass .layer-tabs {
+  background: var(--cipher-panel-tint-alt);
+  border-bottom-color: var(--cipher-panel-border-soft);
+}
+[data-cipher-palette="active"] #screen-compass .layer-tab-btn.active {
+  background: var(--cipher-active-surface);
+  border-color: var(--cipher-panel-border);
+}
+
+/* Layer panels / Q&A / facilitator — soft secondary wash so the
+   panel reads as part of the same field, never bright enough to
+   compete with form text */
+[data-cipher-palette="active"] #screen-compass .layer-panel {
+  background: color-mix(in srgb, var(--cipher-panel-tint) 70%, transparent);
+}
+[data-cipher-palette="active"] #screen-compass .questions-list {
+  background: color-mix(in srgb, var(--facilitator-bg) 70%, var(--cipher-panel-tint) 30%);
+  border-color: var(--cipher-panel-border-soft);
+}
+[data-cipher-palette="active"] #screen-compass .facilitator-panel {
+  background: color-mix(in srgb, var(--facilitator-bg) 80%, var(--cipher-secondary, var(--setup-accent)) 20%);
+  border-top-color: var(--cipher-panel-border-soft);
+}
+
+/* OM Cipher pill — slightly stronger so it reads as the palette's
+   signature affordance */
+[data-cipher-palette="active"] .om-cipher-pill-btn {
+  background: color-mix(in srgb, var(--cipher-primary, var(--setup-accent)) 14%, transparent);
+  border-color: var(--cipher-header-border);
+}
+[data-cipher-palette="active"] .om-cipher-pill-btn:hover,
+[data-cipher-palette="active"] .om-cipher-pill-btn:focus-visible {
+  background: color-mix(in srgb, var(--cipher-primary, var(--setup-accent)) 24%, transparent);
+}
+
+/* Primary calc/CTA buttons — gradient wash. Foreground stays the
+   button's own color (white/inherit) so legibility is preserved. */
+[data-cipher-palette="active"] #screen-compass .btn-primary,
+[data-cipher-palette="active"] #screen-compass .btn-calc {
+  background: var(--cipher-button-gradient);
+  border: 1px solid var(--cipher-header-border);
+}
+
+/* Companion mode banner — palette-tinted while keeping the field
+   color for the legend text (still readable on the tinted band) */
+[data-cipher-palette="active"] .companion-mode-banner {
+  background: color-mix(in srgb, var(--cipher-panel-tint) 70%, var(--field) 8%);
+  border-bottom-color: var(--cipher-panel-border-soft);
+}
+
+/* ============================================================
    BASE STYLES
    ============================================================ */
 body {
@@ -7229,6 +7355,17 @@ function initThresholdContract() {
   }
   if (palette.secondary)       rootEl.style.setProperty('--cipher-secondary', palette.secondary);
   if (palette.seasonal_accent) rootEl.style.setProperty('--cipher-accent',   palette.seasonal_accent);
+
+  // Activation flag. The CSS rules under [data-cipher-palette="active"]
+  // derive bloom / tint / border / glow tokens from --cipher-primary /
+  // --cipher-secondary / --cipher-accent and bind them to cOMpass
+  // surfaces (background, header, cards, layer tabs/panels, OM Cipher
+  // pill, primary buttons, companion banner). Without this attribute
+  // those rules don't apply, so users without a contract see the
+  // classic theme untouched.
+  if (palette.primary || palette.secondary || palette.seasonal_accent) {
+    rootEl.dataset.cipherPalette = 'active';
+  }
 
   // 3. Hide manual atmosphere chooser; replace with a compact palette
   // explainer that names the inherited Cipher palette.
