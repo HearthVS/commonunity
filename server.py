@@ -767,13 +767,15 @@ async def threshold_name_essay(req: NameEssayRequest):
     if not full_name:
         raise HTTPException(status_code=400, detail="full_name required")
 
-    first_name = full_name.split()[0] if full_name.split() else full_name
-    birth_date = (req.birth_date or "").strip()
+    tokens = full_name.split()
+    given_name = tokens[0] if tokens else full_name
 
     user_msg = (
-        f"Full name: {full_name}\n"
-        f"First name (use this when speaking directly): {first_name}\n"
-        f"Birth date (quiet context only — do not interpret): {birth_date or 'not provided'}\n\n"
+        f"Given name for essay: {given_name}\n"
+        "Do not mention, analyze, or speculate about any surname or family name. "
+        "Only the given name above is in scope for this feature.\n"
+        "Do not mention the person's age, years lived, decades, or any numeric duration of life. "
+        "No age references of any kind.\n\n"
         "Write the reflection now. 300-400 words. Plain text. Blank lines between paragraphs."
     )
 
