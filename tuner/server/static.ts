@@ -6,9 +6,15 @@ import path from "node:path";
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    console.error(
+      `[static] build directory missing: ${distPath} — serving placeholder. Did 'npm run build' run?`,
     );
+    app.get("/{*path}", (_req, res) => {
+      res.status(503).type("text/plain").send(
+        "Tuner build directory is missing. The deployment did not include client assets.",
+      );
+    });
+    return;
   }
 
   // Serve instrument images and audio from /assets
