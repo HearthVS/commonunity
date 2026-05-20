@@ -7332,11 +7332,13 @@ function initWelcome() {
   // Show on first ever visit. Returning users (welcome seen, or
   // threshold already completed) skip the overlay. Users arriving
   // from /threshold?threshold=done also skip — the threshold itself
-  // was their welcome.
+  // was their welcome. Guides arriving via /?guide=1 or /?setup=1
+  // also skip — the setup page is their first visible surface.
   const seen = storage.get('cu_welcome_seen');
   const arrivedFromThreshold = new URLSearchParams(window.location.search).get('threshold') === 'done';
   const thresholdDone = !!(window.ThresholdGate && window.ThresholdGate.isCompleted());
-  if (!seen && !arrivedFromThreshold && !thresholdDone) {
+  const guideSetup = isGuideSetupRequested();
+  if (!seen && !arrivedFromThreshold && !thresholdDone && !guideSetup) {
     overlay.classList.add('open');
   } else if (arrivedFromThreshold) {
     storage.set('cu_welcome_seen', '1');
