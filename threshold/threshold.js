@@ -2,13 +2,14 @@
  *
  * cOMpass onboarding threshold — bolt-on module.
  *
- * Six-state flow:
+ * Seven-state flow:
  *   1. name-threshold
  *   2. interim-chamber
  *   3. name-essay
  *   4. reflection
  *   5. identity-completion
- *   6. prepared-setup    (handed off to /  ?threshold=done)
+ *   6. welcome-landing   (soft landing chamber — "Welcome to your cOMpass")
+ *   7. prepared-setup    (handed off to /  ?threshold=done&enter=compass)
  *
  * The module owns its own state machine and DOM. The only thing it
  * exposes to the rest of the codebase is the OM Cipher contract,
@@ -33,17 +34,19 @@
     'name-essay',
     'reflection',
     'identity-completion',
+    'welcome-landing',
     'prepared-setup'
   ];
 
   // Progressive palette intensity per step. Brief: screen 1 neutral,
-  // screen 2 subtle, screens 3-4 moderate, screens 5-6 established.
+  // screen 2 subtle, screens 3-4 moderate, screens 5-7 established.
   const PALETTE_STAGE_BY_STEP = {
     'name-threshold': 0,
     'interim-chamber': 1,
     'name-essay': 2,
     'reflection': 2,
     'identity-completion': 3,
+    'welcome-landing': 3,
     'prepared-setup': 3
   };
 
@@ -227,6 +230,7 @@
       case 'name-essay':           return renderNameEssay();
       case 'reflection':           return renderReflection();
       case 'identity-completion':  return renderIdentityCompletion();
+      case 'welcome-landing':      return renderWelcomeLanding();
       case 'prepared-setup':       return renderPreparedSetup();
     }
   }
@@ -617,11 +621,99 @@
     // Write the final contract + complete flag.
     writeContract();
 
-    // Hand off to existing Compass setup.
-    handoffToCompass();
+    // Move into the soft landing chamber. The handoff to cOMpass
+    // happens after the welcome has been seen — never directly from
+    // the identity form, so the user does not flash through the old
+    // setup surface.
+    go('welcome-landing');
   }
 
-  // ---- Screen 6: Prepared Setup (handoff) --------------------------------
+  // ---- Screen 6: Welcome Landing -----------------------------------------
+  //
+  // A soft landing chamber between identity completion and the cOMpass
+  // companion view. Not a form, not the legacy setup page. The page
+  // greets the person by their given name, holds them for a breath,
+  // then fades into cOMpass. If the user prefers reduced motion, the
+  // page does not auto-advance — they continue explicitly.
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (_) { return false; }
+  }
+
+  function welcomeStatement(firstName) {
+    // A short reflective sentence linking name / digital self /
+    // journey ahead. Tone: calm, intimate, restrained. We compose
+    // from a few small variants so it does not read as boilerplate,
+    // keyed deterministically off the name so it is stable per user.
+    const name = (firstName || '').trim();
+    const variants = name ? [
+      `${name}, the field already knows the sound of your name. What you carry from here is yours to unfold.`,
+      `${name}, this is the inside of your cOMpass. The journey ahead is met by the name you arrived with.`,
+      `${name}, the threshold closes softly behind you. From here, your digital self walks at the pace of your own breath.`,
+      `${name}, you are inside now. The compass turns with you — name, self, and journey held in the same field.`
+    ] : [
+      `The field already knows the sound of your name. What you carry from here is yours to unfold.`,
+      `This is the inside of your cOMpass. The journey ahead is met by the self you arrived with.`,
+      `The threshold closes softly behind you. From here, your digital self walks at the pace of your own breath.`
+    ];
+    // Stable per-user choice.
+    let h = 0;
+    for (let i = 0; i < name.length; i++) { h = ((h << 5) - h) + name.charCodeAt(i); h |= 0; }
+    const idx = Math.abs(h) % variants.length;
+    return variants[idx];
+  }
+
+  function renderWelcomeLanding() {
+    root.innerHTML = '';
+    const card = el('div', { class: 'threshold-card is-chamber is-welcome-landing' });
+
+    card.appendChild(brandHeader('cOMpass · Threshold'));
+    card.appendChild(compassMark());
+
+    const firstName = (state.identity.full_name || '').trim().split(/\s+/)[0] || '';
+
+    card.appendChild(el('h1', { class: 'welcome-title' }, 'Welcome to your cOMpass'));
+    card.appendChild(el('p', { class: 'welcome-statement' }, welcomeStatement(firstName)));
+
+    const reduced = prefersReducedMotion();
+
+    // Accessible status line for assistive tech.
+    card.appendChild(el('p', { class: 'welcome-hint', role: 'status', 'aria-live': 'polite' },
+      reduced ? 'Continue when you are ready.' : 'A moment, while your cOMpass opens.'
+    ));
+
+    // Explicit continue is always available; required when reduced
+    // motion is on, optional otherwise. Clicking it begins the same
+    // fade-then-handoff as the auto path so the entry into cOMpass
+    // feels identical regardless of how the user arrived.
+    const enterBtn = el('button', { class: 'threshold-btn threshold-btn-ghost welcome-enter' }, 'Enter cOMpass');
+    enterBtn.addEventListener('click', () => beginWelcomeHandoff(reduced));
+    card.appendChild(el('div', { class: 'threshold-actions', style: 'justify-content:center' }, enterBtn));
+
+    root.appendChild(card);
+
+    if (reduced) {
+      // No auto-advance, no fade — user controls the moment.
+      return;
+    }
+
+    // Gentle auto fade then handoff after the copy has had time to land.
+    setTimeout(() => beginWelcomeHandoff(false), 3200);
+  }
+
+  let _welcomeHandoffStarted = false;
+  function beginWelcomeHandoff(reduced) {
+    if (_welcomeHandoffStarted) return;
+    if (state.currentStep !== 'welcome-landing') return;
+    _welcomeHandoffStarted = true;
+    const FADE_MS = reduced ? 350 : 1300;
+    root.classList.add('is-fading-out');
+    setTimeout(() => { handoffToCompass(); }, FADE_MS);
+  }
+
+  // ---- Screen 7: Prepared Setup (handoff) --------------------------------
   //
   // We do not re-implement the existing Compass setup page. We hand off
   // by navigating to '/?threshold=done', and index.html consumes the
