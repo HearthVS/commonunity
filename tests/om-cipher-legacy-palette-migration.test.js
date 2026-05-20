@@ -76,6 +76,10 @@ const fixtures = {
         primary: 'oklch(0.55 0.20 30)',       // legacy red-ish
         secondary: 'oklch(0.60 0.10 210)',
         seasonal_accent: 'oklch(0.70 0.12 90)',
+        // Stale legacy accent alias from the previous writer. After
+        // migration this must not retain its old hex — it must mirror
+        // the freshly computed seasonal_accent (or be dropped).
+        accent: '#abcdef',
         version: 1,
         source: 'om_cipher_v1'                // legacy source tag
       }
@@ -108,6 +112,9 @@ const fixtures = {
         primary: 'oklch(0.50 0.15 0)',
         // secondary missing
         // seasonal_accent missing
+        // Stale legacy alias variants that older importers wrote.
+        accent_color: '#deadbe',
+        tertiary: 'oklch(0.40 0.10 0)',
         version: 1
       }
     },
@@ -138,6 +145,9 @@ const fixtures = {
         primary: 'oklch(0.62 0.16 199)',
         secondary: 'oklch(0.72 0.07 19)',
         seasonal_accent: 'oklch(0.74 0.13 250)',
+        // Stale alias and tertiary from provisional-MVP write path.
+        accent: '#012345',
+        tertiary: '#fedcba',
         version: 1,
         source: 'threshold_provisional_mvp_v1' // legacy provisional source
       }
@@ -244,6 +254,41 @@ function runMigration(name, fixture) {
     assert.ok(after.om_cipher.palette.seasonal_accent.length > 0);
   });
 
+  test(`${name}: stale legacy accent alias does not survive`, () => {
+    const oldAccent       = fixture.om_cipher.palette.accent || '';
+    const oldAccentColor  = fixture.om_cipher.palette.accent_color || '';
+    const oldTertiary     = fixture.om_cipher.palette.tertiary || '';
+    const p = after.om_cipher.palette;
+    // accent_color / tertiary were only ever legacy palette aliases —
+    // they must be dropped so they don't carry stale colour values.
+    assert.equal(p.accent_color, undefined, 'accent_color must be removed');
+    assert.equal(p.tertiary,     undefined, 'tertiary must be removed');
+    // accent is kept for back-compat with the cOMpass read fallback,
+    // but it must mirror the freshly computed seasonal_accent — never
+    // the legacy value.
+    if (p.accent !== undefined) {
+      assert.equal(p.accent, p.seasonal_accent,
+        'accent must mirror current seasonal_accent, not stale legacy value');
+      if (oldAccent) {
+        assert.notEqual(p.accent, oldAccent,
+          'accent must not retain the pre-migration legacy value');
+      }
+    }
+    if (oldAccentColor) {
+      assert.notEqual(p.accent, oldAccentColor);
+    }
+    if (oldTertiary) {
+      assert.notEqual(p.accent, oldTertiary);
+    }
+  });
+
+  test(`${name}: active CSS-friendly fields are populated`, () => {
+    const p = after.om_cipher.palette;
+    assert.ok(p.primary         && p.primary.length         > 0, 'primary populated');
+    assert.ok(p.secondary       && p.secondary.length       > 0, 'secondary populated');
+    assert.ok(p.seasonal_accent && p.seasonal_accent.length > 0, 'seasonal_accent populated');
+  });
+
   test(`${name}: second pass is idempotent (no further migration)`, () => {
     const second = Contract.migrateContract(after);
     assert.equal(second.migrated, false);
@@ -268,6 +313,10 @@ test('read() upgrades stored legacy contract and persists it', () => {
   assert.equal(reread.om_cipher.palette.source, C.PALETTE_SOURCE_CURRENT);
   // Identity preserved through round-trip.
   assert.equal(reread.identity.full_name, 'Markus Lehto');
+  // Stale legacy accent alias from the fixture must not survive in
+  // the persisted JSON — must mirror the new seasonal_accent.
+  assert.notEqual(reread.om_cipher.palette.accent, '#abcdef');
+  assert.equal(reread.om_cipher.palette.accent, reread.om_cipher.palette.seasonal_accent);
 });
 
 test('read() leaves current contract untouched', () => {

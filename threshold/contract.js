@@ -152,6 +152,25 @@
   // identity to compute from, we still stamp the schema_version so we
   // don't loop, but we leave the existing palette in place — the
   // threshold flow will regenerate as soon as identity is collected.
+  //
+  // Legacy aliases. Old writers stored the accent under several names
+  // (`accent`, `accent_color`, `tertiary`) — and the current cOMpass
+  // self-heal read path falls back through that chain. If we only
+  // overwrite `seasonal_accent`, the stale alias values stay in JSON
+  // and survive into export / re-import. After recomputing, mirror the
+  // new `seasonal_accent` into `accent` (kept for back-compat with the
+  // existing fallback chain) and drop `accent_color` / `tertiary`,
+  // which only existed as legacy palette aliases.
+
+  function normalizeLegacyAliases(palette) {
+    if (!palette || typeof palette !== 'object') return palette;
+    if (palette.seasonal_accent) {
+      palette.accent = palette.seasonal_accent;
+    }
+    delete palette.accent_color;
+    delete palette.tertiary;
+    return palette;
+  }
 
   function migrateContract(contract) {
     if (!contract || typeof contract !== 'object') {
@@ -169,12 +188,13 @@
 
     if (hasIdentity) {
       const fresh = computePaletteFromIdentity(identity);
-      next.om_cipher.palette = Object.assign(
+      const merged = Object.assign(
         {},
         contract.om_cipher && contract.om_cipher.palette ? contract.om_cipher.palette : {},
         fresh,
         { generated_by: 'legacy_migration', migrated_at: new Date().toISOString() }
       );
+      next.om_cipher.palette = normalizeLegacyAliases(merged);
     } else {
       // No identity to recompute from. Don't overwrite colours, just
       // stamp the schema so future reads stop trying. Threshold writer
@@ -183,7 +203,7 @@
       palette.schema_version = PALETTE_SCHEMA_VERSION;
       palette.source = palette.source || PALETTE_SOURCE_CURRENT;
       palette.generated_by = 'legacy_migration_no_identity';
-      next.om_cipher.palette = palette;
+      next.om_cipher.palette = normalizeLegacyAliases(palette);
     }
 
     return { contract: next, migrated: true };

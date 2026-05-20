@@ -7311,6 +7311,18 @@ function isLegacyPalette(contract) {
   return false;
 }
 
+// Strip legacy palette aliases so stale colour values don't survive a
+// migration in JSON. `accent` is mirrored from `seasonal_accent` for
+// back-compat with the read-side fallback chain above; `accent_color`
+// and `tertiary` only existed as legacy aliases and are dropped.
+function normalizeLegacyAliases(palette) {
+  if (!palette || typeof palette !== 'object') return palette;
+  if (palette.seasonal_accent) palette.accent = palette.seasonal_accent;
+  delete palette.accent_color;
+  delete palette.tertiary;
+  return palette;
+}
+
 function migrateContractPalette(contract) {
   if (!contract || typeof contract !== 'object') return { contract, migrated: false };
   if (!isLegacyPalette(contract)) return { contract, migrated: false };
@@ -7320,18 +7332,19 @@ function migrateContractPalette(contract) {
   next.om_cipher = Object.assign({}, contract.om_cipher || {});
   if (hasIdentity) {
     const fresh = computePaletteFromIdentity(identity);
-    next.om_cipher.palette = Object.assign(
+    const merged = Object.assign(
       {},
       (contract.om_cipher && contract.om_cipher.palette) || {},
       fresh,
       { generated_by: 'legacy_migration', migrated_at: new Date().toISOString() }
     );
+    next.om_cipher.palette = normalizeLegacyAliases(merged);
   } else {
     const palette = Object.assign({}, (contract.om_cipher && contract.om_cipher.palette) || {});
     palette.schema_version = PALETTE_SCHEMA_VERSION;
     palette.source = palette.source || PALETTE_SOURCE_CURRENT;
     palette.generated_by = 'legacy_migration_no_identity';
-    next.om_cipher.palette = palette;
+    next.om_cipher.palette = normalizeLegacyAliases(palette);
   }
   return { contract: next, migrated: true };
 }
