@@ -6663,6 +6663,17 @@ function init() {
   // OM Cipher contract — hydrate from /threshold module if completed.
   initThresholdContract();
 
+  // Route-flag backstop. /?threshold=done&enter=compass is the
+  // user-visible promise from the threshold handoff: the next
+  // surface they see is cOMpass, never legacy setup. If the
+  // contract hydration path above did not flip the screens (e.g.
+  // contract read failed, helper threw silently), this backstop
+  // honours the route flag directly — provided the user did not
+  // explicitly request the guide/setup surface.
+  if (isCompassEntryRequested() && !isGuideSetupRequested()) {
+    forceCompassScreen();
+  }
+
   // Welcome overlay
   initWelcome();
 
@@ -7561,21 +7572,68 @@ function initThresholdContract() {
   // compass directly. Exceptions:
   //   • /?guide=1 or /?setup=1 — the guide explicitly asked for the
   //     setup surface (transcript import, manual session setup).
-  //   • openCompass is missing — bail safely, leaving setup visible.
+  //
+  // Live smoke (post welcome-landing) found openCompass()
+  // occasionally threw mid-way (calcIdentityChartFromState /
+  // autoPopulateGeneKeysFromState dependencies that aren't fully
+  // wired when init runs), and the outer catch silently left the
+  // user staring at #screen-setup. The route flag
+  // /?threshold=done&enter=compass is the user-visible promise that
+  // the next thing they see is cOMpass — so we treat the screen
+  // flip as an invariant, independent of whether the rich
+  // hydration helpers succeed. Every helper is sandboxed so a
+  // single failure cannot block the handoff.
   if (isGuideSetupRequested()) return;
-  if (typeof openCompass !== 'function') return;
   try {
-    // The threshold identity is the companion, not the guide — so
-    // open compass in companion view by default. The guide field is
-    // left blank; guides who need it can use the "Back to Setup"
-    // path from compass or arrive via /?guide=1.
     if (typeof toggleCompanionMode === 'function') {
       try { toggleCompanionMode(true); } catch (_) {}
     }
-    // The setup form's companion-name was already populated above;
-    // openCompass reads from #guide-name and #companion-name.
-    openCompass();
-  } catch (_) { /* if anything goes wrong, leave setup visible */ }
+    if (typeof openCompass === 'function') {
+      try { openCompass(); } catch (_) { /* fall through to forced flip */ }
+    }
+  } catch (_) { /* fall through to forced flip */ }
+
+  // Invariant: a completed threshold contract must land in cOMpass.
+  // openCompass() flips screens at its tail; if it threw earlier
+  // we do the flip ourselves so the user never lands on the legacy
+  // setup surface after completing the threshold.
+  forceCompassScreen();
+}
+
+// Force the cOMpass screen visible / setup hidden. Used as a safety
+// invariant after threshold handoff and whenever a route flag
+// explicitly requests the companion view. Tolerates absent helpers.
+function forceCompassScreen() {
+  try {
+    const setupScreen   = document.getElementById('screen-setup');
+    const compassScreen = document.getElementById('screen-compass');
+    if (setupScreen)   setupScreen.style.display   = 'none';
+    if (compassScreen) compassScreen.style.display = 'flex';
+    try { window.scrollTo(0, 0); } catch (_) {}
+    // Defensive: surface the OM Cipher pill the same way openCompass
+    // does, so the affordance is reachable even if openCompass threw
+    // before reaching its own pill-clearing block.
+    const omPill = document.getElementById('btn-open-om-cipher');
+    if (omPill) {
+      omPill.style.display    = 'inline-flex';
+      omPill.style.visibility = 'visible';
+      omPill.removeAttribute('hidden');
+    }
+  } catch (_) { /* best-effort; if even this fails, nothing more we can do */ }
+}
+
+// Recognise the explicit route flag /?threshold=done&enter=compass
+// as an authoritative request for the companion cOMpass view. This
+// is the URL the threshold module hands off to; honouring it as a
+// hard invariant guards against any future regression where
+// initThresholdContract's hydration partially fails.
+function isCompassEntryRequested() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('enter') === 'compass') return true;
+    if (params.get('threshold') === 'done') return true;
+  } catch (_) {}
+  return false;
 }
 
 // ============================================================
