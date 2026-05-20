@@ -9,7 +9,7 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-      "@sdk": path.resolve(import.meta.dirname, "..", "sdk"),
+      "@sdk": path.resolve(import.meta.dirname, "sdk"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
