@@ -7056,7 +7056,11 @@ function initCompanionMode() {
 // The /threshold module is the writer; Compass is a reader. Anything
 // the threshold hands over arrives in localStorage under the
 // 'commonunity_om_cipher_v1' key. We do four narrow things on load:
-//   1. Hydrate the setup form (full name → guide-name, dob/tob/pob).
+//   1. Hydrate the setup form (full name → companion-name, dob/tob/pob).
+//      The threshold collects the user's OWN identity (the person who
+//      will appear in the OM Cipher), so it must populate the companion
+//      slot — not the guide slot. guide-name remains for an optional
+//      facilitator who is reading the cipher with/for the user.
 //   2. Apply the inherited palette as CSS variables.
 //   3. Hide the manual three-atmosphere chooser and render a compact
 //      palette explainer in its place.
@@ -7088,11 +7092,39 @@ function initThresholdContract() {
   if (!contract || !contract.threshold || !contract.threshold.completed) return;
 
   // 1. Hydrate identity into Compass state + setup form.
+  //
+  // The threshold's identity.full_name is the user's OWN name — the
+  // person who is the subject of the OM Cipher. In Compass terminology
+  // that is the "companion", not the "guide" (which is reserved for a
+  // separate facilitator if present). Map it to companion-name and
+  // state.companion so the OM Cipher / Compass header / exports all
+  // show the correct identity. We do not touch guide-name here; a
+  // facilitator can still fill it in manually if applicable.
   const id = contract.identity || {};
   if (id.full_name) {
-    state.guide = state.guide || id.full_name;
-    const guideEl = document.getElementById('guide-name');
-    if (guideEl && !guideEl.value) guideEl.value = id.full_name;
+    state.companion = state.companion || id.full_name;
+    const companionEl = document.getElementById('companion-name');
+    if (companionEl && !companionEl.value) companionEl.value = id.full_name;
+
+    // Also feed the identity engine inputs that the OM Cipher reads
+    // from state.profile (first_name / last_name / legal_name). Without
+    // this, the OM Cipher's gematria and Identity Source card would
+    // remain blank because syncSetupIntoProfile only derives these
+    // from guide-name. We split the threshold full_name the same way
+    // syncSetupIntoProfile splits guide-name, and only fill blanks.
+    state.profile = state.profile || {};
+    const nameParts = id.full_name.trim().split(/\s+/).filter(Boolean);
+    const givenFromId  = nameParts[0] || '';
+    const familyFromId = nameParts.slice(1).join(' ');
+    if (givenFromId && !(state.profile.first_name || '').trim()) {
+      state.profile.first_name = givenFromId;
+    }
+    if (familyFromId && !(state.profile.last_name || '').trim()) {
+      state.profile.last_name = familyFromId;
+    }
+    if (!(state.profile.legal_name || '').trim()) {
+      state.profile.legal_name = id.full_name;
+    }
   }
   if (id.birth_date) {
     state.dob = state.dob || id.birth_date;

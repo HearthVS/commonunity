@@ -111,8 +111,10 @@ following minimal touch-points exist:
   - On welcome overlay "Begin", first-time users with no
     `commonunity_om_cipher_v1` contract are redirected to `/threshold`.
   - On setup screen, if a contract is present, the manual atmosphere
-    chooser is hidden and `dob`/`tob`/`pob`/`guide-name` are
-    prepopulated; a compact palette explanation appears in its place.
+    chooser is hidden and `dob`/`tob`/`pob`/`companion-name` are
+    prepopulated (the threshold collects the user's own identity, which
+    is the OM Cipher subject — i.e. the companion, not the guide); a
+    compact palette explanation appears in its place.
   - On Compass title, a small replay icon links to `/threshold?replay=1`.
 
 The threshold module can be evolved freely without touching the rest of
