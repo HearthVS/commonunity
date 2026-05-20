@@ -696,7 +696,9 @@
     contract.om_cipher.palette.secondary       = state.palette.secondary;
     contract.om_cipher.palette.seasonal_accent = state.palette.seasonal_accent;
     contract.om_cipher.palette.version         = 1;
-    contract.om_cipher.palette.source          = 'om_cipher_v1';
+    contract.om_cipher.palette.schema_version  = Contract.PALETTE_SCHEMA_VERSION;
+    contract.om_cipher.palette.source          = Contract.PALETTE_SOURCE_CURRENT;
+    contract.om_cipher.palette.generated_by    = 'onboarding_threshold';
     contract.threshold.completed     = true;
     contract.threshold.completed_at  = new Date().toISOString();
     contract.threshold.version       = 1;

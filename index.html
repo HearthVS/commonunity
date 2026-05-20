@@ -7257,6 +7257,85 @@ function initCompanionMode() {
 // If the contract is absent, Compass behaves exactly as before.
 const THRESHOLD_CONTRACT_KEY = 'commonunity_om_cipher_v1';
 
+// Palette migration. Mirrors threshold/contract.js — kept inline here
+// so cOMpass self-heals legacy contracts even though contract.js is
+// only loaded by /threshold. Both code paths use the same deterministic
+// generator and the same legacy predicate, so a recompute lands on
+// identical colours regardless of which app triggers it.
+const PALETTE_SCHEMA_VERSION = 2;
+const PALETTE_SOURCE_CURRENT = 'om_cipher_palette_v2';
+const LEGACY_PALETTE_SOURCES = new Set([
+  '', 'om_cipher_v1', 'threshold_provisional_mvp_v1', 'manual', 'legacy'
+]);
+
+function computePaletteFromIdentity(identity) {
+  identity = identity || {};
+  function hash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return Math.abs(h);
+  }
+  const seed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+  const hueBase = hash(seed) % 360;
+  const primary = `oklch(0.62 0.16 ${hueBase})`;
+  const secondaryHue = (hueBase + 180) % 360;
+  const secondary = `oklch(0.72 0.07 ${secondaryHue})`;
+  let seasonalHue = (hueBase + 60) % 360;
+  if (identity.birth_date) {
+    const m = parseInt(String(identity.birth_date).slice(5, 7), 10);
+    if (!Number.isNaN(m)) {
+      const seasonal = [250, 250, 120, 120, 120, 50, 50, 50, 25, 25, 25, 250];
+      seasonalHue = seasonal[Math.min(Math.max(m - 1, 0), 11)];
+    }
+  }
+  const seasonal_accent = `oklch(0.74 0.13 ${seasonalHue})`;
+  return {
+    primary, secondary, seasonal_accent,
+    version: 1,
+    schema_version: PALETTE_SCHEMA_VERSION,
+    source: PALETTE_SOURCE_CURRENT
+  };
+}
+
+function isLegacyPalette(contract) {
+  if (!contract || typeof contract !== 'object') return false;
+  const palette = contract.om_cipher && contract.om_cipher.palette;
+  if (!palette || typeof palette !== 'object') return true;
+  if (!palette.primary || !palette.secondary || !palette.seasonal_accent) return true;
+  const schema = Number(palette.schema_version);
+  if (!Number.isFinite(schema) || schema < PALETTE_SCHEMA_VERSION) return true;
+  if (typeof palette.source !== 'string' || LEGACY_PALETTE_SOURCES.has(palette.source)) return true;
+  return false;
+}
+
+function migrateContractPalette(contract) {
+  if (!contract || typeof contract !== 'object') return { contract, migrated: false };
+  if (!isLegacyPalette(contract)) return { contract, migrated: false };
+  const identity = contract.identity || {};
+  const hasIdentity = !!(identity.full_name || identity.birth_date);
+  const next = Object.assign({}, contract);
+  next.om_cipher = Object.assign({}, contract.om_cipher || {});
+  if (hasIdentity) {
+    const fresh = computePaletteFromIdentity(identity);
+    next.om_cipher.palette = Object.assign(
+      {},
+      (contract.om_cipher && contract.om_cipher.palette) || {},
+      fresh,
+      { generated_by: 'legacy_migration', migrated_at: new Date().toISOString() }
+    );
+  } else {
+    const palette = Object.assign({}, (contract.om_cipher && contract.om_cipher.palette) || {});
+    palette.schema_version = PALETTE_SCHEMA_VERSION;
+    palette.source = palette.source || PALETTE_SOURCE_CURRENT;
+    palette.generated_by = 'legacy_migration_no_identity';
+    next.om_cipher.palette = palette;
+  }
+  return { contract: next, migrated: true };
+}
+
 window.ThresholdGate = {
   isCompleted() {
     try {
@@ -7269,7 +7348,15 @@ window.ThresholdGate = {
   read() {
     try {
       const raw = window.localStorage.getItem(THRESHOLD_CONTRACT_KEY);
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const result = migrateContractPalette(parsed);
+      if (result.migrated) {
+        try {
+          window.localStorage.setItem(THRESHOLD_CONTRACT_KEY, JSON.stringify(result.contract));
+        } catch (_) {}
+      }
+      return result.contract;
     } catch (_) { return null; }
   }
 };
