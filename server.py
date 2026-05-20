@@ -1198,6 +1198,110 @@ async def hexagram_reader_verify(request: HexagramUnlockRequest):
         return {"ok": True}
     return {"ok": False}
 
+
+# ── Compass Hexagram Reader translation ──────────────────────────────────
+# On-demand translation of the currently visible Hexagram Reader layer
+# (Shadow / Gift / Siddhi). Translates only what is requested; the client
+# caches results in-memory per session keyed by hexagram + layer + language.
+SUPPORTED_HEX_LANGS = {
+    "ar": "Arabic",
+    "fr": "French",
+    "de": "German",
+    "hi": "Hindi",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "es": "Spanish",
+    "tr": "Turkish",
+}
+
+class HexagramTranslateRequest(BaseModel):
+    language: str = ""
+    hexagram_number: Optional[int] = None
+    hexagram_title: str = ""
+    layer: str = ""
+    subtitle: str = ""
+    subtitle_title: str = ""
+    content: str = ""
+
+@app.post("/api/hexagram-reader/translate")
+async def hexagram_reader_translate(request: HexagramTranslateRequest):
+    lang_code = (request.language or "").strip().lower()
+    lang_name = SUPPORTED_HEX_LANGS.get(lang_code)
+    if not lang_name:
+        raise HTTPException(status_code=400, detail="Unsupported language")
+
+    system_prompt = (
+        f"You are a careful, faithful translator working from English into {lang_name}. "
+        "You are translating contemplative material from the Gene Keys tradition for a "
+        "spiritual reader. Translate exactly what is given — do not summarize, do not "
+        "abbreviate, do not add commentary, do not omit any sentence. Preserve the "
+        "contemplative, unhurried tone. Preserve paragraph breaks (blank lines) exactly. "
+        "Keep proper nouns and core Gene Keys terminology (Shadow, Gift, Siddhi, Gene Key, "
+        "Codon Ring, Siddhic, Programming Partner) recognisable: either keep them in their "
+        "original form or use the established equivalent in the target language, but never "
+        "lose the term. Return only valid JSON, no markdown, no preface, no closing remarks."
+    )
+
+    hex_label = ""
+    if request.hexagram_number:
+        hex_label = f"Hexagram {request.hexagram_number}"
+        if request.hexagram_title:
+            hex_label += f" — {request.hexagram_title}"
+    layer_label = (request.layer or "").strip().capitalize()
+
+    user_msg = (
+        f"Translate the following Hexagram Reader layer into {lang_name}.\n"
+        f"Context (do not translate this line, just for awareness): "
+        f"{hex_label} · Layer: {layer_label}\n\n"
+        "Return a single JSON object with exactly these keys: "
+        '"subtitle", "subtitle_title", "content". '
+        "Each value must be the faithful translation of the corresponding field below. "
+        "If a field is empty, return an empty string for it. Do not wrap in code fences.\n\n"
+        f"--- subtitle ---\n{request.subtitle}\n\n"
+        f"--- subtitle_title ---\n{request.subtitle_title}\n\n"
+        f"--- content ---\n{request.content}\n"
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        raw = "".join(
+            getattr(block, "text", "") for block in msg.content
+            if getattr(block, "type", "") == "text"
+        ).strip()
+        # Strip any accidental code fence wrapping.
+        if raw.startswith("```"):
+            raw = raw.strip("`")
+            # Remove possible "json" hint after opening fence.
+            if raw.lower().startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            # Fallback: treat the whole response as content so the user still gets something.
+            return {
+                "subtitle": request.subtitle,
+                "subtitle_title": request.subtitle_title,
+                "content": raw or request.content,
+                "language": lang_code,
+            }
+        return {
+            "subtitle": str(parsed.get("subtitle", "")),
+            "subtitle_title": str(parsed.get("subtitle_title", "")),
+            "content": str(parsed.get("content", "")),
+            "language": lang_code,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Translation failed: {e}")
+
+
 @app.get("/studio")
 async def serve_studio():
     studio = pathlib.Path(__file__).parent / "studio.html"
