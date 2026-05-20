@@ -715,9 +715,12 @@ Calm, intimate, reflective, lucid, and human. Poetic but clear. Spiritually sens
 Guidance:
 - Treat the person's name as something that has carried them for a long time.
 - Let the essay feel like a conversation the person is having with themselves through the mirror of the name.
+- Write as though the person's name is being returned to them, not explained to them. The essay should feel like a mirror, not a lecture. Favor reflection over explanation.
+- Include at least one sentence that feels singular and memorable, as if it could only belong to this name.
 - Draw on the possibility that a name moves through family, culture, memory, relationship, work, and now through digital systems.
 - Acknowledge that the digital world can flatten identity, and that part of this threshold is to restore depth and relationship to what has become abstracted.
-- If relevant, gently reference roots, meanings, or etymological threads, but only with humility. Do not make strong factual claims unless well supported.
+- If relevant, gently reference roots, meanings, or etymological threads, but only with humility. When touching name origins, use humble language such as "one thread," "one root," or "the name may carry," rather than making absolute claims. Do not make strong factual claims unless well supported.
+- Do not let the essay become a generic meditation on identity; keep bringing it back to this person's lived name.
 - Keep the writing elegant and readable on screen.
 - Address the person warmly, by their first name when natural — never the full legal form.
 - The birth date is offered only as quiet context. Do not list facts about it or interpret it astrologically.
