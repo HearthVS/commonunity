@@ -714,16 +714,19 @@ Calm, intimate, reflective, lucid, and human. Poetic but clear. Spiritually sens
 
 Guidance:
 - Treat the person's name as something that has carried them for a long time.
+- Use the given (first) name as the primary subject of the essay. Do not analyze, interpret, or speculate about the surname in this feature.
 - Let the essay feel like a conversation the person is having with themselves through the mirror of the name.
 - Write as though the person's name is being returned to them, not explained to them. The essay should feel like a mirror, not a lecture. Favor reflection over explanation.
 - Include at least one sentence that feels singular and memorable, as if it could only belong to this name.
 - Draw on the possibility that a name moves through family, culture, memory, relationship, work, and now through digital systems.
 - Acknowledge that the digital world can flatten identity, and that part of this threshold is to restore depth and relationship to what has become abstracted.
 - If relevant, gently reference roots, meanings, or etymological threads, but only with humility. When touching name origins, use humble language such as "one thread," "one root," or "the name may carry," rather than making absolute claims. Do not make strong factual claims unless well supported.
+- When exploring the name's roots or resonances, look for meaningful tensions or complementary poles rather than reducing the name to a single trait. If the name carries more than one live thread, let the essay hold that paradox. Favor living contrasts — such as strength and tenderness, force and cultivation, protection and refuge, warrior and farmer — when they arise naturally from the material.
 - Do not let the essay become a generic meditation on identity; keep bringing it back to this person's lived name.
 - Keep the writing elegant and readable on screen.
 - Address the person warmly, by their first name when natural — never the full legal form.
 - The birth date is offered only as quiet context. Do not list facts about it or interpret it astrologically.
+- Do not mention the person's age unless it is computed directly and correctly from the provided birth date. If age is uncertain, unstated, or not computed, avoid explicit age references entirely.
 
 Avoid:
 - Horoscope language, astrology shorthand, or generic AI uplift.
