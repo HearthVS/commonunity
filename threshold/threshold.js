@@ -540,13 +540,19 @@
     const card = el('div', { class: 'threshold-card' });
     card.appendChild(brandHeader('cOMpass · Threshold'));
     card.appendChild(el('h1', { class: 'threshold-title' }, 'Your field is being prepared.'));
-    card.appendChild(el('p', { class: 'threshold-line' }, 'A moment, while the prepared setup opens.'));
+    card.appendChild(el('p', { class: 'threshold-line' }, 'A moment, while your cOMpass opens.'));
     root.appendChild(card);
     handoffToCompass();
   }
 
+  // The threshold collects the companion's (subject's) identity, not the
+  // guide's. The legacy setup page is the guide/facilitator entry surface
+  // (transcript import, manual session setup). The companion has nothing
+  // further to fill in, so hand off directly into the companion cOMpass
+  // view via enter=compass — index.html's contract hydration + auto-open
+  // consumes the flag.
   function handoffToCompass() {
-    setTimeout(() => { window.location.href = '/?threshold=done'; }, 250);
+    setTimeout(() => { window.location.href = '/?threshold=done&enter=compass'; }, 250);
   }
 
   // ---- Persistence --------------------------------------------------------

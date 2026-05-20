@@ -29,24 +29,36 @@
 <title>cOMpass</title>
 <script>
 // ============================================================
-// THRESHOLD ROOT GATE — runs before any other script.
+// COMPANION ↔ GUIDE ROUTING GATE — runs before any other script.
 // ============================================================
-// A browser with old cOMpass local state (e.g. cu_welcome_seen)
-// would otherwise land directly on the legacy setup page and
-// never see the /threshold onboarding. Existing testers and
-// returning users without a completed OM Cipher contract must
-// be funneled into /threshold first. Returning users WITH a
-// completed contract pass straight through to setup.
+// Semantic rule:
+//   • Companion (the OM Cipher subject) without a completed
+//     threshold contract → must be funneled into /threshold first.
+//   • Companion (returning) with a completed contract → lands
+//     directly in the cOMpass companion view (initThresholdContract
+//     auto-opens compass below).
+//   • Guide / facilitator → the legacy setup page is their entry
+//     surface (manual setup + transcript import). They can reach
+//     it explicitly via /?guide=1 or /?setup=1 even before a
+//     companion contract exists.
+//
+// Old browsers carrying stale local state (e.g. cu_welcome_seen)
+// without an OM Cipher contract are treated as companion-first
+// and gated to /threshold.
 (function gateRootIntoThreshold() {
   try {
     var path = window.location.pathname || '/';
     // Only gate the cOMpass root page. /threshold and any other
-    // route must be untouched to avoid redirect loops and to
-    // keep deep links working.
+    // route must be untouched to avoid redirect loops.
     if (path !== '/' && path !== '/index.html') return;
-    // Handoff from /threshold?threshold=done must be allowed
-    // through so initThresholdContract can hydrate the setup.
     var params = new URLSearchParams(window.location.search);
+    // Guide / facilitator entry surface — never gated. This is the
+    // explicit escape hatch for guides who need the legacy setup
+    // page (transcript import, manual session setup) regardless of
+    // companion contract state.
+    if (params.get('guide') === '1' || params.get('setup') === '1') return;
+    // Handoff from /threshold?threshold=done must pass through so
+    // initThresholdContract can hydrate identity + auto-open compass.
     if (params.get('threshold') === 'done') return;
     var raw = window.localStorage.getItem('commonunity_om_cipher_v1');
     if (raw) {
@@ -7119,6 +7131,21 @@ window.ThresholdGate = {
   }
 };
 
+// Semantic distinction:
+//   • Companion view  → cOMpass main UI (screen-compass). The
+//     companion's threshold contract has all the identity it needs.
+//   • Guide setup     → screen-setup. Used for transcript import,
+//     manual session setup, and any facilitator-led path. Reachable
+//     via /?guide=1 or /?setup=1 (and as a fallback link from the
+//     compass companion view).
+function isGuideSetupRequested() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('guide') === '1' || params.get('setup') === '1') return true;
+  } catch (_) {}
+  return false;
+}
+
 function initThresholdContract() {
   const contract = window.ThresholdGate.read();
   if (!contract || !contract.threshold || !contract.threshold.completed) return;
@@ -7174,14 +7201,34 @@ function initThresholdContract() {
     if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
   }
 
-  // 2. Apply inherited palette as CSS variables. We don't override the
-  // existing theme tokens (the Compass internals depend on them); we
-  // expose the OM Cipher palette as a sibling layer at --cipher-*.
+  // 2. Apply inherited palette as CSS variables.
+  //
+  // Two layers:
+  //   • --cipher-primary / --cipher-secondary / --cipher-accent —
+  //     the raw cipher palette, used for explicit cipher accents
+  //     (replay icon, palette explainer, ambient glows).
+  //   • --setup-accent — the cOMpass brand accent token. Threading
+  //     primary into it widens the palette's reach across the whole
+  //     UI (focus rings, calc button, OM Cipher pill, q&a borders,
+  //     etc.) without touching the semantic quadrant tokens
+  //     (--work / --lens / --field / --call), which carry meaning
+  //     and must remain stable.
+  //
+  // Restraint:
+  //   primary  → key accent (--setup-accent + --cipher-primary)
+  //   secondary → panel/border/glow companion (--cipher-secondary)
+  //   accent   → small highlights only (--cipher-accent)
+  //
+  // If the palette block is missing or partial, fall back to the
+  // existing manual atmosphere tokens (do not clobber).
   const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
-  const root = document.documentElement;
-  if (palette.primary)         root.style.setProperty('--cipher-primary', palette.primary);
-  if (palette.secondary)       root.style.setProperty('--cipher-secondary', palette.secondary);
-  if (palette.seasonal_accent) root.style.setProperty('--cipher-accent', palette.seasonal_accent);
+  const rootEl = document.documentElement;
+  if (palette.primary) {
+    rootEl.style.setProperty('--cipher-primary', palette.primary);
+    rootEl.style.setProperty('--setup-accent',   palette.primary);
+  }
+  if (palette.secondary)       rootEl.style.setProperty('--cipher-secondary', palette.secondary);
+  if (palette.seasonal_accent) rootEl.style.setProperty('--cipher-accent',   palette.seasonal_accent);
 
   // 3. Hide manual atmosphere chooser; replace with a compact palette
   // explainer that names the inherited Cipher palette.
@@ -7247,6 +7294,30 @@ function initThresholdContract() {
     btn.addEventListener('mouseleave', () => { btn.style.transform = ''; btn.style.opacity = '0.85'; });
     compassTitle.appendChild(btn);
   }
+
+  // 5. Auto-enter cOMpass companion view.
+  //
+  // The threshold collects the companion's identity in full; setup
+  // has nothing more to ask the companion. So a completed-contract
+  // landing on root should skip the setup screen and open the
+  // compass directly. Exceptions:
+  //   • /?guide=1 or /?setup=1 — the guide explicitly asked for the
+  //     setup surface (transcript import, manual session setup).
+  //   • openCompass is missing — bail safely, leaving setup visible.
+  if (isGuideSetupRequested()) return;
+  if (typeof openCompass !== 'function') return;
+  try {
+    // The threshold identity is the companion, not the guide — so
+    // open compass in companion view by default. The guide field is
+    // left blank; guides who need it can use the "Back to Setup"
+    // path from compass or arrive via /?guide=1.
+    if (typeof toggleCompanionMode === 'function') {
+      try { toggleCompanionMode(true); } catch (_) {}
+    }
+    // The setup form's companion-name was already populated above;
+    // openCompass reads from #guide-name and #companion-name.
+    openCompass();
+  } catch (_) { /* if anything goes wrong, leave setup visible */ }
 }
 
 // ============================================================

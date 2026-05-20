@@ -6614,6 +6614,61 @@ input, textarea { font: inherit; color: inherit; }
 <body>
 
 <!-- ============================================================
+     OM Cipher palette — isolated, early bootstrap.
+     Lives in its own <script> block so a runtime error anywhere
+     in the main Studio script (which is thousands of lines long)
+     cannot prevent the palette from being applied. Mirrors the
+     logic in initOmCipherPalette() further down; that copy stays
+     as the canonical, fully-commented version.
+     ============================================================ -->
+<script>
+(function () {
+  try {
+    var raw = window.localStorage.getItem('commonunity_om_cipher_v1');
+    if (!raw) return;
+    var contract;
+    try { contract = JSON.parse(raw); } catch (_) { return; }
+    if (!contract || !contract.threshold || contract.threshold.completed !== true) return;
+    var palette = (contract.om_cipher && contract.om_cipher.palette) || {};
+    var primary   = palette.primary || '';
+    var secondary = palette.secondary || '';
+    var accent    = palette.seasonal_accent || '';
+    var anchor    = primary || secondary || accent;
+    function apply() {
+      var root = document.documentElement;
+      if (!root) return;
+      if (anchor) {
+        root.style.setProperty('--cipher-primary', anchor);
+        root.style.setProperty('--setup-accent',   anchor);
+        root.style.setProperty('--btn-primary',    anchor);
+      }
+      if (secondary) root.style.setProperty('--cipher-secondary', secondary);
+      if (accent)    root.style.setProperty('--cipher-accent',    accent);
+      function mix(a, b, aPct) {
+        var aa = a || anchor, bb = b || anchor;
+        if (!aa && !bb) return '';
+        if (!aa) return bb;
+        if (!bb) return aa;
+        return 'color-mix(in srgb, ' + aa + ' ' + aPct + '%, ' + bb + ' ' + (100 - aPct) + '%)';
+      }
+      var workTint  = mix(primary,   accent,    65);
+      var lensTint  = mix(secondary, primary,   70);
+      var fieldTint = mix(secondary, accent,    60);
+      var callTint  = mix(primary,   secondary, 70);
+      if (workTint)  root.style.setProperty('--room-cipher-tint-work',  workTint);
+      if (lensTint)  root.style.setProperty('--room-cipher-tint-lens',  lensTint);
+      if (fieldTint) root.style.setProperty('--room-cipher-tint-field', fieldTint);
+      if (callTint)  root.style.setProperty('--room-cipher-tint-call',  callTint);
+    }
+    apply();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', apply);
+    }
+  } catch (_) { /* defensive — never break the page */ }
+})();
+</script>
+
+<!-- ============================================================
      CommonUnity brand lockup — inline SVG defs.
      Mirrors homepage.html / manifesto.html so the Studio header
      uses the same wordmark (COMMONUNITY with gold OM, crescent,
@@ -8650,6 +8705,16 @@ function doEnterRoom(roomKey, meta) {
     roomScreen.style.setProperty('--rose-color', resolvedColor);
     document.querySelector('.room-body').style.setProperty('--rose-color', resolvedColor);
   }
+  // Bind the per-room cipher tint (computed in initOmCipherPalette
+  // from the OM Cipher contract palette) onto a scoped --room-tint
+  // token. Future room visuals can read --room-tint for ambient
+  // washes/halos. Falls back to the semantic room color when no
+  // cipher palette is present.
+  const cipherTintToken = `--room-cipher-tint-${roomKey}`;
+  const cipherTintRaw   = getComputedStyle(document.documentElement).getPropertyValue(cipherTintToken).trim();
+  const roomTint        = cipherTintRaw || `var(${meta.color})`;
+  roomScreen.style.setProperty('--room-tint', roomTint);
+  document.querySelector('.room-body').style.setProperty('--room-tint', roomTint);
 
   // Room switcher pills — set active
   document.querySelectorAll('.room-pill').forEach(pill => {
@@ -9774,7 +9839,115 @@ function initInfoPopups() {
   });
 }
 
+// ============================================================
+// OM CIPHER PALETTE — read-only integration with /threshold module
+// ============================================================
+//
+// The /threshold module (in the cOMpass app) writes the OM Cipher
+// contract to localStorage under 'commonunity_om_cipher_v1'. Studio
+// is a downstream reader: if a completed contract is present, the
+// person's generated palette becomes the default Studio palette.
+//
+// Three layers:
+//   1. --cipher-primary / --cipher-secondary / --cipher-accent —
+//      raw cipher colors, available everywhere for explicit cipher
+//      accents.
+//   2. --setup-accent — Studio's brand accent token, threaded with
+//      the cipher primary so the entire UI inherits the palette
+//      without re-coloring the semantic quadrant tokens
+//      (--work/--lens/--field/--call), which carry meaning.
+//   3. Per-room derivations — each room's accent stays semantic,
+//      but a parallel --room-cipher-tint token blends the cipher
+//      primary/secondary/accent with light/dark/saturation
+//      derivations so rooms feel distinct but related. Future
+//      room theming can read these tokens.
+//
+// Integration is read-only: Studio never writes the contract. If
+// the contract is absent or partial, Studio behaves exactly as
+// before (existing --setup-accent / --work / --lens / --field /
+// --call tokens are untouched).
+const OM_CIPHER_CONTRACT_KEY = 'commonunity_om_cipher_v1';
+
+function readOmCipherContract() {
+  try {
+    const raw = window.localStorage.getItem(OM_CIPHER_CONTRACT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && parsed.threshold && parsed.threshold.completed) ? parsed : null;
+  } catch (_) { return null; }
+}
+
+function initOmCipherPalette() {
+  const contract = readOmCipherContract();
+  if (!contract) return;
+  const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
+  const primary = palette.primary || '';
+  const secondary = palette.secondary || '';
+  const accent = palette.seasonal_accent || '';
+  const rootEl = document.documentElement;
+  if (!rootEl) return;
+
+  // Anchor: always set --cipher-primary when a completed contract
+  // exists so downstream readers (smoke checks, room renderers) can
+  // detect cipher presence with a single token read. Fall back to
+  // secondary or accent if primary is missing.
+  const cipherAnchor = primary || secondary || accent;
+  if (cipherAnchor) {
+    rootEl.style.setProperty('--cipher-primary', cipherAnchor);
+    rootEl.style.setProperty('--setup-accent',   cipherAnchor);
+    rootEl.style.setProperty('--btn-primary',    cipherAnchor);
+  }
+  if (secondary) rootEl.style.setProperty('--cipher-secondary', secondary);
+  if (accent)    rootEl.style.setProperty('--cipher-accent',    accent);
+
+  // Per-room cipher tints — small token layer that lets rooms differ
+  // by combining the same three palette colors in varied weights and
+  // saturation/lightness levels. Rooms can opt-in by reading these
+  // tokens (e.g. background washes, ambient halos) without breaking
+  // the semantic quadrant accent system.
+  //
+  // Variation rule:
+  //   work  → primary 65% + accent 35%  (warmest, most saturated)
+  //   lens  → secondary 70% + primary 30% (cooler, balanced)
+  //   field → secondary 60% + accent 40%  (verdant complement)
+  //   call  → primary 70% + secondary 30% (focal, brand-forward)
+  //
+  // The mixes are deterministic CSS color-mix expressions so any
+  // future room renderer can compose with them safely. If a palette
+  // slot is missing, fall back to the cipher anchor so the token is
+  // always non-empty whenever a completed contract is present.
+  function mix(a, b, aPct) {
+    const aa = a || cipherAnchor;
+    const bb = b || cipherAnchor;
+    if (!aa && !bb) return '';
+    if (!aa) return bb;
+    if (!bb) return aa;
+    return `color-mix(in srgb, ${aa} ${aPct}%, ${bb} ${100 - aPct}%)`;
+  }
+  const workTint  = mix(primary, accent, 65);
+  const lensTint  = mix(secondary, primary, 70);
+  const fieldTint = mix(secondary, accent, 60);
+  const callTint  = mix(primary, secondary, 70);
+  if (workTint)  rootEl.style.setProperty('--room-cipher-tint-work',  workTint);
+  if (lensTint)  rootEl.style.setProperty('--room-cipher-tint-lens',  lensTint);
+  if (fieldTint) rootEl.style.setProperty('--room-cipher-tint-field', fieldTint);
+  if (callTint)  rootEl.style.setProperty('--room-cipher-tint-call',  callTint);
+}
+
+// Apply the cipher palette as early as possible. The inline script
+// runs inside <body>, so document.documentElement already exists —
+// we can set CSS custom properties immediately rather than waiting
+// for DOMContentLoaded. This matters because smoke checks (and any
+// other readers) may sample the root style as soon as the script
+// finishes parsing, before DOMContentLoaded fires.
+try { initOmCipherPalette(); } catch (_) { /* defensive */ }
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Re-apply after DOMContentLoaded as a safety net in case the
+  // contract was written between script parse and DOMContentLoaded,
+  // or in case any earlier code reset documentElement inline styles.
+  // initOmCipherPalette is idempotent.
+  initOmCipherPalette();
   initEntrance();
   initParticles();
   initPortalTooltips();
