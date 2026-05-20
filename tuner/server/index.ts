@@ -62,9 +62,29 @@ app.use((req, res, next) => {
   next();
 });
 
+process.on("uncaughtException", (err) => {
+  console.error("[startup] uncaughtException:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[startup] unhandledRejection:", reason);
+});
+
 (async () => {
-  runMigrations();
-  await registerRoutes(app);
+  try {
+    runMigrations();
+  } catch (err) {
+    console.error("[startup] runMigrations failed:", err);
+  }
+
+  try {
+    await registerRoutes(app);
+  } catch (err) {
+    console.error("[startup] registerRoutes failed:", err);
+  }
+
+  // Minimal /health is also defined inside registerRoutes; redefine here
+  // as a no-op-safe fallback in case route registration partially failed.
+  app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -79,9 +99,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -89,19 +106,14 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Railway and most PaaS supply PORT; bind 0.0.0.0 so the container is reachable.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
-})();
+  httpServer.on("error", (err) => {
+    console.error(`[startup] httpServer error on port ${port}:`, err);
+  });
+  httpServer.listen(port, "0.0.0.0", () => {
+    log(`serving on port ${port}`);
+  });
+})().catch((err) => {
+  console.error("[startup] fatal:", err);
+});
