@@ -18,9 +18,10 @@
  *      the field by soft inset glow. Ceremonial screens (chamber) drop the
  *      card chrome almost entirely.
  *
- *   3. The mark is the *actual* CommonUnity OM lockup (crescent + bindu + OM
- *      letters in gold), reused from /assets/brand/mark.svg. It breathes
- *      slowly. It is not a generic spinner.
+ *   3. The mark is the *actual* cOMpass animated logo (faceted diamond /
+ *      four-sided pyramid with colored triangular faces and a soft inner
+ *      glow), matching the SVG used beside the `cOMpass` wordmark in
+ *      index.html. It breathes slowly. It is not a generic spinner.
  *
  * Palette plumbing
  * ----------------
@@ -52,7 +53,7 @@
   --threshold-border: rgba(148, 163, 184, 0.14);
   --threshold-input-bg: rgba(11, 17, 32, 0.55);
 
-  /* Brand gold (matches /assets/brand/mark.svg crescent+bindu+OM letters). */
+  /* Brand gold — kept for the ring / dot accents around the cOMpass logo. */
   --om-gold: #d4a04a;
   --om-gold-soft: #e8c184;
 }
@@ -247,12 +248,13 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Brand mark — the actual CommonUnity OM lockup.
+   cOMpass logo — animated faceted diamond.
    ─────────────────────────────────────────────────────────────────────────
-   The threshold reuses the OM mark from /assets/brand/mark.svg: gold OM
-   letters, crescent, bindu. In the brand header it's small and quiet. In
-   the interim chamber it becomes the theatrical center: large, with a
-   soft palette-tinted aura behind it, breathing slowly.
+   The threshold reuses the same cOMpass logo that sits beside the cOMpass
+   wordmark in index.html: a four-sided faceted pyramid / diamond with
+   colored triangular faces and a soft inner glow. In the brand header it's
+   small and quiet. In the interim chamber it becomes the theatrical center:
+   large, with a soft palette-tinted aura behind it, breathing slowly.
    ───────────────────────────────────────────────────────────────────── */
 
 .threshold-brand {
@@ -267,18 +269,23 @@ html, body {
 }
 
 .threshold-brand .mark {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
-  background-image: url("/assets/brand/mark.svg");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--om-gold) 35%, transparent));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--cipher-primary) 30%, transparent));
+  animation: logo-breathe-sm 14s linear infinite;
+  transform-origin: center;
+}
+.threshold-brand .mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-/* Large animated mark — used in the interim chamber. */
+/* Large animated logo — used in the interim chamber and the prepared-setup
+   handoff screen. */
 .compass-mark {
   position: relative;
   width: clamp(140px, 22vw, 200px);
@@ -317,8 +324,9 @@ html, body {
   position: relative;
   width: 64%;
   height: 64%;
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--om-gold) 55%, transparent));
-  animation: mark-breathe 6s ease-in-out infinite;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--cipher-primary) 38%, transparent));
+  animation: logo-breathe 12s ease-in-out infinite;
+  transform-origin: center;
 }
 
 @keyframes mark-aura {
@@ -331,15 +339,28 @@ html, body {
   50%      { opacity: 0.9; transform: scale(1.03); }
 }
 
-@keyframes mark-breathe {
-  0%, 100% { opacity: 0.88; transform: scale(0.98); }
-  50%      { opacity: 1;    transform: scale(1.02); }
+/* Matches the `logo-breathe` motion next to the cOMpass wordmark in
+   index.html: a slow quarter-turn-and-pulse cycle, palette-tinted glow. */
+@keyframes logo-breathe {
+  0%   { transform: rotate(0deg)   scale(1);    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cipher-primary) 30%, transparent)); }
+  25%  { transform: rotate(90deg)  scale(1.04); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--cipher-primary) 55%, transparent)); }
+  50%  { transform: rotate(180deg) scale(1);    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--om-gold) 30%, transparent)); }
+  75%  { transform: rotate(270deg) scale(1.04); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--om-gold) 55%, transparent)); }
+  100% { transform: rotate(360deg) scale(1);    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cipher-primary) 30%, transparent)); }
+}
+
+/* Quieter version for header chip / essay corner — slower, no scale pulse. */
+@keyframes logo-breathe-sm {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .compass-mark .compass-mark-aura,
   .compass-mark .compass-mark-ring,
-  .compass-mark .compass-mark-svg {
+  .compass-mark .compass-mark-svg,
+  .threshold-brand .mark,
+  .essay-mark {
     animation: none;
   }
 }
@@ -601,20 +622,26 @@ html, body {
 }
 
 /* A quiet brand presence on the essay screen — sits in the corner,
-   anchors the story to the field. */
+   anchors the story to the field. Hosts the inline cOMpass logo. */
 .essay-mark {
   position: absolute;
   top: 1.25rem;
   right: 1.5rem;
   width: 28px;
   height: 28px;
-  background-image: url("/assets/brand/mark.svg");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  opacity: 0.5;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--om-gold) 35%, transparent));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--cipher-primary) 30%, transparent));
   pointer-events: none;
+  animation: logo-breathe-sm 18s linear infinite;
+  transform-origin: center;
+}
+.essay-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

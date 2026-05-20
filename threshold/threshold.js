@@ -249,28 +249,81 @@
     return node;
   }
 
+  // The animated cOMpass logo — a faceted diamond / four-sided pyramid with
+  // colored triangular facets and a soft inner glow. Matches the SVG used
+  // beside the `cOMpass` wordmark in index.html (logo-mark / compass-logo-sm)
+  // so the threshold reads as the same product, not a different surface.
+  // Each instance gets a unique ID prefix because multiple may render on the
+  // same screen (header chip + theatrical centerpiece).
+  let _compassLogoSeq = 0;
+  function compassLogoSvg() {
+    const u = 'thr-cmp-' + (++_compassLogoSeq);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML =
+      '<defs>' +
+        '<radialGradient id="' + u + '-aura" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="55%" stop-color="#818cf8" stop-opacity="0"/>' +
+          '<stop offset="78%" stop-color="#a5b4fc" stop-opacity="0.18"/>' +
+          '<stop offset="100%" stop-color="#c7d2fe" stop-opacity="0"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="' + u + '-glow" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#fef3c7" stop-opacity="0.9"/>' +
+          '<stop offset="25%" stop-color="#fde68a" stop-opacity="0.5"/>' +
+          '<stop offset="55%" stop-color="#c4b5fd" stop-opacity="0.2"/>' +
+          '<stop offset="100%" stop-color="#312e81" stop-opacity="0"/>' +
+        '</radialGradient>' +
+        '<filter id="' + u + '-fold" color-interpolation-filters="sRGB" x="-6%" y="-6%" width="112%" height="112%">' +
+          '<feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>' +
+          '<feColorMatrix in="b" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 28 -12" result="t"/>' +
+          '<feComposite in="SourceGraphic" in2="t" operator="atop"/>' +
+        '</filter>' +
+      '</defs>' +
+      '<circle cx="50" cy="50" r="50" fill="url(#' + u + '-aura)"/>' +
+      '<g filter="url(#' + u + '-fold)">' +
+        '<polygon points="50,5 95,50 5,50 50,43" fill="#b8a878" fill-opacity="0.72"/>' +
+        '<polygon points="95,50 50,95 50,5 57,50" fill="#7c8fc4" fill-opacity="0.68"/>' +
+        '<polygon points="50,95 5,50 95,50 50,57" fill="#6aaa8c" fill-opacity="0.65"/>' +
+        '<polygon points="5,50 50,5 50,95 43,50" fill="#c47c8f" fill-opacity="0.65"/>' +
+      '</g>' +
+      '<g opacity="0.5">' +
+        '<polygon points="50,22 72,43 28,43 50,38" fill="#e8d9a0" fill-opacity="0.45"/>' +
+        '<polygon points="72,57 57,72 57,28 62,50" fill="#a8bce0" fill-opacity="0.4"/>' +
+        '<polygon points="50,78 28,57 72,57 50,62" fill="#9dd4b4" fill-opacity="0.4"/>' +
+        '<polygon points="28,43 43,28 43,72 38,50" fill="#dfa0b0" fill-opacity="0.38"/>' +
+      '</g>' +
+      '<circle cx="50" cy="50" r="15" fill="url(#' + u + '-glow)"/>' +
+      '<circle cx="50" cy="50" r="1.5" fill="#fef9ee" fill-opacity="0.9"/>';
+    return svg;
+  }
+
   function brandHeader(label) {
-    // The `.mark` is a small inline copy of the CommonUnity OM mark
-    // (crescent + bindu + OM letters), loaded as a background image from
-    // /assets/brand/mark.svg. Theatrical use of the same mark is in the
-    // interim chamber via `compassMark()` below.
+    // Small inline cOMpass logo in the header chip — matches the same logo
+    // used beside the `cOMpass` wordmark in the main app. Theatrical use of
+    // the same logo is in the interim chamber via `compassMark()` below.
+    const mark = el('span', { class: 'mark', 'aria-hidden': 'true' });
+    mark.appendChild(compassLogoSvg());
     return el('div', { class: 'threshold-brand' },
-      el('span', { class: 'mark', 'aria-hidden': 'true' }),
+      mark,
       el('span', null, label)
     );
   }
 
-  // Large animated cOMpass logo used in the interim chamber. Reuses
-  // /assets/brand/mark.svg (the canonical OM lockup) wrapped in a soft
-  // palette-tinted aura and a thin gold ring. Breathing motion is in CSS
-  // (mark-aura / mark-ring / mark-breathe), so this just emits the
-  // structural markup. Accessible name comes from the parent role/label.
+  // Large animated cOMpass logo for the interim chamber and the prepared-
+  // setup handoff. Wraps the faceted-diamond logo in a soft palette-tinted
+  // aura and a thin ring. Breathing motion is in CSS (mark-aura / mark-ring /
+  // mark-breathe). Accessible name lives on the wrapper.
   function compassMark() {
-    return el('div', { class: 'compass-mark', role: 'img', 'aria-label': 'cOMpass mark gathering' },
+    const wrap = el('div', { class: 'compass-mark', role: 'img', 'aria-label': 'cOMpass logo gathering' },
       el('span', { class: 'compass-mark-aura', 'aria-hidden': 'true' }),
-      el('span', { class: 'compass-mark-ring', 'aria-hidden': 'true' }),
-      el('img', { class: 'compass-mark-svg', src: '/assets/brand/mark.svg', alt: '' })
+      el('span', { class: 'compass-mark-ring', 'aria-hidden': 'true' })
     );
+    const svg = compassLogoSvg();
+    svg.setAttribute('class', 'compass-mark-svg');
+    wrap.appendChild(svg);
+    return wrap;
   }
 
   // ---- Screen 1: Name Threshold ------------------------------------------
@@ -376,7 +429,7 @@
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
 
-    // The animated OM mark sits at the heart of the chamber.
+    // The animated cOMpass logo sits at the heart of the chamber.
     card.appendChild(compassMark());
 
     const firstName = (state.identity.full_name || '').trim().split(/\s+/)[0] || '';
@@ -459,8 +512,10 @@
     const card = el('div', { class: 'threshold-card is-hybrid', style: 'position:relative;' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
-    // A quiet OM mark in the corner anchors the story to the field.
-    card.appendChild(el('span', { class: 'essay-mark', 'aria-hidden': 'true' }));
+    // A quiet cOMpass logo in the corner anchors the story to the field.
+    const essayMark = el('span', { class: 'essay-mark', 'aria-hidden': 'true' });
+    essayMark.appendChild(compassLogoSvg());
+    card.appendChild(essayMark);
     card.appendChild(el('h1', { class: 'essay-heading' }, 'The story of your name'));
     card.appendChild(el('p', { class: 'essay-subline' }, 'A first reflection'));
 
