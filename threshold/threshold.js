@@ -250,9 +250,26 @@
   }
 
   function brandHeader(label) {
+    // The `.mark` is a small inline copy of the CommonUnity OM mark
+    // (crescent + bindu + OM letters), loaded as a background image from
+    // /assets/brand/mark.svg. Theatrical use of the same mark is in the
+    // interim chamber via `compassMark()` below.
     return el('div', { class: 'threshold-brand' },
-      el('span', { class: 'mark' }),
+      el('span', { class: 'mark', 'aria-hidden': 'true' }),
       el('span', null, label)
+    );
+  }
+
+  // Large animated cOMpass logo used in the interim chamber. Reuses
+  // /assets/brand/mark.svg (the canonical OM lockup) wrapped in a soft
+  // palette-tinted aura and a thin gold ring. Breathing motion is in CSS
+  // (mark-aura / mark-ring / mark-breathe), so this just emits the
+  // structural markup. Accessible name comes from the parent role/label.
+  function compassMark() {
+    return el('div', { class: 'compass-mark', role: 'img', 'aria-label': 'cOMpass mark gathering' },
+      el('span', { class: 'compass-mark-aura', 'aria-hidden': 'true' }),
+      el('span', { class: 'compass-mark-ring', 'aria-hidden': 'true' }),
+      el('img', { class: 'compass-mark-svg', src: '/assets/brand/mark.svg', alt: '' })
     );
   }
 
@@ -260,7 +277,9 @@
 
   function renderNameThreshold() {
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card' });
+    // Practical screen — left-aligned, but framed by the field rather than
+    // a hard modal card.
+    const card = el('div', { class: 'threshold-card is-practical' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
     card.appendChild(el('h1', { class: 'threshold-title' }, 'Before anything is asked of you, begin here.'));
@@ -351,14 +370,28 @@
 
   function renderInterimChamber() {
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card chamber' });
+    // Ceremonial screen — chamber drops most card chrome and becomes the
+    // most theatrical moment in the flow: centered, spacious, mark-centered.
+    const card = el('div', { class: 'threshold-card is-chamber chamber' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
 
+    // The animated OM mark sits at the heart of the chamber.
+    card.appendChild(compassMark());
+
     const firstName = (state.identity.full_name || '').trim().split(/\s+/)[0] || '';
-    card.appendChild(el('div', { class: 'chamber-name' }, firstName));
+    if (firstName) {
+      card.appendChild(el('div', { class: 'chamber-eyebrow' }, 'A field gathers around'));
+      card.appendChild(el('div', { class: 'chamber-name' }, firstName));
+    }
     card.appendChild(el('p', { class: 'chamber-line' }, 'A first thread is being gathered. While this moment gathers itself around you, there is nothing to do here but remain.'));
-    card.appendChild(el('div', { class: 'chamber-pulse', 'aria-hidden': 'true' }));
+
+    // Refined loading state — three slow breathing dots, palette-tinted.
+    card.appendChild(el('div', { class: 'chamber-status', 'aria-hidden': 'true' },
+      el('span', { class: 'dot' }),
+      el('span', { class: 'dot' }),
+      el('span', { class: 'dot' })
+    ));
 
     const fallbackZone = el('div', { id: 'th-chamber-fallback' });
     card.appendChild(fallbackZone);
@@ -422,9 +455,12 @@
 
   function renderNameEssay() {
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card' });
+    // Hybrid screen — chamber present but quieter; reading-oriented.
+    const card = el('div', { class: 'threshold-card is-hybrid', style: 'position:relative;' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
+    // A quiet OM mark in the corner anchors the story to the field.
+    card.appendChild(el('span', { class: 'essay-mark', 'aria-hidden': 'true' }));
     card.appendChild(el('h1', { class: 'essay-heading' }, 'The story of your name'));
     card.appendChild(el('p', { class: 'essay-subline' }, 'A first reflection'));
 
@@ -455,7 +491,8 @@
 
   function renderReflection() {
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card' });
+    // Hybrid — contemplative spacing; prompts feel held, not surveyed.
+    const card = el('div', { class: 'threshold-card is-hybrid' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
     card.appendChild(el('h1', { class: 'reflection-heading' }, 'A few questions to carry'));
@@ -477,7 +514,8 @@
 
   function renderIdentityCompletion() {
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card' });
+    // Practical, left-aligned — palette is well established by this stage.
+    const card = el('div', { class: 'threshold-card is-practical' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
     card.appendChild(el('h1', { class: 'threshold-title' }, 'Complete your orientation'));
@@ -536,9 +574,11 @@
 
   function renderPreparedSetup() {
     // Defensive — we usually navigate before reaching this render.
+    // Ceremonial like the chamber; the mark holds the moment.
     root.innerHTML = '';
-    const card = el('div', { class: 'threshold-card' });
+    const card = el('div', { class: 'threshold-card is-chamber' });
     card.appendChild(brandHeader('cOMpass · Threshold'));
+    card.appendChild(compassMark());
     card.appendChild(el('h1', { class: 'threshold-title' }, 'Your field is being prepared.'));
     card.appendChild(el('p', { class: 'threshold-line' }, 'A moment, while your cOMpass opens.'));
     root.appendChild(card);
