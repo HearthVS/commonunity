@@ -240,10 +240,18 @@ html {
    are left untouched on purpose — they carry meaning.
    ============================================================ */
 [data-cipher-palette="active"] {
+  /* Palette-derived dark field. We mix the theme's neutral --bg with
+     the user's primary/secondary so the body color itself shifts away
+     from the default deep-blue. Kept dark (75–80% --bg) to preserve
+     text contrast on top of the field. */
+  --cipher-bg-field:           color-mix(in srgb, var(--bg) 78%, var(--cipher-primary, var(--setup-accent)) 22%);
+  --cipher-bg-field-deep:      color-mix(in srgb, var(--bg) 70%, var(--cipher-secondary, var(--cipher-primary, var(--setup-accent))) 30%);
+  --cipher-bg-field-edge:      color-mix(in srgb, var(--bg) 85%, var(--cipher-accent, var(--cipher-primary, var(--setup-accent))) 15%);
+
   /* Soft field-blooms behind the compass screen */
-  --cipher-bg-bloom-primary:   color-mix(in srgb, var(--cipher-primary,   var(--setup-accent)) 22%, transparent);
-  --cipher-bg-bloom-secondary: color-mix(in srgb, var(--cipher-secondary, var(--setup-accent)) 16%, transparent);
-  --cipher-bg-bloom-accent:    color-mix(in srgb, var(--cipher-accent,    var(--setup-accent)) 14%, transparent);
+  --cipher-bg-bloom-primary:   color-mix(in srgb, var(--cipher-primary,   var(--setup-accent)) 32%, transparent);
+  --cipher-bg-bloom-secondary: color-mix(in srgb, var(--cipher-secondary, var(--setup-accent)) 26%, transparent);
+  --cipher-bg-bloom-accent:    color-mix(in srgb, var(--cipher-accent,    var(--setup-accent)) 20%, transparent);
 
   /* Panel / surface tints — kept under 18% to preserve text contrast */
   --cipher-panel-tint:        color-mix(in srgb, var(--card)     86%, var(--cipher-primary,   var(--setup-accent)) 14%);
@@ -268,15 +276,24 @@ html {
   --card-glow-strong: color-mix(in srgb, var(--cipher-secondary, var(--cipher-primary, var(--setup-accent))) 28%, transparent);
 }
 
-/* Field-bloom behind the compass screen: two soft radial washes
-   anchored top-left (primary) and bottom-right (secondary). The
-   washes layer on top of the existing --bg-gradient so the dark
-   neutral underneath keeps text legible. */
+/* OM-field body background. Three layers, dark→light to text:
+   1) solid --cipher-bg-field (palette-mixed dark neutral) replaces
+      the theme's flat --bg so the page's base color is visibly
+      personal, not the default deep blue.
+   2) a deep core gradient that pulls toward the secondary-mixed
+      field at center so the page feels lit from within.
+   3) two soft palette radial blooms (primary top-left, secondary
+      bottom-right) plus an accent ribbon at right-edge so the
+      accent token always contributes even when subtle.
+   All washes stay below 35% saturation; body text uses --text on
+   top of these so AA contrast is preserved. */
 [data-cipher-palette="active"] body {
+  background-color: var(--cipher-bg-field);
   background-image:
-    radial-gradient(ellipse at 12% 8%,  var(--cipher-bg-bloom-primary)   0%, transparent 55%),
-    radial-gradient(ellipse at 88% 92%, var(--cipher-bg-bloom-secondary) 0%, transparent 60%),
-    var(--bg-gradient, none);
+    radial-gradient(ellipse at 12% 8%,   var(--cipher-bg-bloom-primary)   0%, transparent 55%),
+    radial-gradient(ellipse at 88% 92%,  var(--cipher-bg-bloom-secondary) 0%, transparent 60%),
+    radial-gradient(ellipse at 100% 40%, var(--cipher-bg-bloom-accent)    0%, transparent 45%),
+    radial-gradient(ellipse at 50% 40%,  var(--cipher-bg-field-deep)      0%, var(--cipher-bg-field) 70%);
 }
 
 /* Compass header — palette-tinted underline + a subtle glow above
@@ -7349,12 +7366,16 @@ function initThresholdContract() {
   // existing manual atmosphere tokens (do not clobber).
   const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
   const rootEl = document.documentElement;
+  // Accept several accent property shapes so newer/older contract
+  // writers and external test harnesses don't silently drop the
+  // accent. Canonical key remains seasonal_accent.
+  const accentValue = palette.seasonal_accent || palette.accent || palette.accent_color || palette.tertiary || '';
   if (palette.primary) {
     rootEl.style.setProperty('--cipher-primary', palette.primary);
     rootEl.style.setProperty('--setup-accent',   palette.primary);
   }
-  if (palette.secondary)       rootEl.style.setProperty('--cipher-secondary', palette.secondary);
-  if (palette.seasonal_accent) rootEl.style.setProperty('--cipher-accent',   palette.seasonal_accent);
+  if (palette.secondary) rootEl.style.setProperty('--cipher-secondary', palette.secondary);
+  if (accentValue)       rootEl.style.setProperty('--cipher-accent',   accentValue);
 
   // Activation flag. The CSS rules under [data-cipher-palette="active"]
   // derive bloom / tint / border / glow tokens from --cipher-primary /
@@ -7363,7 +7384,7 @@ function initThresholdContract() {
   // pill, primary buttons, companion banner). Without this attribute
   // those rules don't apply, so users without a contract see the
   // classic theme untouched.
-  if (palette.primary || palette.secondary || palette.seasonal_accent) {
+  if (palette.primary || palette.secondary || accentValue) {
     rootEl.dataset.cipherPalette = 'active';
   }
 
@@ -7390,7 +7411,7 @@ function initThresholdContract() {
         <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
           ${swatch(palette.primary || 'transparent')}
           ${swatch(palette.secondary || 'transparent')}
-          ${swatch(palette.seasonal_accent || 'transparent')}
+          ${swatch(accentValue || 'transparent')}
         </div>
         <p style="margin:0.2rem 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;">Your primary tone arises from your core Cipher pattern.</p>
         <p style="margin:0.2rem 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;">A balancing tone accompanies it as a complement.</p>
