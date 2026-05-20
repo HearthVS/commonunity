@@ -700,7 +700,7 @@
     }
 
     // Gentle auto fade then handoff after the copy has had time to land.
-    setTimeout(() => beginWelcomeHandoff(false), 3200);
+    setTimeout(() => beginWelcomeHandoff(false), 6000);
   }
 
   let _welcomeHandoffStarted = false;
