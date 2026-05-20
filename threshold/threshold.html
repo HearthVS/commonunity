@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cOMpass — Threshold</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/threshold/threshold.css">
+</head>
+<body>
+  <main id="threshold-root" class="threshold-root" data-palette-stage="0"></main>
+
+  <!-- Stable handoff contract module (no app coupling). -->
+  <script src="/threshold/contract.js"></script>
+  <!-- Optional: try to use the existing OM Cipher sdk if available. -->
+  <script>
+    // Best-effort: load the SDK; failure is silent and we fall back to
+    // the deterministic MVP palette.
+    (function tryLoadOmCipherSdk() {
+      var s = document.createElement('script');
+      s.src = '/sdk/om_cipher.js';
+      s.async = true;
+      s.onerror = function () { /* fine — provisional palette will be used */ };
+      document.head.appendChild(s);
+    })();
+  </script>
+  <script src="/threshold/threshold.js"></script>
+</body>
+</html>

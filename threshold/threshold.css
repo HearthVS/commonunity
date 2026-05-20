@@ -1,0 +1,351 @@
+/* threshold/threshold.css
+ *
+ * Scoped styles for the cOMpass onboarding threshold module.
+ *
+ * Palette is applied progressively through CSS custom properties on
+ * .threshold-root. Each stage sets a different intensity level; the
+ * actual color values come from --cipher-primary / --cipher-secondary
+ * / --cipher-accent, which the threshold.js writes onto :root as soon
+ * as the provisional palette is available.
+ */
+
+:root {
+  --cipher-primary: #6366f1;
+  --cipher-secondary: #94a3b8;
+  --cipher-accent: #fcd34d;
+  --threshold-bg: #0b1120;
+  --threshold-card: #111827;
+  --threshold-text: #f1f5f9;
+  --threshold-text-muted: #94a3b8;
+  --threshold-text-faint: #64748b;
+  --threshold-border: #1e293b;
+  --threshold-input-bg: #0d1526;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--threshold-bg);
+  color: var(--threshold-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+}
+
+.threshold-root {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  background:
+    radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--threshold-card) 90%, var(--cipher-primary) 0%) 0%, var(--threshold-bg) 60%);
+  transition: background 800ms ease;
+}
+
+/* Progressive palette intensity. Each step lifts the cipher-primary
+   tint into the background just a little more. */
+.threshold-root[data-palette-stage="0"] {
+  background: radial-gradient(ellipse at 50% 35%, #131d3a 0%, #0b1120 65%);
+}
+.threshold-root[data-palette-stage="1"] {
+  background:
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, #131d3a 92%, var(--cipher-primary) 8%) 0%,
+      #0b1120 70%);
+}
+.threshold-root[data-palette-stage="2"] {
+  background:
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, #131d3a 82%, var(--cipher-primary) 18%) 0%,
+      #0b1120 70%);
+}
+.threshold-root[data-palette-stage="3"] {
+  background:
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, #131d3a 70%, var(--cipher-primary) 30%) 0%,
+      color-mix(in srgb, #0b1120 90%, var(--cipher-secondary) 10%) 70%);
+}
+
+.threshold-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--threshold-card);
+  border: 1px solid var(--threshold-border);
+  border-radius: 16px;
+  padding: 3rem 2.5rem;
+  box-shadow: 0 24px 56px rgba(0,0,0,0.35);
+  transition: border-color 600ms ease, box-shadow 600ms ease;
+}
+
+.threshold-root[data-palette-stage="2"] .threshold-card,
+.threshold-root[data-palette-stage="3"] .threshold-card {
+  border-color: color-mix(in srgb, var(--threshold-border) 70%, var(--cipher-primary) 30%);
+  box-shadow:
+    0 24px 56px rgba(0,0,0,0.35),
+    0 0 0 1px color-mix(in srgb, var(--cipher-primary) 18%, transparent);
+}
+
+.threshold-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  color: var(--threshold-text-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.threshold-brand .mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 40%,
+      color-mix(in srgb, var(--cipher-accent) 80%, #fef3c7 20%) 0%,
+      color-mix(in srgb, var(--cipher-primary) 60%, #312e81 40%) 60%,
+      var(--threshold-bg) 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--cipher-primary) 45%, transparent);
+  transition: background 600ms ease, box-shadow 600ms ease;
+}
+
+.threshold-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.01em;
+  color: var(--threshold-text);
+}
+
+.threshold-root[data-palette-stage="2"] .threshold-title,
+.threshold-root[data-palette-stage="3"] .threshold-title {
+  color: color-mix(in srgb, var(--threshold-text) 80%, var(--cipher-primary) 20%);
+}
+
+.threshold-line {
+  color: var(--threshold-text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
+  font-style: italic;
+}
+
+.threshold-field {
+  margin-bottom: 1.25rem;
+}
+
+.threshold-field label {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--threshold-text-muted);
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.threshold-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--threshold-input-bg);
+  border: 1px solid var(--threshold-border);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  color: var(--threshold-text);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.threshold-field input:focus {
+  border-color: var(--cipher-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cipher-primary) 25%, transparent);
+}
+
+.threshold-helper {
+  color: var(--threshold-text-faint);
+  font-size: 0.8125rem;
+  margin: -0.5rem 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.threshold-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.threshold-btn {
+  flex: 1;
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 80ms ease, background 200ms ease, border-color 200ms ease;
+}
+
+.threshold-btn-primary {
+  background: var(--cipher-primary);
+  color: #fff;
+}
+
+.threshold-btn-primary:hover {
+  background: color-mix(in srgb, var(--cipher-primary) 80%, #fff 20%);
+}
+
+.threshold-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.threshold-btn-ghost {
+  background: transparent;
+  border-color: var(--threshold-border);
+  color: var(--threshold-text-muted);
+}
+
+.threshold-btn-ghost:hover {
+  border-color: var(--threshold-text-muted);
+  color: var(--threshold-text);
+}
+
+.threshold-error {
+  color: #f87171;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+  min-height: 1.25rem;
+}
+
+/* Interim chamber */
+.chamber {
+  text-align: center;
+}
+
+.chamber-name {
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 1rem 0 1rem 0;
+  color: color-mix(in srgb, var(--threshold-text) 80%, var(--cipher-primary) 20%);
+}
+
+.chamber-line {
+  color: var(--threshold-text-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  margin: 0 0 2rem 0;
+  font-style: italic;
+}
+
+.chamber-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cipher-primary);
+  margin: 1.5rem auto;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--cipher-primary) 70%, transparent);
+  animation: chamberPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes chamberPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1); }
+}
+
+.chamber-fallback {
+  margin-top: 1.5rem;
+  color: var(--threshold-text-faint);
+  font-size: 0.875rem;
+}
+
+/* Essay screen */
+.essay-heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  color: var(--threshold-text);
+}
+
+.essay-subline {
+  color: var(--threshold-text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+  margin: 0 0 1.5rem 0;
+}
+
+.essay-body {
+  color: var(--threshold-text);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.essay-body p { margin: 0 0 1rem 0; }
+
+/* Reflection */
+.reflection-heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem 0;
+  color: var(--threshold-text);
+}
+
+.reflection-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+.reflection-list li {
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.6rem;
+  border-left: 2px solid color-mix(in srgb, var(--cipher-primary) 50%, transparent);
+  background: color-mix(in srgb, var(--threshold-input-bg) 80%, var(--cipher-primary) 6%);
+  border-radius: 0 8px 8px 0;
+  color: var(--threshold-text);
+  line-height: 1.6;
+}
+
+/* Compact palette explanation for the prepared setup block */
+.palette-explainer {
+  border: 1px solid color-mix(in srgb, var(--threshold-border) 60%, var(--cipher-primary) 40%);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  background: color-mix(in srgb, var(--threshold-card) 88%, var(--cipher-primary) 12%);
+  margin: 1rem 0;
+}
+
+.palette-explainer-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--threshold-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.palette-swatches {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.palette-swatches .swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--threshold-border) 80%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, currentColor 40%, transparent);
+}
+
+.palette-explainer p {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  color: var(--threshold-text-muted);
+  line-height: 1.5;
+}

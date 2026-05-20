@@ -6473,6 +6473,9 @@ function init() {
   initProfileModal();
   updateAllSGSTriads();
 
+  // OM Cipher contract — hydrate from /threshold module if completed.
+  initThresholdContract();
+
   // Welcome overlay
   initWelcome();
 
@@ -7047,6 +7050,142 @@ function initCompanionMode() {
 }
 
 // ============================================================
+// OM CIPHER CONTRACT — bolt-on integration with /threshold module
+// ============================================================
+//
+// The /threshold module is the writer; Compass is a reader. Anything
+// the threshold hands over arrives in localStorage under the
+// 'commonunity_om_cipher_v1' key. We do four narrow things on load:
+//   1. Hydrate the setup form (full name → guide-name, dob/tob/pob).
+//   2. Apply the inherited palette as CSS variables.
+//   3. Hide the manual three-atmosphere chooser and render a compact
+//      palette explainer in its place.
+//   4. Add a small replay icon next to the Compass title that opens
+//      /threshold?replay=1.
+//
+// If the contract is absent, Compass behaves exactly as before.
+const THRESHOLD_CONTRACT_KEY = 'commonunity_om_cipher_v1';
+
+window.ThresholdGate = {
+  isCompleted() {
+    try {
+      const raw = window.localStorage.getItem(THRESHOLD_CONTRACT_KEY);
+      if (!raw) return false;
+      const c = JSON.parse(raw);
+      return !!(c && c.threshold && c.threshold.completed);
+    } catch (_) { return false; }
+  },
+  read() {
+    try {
+      const raw = window.localStorage.getItem(THRESHOLD_CONTRACT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+};
+
+function initThresholdContract() {
+  const contract = window.ThresholdGate.read();
+  if (!contract || !contract.threshold || !contract.threshold.completed) return;
+
+  // 1. Hydrate identity into Compass state + setup form.
+  const id = contract.identity || {};
+  if (id.full_name) {
+    state.guide = state.guide || id.full_name;
+    const guideEl = document.getElementById('guide-name');
+    if (guideEl && !guideEl.value) guideEl.value = id.full_name;
+  }
+  if (id.birth_date) {
+    state.dob = state.dob || id.birth_date;
+    const dobEl = document.getElementById('dob');
+    if (dobEl && !dobEl.value) dobEl.value = id.birth_date;
+  }
+  if (id.birth_time) {
+    state.tob = state.tob || id.birth_time;
+    const tobEl = document.getElementById('tob');
+    if (tobEl && !tobEl.value) tobEl.value = id.birth_time;
+  }
+  if (id.birth_place) {
+    state.pob = state.pob || id.birth_place;
+    const pobEl = document.getElementById('pob');
+    if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
+  }
+
+  // 2. Apply inherited palette as CSS variables. We don't override the
+  // existing theme tokens (the Compass internals depend on them); we
+  // expose the OM Cipher palette as a sibling layer at --cipher-*.
+  const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
+  const root = document.documentElement;
+  if (palette.primary)         root.style.setProperty('--cipher-primary', palette.primary);
+  if (palette.secondary)       root.style.setProperty('--cipher-secondary', palette.secondary);
+  if (palette.seasonal_accent) root.style.setProperty('--cipher-accent', palette.seasonal_accent);
+
+  // 3. Hide manual atmosphere chooser; replace with a compact palette
+  // explainer that names the inherited Cipher palette.
+  const tiles = document.querySelector('.theme-tiles');
+  const sectionLabel = document.querySelector('.theme-section-label');
+  if (tiles && sectionLabel) {
+    tiles.style.display = 'none';
+    sectionLabel.style.display = 'none';
+    if (!document.getElementById('cipher-palette-explainer')) {
+      const block = document.createElement('div');
+      block.id = 'cipher-palette-explainer';
+      block.setAttribute('style', [
+        'border:1px solid color-mix(in srgb, var(--border) 60%, var(--cipher-primary) 40%)',
+        'border-radius:10px',
+        'padding:0.9rem 1rem',
+        'background:color-mix(in srgb, var(--card) 88%, var(--cipher-primary) 12%)',
+        'margin:0 0 1rem 0'
+      ].join(';'));
+      const swatch = (c) => `<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${c};border:1px solid color-mix(in srgb, var(--border) 80%, transparent);box-shadow:0 0 10px color-mix(in srgb, ${c} 40%, transparent);"></span>`;
+      block.innerHTML = `
+        <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.5rem;">Your field colors</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+          ${swatch(palette.primary || 'transparent')}
+          ${swatch(palette.secondary || 'transparent')}
+          ${swatch(palette.seasonal_accent || 'transparent')}
+        </div>
+        <p style="margin:0.2rem 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;">Your primary tone arises from your core Cipher pattern.</p>
+        <p style="margin:0.2rem 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;">A balancing tone accompanies it as a complement.</p>
+        <p style="margin:0.2rem 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;">A seasonal accent reflects the quarter of the year into which you were born.</p>
+      `;
+      tiles.parentNode.insertBefore(block, tiles);
+    }
+  }
+
+  // 4. Replay icon — small glowing dot next to the Compass title that
+  // opens the naming ritual replay surface in a new tab.
+  const compassTitle = document.querySelector('.compass-title');
+  if (compassTitle && !document.getElementById('btn-threshold-replay')) {
+    const btn = document.createElement('a');
+    btn.id = 'btn-threshold-replay';
+    btn.href = '/threshold?replay=1';
+    btn.target = '_blank';
+    btn.rel = 'noopener';
+    btn.title = 'Story of your name — replay the naming ritual';
+    btn.setAttribute('aria-label', 'Replay the naming ritual');
+    btn.setAttribute('style', [
+      'display:inline-flex',
+      'align-items:center',
+      'justify-content:center',
+      'width:14px',
+      'height:14px',
+      'border-radius:50%',
+      'background:var(--cipher-primary)',
+      'margin-left:8px',
+      'vertical-align:middle',
+      'box-shadow:0 0 10px color-mix(in srgb, var(--cipher-primary) 70%, transparent)',
+      'opacity:0.85',
+      'text-decoration:none',
+      'transition:transform 200ms ease, opacity 200ms ease',
+      'cursor:pointer'
+    ].join(';'));
+    btn.addEventListener('mouseenter', () => { btn.style.transform = 'scale(1.18)'; btn.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; btn.style.opacity = '0.85'; });
+    compassTitle.appendChild(btn);
+  }
+}
+
+// ============================================================
 // WELCOME OVERLAY
 // ============================================================
 function initWelcome() {
@@ -7055,10 +7194,17 @@ function initWelcome() {
   const skipBtn  = document.getElementById('welcome-skip');
   if (!overlay) return;
 
-  // Show on first ever visit
+  // Show on first ever visit. Returning users (welcome seen, or
+  // threshold already completed) skip the overlay. Users arriving
+  // from /threshold?threshold=done also skip — the threshold itself
+  // was their welcome.
   const seen = storage.get('cu_welcome_seen');
-  if (!seen) {
+  const arrivedFromThreshold = new URLSearchParams(window.location.search).get('threshold') === 'done';
+  const thresholdDone = !!(window.ThresholdGate && window.ThresholdGate.isCompleted());
+  if (!seen && !arrivedFromThreshold && !thresholdDone) {
     overlay.classList.add('open');
+  } else if (arrivedFromThreshold) {
+    storage.set('cu_welcome_seen', '1');
   }
 
   function dismiss() {
@@ -7066,7 +7212,24 @@ function initWelcome() {
     storage.set('cu_welcome_seen', '1');
   }
 
-  beginBtn && beginBtn.addEventListener('click', dismiss);
+  // First-time users with no OM Cipher contract are gated into the
+  // /threshold module. "I've been here before — skip" lets returning
+  // users bypass the threshold and land on the existing setup screen.
+  function gateToThresholdIfFirstTime() {
+    try {
+      const completed = window.ThresholdGate && window.ThresholdGate.isCompleted();
+      if (!completed) {
+        window.location.href = '/threshold';
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  beginBtn && beginBtn.addEventListener('click', () => {
+    dismiss();
+    gateToThresholdIfFirstTime();
+  });
   skipBtn  && skipBtn.addEventListener('click',  dismiss);
 }
 

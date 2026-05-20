@@ -690,6 +690,110 @@ Write a short contemplative starting point (2–3 sentences) to help this person
     )
 
 
+# ── cOMpass onboarding threshold ──────────────────────────────────────────────
+#
+# Bolt-on module — see /threshold/README.md. This endpoint is the only
+# server-side seam the threshold module needs. It returns a 300-400 word
+# name essay for the Story of Your Name screen. The prompt cue is tuned
+# specifically for this feature; do not blend with the Inspire/Nexus
+# system prompts.
+
+NAME_ESSAY_SYSTEM = """Write a 300–400 word reflective essay titled "The story of your name."
+
+Context:
+This essay appears in the CommonUnity / cOMpass onboarding threshold after a person enters their name and birth date. It is the first meaningful gift of the experience. It should feel like a mirror being placed in front of the person — not a diagnosis, not a profile summary, but a quiet reflection through which they may begin to see themselves differently.
+
+Purpose:
+The essay should help the person feel that their name is not merely a label, username, or administrative tag. A name carries mystery. It carries memory, inheritance, sound, relationship, expectation, history, and self-recognition. In digital life, names are often reduced into credentials, handles, and metadata. This essay should gently reopen the name as something living, inward, and not yet exhausted by explanation.
+
+Core idea:
+Human beings need reflection in order to see themselves. Just as a face cannot be fully seen without a mirror, a person cannot fully encounter themselves without forms of reflection. The name is one such mirror. The essay should feel like the person's name is being reflected back to them in a way that invites self-recognition. It should suggest that deep unsolved questions live inside the simple fact of having a name: Who am I? What in me is inherited? What in me is chosen? How far into the digital world can I go before I lose contact with what is living? What does my name have to do with that journey?
+
+Tone:
+Calm, intimate, reflective, lucid, and human. Poetic but clear. Spiritually sensitive without being inflated, theatrical, preachy, vague, or sentimental. The writing should feel wise, spacious, and grounded.
+
+Guidance:
+- Treat the person's name as something that has carried them for a long time.
+- Let the essay feel like a conversation the person is having with themselves through the mirror of the name.
+- Draw on the possibility that a name moves through family, culture, memory, relationship, work, and now through digital systems.
+- Acknowledge that the digital world can flatten identity, and that part of this threshold is to restore depth and relationship to what has become abstracted.
+- If relevant, gently reference roots, meanings, or etymological threads, but only with humility. Do not make strong factual claims unless well supported.
+- Keep the writing elegant and readable on screen.
+- Address the person warmly, by their first name when natural — never the full legal form.
+- The birth date is offered only as quiet context. Do not list facts about it or interpret it astrologically.
+
+Avoid:
+- Horoscope language, astrology shorthand, or generic AI uplift.
+- Generic inspirational fluff and self-help platitudes.
+- Therapy clichés.
+- New-age excess or pseudo-mystical vagueness.
+- Mechanistic or analytical phrases such as "the system detects," "your data shows," "processing," "analyzing," "scanning," "generating," "computing," "parsing," or "the algorithm reveals."
+- Overconfident factual claims about uncertain etymology.
+- Manipulative second-person certainty about who the person is.
+- Hype words: journey, impact, passion, empower, transform, dynamic, leverage, holistic, authentic, innovative, solutions, synergy, thrive, unlock.
+
+Arc:
+1. Begin with the recognition that the name has carried the person through life.
+2. Deepen into the sense that a name holds memory, relation, inheritance, and mystery.
+3. Introduce the mirror idea: that we need reflection to see ourselves, and a name can become one such mirror.
+4. Acknowledge that digital life often reduces names into tags, credentials, and metadata.
+5. Reopen the name as something living that still holds unanswered questions about identity and becoming.
+6. End with a quiet, open invitation to reflection rather than a conclusion, command, or fixed interpretation.
+
+Output:
+Return only the essay text, ready to display in the app. 300–400 words. Plain text only — no markdown, no lists, no headers, no title line. Use blank lines between paragraphs."""
+
+
+class NameEssayRequest(BaseModel):
+    full_name: str
+    birth_date: Optional[str] = ""
+
+
+@app.post("/api/threshold/name-essay")
+async def threshold_name_essay(req: NameEssayRequest):
+    """Generate the cOMpass onboarding name essay.
+
+    Reuses the same Anthropic client and Sonnet model as the rest of the
+    server; isolates the prompt so the threshold's voice can be updated
+    without touching unrelated surfaces.
+    """
+    full_name = (req.full_name or "").strip()
+    if not full_name:
+        raise HTTPException(status_code=400, detail="full_name required")
+
+    first_name = full_name.split()[0] if full_name.split() else full_name
+    birth_date = (req.birth_date or "").strip()
+
+    user_msg = (
+        f"Full name: {full_name}\n"
+        f"First name (use this when speaking directly): {first_name}\n"
+        f"Birth date (quiet context only — do not interpret): {birth_date or 'not provided'}\n\n"
+        "Write the reflection now. 300-400 words. Plain text. Blank lines between paragraphs."
+    )
+
+    try:
+        resp = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=900,
+            system=NAME_ESSAY_SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        parts = []
+        for block in (resp.content or []):
+            text = getattr(block, "text", None)
+            if text:
+                parts.append(text)
+        essay = "".join(parts).strip()
+        if not essay:
+            raise HTTPException(status_code=502, detail="empty_essay_from_model")
+        return {"ok": True, "essay": essay}
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Bubble up a clean error; the client has its own graceful fallback.
+        raise HTTPException(status_code=502, detail=f"name_essay_generation_failed: {e}")
+
+
 # ── Brand reference upload ────────────────────────────────────────────────────
 
 @app.post("/upload-brand-reference")
@@ -850,6 +954,43 @@ async def serve_favicon():
 _brand_dir = pathlib.Path(__file__).parent / "assets" / "brand"
 if _brand_dir.exists():
     app.mount("/assets/brand", StaticFiles(directory=_brand_dir), name="brand")
+
+
+# cOMpass onboarding threshold — bolt-on module. Static files served from
+# /threshold/* so the page can be evolved independently of index.html.
+# We expose the entry page at /threshold and individual asset files at
+# /threshold/<filename> through a small explicit handler so mounting and
+# the entry-point route do not collide.
+_threshold_dir = pathlib.Path(__file__).parent / "threshold"
+_THRESHOLD_ALLOWED = {
+    "threshold.html": "text/html; charset=utf-8",
+    "threshold.css":  "text/css; charset=utf-8",
+    "threshold.js":   "application/javascript; charset=utf-8",
+    "contract.js":    "application/javascript; charset=utf-8",
+}
+if _threshold_dir.exists():
+    @app.get("/threshold")
+    async def serve_threshold():
+        page = _threshold_dir / "threshold.html"
+        if page.exists():
+            return FileResponse(page, media_type="text/html; charset=utf-8", headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            })
+        raise HTTPException(status_code=404, detail="threshold module missing")
+
+    @app.get("/threshold/{filename}")
+    async def serve_threshold_asset(filename: str):
+        if filename not in _THRESHOLD_ALLOWED:
+            raise HTTPException(status_code=404, detail="not found")
+        f = _threshold_dir / filename
+        if not f.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(f, media_type=_THRESHOLD_ALLOWED[filename], headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        })
+
+# sdk/om_cipher.js is already served at /sdk/* by the existing
+# StaticFiles mount further down the file; nothing to add here.
 
 
 # ── Rose AI endpoints ─────────────────────────────────────────────────────────
