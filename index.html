@@ -27,6 +27,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>cOMpass</title>
+<script>
+// ============================================================
+// THRESHOLD ROOT GATE — runs before any other script.
+// ============================================================
+// A browser with old cOMpass local state (e.g. cu_welcome_seen)
+// would otherwise land directly on the legacy setup page and
+// never see the /threshold onboarding. Existing testers and
+// returning users without a completed OM Cipher contract must
+// be funneled into /threshold first. Returning users WITH a
+// completed contract pass straight through to setup.
+(function gateRootIntoThreshold() {
+  try {
+    var path = window.location.pathname || '/';
+    // Only gate the cOMpass root page. /threshold and any other
+    // route must be untouched to avoid redirect loops and to
+    // keep deep links working.
+    if (path !== '/' && path !== '/index.html') return;
+    // Handoff from /threshold?threshold=done must be allowed
+    // through so initThresholdContract can hydrate the setup.
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('threshold') === 'done') return;
+    var raw = window.localStorage.getItem('commonunity_om_cipher_v1');
+    if (raw) {
+      try {
+        var c = JSON.parse(raw);
+        if (c && c.threshold && c.threshold.completed === true) return;
+      } catch (_) { /* fall through to redirect */ }
+    }
+    window.location.replace('/threshold');
+  } catch (_) { /* localStorage blocked — let setup render */ }
+})();
+</script>
 <meta name="description" content="A facilitation tool for mapping your life's work, lens, field and call — built on the Gene Keys and universal laws.">
 <meta property="og:title" content="cOMpass">
 <meta property="og:description" content="A facilitation tool for mapping your life's work, lens, field and call.">
