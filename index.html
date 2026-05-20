@@ -8224,8 +8224,14 @@ async function translateHexLayer(point, hex, layerName, langCode, layerData) {
   if (!els) return;
   const status = els.body.querySelector('[data-hex-action="lang-status"]');
   const select = els.body.querySelector('[data-hex-action="lang-select"]');
-  if (status) { status.classList.remove('is-error'); status.textContent = 'Translating…'; }
+  const PATIENT_COPY = 'Translating for nuance, please be patient.';
+  if (status) { status.classList.remove('is-error'); status.textContent = PATIENT_COPY; }
   if (select) { select.disabled = true; }
+  // Full-section translations can legitimately take a while. Give the
+  // request room (~3 minutes) so a slow but successful translation isn't
+  // mistaken for a failure.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 180000);
   try {
     const res = await fetch('/api/hexagram-reader/translate', {
       method: 'POST',
@@ -8238,7 +8244,8 @@ async function translateHexLayer(point, hex, layerName, langCode, layerData) {
         subtitle: layerData.subtitle || '',
         subtitle_title: layerData.subtitle_title || '',
         content: layerData.content || ''
-      })
+      }),
+      signal: controller.signal
     });
     if (!res.ok) throw new Error('Server error');
     const data = await res.json();
@@ -8254,8 +8261,11 @@ async function translateHexLayer(point, hex, layerName, langCode, layerData) {
   } catch (e) {
     if (status) {
       status.classList.add('is-error');
-      status.textContent = 'Translation unavailable';
+      status.textContent = 'Translation unavailable — please try again.';
     }
+    if (select) { select.disabled = false; }
+  } finally {
+    clearTimeout(timeoutId);
     if (select) { select.disabled = false; }
   }
 }

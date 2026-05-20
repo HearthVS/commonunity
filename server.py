@@ -1223,6 +1223,72 @@ class HexagramTranslateRequest(BaseModel):
     subtitle_title: str = ""
     content: str = ""
 
+def _extract_translation_payload(raw: str):
+    """Best-effort extraction of {subtitle, subtitle_title, content} from an LLM response.
+
+    Tolerates plain JSON, JSON wrapped in ``` fences (optionally tagged ```json),
+    JSON embedded in surrounding prose, and stringified JSON (a JSON string whose
+    value is itself a JSON object). Returns a dict or None on failure.
+    """
+    if not raw:
+        return None
+    text = raw.strip()
+    # Strip code fences (``` or ```json ... ```)
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+        # If a trailing fence remained mid-string, cut at it.
+        if "```" in text:
+            text = text.split("```", 1)[0].strip()
+
+    def _coerce(obj):
+        # Unwrap a stringified JSON object.
+        if isinstance(obj, str):
+            try:
+                inner = json.loads(obj)
+            except Exception:
+                return None
+            return _coerce(inner)
+        if isinstance(obj, dict):
+            if any(k in obj for k in ("subtitle", "subtitle_title", "content")):
+                return obj
+            # Look one level down for a nested payload.
+            for v in obj.values():
+                got = _coerce(v)
+                if got is not None:
+                    return got
+        return None
+
+    # Direct parse
+    try:
+        return _coerce(json.loads(text))
+    except Exception:
+        pass
+
+    # Substring extraction: find the first balanced {...} and try that.
+    start = text.find("{")
+    while start != -1:
+        depth = 0
+        for i in range(start, len(text)):
+            ch = text[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = text[start:i + 1]
+                    try:
+                        got = _coerce(json.loads(candidate))
+                        if got is not None:
+                            return got
+                    except Exception:
+                        pass
+                    break
+        start = text.find("{", start + 1)
+    return None
+
+
 @app.post("/api/hexagram-reader/translate")
 async def hexagram_reader_translate(request: HexagramTranslateRequest):
     lang_code = (request.language or "").strip().lower()
@@ -1273,16 +1339,8 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
             getattr(block, "text", "") for block in msg.content
             if getattr(block, "type", "") == "text"
         ).strip()
-        # Strip any accidental code fence wrapping.
-        if raw.startswith("```"):
-            raw = raw.strip("`")
-            # Remove possible "json" hint after opening fence.
-            if raw.lower().startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        try:
-            parsed = json.loads(raw)
-        except Exception:
+        parsed = _extract_translation_payload(raw)
+        if parsed is None:
             # Fallback: treat the whole response as content so the user still gets something.
             return {
                 "subtitle": request.subtitle,
@@ -1291,9 +1349,9 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
                 "language": lang_code,
             }
         return {
-            "subtitle": str(parsed.get("subtitle", "")),
-            "subtitle_title": str(parsed.get("subtitle_title", "")),
-            "content": str(parsed.get("content", "")),
+            "subtitle": str(parsed.get("subtitle", "") or ""),
+            "subtitle_title": str(parsed.get("subtitle_title", "") or ""),
+            "content": str(parsed.get("content", "") or ""),
             "language": lang_code,
         }
     except HTTPException:
