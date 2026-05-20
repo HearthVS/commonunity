@@ -2534,6 +2534,344 @@ body.companion-mode .companion-mode-banner { display: block; }
   gap: 8px;
   margin-top: 8px;
 }
+/* ── Hexagram Reader (Compass per-room panel) ─────────────────
+   Locked behind activation code (HEXAGRAM_READER_CODE). Visual
+   language matches existing Compass cards — no new design system. */
+.hex-reader {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  background: color-mix(in srgb, var(--accent-color, #6366f1) 4%, var(--card));
+}
+.hex-reader-locked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.hex-reader-locked-label {
+  display: flex; align-items: center; gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm, 13px);
+  letter-spacing: 0.04em;
+}
+.hex-reader-unlock-btn {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #6366f1) 50%, transparent);
+  color: var(--accent-color, #6366f1);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.hex-reader-unlock-btn:hover {
+  background: color-mix(in srgb, var(--accent-color, #6366f1) 10%, transparent);
+}
+.hex-reader-code-row {
+  display: none;
+  margin-top: var(--space-3);
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hex-reader-code-row.is-visible { display: flex; }
+.hex-reader-code-input {
+  flex: 1; min-width: 160px;
+  background: var(--input-bg, var(--card-alt));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+.hex-reader-code-submit {
+  background: var(--accent-color, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.hex-reader-code-msg {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--text-faint);
+  min-height: 1em;
+}
+.hex-reader-code-msg.is-error { color: #f87171; }
+.hex-reader-body { display: none; }
+.hex-reader-body.is-visible { display: block; }
+.hex-reader-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.hex-reader-header {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.hex-reader-title {
+  font-family: var(--font-display, var(--font-body));
+  color: var(--accent-color, var(--text));
+  font-size: 17px;
+  letter-spacing: 0.01em;
+}
+.hex-reader-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.hex-reader-meta-physio {
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.03em;
+}
+.hex-reader-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: var(--space-3);
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+  padding: 3px;
+  border-radius: 8px;
+}
+.hex-reader-tab {
+  padding: 7px 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.hex-reader-tab:hover { color: var(--text); }
+.hex-reader-tab.is-active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.hex-reader-tab[data-freq="shadow"].is-active { color: #94a3b8; background: color-mix(in srgb, #94a3b8 14%, var(--card)); }
+.hex-reader-tab[data-freq="gift"].is-active   { color: var(--accent-color, #d4a574); background: color-mix(in srgb, var(--accent-color, #d4a574) 14%, var(--card)); }
+.hex-reader-tab[data-freq="siddhi"].is-active { color: #c4b5fd; background: color-mix(in srgb, #c4b5fd 14%, var(--card)); }
+.hex-reader-content {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+  line-height: 1.65;
+  font-size: 13px;
+  color: var(--text);
+}
+.hex-reader-subtitle {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.hex-reader-subtitle-title {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-3);
+}
+.hex-reader-body-text {
+  white-space: pre-wrap;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ── Nexus floating activator (Compass) ───────────────────────
+   Reuses the Studio Nexus 12-point vector-equilibrium SVG and
+   adapts the nexus-rotate / nexus-glow animations locally so the
+   orb pulses on the Compass page too. */
+.compass-nexus-orb {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--lens, #c4b5fd) 22%, transparent) 0%, transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  touch-action: none;
+}
+.compass-nexus-orb svg {
+  width: 56px;
+  height: 56px;
+  animation: compass-nexus-rotate 22s linear infinite, compass-nexus-glow 5s ease-in-out infinite;
+  --rose-color: var(--lens, #c4b5fd);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--lens, #c4b5fd) 35%, transparent));
+}
+.compass-nexus-orb.is-holding {
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--lens, #c4b5fd) 70%, transparent));
+}
+.compass-nexus-orb.is-holding svg {
+  animation: compass-nexus-rotate-active 9s linear infinite, compass-nexus-glow-active 2.5s ease-in-out infinite;
+}
+@keyframes compass-nexus-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes compass-nexus-rotate-active {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes compass-nexus-glow {
+  0%, 100% { opacity: 0.78; }
+  50%      { opacity: 1; }
+}
+@keyframes compass-nexus-glow-active {
+  0%, 100% { opacity: 0.9; }
+  50%      { opacity: 1; }
+}
+
+/* ── Nexus chat modal (Compass) ───────────────────────────── */
+.compass-nexus-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.compass-nexus-modal.is-open {
+  display: flex;
+  animation: compass-nexus-fade 0.28s ease-out;
+}
+@keyframes compass-nexus-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.compass-nexus-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 14px);
+  width: 100%;
+  max-width: 520px;
+  max-height: min(90vh, 720px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.compass-nexus-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.compass-nexus-header-title {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.compass-nexus-close {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 10px;
+  line-height: 1;
+}
+.compass-nexus-close:hover { color: var(--text); }
+.compass-nexus-convo {
+  flex: 1;
+  padding: var(--space-4);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 200px;
+}
+.compass-nexus-msg {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.compass-nexus-msg.is-user {
+  align-self: flex-end;
+  background: color-mix(in srgb, #6366f1 14%, var(--card-alt, var(--card)));
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 85%;
+}
+.compass-nexus-msg.is-nexus {
+  align-self: flex-start;
+  color: var(--text);
+  max-width: 95%;
+}
+.compass-nexus-msg.is-nexus .compass-nexus-sender {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.compass-nexus-intro {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-3) 0;
+}
+.compass-nexus-input-row {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.compass-nexus-input {
+  flex: 1;
+  background: var(--input-bg, var(--card-alt));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+  resize: none;
+  line-height: 1.5;
+  font-family: inherit;
+}
+.compass-nexus-send {
+  background: var(--btn-primary, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.compass-nexus-send.loading { opacity: 0.5; cursor: wait; }
+
 .inspire-l2-accept, .inspire-l2-dismiss {
   font-size: 11px;
   padding: 3px 10px;
@@ -3209,6 +3547,19 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
+    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
+    <div class="hex-reader" data-hex-reader="work">
+      <div class="hex-reader-locked">
+        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
+        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
+      </div>
+      <div class="hex-reader-code-row">
+        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+      </div>
+      <div class="hex-reader-body"></div>
+    </div>
   </div><!-- /card work -->
 
   <!-- ===================== CARD: THE LENS ===================== -->
@@ -3466,6 +3817,19 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
         </div>
       </div>
+    </div>
+    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
+    <div class="hex-reader" data-hex-reader="lens">
+      <div class="hex-reader-locked">
+        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
+        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
+      </div>
+      <div class="hex-reader-code-row">
+        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+      </div>
+      <div class="hex-reader-body"></div>
     </div>
   </div><!-- /card lens -->
 
@@ -3725,6 +4089,19 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
+    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
+    <div class="hex-reader" data-hex-reader="field">
+      <div class="hex-reader-locked">
+        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
+        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
+      </div>
+      <div class="hex-reader-code-row">
+        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+      </div>
+      <div class="hex-reader-body"></div>
+    </div>
   </div><!-- /card field -->
 
   <!-- ===================== CARD: THE CALL ===================== -->
@@ -3983,11 +4360,76 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
+    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
+    <div class="hex-reader" data-hex-reader="call">
+      <div class="hex-reader-locked">
+        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
+        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
+      </div>
+      <div class="hex-reader-code-row">
+        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+      </div>
+      <div class="hex-reader-body"></div>
+    </div>
   </div><!-- /card call -->
 
   <footer class="app-footer">
     © <a href="https://hearthventurestudio.com" target="_blank" rel="noopener noreferrer">Hearth Venture Studio</a> &amp; Koda 2026
   </footer>
+
+  <!-- Nexus floating activator — press-and-hold 700ms to open.
+       Reuses the Studio Nexus 12-point vector equilibrium + hexagram SVG
+       and the rotate/glow animation (adapted as compass-nexus-* keyframes). -->
+  <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to open the Nexus" aria-label="The Nexus — hold to open">
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="32" cy="32" r="29" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent)" stroke-width="0.75"/>
+      <g stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 35%, transparent)" stroke-width="0.6">
+        <line x1="32" y1="32" x2="32" y2="4"/>
+        <line x1="32" y1="32" x2="46.8" y2="8"/>
+        <line x1="32" y1="32" x2="57" y2="20"/>
+        <line x1="32" y1="32" x2="60" y2="32"/>
+        <line x1="32" y1="32" x2="57" y2="44"/>
+        <line x1="32" y1="32" x2="46.8" y2="56"/>
+        <line x1="32" y1="32" x2="32" y2="60"/>
+        <line x1="32" y1="32" x2="17.2" y2="56"/>
+        <line x1="32" y1="32" x2="7" y2="44"/>
+        <line x1="32" y1="32" x2="4" y2="32"/>
+        <line x1="32" y1="32" x2="7" y2="20"/>
+        <line x1="32" y1="32" x2="17.2" y2="8"/>
+      </g>
+      <g stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent)" stroke-width="0.8" fill="none">
+        <polygon points="32,10 52,44 12,44" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 50%, transparent)" stroke-width="0.8" fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 4%, transparent)"/>
+        <polygon points="32,54 12,20 52,20" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 50%, transparent)" stroke-width="0.8" fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 4%, transparent)"/>
+      </g>
+      <g fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, transparent)">
+        <circle cx="32" cy="4" r="1.2"/><circle cx="46.8" cy="8" r="1.2"/><circle cx="57" cy="20" r="1.2"/><circle cx="60" cy="32" r="1.2"/>
+        <circle cx="57" cy="44" r="1.2"/><circle cx="46.8" cy="56" r="1.2"/><circle cx="32" cy="60" r="1.2"/><circle cx="17.2" cy="56" r="1.2"/>
+        <circle cx="7" cy="44" r="1.2"/><circle cx="4" cy="32" r="1.2"/><circle cx="7" cy="20" r="1.2"/><circle cx="17.2" cy="8" r="1.2"/>
+      </g>
+      <circle cx="32" cy="32" r="10" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 30%, transparent)" stroke-width="0.6"/>
+      <circle cx="32" cy="32" r="2.5" fill="var(--rose-color, #c4b5fd)" fill-opacity="0.9"/>
+      <circle cx="32" cy="32" r="5" fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 25%, transparent)"/>
+    </svg>
+  </div>
+
+  <!-- Nexus chat modal — seeded with room name, full hexagram JSON, user notes -->
+  <div class="compass-nexus-modal" id="compass-nexus-modal" role="dialog" aria-modal="true" aria-labelledby="compass-nexus-title">
+    <div class="compass-nexus-panel">
+      <div class="compass-nexus-header">
+        <span class="compass-nexus-header-title" id="compass-nexus-title">The Nexus</span>
+        <button type="button" class="compass-nexus-close" id="compass-nexus-close" aria-label="Close Nexus">✕</button>
+      </div>
+      <div class="compass-nexus-convo" id="compass-nexus-convo">
+        <div class="compass-nexus-intro">The Nexus is present.</div>
+      </div>
+      <div class="compass-nexus-input-row">
+        <textarea class="compass-nexus-input" id="compass-nexus-input" rows="2" placeholder="enter the nexus…"></textarea>
+        <button type="button" class="compass-nexus-send" id="compass-nexus-send" title="Send">Send</button>
+      </div>
+    </div>
+  </div>
 
 </div><!-- /screen-compass -->
 
@@ -7098,16 +7540,26 @@ function inspireQuestion(qaKey) {
   const gkLine = pt.gk_line || '';
   const gkData = gkNum ? (GENE_KEYS[parseInt(gkNum)] || {}) : {};
 
+  // Full hexagram JSON for this room — always passed regardless of any
+  // selected Shadow/Gift/Siddhi tab in the Hexagram Reader. The Inspire
+  // button receives the COMPLETE dataset so the AI has unrestricted
+  // context per the Compass spec.
+  const hexagramFull = (state.hexagramsByPoint && state.hexagramsByPoint[point]) || null;
+  const roomMeta = { work:'The Work', lens:'The Lens', field:'The Field', call:'The Call' };
+
   const payload = {
     question,
     point,
+    room: roomMeta[point] || point,
+    user_notes: sessionNotes,
     session_notes: sessionNotes,
     companion: state.companion || '',
     gk_num: String(gkNum),
     gk_line: String(gkLine),
-    gk_shadow: gkData.shadow || '',
-    gk_gift:   gkData.gift   || '',
-    gk_siddhi: gkData.siddhi || ''
+    gk_shadow: hexagramFull?.shadow?.content || gkData.shadow || '',
+    gk_gift:   hexagramFull?.gift?.content   || gkData.gift   || '',
+    gk_siddhi: hexagramFull?.siddhi?.content || gkData.siddhi || '',
+    hexagram: hexagramFull
   };
 
   let accumulated = '';
@@ -7564,6 +8016,440 @@ function initProfileModal() {
     });
   });
 }
+
+// ============================================================
+// HEXAGRAM READER — Compass per-room panel
+// Locked behind HEXAGRAM_READER_CODE. Unlock is verified on the
+// server (the code itself never reaches the client). Once unlocked
+// the state is held in memory only — refreshing the page re-locks.
+// ============================================================
+const HEX_ROOM_META = {
+  work:  { title: 'The Work',  subtitle: 'the work that finds you' },
+  lens:  { title: 'The Lens',  subtitle: 'how you see and what you see' },
+  field: { title: 'The Field', subtitle: 'how your energy meets the world' },
+  call:  { title: 'The Call',  subtitle: 'what is moving through you' }
+};
+
+// Session-only unlock. Lives on window so it is unambiguously reset
+// on every page load (no localStorage, no cookies).
+let HEX_UNLOCKED = false;
+let HEX_LAST_TAB = { work:'shadow', lens:'shadow', field:'shadow', call:'shadow' };
+
+// In-memory cache: gk_num -> full JSON object. Populated lazily.
+const HEX_CACHE = {};
+
+// Quick reference accessible from inspireQuestion() — keyed by point
+// (work / lens / field / call) so the Inspire button always has the
+// full hexagram object for the room regardless of which Shadow/Gift/
+// Siddhi tab the user is currently viewing.
+state.hexagramsByPoint = state.hexagramsByPoint || { work:null, lens:null, field:null, call:null };
+
+async function loadHexagram(num) {
+  if (!num) return null;
+  const n = parseInt(num);
+  if (!n || n < 1 || n > 64) return null;
+  if (HEX_CACHE[n]) return HEX_CACHE[n];
+  const padded = String(n).padStart(2, '0');
+  try {
+    const res = await fetch(`/data/hexagrams/gk_${padded}.json`, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    HEX_CACHE[n] = json;
+    return json;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getHexReaderEls(point) {
+  const root = document.querySelector(`.hex-reader[data-hex-reader="${point}"]`);
+  if (!root) return null;
+  return {
+    root,
+    locked:    root.querySelector('.hex-reader-locked'),
+    codeRow:   root.querySelector('.hex-reader-code-row'),
+    codeInput: root.querySelector('[data-hex-action="code-input"]'),
+    codeMsg:   root.querySelector('[data-hex-action="code-msg"]'),
+    body:      root.querySelector('.hex-reader-body'),
+  };
+}
+
+async function verifyHexCode(code) {
+  try {
+    const res = await fetch('/api/hexagram-reader/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+function renderHexReaderBody(point, hex) {
+  const els = getHexReaderEls(point);
+  if (!els) return;
+  if (!hex) {
+    els.body.innerHTML = `<div class="hex-reader-empty">Enter a Gene Key number for this room to load the Hexagram.</div>`;
+    return;
+  }
+  const tab = HEX_LAST_TAB[point] || 'shadow';
+  const layer = hex[tab] || {};
+  const physio = [hex.physiology, hex.amino_acid].filter(Boolean).join(' · ');
+  els.body.innerHTML = `
+    <div class="hex-reader-header">
+      <div class="hex-reader-title">${hex.number} · ${escapeHtml(hex.title || '')}</div>
+      <div class="hex-reader-meta">${escapeHtml(hex.codon_ring || '')}</div>
+      ${physio ? `<div class="hex-reader-meta-physio">${escapeHtml(physio)}</div>` : ''}
+    </div>
+    <div class="hex-reader-tabs" role="tablist">
+      <button class="hex-reader-tab ${tab==='shadow'?'is-active':''}" data-hex-tab="shadow" data-freq="shadow">Shadow</button>
+      <button class="hex-reader-tab ${tab==='gift'?'is-active':''}"   data-hex-tab="gift"   data-freq="gift">Gift</button>
+      <button class="hex-reader-tab ${tab==='siddhi'?'is-active':''}" data-hex-tab="siddhi" data-freq="siddhi">Siddhi</button>
+    </div>
+    <div class="hex-reader-content">
+      <div class="hex-reader-subtitle">${escapeHtml(layer.subtitle || '')}</div>
+      <div class="hex-reader-subtitle-title">${escapeHtml(layer.subtitle_title || '')}</div>
+      <div class="hex-reader-body-text">${escapeHtml(layer.content || '')}</div>
+    </div>
+  `;
+  els.body.querySelectorAll('.hex-reader-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      HEX_LAST_TAB[point] = btn.dataset.hexTab;
+      renderHexReaderBody(point, hex);
+    });
+  });
+}
+
+async function refreshHexReader(point) {
+  const els = getHexReaderEls(point);
+  if (!els) return;
+  if (!HEX_UNLOCKED) {
+    els.locked.style.display = 'flex';
+    els.codeRow.classList.remove('is-visible');
+    els.body.classList.remove('is-visible');
+    return;
+  }
+  // Unlocked — show body, hide lock UI
+  els.locked.style.display = 'none';
+  els.codeRow.classList.remove('is-visible');
+  els.body.classList.add('is-visible');
+
+  const gkNum = (state.points[point] && state.points[point].gk_num) || '';
+  const hex = await loadHexagram(gkNum);
+  state.hexagramsByPoint[point] = hex;
+  renderHexReaderBody(point, hex);
+}
+
+function refreshAllHexReaders() {
+  POINTS.forEach(p => { refreshHexReader(p); });
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function initHexReaders() {
+  // Delegate clicks for unlock + submit
+  document.addEventListener('click', (e) => {
+    const showBtn = e.target.closest('[data-hex-action="unlock-show"]');
+    if (showBtn) {
+      const root = showBtn.closest('.hex-reader');
+      const codeRow = root.querySelector('.hex-reader-code-row');
+      codeRow.classList.add('is-visible');
+      const input = root.querySelector('[data-hex-action="code-input"]');
+      if (input) { input.value = ''; input.focus(); }
+      return;
+    }
+    const submitBtn = e.target.closest('[data-hex-action="code-submit"]');
+    if (submitBtn) {
+      const root = submitBtn.closest('.hex-reader');
+      const input = root.querySelector('[data-hex-action="code-input"]');
+      const msg = root.querySelector('[data-hex-action="code-msg"]');
+      const code = (input?.value || '').trim();
+      msg.classList.remove('is-error');
+      msg.textContent = 'Checking…';
+      verifyHexCode(code).then(ok => {
+        if (ok) {
+          HEX_UNLOCKED = true;
+          msg.textContent = '';
+          refreshAllHexReaders();
+        } else {
+          msg.classList.add('is-error');
+          msg.textContent = "This code doesn't match — check with your guide.";
+        }
+      });
+      return;
+    }
+  });
+
+  // Allow Enter inside the code input to submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const input = e.target.closest('[data-hex-action="code-input"]');
+    if (!input) return;
+    e.preventDefault();
+    const root = input.closest('.hex-reader');
+    root.querySelector('[data-hex-action="code-submit"]')?.click();
+  });
+
+  // When a Gene Key number changes for a point, refresh that point's reader
+  POINTS.forEach(p => {
+    const numEl = document.getElementById(`${p}-gk-num`);
+    if (numEl) {
+      numEl.addEventListener('change', () => { refreshHexReader(p); });
+      numEl.addEventListener('input',  () => { refreshHexReader(p); });
+    }
+  });
+
+  // Initial paint — always render once so the lock UI is visible
+  refreshAllHexReaders();
+}
+
+// ============================================================
+// COMPASS NEXUS — floating activator + chat panel
+// Reuses the Studio Nexus pattern: same SVG, same animation,
+// same /rose-mirror endpoint, same NEXUS_SYSTEM personality.
+// Press-and-hold 700ms to open. A regular tap does nothing.
+// ============================================================
+const COMPASS_NEXUS_HOLD_MS = 700;
+
+const compassNexusState = {
+  history: [],
+  holdTimer: null,
+  isOpen: false
+};
+
+function compassCurrentPoint() {
+  const activeTab = document.querySelector('.compass-tab-btn.active');
+  return (activeTab && activeTab.dataset.point) || 'work';
+}
+
+function compassNexusSeedContext() {
+  const point = compassCurrentPoint();
+  const meta = HEX_ROOM_META[point] || { title: point, subtitle: '' };
+  const pt = state.points[point] || {};
+  const hex = state.hexagramsByPoint?.[point] || HEX_CACHE[parseInt(pt.gk_num || '0')] || null;
+  return {
+    point,
+    room_title: meta.title,
+    room_subtitle: meta.subtitle,
+    user_notes: pt.raw || '',
+    hexagram: hex,
+    gk_num: pt.gk_num || '',
+    gk_line: pt.gk_line || ''
+  };
+}
+
+function appendCompassNexusMsg(role, text) {
+  const conv = document.getElementById('compass-nexus-convo');
+  if (!conv) return null;
+  const div = document.createElement('div');
+  div.className = `compass-nexus-msg ${role === 'user' ? 'is-user' : 'is-nexus'}`;
+  if (role === 'user') {
+    div.textContent = text;
+  } else {
+    div.innerHTML = `<span class="compass-nexus-sender">The Nexus</span><div class="compass-nexus-bubble"></div>`;
+    div.querySelector('.compass-nexus-bubble').textContent = text;
+  }
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+  return div;
+}
+
+function openCompassNexus() {
+  const modal = document.getElementById('compass-nexus-modal');
+  if (!modal) return;
+  compassNexusState.isOpen = true;
+  modal.classList.add('is-open');
+  // Reset conversation for a fresh seeding each open
+  compassNexusState.history = [];
+  const conv = document.getElementById('compass-nexus-convo');
+  if (conv) {
+    const ctx = compassNexusSeedContext();
+    const hexLine = ctx.hexagram
+      ? `${ctx.hexagram.number} · ${ctx.hexagram.title}`
+      : (ctx.gk_num ? `Gene Key ${ctx.gk_num}` : 'no hexagram set');
+    conv.innerHTML = `<div class="compass-nexus-intro">In <strong>${escapeHtml(ctx.room_title)}</strong> — held by ${escapeHtml(hexLine)}.<br>When you are ready, knock.</div>`;
+  }
+  setTimeout(() => {
+    document.getElementById('compass-nexus-input')?.focus();
+  }, 100);
+}
+
+function closeCompassNexus() {
+  const modal = document.getElementById('compass-nexus-modal');
+  if (!modal) return;
+  compassNexusState.isOpen = false;
+  modal.classList.remove('is-open');
+}
+
+async function sendCompassNexusMessage() {
+  const input = document.getElementById('compass-nexus-input');
+  const sendBtn = document.getElementById('compass-nexus-send');
+  if (!input || !sendBtn) return;
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  appendCompassNexusMsg('user', msg);
+  sendBtn.classList.add('loading');
+
+  const ctx = compassNexusSeedContext();
+  const hex = ctx.hexagram || {};
+  const hexJsonString = ctx.hexagram ? JSON.stringify(ctx.hexagram, null, 2).slice(0, 6000) : '';
+
+  // Seed the system context with the full hexagram JSON, room name and
+  // the user's current notes — per the Compass spec. We piggy-back on
+  // the existing /rose-mirror endpoint by stuffing the seed into the
+  // session_notes field so NEXUS_SYSTEM has everything it needs.
+  const seed = `You are Nexus, a contemplative guide within CommonUnity Compass.
+The user is currently in the ${ctx.room_title} room — "${ctx.room_subtitle}".
+Their assigned hexagram is ${hex.number || '—'} · ${hex.title || '—'}.
+
+Full hexagram data:
+${hexJsonString}
+
+User's current contemplation notes:
+${(ctx.user_notes || '').slice(0, 2000)}
+
+Your role is to support their contemplation — answer questions, offer insight,
+and provide guidance related to their hexagram journey. You are a supplement
+to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
+
+  try {
+    const res = await fetch(`${API_BASE}/rose-mirror`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: msg,
+        room: ctx.point,
+        room_title: ctx.room_title,
+        room_subtitle: ctx.room_subtitle,
+        gk_num: String(ctx.gk_num || ''),
+        gk_shadow: hex?.shadow?.content || '',
+        gk_gift:   hex?.gift?.content   || '',
+        gk_siddhi: hex?.siddhi?.content || '',
+        session_notes: seed,
+        workbench_entries: '',
+        history: compassNexusState.history.slice(-8),
+        companion: state.companion || ''
+      })
+    });
+    if (!res.ok) throw new Error('Server error');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    const div = document.createElement('div');
+    div.className = 'compass-nexus-msg is-nexus';
+    div.innerHTML = `<span class="compass-nexus-sender">The Nexus</span><div class="compass-nexus-bubble"></div>`;
+    document.getElementById('compass-nexus-convo').appendChild(div);
+    const bubble = div.querySelector('.compass-nexus-bubble');
+    const conv = document.getElementById('compass-nexus-convo');
+
+    let text = '';
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          sendBtn.classList.remove('loading');
+          compassNexusState.history.push({ role: 'user', text: msg });
+          compassNexusState.history.push({ role: 'rose', text });
+          return;
+        }
+        decoder.decode(value).split('\n').forEach(line => {
+          if (!line.startsWith('data: ')) return;
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.chunk) { text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
+          } catch (_) {}
+        });
+        read();
+      });
+    }
+    read();
+  } catch (e) {
+    appendCompassNexusMsg('rose', 'Something interrupted the connection. Try again when you are ready.');
+    sendBtn.classList.remove('loading');
+  }
+}
+
+function initCompassNexus() {
+  const orb = document.getElementById('compass-nexus-orb');
+  const modal = document.getElementById('compass-nexus-modal');
+  const closeBtn = document.getElementById('compass-nexus-close');
+  const sendBtn = document.getElementById('compass-nexus-send');
+  const input = document.getElementById('compass-nexus-input');
+  if (!orb || !modal) return;
+
+  const startHold = (e) => {
+    if (e) e.preventDefault();
+    orb.classList.add('is-holding');
+    clearTimeout(compassNexusState.holdTimer);
+    compassNexusState.holdTimer = setTimeout(() => {
+      openCompassNexus();
+      orb.classList.remove('is-holding');
+    }, COMPASS_NEXUS_HOLD_MS);
+  };
+  const cancelHold = () => {
+    orb.classList.remove('is-holding');
+    clearTimeout(compassNexusState.holdTimer);
+    compassNexusState.holdTimer = null;
+  };
+
+  // Use Pointer Events when available; gracefully fall back to touch + mouse.
+  if (window.PointerEvent) {
+    orb.addEventListener('pointerdown', startHold);
+    orb.addEventListener('pointerup', cancelHold);
+    orb.addEventListener('pointerleave', cancelHold);
+    orb.addEventListener('pointercancel', cancelHold);
+  } else {
+    orb.addEventListener('touchstart', startHold, { passive: false });
+    orb.addEventListener('touchend', cancelHold);
+    orb.addEventListener('touchcancel', cancelHold);
+    orb.addEventListener('mousedown', startHold);
+    orb.addEventListener('mouseup', cancelHold);
+    orb.addEventListener('mouseleave', cancelHold);
+  }
+  // Plain click is a no-op by design — must press and hold.
+  orb.addEventListener('click', (e) => { e.preventDefault(); });
+
+  closeBtn?.addEventListener('click', closeCompassNexus);
+  // Click outside the panel closes the modal
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeCompassNexus();
+  });
+  // Escape closes
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && compassNexusState.isOpen) closeCompassNexus();
+  });
+
+  sendBtn?.addEventListener('click', sendCompassNexusMessage);
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendCompassNexusMessage();
+    }
+  });
+}
+
+// Init the new Compass features as soon as the DOM is ready
+(function bootCompassExtras() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initHexReaders();
+      initCompassNexus();
+    });
+  } else {
+    initHexReaders();
+    initCompassNexus();
+  }
+})();
 
 </script>
 

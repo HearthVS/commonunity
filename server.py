@@ -1174,10 +1174,29 @@ if _sdk_dir.exists():
     app.mount("/sdk", StaticFiles(directory=str(_sdk_dir)), name="sdk")
 
 # Serve vendored data assets (city / timezone gazetteer used by the
-# OM Cipher modal's Human Design + astrology engines).
+# OM Cipher modal's Human Design + astrology engines). Also serves the
+# Compass Hexagram Reader JSON files at /data/hexagrams/gk_XX.json.
 _data_dir = pathlib.Path(__file__).parent / "data"
 if _data_dir.exists():
     app.mount("/data", StaticFiles(directory=str(_data_dir)), name="data")
+
+
+# ── Compass Hexagram Reader unlock ───────────────────────────────────────
+# The activation code is stored as the HEXAGRAM_READER_CODE env var.
+# The verify endpoint returns {"ok": true} on match; the frontend then
+# unlocks the reader for the session. The code itself never leaves the
+# server — only a boolean. If the env var is unset, the reader stays
+# locked (no implicit "anything passes" fallback).
+class HexagramUnlockRequest(BaseModel):
+    code: str = ""
+
+@app.post("/api/hexagram-reader/verify")
+async def hexagram_reader_verify(request: HexagramUnlockRequest):
+    expected = os.getenv("HEXAGRAM_READER_CODE", "")
+    submitted = (request.code or "").strip()
+    if expected and submitted and submitted == expected.strip():
+        return {"ok": True}
+    return {"ok": False}
 
 @app.get("/studio")
 async def serve_studio():
