@@ -225,14 +225,31 @@
 
   function render() {
     switch (state.currentStep) {
-      case 'name-threshold':       return renderNameThreshold();
-      case 'interim-chamber':      return renderInterimChamber();
-      case 'name-essay':           return renderNameEssay();
-      case 'reflection':           return renderReflection();
-      case 'identity-completion':  return renderIdentityCompletion();
-      case 'welcome-landing':      return renderWelcomeLanding();
-      case 'prepared-setup':       return renderPreparedSetup();
+      case 'name-threshold':       renderNameThreshold(); break;
+      case 'interim-chamber':      renderInterimChamber(); break;
+      case 'name-essay':           renderNameEssay(); break;
+      case 'reflection':           renderReflection(); break;
+      case 'identity-completion':  renderIdentityCompletion(); break;
+      case 'welcome-landing':      renderWelcomeLanding(); break;
+      case 'prepared-setup':       renderPreparedSetup(); break;
+      default: return;
     }
+    // Centralized fade-in for every screen transition. The CSS
+    // animation .is-entering plays once on each render so the
+    // sequence reads as a journey rather than a slideshow. The
+    // class is removed after the animation completes so re-renders
+    // of the same step (focus/refresh) don't double-fade.
+    // prefers-reduced-motion is honoured at the CSS layer.
+    try {
+      root.classList.remove('is-entering');
+      // Force reflow so re-adding the class restarts the animation.
+      // eslint-disable-next-line no-unused-expressions
+      void root.offsetWidth;
+      root.classList.add('is-entering');
+      setTimeout(function () {
+        try { root.classList.remove('is-entering'); } catch (_) {}
+      }, 900);
+    } catch (_) {}
   }
 
   function el(tag, opts, ...children) {
@@ -679,28 +696,30 @@
 
     const reduced = prefersReducedMotion();
 
-    // Accessible status line for assistive tech.
+    // Accessible status line for assistive tech. The screen is
+    // user-driven now — no timer — so the hint invites the press
+    // rather than warning of an imminent transition.
     card.appendChild(el('p', { class: 'welcome-hint', role: 'status', 'aria-live': 'polite' },
-      reduced ? 'Continue when you are ready.' : 'A moment, while your cOMpass opens.'
+      'Continue when you are ready.'
     ));
 
-    // Explicit continue is always available; required when reduced
-    // motion is on, optional otherwise. Clicking it begins the same
-    // fade-then-handoff as the auto path so the entry into cOMpass
-    // feels identical regardless of how the user arrived.
-    const enterBtn = el('button', { class: 'threshold-btn threshold-btn-ghost welcome-enter' }, 'Enter cOMpass');
+    // Explicit continue is the ONLY way forward — no auto-advance.
+    // The user reads at their own pace; the threshold closes when
+    // they choose. Clicking begins the fade-then-handoff (a clean
+    // navigation under reduced motion).
+    const enterBtn = el('button', {
+      class: 'threshold-btn threshold-btn-ghost welcome-enter',
+      type: 'button',
+      'aria-label': 'Enter cOMpass'
+    }, 'Enter cOMpass');
     enterBtn.addEventListener('click', () => beginWelcomeHandoff(reduced));
     card.appendChild(el('div', { class: 'threshold-actions', style: 'justify-content:center' }, enterBtn));
 
     root.appendChild(card);
 
-    if (reduced) {
-      // No auto-advance, no fade — user controls the moment.
-      return;
-    }
-
-    // Gentle auto fade then handoff after the copy has had time to land.
-    setTimeout(() => beginWelcomeHandoff(false), 6000);
+    // Focus the continue button so keyboard users land on it
+    // immediately and can press Enter/Space without a tab pass.
+    try { setTimeout(function () { enterBtn.focus(); }, 0); } catch (_) {}
   }
 
   let _welcomeHandoffStarted = false;

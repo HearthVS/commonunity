@@ -32,7 +32,7 @@ ok(/ONBOARDING_STEPS\s*=\s*\[[^\]]*'welcome-landing'/.test(js),
    "'welcome-landing' is registered in ONBOARDING_STEPS");
 ok(/PALETTE_STAGE_BY_STEP\s*=\s*\{[\s\S]*?'welcome-landing':\s*3/.test(js),
    "welcome-landing inherits the established palette stage (3)");
-ok(/case 'welcome-landing':\s*return renderWelcomeLanding/.test(js),
+ok(/case 'welcome-landing':\s*renderWelcomeLanding\(\)/.test(js),
    "render() dispatches to renderWelcomeLanding");
 ok(/function renderWelcomeLanding\s*\(/.test(js),
    "renderWelcomeLanding is defined");
@@ -66,6 +66,30 @@ ok(/root\.classList\.add\('is-fading-out'\)/.test(js),
    "fade-out is applied to the threshold root (whole field dims together)");
 ok(/\/\?threshold=done&enter=compass/.test(js),
    "handoff still navigates to /?threshold=done&enter=compass");
+
+console.log('\n4b. welcome screen is user-driven · no auto-advance timer');
+const renderWelcomeFn = (js.split('function renderWelcomeLanding')[1] || '').split('\n  function ')[0];
+ok(!/setTimeout\([^)]*beginWelcomeHandoff/.test(renderWelcomeFn),
+   "renderWelcomeLanding has NO setTimeout that calls beginWelcomeHandoff (no auto-advance)");
+ok(!/3200|6000/.test(renderWelcomeFn),
+   "renderWelcomeLanding has NO 3200ms / 6000ms timer constants");
+ok(/enterBtn\.addEventListener\(\s*['"]click['"]\s*,\s*\(\s*\)\s*=>\s*beginWelcomeHandoff/.test(renderWelcomeFn),
+   "Enter cOMpass click is the path that triggers beginWelcomeHandoff");
+ok(/enterBtn\.focus\(\)/.test(renderWelcomeFn),
+   "Enter cOMpass button receives focus for keyboard accessibility");
+
+console.log('\n4c. centralized fade-in between threshold screens');
+const renderFn = (js.split('function render()')[1] || '').split('\n  function ')[0];
+ok(/classList\.add\(['"]is-entering['"]\)/.test(renderFn),
+   "render() adds .is-entering class for the screen-transition fade");
+ok(/classList\.remove\(['"]is-entering['"]\)/.test(renderFn),
+   "render() also removes .is-entering (restart + cleanup) so re-renders don't double-fade");
+ok(/\.threshold-root\.is-entering[\s\S]{0,200}animation:\s*threshold-step-in/.test(css),
+   ".is-entering CSS animation hook is defined");
+ok(/@keyframes threshold-step-in/.test(css),
+   "threshold-step-in keyframes are defined");
+ok(/@media \(prefers-reduced-motion: reduce\)[\s\S]{0,400}is-entering[\s\S]{0,200}animation:\s*none/.test(css),
+   "is-entering animation is disabled under prefers-reduced-motion");
 
 console.log('\n5. CSS hooks exist for the welcome screen');
 ok(/\.threshold-card\.is-welcome-landing/.test(css),

@@ -634,6 +634,25 @@ html, body {
   }
 }
 
+/* Centralized screen-transition fade. render() applies .is-entering
+   to the threshold root on every step change; the card fades and
+   lifts in so the sequence feels like a journey, not a slideshow.
+   The field layers (root::before / root::after) keep their existing
+   continuous drift untouched so the world stays steady while the
+   card refreshes. */
+@keyframes threshold-step-in {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.threshold-root.is-entering > .threshold-card {
+  animation: threshold-step-in 700ms ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .threshold-root.is-entering > .threshold-card {
+    animation: none;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Essay screen — hybrid composition, contemplative reading.
    ───────────────────────────────────────────────────────────────────── */
