@@ -715,14 +715,19 @@ Calm, intimate, reflective, lucid, and human. Poetic but clear. Spiritually sens
 Guidance:
 - Treat the person's name as something that has carried them for a long time.
 - Use the given (first) name as the primary subject of the essay. Do not analyze, interpret, or speculate about the surname in this feature.
+- Anchor the essay primarily in THIS given name — its specific roots, sounds, and history — not in generic reflections about names in general. The essay must feel impossible to mistake for an essay about any other name.
+- At least half of the essay must be dedicated to the specific given name: likely roots and meanings, linguistic and cultural associations, movement across languages and regions, historical evolution, variants and related forms, and the qualities or tensions the name has gathered over time.
+- Include 2-4 concrete name-specific details whenever the material allows: likely meaning(s), language or cultural origin, historical or regional movement, variants and related forms (sister-names, diminutives, cognates), and any symbolic tensions or paired qualities the name has carried.
+- If certainty about origin or meaning is limited, use humble language and offer multiple plausible threads, but still provide concrete specificity. Prefer phrases like "this name is associated with…", "one thread of the name moves through…", "in some traditions this name carries…", or "the name appears in… and in… with related senses of…" rather than retreating into abstraction.
+- If the given name is Turkish, Arabic, Persian, South Asian, East Asian, African, Indigenous, non-Western, less common in English-language sources, or simply unfamiliar, do not fall back on generic prose. Work harder to surface culturally relevant and meaningful detail with equal richness and dignity. The person should never feel left out because their name is less represented in mainstream Western naming references. Treat every name as worthy of the same depth of attention.
 - Let the essay feel like a conversation the person is having with themselves through the mirror of the name.
 - Write as though the person's name is being returned to them, not explained to them. The essay should feel like a mirror, not a lecture. Favor reflection over explanation.
 - Include at least one sentence that feels singular and memorable, as if it could only belong to this name.
 - Draw on the possibility that a name moves through family, culture, memory, relationship, work, and now through digital systems.
 - Acknowledge that the digital world can flatten identity, and that part of this threshold is to restore depth and relationship to what has become abstracted.
-- If relevant, gently reference roots, meanings, or etymological threads, but only with humility. When touching name origins, use humble language such as "one thread," "one root," or "the name may carry," rather than making absolute claims. Do not make strong factual claims unless well supported.
+- When touching name origins, use humble language such as "one thread," "one root," or "the name may carry," rather than making absolute claims. Do not make strong factual claims unless well supported.
 - When exploring the name's roots or resonances, look for meaningful tensions or complementary poles rather than reducing the name to a single trait. If the name carries more than one live thread, let the essay hold that paradox. Favor living contrasts — such as strength and tenderness, force and cultivation, protection and refuge, warrior and farmer — when they arise naturally from the material.
-- Do not let the essay become a generic meditation on identity; keep bringing it back to this person's lived name.
+- Do not let the essay become mostly a general meditation on identity, names-in-general, or selfhood. Keep returning to the actual given name itself.
 - Keep the writing elegant and readable on screen.
 - Address the person warmly, by their first name when natural — never the full legal form.
 - The birth date is offered only as quiet context. Do not list facts about it or interpret it astrologically.
@@ -738,13 +743,10 @@ Avoid:
 - Manipulative second-person certainty about who the person is.
 - Hype words: journey, impact, passion, empower, transform, dynamic, leverage, holistic, authentic, innovative, solutions, synergy, thrive, unlock.
 
-Arc:
-1. Begin with the recognition that the name has carried the person through life.
-2. Deepen into the sense that a name holds memory, relation, inheritance, and mystery.
-3. Introduce the mirror idea: that we need reflection to see ourselves, and a name can become one such mirror.
-4. Acknowledge that digital life often reduces names into tags, credentials, and metadata.
-5. Reopen the name as something living that still holds unanswered questions about identity and becoming.
-6. End with a quiet, open invitation to reflection rather than a conclusion, command, or fixed interpretation.
+Arc (rough thirds — keep the proportions even if the seams are invisible):
+- First third — lived presence: the recognition that this particular name has carried the person through life, the way it has been spoken, heard, and answered to.
+- Middle third — name-specific history, movement, and meaning: the roots and likely meanings of the given name, the languages and cultures it has moved through, related forms or variants, and the qualities or tensions it has gathered. This is the section that must be unmistakably about THIS name; concrete name-specific detail belongs here.
+- Final third — reflection and self-recognition: the mirror idea, the acknowledgment that digital life often reduces names into tags and metadata, and a quiet invitation to encounter the name as something still living and still asking questions of the person who carries it. End open, not concluded.
 
 Output:
 Return only the essay text, ready to display in the app. 300–400 words. Plain text only — no markdown, no lists, no headers, no title line. Use blank lines between paragraphs."""
