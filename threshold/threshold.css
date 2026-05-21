@@ -810,6 +810,185 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Arrival composition — first threshold screen ONLY.
+   ─────────────────────────────────────────────────────────────────────────
+   The first page is the entrance chamber: deep blue-black field, radial
+   bloom, soft grain, the same rotating cOMpass mark used throughout the
+   threshold as a meaningful presence, then a centered title, line, and
+   quietly-styled fields below. Motion is fade-led and staged — field
+   first, mark next, then chamber content, then fields, then the CTA —
+   so the user feels they are arriving into a space rather than loading
+   a form. Every animation here respects prefers-reduced-motion. Nothing
+   in this block leaks onto later screens; selectors are gated on
+   .threshold-card.is-arrival or .threshold-root.is-arrival.
+
+   Composition. Drop the modal-box feeling: no hard border, no surface
+   gradient, no backdrop blur. The chamber is "held" by the field
+   itself, not by a box. */
+.threshold-card.is-arrival.is-name-threshold {
+  text-align: center;
+  max-width: 580px;
+  padding: 2.5rem 1.5rem 3.25rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.threshold-card.is-arrival .threshold-brand {
+  justify-content: center;
+  margin-bottom: 2.25rem;
+}
+.threshold-card.is-arrival .compass-mark {
+  margin: 0.5rem auto 1.75rem;
+  width: clamp(150px, 24vw, 220px);
+  height: clamp(150px, 24vw, 220px);
+}
+.threshold-card.is-arrival .is-arrival-title {
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  margin: 0 auto 0.9rem;
+  max-width: 28ch;
+}
+.threshold-card.is-arrival .is-arrival-line {
+  margin: 0 auto 2.5rem;
+  max-width: 36ch;
+  color: var(--threshold-text-muted);
+  font-style: italic;
+  line-height: 1.7;
+}
+/* Fields sit left-aligned again so labels read naturally — but the
+   block as a whole is centred under the title with a contained max
+   width, so the chamber composition is preserved. */
+.threshold-card.is-arrival .threshold-field {
+  text-align: left;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.threshold-card.is-arrival .threshold-helper {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 36ch;
+}
+.threshold-card.is-arrival .threshold-actions {
+  justify-content: center;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Quieter input rest state — softer border, slightly translucent
+   background — so the form recedes at first glance. Focus stays
+   luminous (palette-tinted glow + brighter background) so the
+   active field still feels alive. Scope strictly to .is-arrival
+   so other threshold screens are untouched. */
+.threshold-card.is-arrival .threshold-field input {
+  background: color-mix(in srgb, var(--threshold-input-bg) 70%, transparent);
+  border-color: color-mix(in srgb, var(--threshold-border) 65%, transparent);
+  transition: border-color 320ms ease, box-shadow 320ms ease, background 320ms ease;
+}
+.threshold-card.is-arrival .threshold-field input:hover {
+  border-color: color-mix(in srgb, var(--threshold-border) 55%, var(--cipher-primary) 45%);
+}
+.threshold-card.is-arrival .threshold-field input:focus {
+  border-color: color-mix(in srgb, var(--cipher-primary) 65%, transparent);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--cipher-primary) 18%, transparent),
+    0 0 18px color-mix(in srgb, var(--cipher-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--threshold-input-bg) 82%, var(--cipher-primary) 10%);
+}
+
+/* CTA is softened at rest — the user should feel invited, not
+   pushed. Keep the existing primary button structure; just dim
+   the surface a touch on the arrival screen. */
+.threshold-card.is-arrival .threshold-btn-primary {
+  background: color-mix(in srgb, var(--cipher-primary) 78%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--cipher-primary) 22%, transparent);
+}
+.threshold-card.is-arrival .threshold-btn-primary:hover {
+  background: var(--cipher-primary);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--cipher-primary) 38%, transparent);
+}
+
+/* The field bloom is slightly more present on the first screen —
+   the user is arriving into the cOMpass, so the emanation should
+   be felt, not just glimpsed. Other screens keep their existing
+   data-palette-stage opacity ladder unchanged. */
+.threshold-root.is-arrival::before { opacity: 0.7; }
+.threshold-root.is-arrival::after  { opacity: 0.55; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Arrival choreography — staged fade-in on the first screen.
+   ─────────────────────────────────────────────────────────────────────────
+   Order:
+     1. field bloom (root::before / ::after) lifts from a deeper rest
+     2. rotating cOMpass mark becomes perceptible
+     3. brand chip + title fade in
+     4. subline + fields settle
+     5. CTA arrives last
+   All slow, all opacity-led, all suppressed under reduced-motion. */
+@keyframes arrival-field-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes arrival-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes arrival-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Field layers fade in first, slow and atmospheric. */
+.threshold-root.is-arrival::before {
+  animation:
+    arrival-field-in 1600ms ease 0ms both,
+    field-drift 64s ease-in-out infinite alternate 1600ms;
+}
+.threshold-root.is-arrival::after {
+  animation:
+    arrival-field-in 1800ms ease 200ms both,
+    field-halo 84s ease-in-out infinite alternate 2000ms;
+}
+
+/* Chamber children stage in. The compass mark is the second event
+   so the page reads as the user arriving into a space that already
+   contains the rotating presence. */
+.threshold-card.is-arrival > .threshold-brand     { animation: arrival-fade-in 900ms ease 600ms both; }
+.threshold-card.is-arrival > .compass-mark        { animation: arrival-rise-in 1200ms ease 900ms both; }
+.threshold-card.is-arrival > .is-arrival-title    { animation: arrival-rise-in 1100ms ease 1500ms both; }
+.threshold-card.is-arrival > .is-arrival-line     { animation: arrival-rise-in 1100ms ease 1850ms both; }
+.threshold-card.is-arrival > .threshold-field:nth-of-type(1) { animation: arrival-rise-in 1000ms ease 2200ms both; }
+.threshold-card.is-arrival > .threshold-field:nth-of-type(2) { animation: arrival-rise-in 1000ms ease 2450ms both; }
+.threshold-card.is-arrival > .threshold-helper    { animation: arrival-fade-in 900ms ease 2700ms both; }
+.threshold-card.is-arrival > .threshold-actions   { animation: arrival-rise-in 1000ms ease 2900ms both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .threshold-root.is-arrival::before,
+  .threshold-root.is-arrival::after,
+  .threshold-card.is-arrival > .threshold-brand,
+  .threshold-card.is-arrival > .compass-mark,
+  .threshold-card.is-arrival > .is-arrival-title,
+  .threshold-card.is-arrival > .is-arrival-line,
+  .threshold-card.is-arrival > .threshold-field,
+  .threshold-card.is-arrival > .threshold-helper,
+  .threshold-card.is-arrival > .threshold-actions {
+    animation: none;
+  }
+  /* Restore the continuous drift on the field layers under
+     reduced-motion — the arrival staging is suppressed, but the
+     atmospheric base motion is already a gentle long cycle and
+     stays consistent with the rest of the threshold. */
+  .threshold-root.is-arrival::before { animation: field-drift 64s ease-in-out infinite alternate; }
+  .threshold-root.is-arrival::after  { animation: field-halo  84s ease-in-out infinite alternate; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Responsive — keep the field on small screens, lighten the chrome.
    ───────────────────────────────────────────────────────────────────── */
 
@@ -817,6 +996,8 @@ html, body {
   .threshold-root { padding: 1.5rem 1rem; }
   .threshold-card { padding: 2rem 1.25rem; border-radius: 18px; }
   .threshold-card.is-chamber { padding: 2.5rem 1rem 3rem; }
+  .threshold-card.is-arrival.is-name-threshold { padding: 1.75rem 1rem 2.5rem; }
+  .threshold-card.is-arrival .compass-mark { width: 140px; height: 140px; margin: 0.25rem auto 1.25rem; }
   .threshold-title { font-size: 1.4rem; }
   .essay-heading, .reflection-heading { font-size: 1.25rem; }
   .essay-body { font-size: 1rem; }

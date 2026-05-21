@@ -224,6 +224,13 @@
   }
 
   function render() {
+    // Drop the first-screen arrival marker as soon as the user
+    // moves past name-threshold; later screens use their own
+    // composition (centered chamber / hybrid). The marker is
+    // re-added inside renderNameThreshold() for the first screen.
+    try {
+      if (state.currentStep !== 'name-threshold') root.classList.remove('is-arrival');
+    } catch (_) {}
     switch (state.currentStep) {
       case 'name-threshold':       renderNameThreshold(); break;
       case 'interim-chamber':      renderInterimChamber(); break;
@@ -351,13 +358,26 @@
 
   function renderNameThreshold() {
     root.innerHTML = '';
-    // Practical screen — left-aligned, but framed by the field rather than
-    // a hard modal card.
-    const card = el('div', { class: 'threshold-card is-practical' });
+
+    // Arrival page composition. The first threshold screen is the
+    // entrance chamber — not a setup form. Composition is
+    // centre-up: brand chip, theatrical compass mark (the same
+    // rotating logo used elsewhere in the threshold), title and
+    // subline with generous breathing room, then the two fields
+    // and CTA arrive quietly below. Staged fade-in choreography
+    // lives in CSS under .threshold-root.is-arrival and is
+    // suppressed by prefers-reduced-motion.
+    root.classList.add('is-arrival');
+    const card = el('div', { class: 'threshold-card is-arrival is-name-threshold' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
-    card.appendChild(el('h1', { class: 'threshold-title' }, 'Before anything is asked of you, begin here.'));
-    card.appendChild(el('p', { class: 'threshold-line' }, 'Begin with the name that has carried you here.'));
+    // The rotating cOMpass mark — meaningful presence, not just
+    // an icon. Same compassMark() used by the chamber/welcome
+    // screens so the user senses the same field carrying through
+    // the whole flow from the very first breath.
+    card.appendChild(compassMark());
+    card.appendChild(el('h1', { class: 'threshold-title is-arrival-title' }, 'Before anything is asked of you, begin here.'));
+    card.appendChild(el('p', { class: 'threshold-line is-arrival-line' }, 'Begin with the name that has carried you here.'));
 
     const nameField = el('div', { class: 'threshold-field' },
       el('label', { for: 'th-full-name' }, 'Full name'),
@@ -382,9 +402,14 @@
 
     root.appendChild(card);
 
-    // Focus first field for usability.
-    setTimeout(() => document.getElementById('th-full-name').focus(), 0);
+    // Focus first field for usability — but defer until after the
+    // arrival fade-in has begun so the user notices the chamber
+    // before the caret lands.
+    setTimeout(() => {
+      try { document.getElementById('th-full-name').focus({ preventScroll: true }); } catch (_) {}
+    }, 600);
   }
+
 
   function onSubmitName(errBox) {
     const fullName = document.getElementById('th-full-name').value.trim();
