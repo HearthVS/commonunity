@@ -3416,7 +3416,36 @@ body.companion-mode .companion-mode-banner { display: block; }
         <span class="search-icon">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
-        <input class="search-input" id="search-input" type="text" placeholder="Search session…" autocomplete="off">
+        <!--
+          Privacy hardening: this is a generic session search field
+          and MUST NEVER be pre-populated with any profile-derived
+          value (Gene Key Shadow/Gift/Siddhi terms, companion / guide
+          names, birth fields, OM Cipher data, prior responses, etc.)
+          A live deployment leaked the active Siddhi "Bounteousness"
+          into this field through Chrome's autofill heuristic.
+          Belt-and-braces defence:
+            • type="search" — semantic + opt-out of password-style autofill
+            • autocomplete="new-password" — Chrome's most reliable
+              opt-out for non-credential fields since v90+
+            • name omitted so browser history cannot key on it
+            • inputmode="search" — mobile keyboard hint, no autofill effect
+            • data-1p-ignore / data-lpignore="true" / data-form-type="other"
+              — silence 1Password / LastPass / Bitwarden autofill
+            • defensive .value = '' on init + on pageshow (bfcache)
+              lives in initSearch() below.
+        -->
+        <input class="search-input"
+               id="search-input"
+               type="search"
+               placeholder="Search cOMpass…"
+               autocomplete="new-password"
+               inputmode="search"
+               aria-label="Search cOMpass"
+               spellcheck="false"
+               data-1p-ignore
+               data-lpignore="true"
+               data-form-type="other"
+               data-private="true">
         <!-- Results panel -->
         <div class="search-results" id="search-results">
           <div class="search-results-header">
@@ -7875,6 +7904,33 @@ function initSearch() {
   const closeBtn   = document.getElementById('search-close');
 
   if (!input) return;
+
+  // Privacy hardening: the session search field MUST start empty.
+  // Browsers (Chrome especially) sometimes ignore autocomplete
+  // attributes and pre-populate text inputs from a heuristic
+  // match against any value the user has ever typed elsewhere.
+  // We saw the active Siddhi "Bounteousness" leak in via that
+  // path. The markup carries every reasonable autofill opt-out;
+  // this is the runtime backstop that always wins.
+  function clearSearchInput() {
+    try {
+      if (input && input.value) input.value = '';
+    } catch (_) {}
+  }
+  // Initial clear — runs after DOMContentLoaded so any
+  // autofill that fired before our handler is wiped.
+  clearSearchInput();
+  // Some browsers (Safari, Firefox) restore form values from
+  // bfcache when the user navigates back. Re-clear on pageshow.
+  try {
+    window.addEventListener('pageshow', clearSearchInput);
+  } catch (_) {}
+  // Chrome runs autofill in a microtask after load — a couple
+  // of deferred clears catch that window without affecting any
+  // user-typed value (the user can't type before they focus).
+  try { setTimeout(clearSearchInput, 0); } catch (_) {}
+  try { setTimeout(clearSearchInput, 250); } catch (_) {}
+  try { setTimeout(clearSearchInput, 1000); } catch (_) {}
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && input.value.trim()) {
