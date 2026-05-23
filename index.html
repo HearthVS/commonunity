@@ -9001,7 +9001,76 @@ async function refreshHexReader(point) {
   renderHexReaderBody(point, hex);
 }
 
+// After the hexagram reader is unlocked, populate each room's
+// Gene Key number from the person's own birth-derived chart so
+// the reader does not require manual guide-mode entry. The four
+// rooms map directly to the four sequence gates:
+//   work  ↔ Life's Work    (Conscious Sun)
+//   lens  ↔ Evolution      (Conscious Earth)
+//   field ↔ Radiance       (Unconscious Sun)
+//   call  ↔ Purpose        (Unconscious Earth)
+//
+// Source priority:
+//   1. state.points[p].gk_num — if the guide has set a value
+//      manually, NEVER overwrite it. Manual entry remains the
+//      authoritative override.
+//   2. autoPopulateGeneKeysFromState() — recomputes from
+//      state.dob / state.tob; idempotent.
+//   3. state.profile.gene_keys_life_work / _evolution / _radiance
+//      / _purpose — already stored on the contract from a prior
+//      run; these are formatted as "GK <gate> · <gift> (Line <n>)"
+//      and we extract the gate number defensively.
+//
+// If no birth data is available the function is a no-op; the
+// reader keeps its existing manual/empty fallback so users
+// without a contract are not broken.
+function hydrateHexReaderGatesFromProfile() {
+  try {
+    if (typeof state !== 'object' || !state) return;
+    // Best-effort recompute. Safe to call repeatedly; only fills
+    // blanks on state.profile.
+    if (typeof autoPopulateGeneKeysFromState === 'function' && state.dob) {
+      try { autoPopulateGeneKeysFromState(); } catch (_) {}
+    }
+    const profile = state.profile || {};
+    const pointToProfileKey = {
+      work:  'gene_keys_life_work',
+      lens:  'gene_keys_evolution',
+      field: 'gene_keys_radiance',
+      call:  'gene_keys_purpose'
+    };
+    POINTS.forEach(function (p) {
+      if (!state.points || !state.points[p]) return;
+      // Respect manual guide entry — only fill when blank.
+      const existing = String(state.points[p].gk_num || '').trim();
+      if (existing) return;
+      const formatted = String(profile[pointToProfileKey[p]] || '');
+      // "GK 14 · Bounteousness (Line 4)" → 14
+      const m = formatted.match(/GK\s*(\d{1,2})\b/i);
+      if (!m) return;
+      const n = parseInt(m[1], 10);
+      if (!n || n < 1 || n > 64) return;
+      state.points[p].gk_num = String(n);
+      // Mirror into the visible gk-num input so the guide panel
+      // shows the auto-populated value (and so subsequent
+      // refreshHexReader reads it back consistently).
+      const numEl = document.getElementById(p + '-gk-num');
+      if (numEl && !String(numEl.value || '').trim()) numEl.value = String(n);
+      // Keep the Shadow/Gift/Siddhi triad consistent with the
+      // newly-populated gate.
+      try { if (typeof lookupGK === 'function') lookupGK(p); } catch (_) {}
+    });
+    try { if (typeof saveToStorage === 'function') saveToStorage(); } catch (_) {}
+  } catch (_) { /* best-effort */ }
+}
+
 function refreshAllHexReaders() {
+  // When the reader is unlocked, ensure each room has its gate
+  // pre-filled from the person's own profile before painting.
+  // Manual guide entries are preserved (only blanks are filled).
+  if (HEX_UNLOCKED) {
+    try { hydrateHexReaderGatesFromProfile(); } catch (_) {}
+  }
   POINTS.forEach(p => { refreshHexReader(p); });
 }
 
