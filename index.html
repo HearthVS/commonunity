@@ -70,6 +70,45 @@
     window.location.replace('/threshold');
   } catch (_) { /* localStorage blocked — let setup render */ }
 })();
+
+// ============================================================
+// COMPASS HANDOFF ANTI-FLASH GUARD — runs before body parses.
+// ============================================================
+// The threshold module hands off to /?threshold=done&enter=compass.
+// Without this guard the user briefly sees the legacy SESSION SETUP
+// screen because #screen-setup defaults to display:flex in CSS, and
+// only the post-DOMContentLoaded init flow (initThresholdContract +
+// openCompass) flips screens. That gap is a visible setup-page
+// flash during handoff.
+//
+// Fix: when the URL says the user is coming from threshold or
+// explicitly entering compass — and is NOT requesting guide/setup —
+// stamp <html data-compass-handoff="1"> and inject one synchronous
+// CSS rule that hides #screen-setup until init takes over. The
+// attribute stays harmlessly set after init; the rule only targets
+// #screen-setup, which by then is hidden anyway via inline style.
+(function compassHandoffAntiFlash() {
+  try {
+    var path = window.location.pathname || '/';
+    if (path !== '/' && path !== '/index.html') return;
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('guide') === '1' || params.get('setup') === '1') return;
+    var entering = params.get('threshold') === 'done' || params.get('enter') === 'compass';
+    if (!entering) return;
+    document.documentElement.setAttribute('data-compass-handoff', '1');
+    // Inject a synchronous style rule that overrides the default
+    // #screen-setup { display: flex } so the legacy surface never
+    // paints during the handoff window. Also reveals #screen-compass
+    // immediately so initThresholdContract's hydration lands on an
+    // already-visible chamber instead of a black gap.
+    var s = document.createElement('style');
+    s.id = 'compass-handoff-anti-flash';
+    s.textContent =
+      'html[data-compass-handoff="1"] #screen-setup { display: none !important; }' +
+      'html[data-compass-handoff="1"] #screen-compass { display: flex !important; }';
+    (document.head || document.documentElement).appendChild(s);
+  } catch (_) { /* best-effort */ }
+})();
 </script>
 <meta name="description" content="A facilitation tool for mapping your life's work, lens, field and call — built on the Gene Keys and universal laws.">
 <meta property="og:title" content="cOMpass">
