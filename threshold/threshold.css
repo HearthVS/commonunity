@@ -968,6 +968,34 @@ html, body {
 .threshold-card.is-arrival > .threshold-helper    { animation: arrival-fade-in 900ms ease 2700ms both; }
 .threshold-card.is-arrival > .threshold-actions   { animation: arrival-rise-in 1000ms ease 2900ms both; }
 
+/* OM opening page — no form fields, so the body paragraphs sit
+   directly in the choreography and the CTA arrives sooner. The
+   three body paragraphs (wrapped in .om-opening-body) stage in
+   one after the other so the user has time to receive each
+   thought. */
+.threshold-card.is-arrival.is-om-opening .om-opening-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 40ch;
+  margin: 0 auto 0.5rem;
+}
+.threshold-card.is-arrival.is-om-opening > .om-opening-body {
+  animation: arrival-fade-in 900ms ease 1850ms both;
+}
+.threshold-card.is-arrival.is-om-opening .om-opening-body > .is-arrival-line:nth-child(1) {
+  animation: arrival-rise-in 1000ms ease 1850ms both;
+}
+.threshold-card.is-arrival.is-om-opening .om-opening-body > .is-arrival-line:nth-child(2) {
+  animation: arrival-rise-in 1000ms ease 2300ms both;
+}
+.threshold-card.is-arrival.is-om-opening .om-opening-body > .is-arrival-line:nth-child(3) {
+  animation: arrival-rise-in 1000ms ease 2750ms both;
+}
+.threshold-card.is-arrival.is-om-opening > .threshold-actions {
+  animation: arrival-rise-in 1000ms ease 3300ms both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .threshold-root.is-arrival::before,
   .threshold-root.is-arrival::after,
@@ -977,7 +1005,9 @@ html, body {
   .threshold-card.is-arrival > .is-arrival-line,
   .threshold-card.is-arrival > .threshold-field,
   .threshold-card.is-arrival > .threshold-helper,
-  .threshold-card.is-arrival > .threshold-actions {
+  .threshold-card.is-arrival > .threshold-actions,
+  .threshold-card.is-arrival.is-om-opening > .om-opening-body,
+  .threshold-card.is-arrival.is-om-opening .om-opening-body > .is-arrival-line {
     animation: none;
   }
   /* Restore the continuous drift on the field layers under

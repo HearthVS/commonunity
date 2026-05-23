@@ -29,6 +29,7 @@
   }
 
   const ONBOARDING_STEPS = [
+    'om-opening',
     'name-threshold',
     'interim-chamber',
     'name-essay',
@@ -38,9 +39,13 @@
     'prepared-setup'
   ];
 
-  // Progressive palette intensity per step. Brief: screen 1 neutral,
-  // screen 2 subtle, screens 3-4 moderate, screens 5-7 established.
+  // Progressive palette intensity per step. The new OM opening
+  // page is the very first surface and sits at stage 0 (neutral)
+  // alongside the original first-page coordinates screen so the
+  // user crosses the threshold gradually rather than landing on
+  // a saturated field.
   const PALETTE_STAGE_BY_STEP = {
+    'om-opening': 0,
     'name-threshold': 0,
     'interim-chamber': 1,
     'name-essay': 2,
@@ -53,7 +58,7 @@
   // ---- Runtime state ------------------------------------------------------
 
   const state = {
-    currentStep: 'name-threshold',
+    currentStep: 'om-opening',
     identity: {
       full_name: '',
       birth_date: '',
@@ -224,14 +229,19 @@
   }
 
   function render() {
-    // Drop the first-screen arrival marker as soon as the user
-    // moves past name-threshold; later screens use their own
-    // composition (centered chamber / hybrid). The marker is
-    // re-added inside renderNameThreshold() for the first screen.
+    // Drop the arrival-composition marker as soon as the user
+    // moves past the first two screens (OM opening + coordinates).
+    // Later screens use their own composition (centered chamber /
+    // hybrid). The marker is re-added inside renderOmOpening() and
+    // renderNameThreshold() for the two arrival screens.
     try {
-      if (state.currentStep !== 'name-threshold') root.classList.remove('is-arrival');
+      if (state.currentStep !== 'om-opening' &&
+          state.currentStep !== 'name-threshold') {
+        root.classList.remove('is-arrival');
+      }
     } catch (_) {}
     switch (state.currentStep) {
+      case 'om-opening':           renderOmOpening(); break;
       case 'name-threshold':       renderNameThreshold(); break;
       case 'interim-chamber':      renderInterimChamber(); break;
       case 'name-essay':           renderNameEssay(); break;
@@ -354,7 +364,60 @@
     return wrap;
   }
 
-  // ---- Screen 1: Name Threshold ------------------------------------------
+  // ---- Screen 0: OM Opening ----------------------------------------------
+  //
+  // The very first surface a user crosses. Introduces OM as the
+  // primordial sound / field of pure potential, and cOMpass as the
+  // instrument of re-orientation. No inputs — only a single CTA
+  // that advances to the coordinates page.
+  //
+  // Composition reuses the arrival class so the page inherits the
+  // same staged fade choreography as the coordinates page. Palette
+  // stage 0 keeps the field neutral here; the bloom progressively
+  // deepens as the user crosses further into the threshold.
+
+  function renderOmOpening() {
+    root.innerHTML = '';
+    root.classList.add('is-arrival');
+    const card = el('div', { class: 'threshold-card is-arrival is-om-opening' });
+
+    card.appendChild(brandHeader('cOMpass · Threshold'));
+    card.appendChild(compassMark());
+
+    card.appendChild(el('h1', { class: 'threshold-title is-arrival-title' }, 'Before the journey, there is OM.'));
+
+    const body = el('div', { class: 'om-opening-body' });
+    body.appendChild(el('p', { class: 'threshold-line is-arrival-line' },
+      'OM is often called the primordial sound: the silence before sound, the field of pure potential from which all things begin. It may not be a place we return to, but a frequency we are already part of, already longing to remember.'
+    ));
+    body.appendChild(el('p', { class: 'threshold-line is-arrival-line' },
+      'cOMpass begins here: with a shift in the geography of awareness. Before we navigate outward, we return to what is essential, so the path ahead can be oriented from essence rather than noise.'
+    ));
+    body.appendChild(el('p', { class: 'threshold-line is-arrival-line' },
+      'This threshold is the first step: a way to begin finding your path hOMe.'
+    ));
+    card.appendChild(body);
+
+    const beginBtn = el('button', {
+      class: 'threshold-btn threshold-btn-primary',
+      type: 'button',
+      'aria-label': 'Begin orientation'
+    }, 'Begin orientation');
+    beginBtn.addEventListener('click', () => go('name-threshold'));
+
+    card.appendChild(el('div', { class: 'threshold-actions' }, beginBtn));
+
+    root.appendChild(card);
+
+    // Focus the CTA so keyboard users can press Enter/Space
+    // immediately. Deferred so the arrival fade-in starts before
+    // the focus ring lands.
+    setTimeout(() => {
+      try { beginBtn.focus({ preventScroll: true }); } catch (_) {}
+    }, 600);
+  }
+
+  // ---- Screen 1: Name Threshold (cOMpass departure / coordinates) -------
 
   function renderNameThreshold() {
     root.innerHTML = '';
@@ -376,8 +439,13 @@
     // screens so the user senses the same field carrying through
     // the whole flow from the very first breath.
     card.appendChild(compassMark());
-    card.appendChild(el('h1', { class: 'threshold-title is-arrival-title' }, 'Before anything is asked of you, begin here.'));
-    card.appendChild(el('p', { class: 'threshold-line is-arrival-line' }, 'Begin with the name that has carried you here.'));
+    card.appendChild(el('h1', { class: 'threshold-title is-arrival-title' }, 'Begin your journey hOMe'));
+    card.appendChild(el('p', { class: 'threshold-line is-arrival-line' },
+      'Every journey into unknown territory begins with orientation. There is no fixed map for the path ahead. There is only your cOMpass: an instrument designed to help you find your own unique way hOMe.'
+    ));
+    card.appendChild(el('p', { class: 'threshold-line is-arrival-line' },
+      'To begin, we receive your first coordinates: your name and birth date. These are not merely details. They help tune the cOMpass to the field through which your journey begins.'
+    ));
 
     const nameField = el('div', { class: 'threshold-field' },
       el('label', { for: 'th-full-name' }, 'Full name'),
@@ -395,7 +463,7 @@
     const errBox = el('div', { class: 'threshold-error', id: 'th-err' });
     card.appendChild(errBox);
 
-    const beginBtn = el('button', { class: 'threshold-btn threshold-btn-primary' }, 'Begin');
+    const beginBtn = el('button', { class: 'threshold-btn threshold-btn-primary' }, 'Tune my cOMpass');
     beginBtn.addEventListener('click', () => onSubmitName(errBox));
 
     card.appendChild(el('div', { class: 'threshold-actions' }, beginBtn));
