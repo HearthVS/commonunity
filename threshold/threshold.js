@@ -234,10 +234,20 @@
     // Later screens use their own composition (centered chamber /
     // hybrid). The marker is re-added inside renderOmOpening() and
     // renderNameThreshold() for the two arrival screens.
+    //
+    // is-om-field is a separate marker scoped to the very first
+    // screen only. It suppresses the default blue cipher bloom
+    // and paints the pre-personal "all potential colours" field
+    // (near-black base, soft white centre, faint spectral edge).
+    // It is cleared the moment we leave om-opening so the
+    // coordinates page picks up the regular palette ladder again.
     try {
       if (state.currentStep !== 'om-opening' &&
           state.currentStep !== 'name-threshold') {
         root.classList.remove('is-arrival');
+      }
+      if (state.currentStep !== 'om-opening') {
+        root.classList.remove('is-om-field');
       }
     } catch (_) {}
     switch (state.currentStep) {
@@ -379,6 +389,11 @@
   function renderOmOpening() {
     root.innerHTML = '';
     root.classList.add('is-arrival');
+    // Marker for the pre-personal OM field. Scoped CSS suppresses
+    // the default cipher-primary (blue) bloom and paints the
+    // potential-field backdrop. Cleared automatically by render()
+    // the moment we leave this step.
+    root.classList.add('is-om-field');
     const card = el('div', { class: 'threshold-card is-arrival is-om-opening' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));

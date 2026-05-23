@@ -1019,6 +1019,211 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   OM opening — pre-personal "field of all potential colours".
+   ─────────────────────────────────────────────────────────────────────────
+   The very first surface a user crosses, before any OM Cipher
+   palette is bound. Art direction: deep near-black zero-point,
+   a soft white central breath of light, a faint spectral edge
+   suggesting all colours present but not yet individuated. NO
+   blue cipher bloom — the default --cipher-primary tint is
+   suppressed by overriding the ::before / ::after fills on the
+   root while .is-om-field is set.
+
+   The composition is centred, restrained, ceremonial — title,
+   three body lines, CTA, all sitting in vertical balance under
+   the rotating compass mark which becomes a luminous central
+   anchor rather than a small decorative logo. ──────────────── */
+
+/* 1. Suppress the default blue field on this screen only. */
+.threshold-root.is-om-field {
+  background:
+    radial-gradient(60% 50% at 50% 42%,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.03) 35%,
+      transparent 70%),
+    radial-gradient(80% 80% at 50% 50%,
+      #0a0a0e 0%,
+      #050507 60%,
+      #020203 100%);
+}
+.threshold-root.is-om-field::before {
+  /* Override the cipher-primary bloom with a pure soft white
+     central breath — the "8th colour containing all colours"
+     before any palette has been individuated. */
+  background:
+    radial-gradient(55% 45% at 50% 42%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.06) 35%,
+      rgba(255, 255, 255, 0.02) 60%,
+      transparent 78%);
+  filter: blur(50px);
+  opacity: 1;
+  /* The breath cycle. Slow, fade-led, breath-like — not flashy. */
+  animation:
+    arrival-field-in 2200ms ease 0ms both,
+    om-breath 12s ease-in-out infinite alternate 2200ms;
+}
+.threshold-root.is-om-field::after {
+  /* Faint spectral arc — refraction at the edge of the central
+     light. Conic gradient holds all hues at very low alpha so the
+     suggestion is "all colours present" without any one dominating.
+     The base grain stays (mix-blend: screen, from the inline SVG
+     noise inherited from the unscoped ::after rule above), kept
+     low so the field reads as quiet not busy. */
+  background:
+    conic-gradient(from 210deg at 50% 50%,
+      rgba(255, 120, 120, 0.06),
+      rgba(255, 200, 110, 0.06),
+      rgba(220, 230, 120, 0.06),
+      rgba(120, 220, 160, 0.06),
+      rgba(110, 200, 230, 0.06),
+      rgba(150, 140, 230, 0.06),
+      rgba(220, 130, 200, 0.06),
+      rgba(255, 120, 120, 0.06)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: cover, 240px 240px;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  filter: blur(38px);
+  animation:
+    arrival-field-in 2400ms ease 200ms both,
+    om-spectrum-drift 90s linear infinite 2400ms;
+}
+
+@keyframes om-breath {
+  0%   { transform: scale(1);    opacity: 0.92; }
+  50%  { transform: scale(1.03); opacity: 1;    }
+  100% { transform: scale(1.01); opacity: 0.95; }
+}
+@keyframes om-spectrum-drift {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* 2. Card composition — centred, transparent, vertically
+      balanced. Padding tuned so the title sits near the optical
+      centre of the viewport with the mark above and the body /
+      CTA below at natural reading rhythm. */
+.threshold-card.is-arrival.is-om-opening {
+  text-align: center;
+  max-width: 560px;
+  padding: 2rem 1.5rem 2.5rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 3. Brand chip recedes slightly so the mark and title take the
+      visual weight. */
+.threshold-root.is-om-field .threshold-brand {
+  opacity: 0.72;
+  margin-bottom: 1.5rem;
+}
+
+/* 4. The compass mark becomes a harmonic centre — larger, with a
+      white-light aura (not the cipher-primary blue), and a faint
+      breath behind it. */
+.threshold-card.is-arrival.is-om-opening .compass-mark {
+  width: clamp(170px, 28vw, 260px);
+  height: clamp(170px, 28vw, 260px);
+  margin: 0.5rem auto 2rem;
+}
+.threshold-card.is-arrival.is-om-opening .compass-mark .compass-mark-aura {
+  background:
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 45%,
+      transparent 72%);
+}
+.threshold-card.is-arrival.is-om-opening .compass-mark .compass-mark-ring {
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 0 28px rgba(255, 255, 255, 0.08),
+    0 0 36px rgba(255, 255, 255, 0.10);
+}
+.threshold-card.is-arrival.is-om-opening .compass-mark .compass-mark-svg {
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.28));
+}
+
+/* 5. Title and body — careful centred typography, generous line
+      length cap, body NOT italic (italic at this width was
+      reading as ornament). Subdued white-grey body text so the
+      mark and title carry the page. */
+.threshold-card.is-arrival.is-om-opening .is-arrival-title {
+  font-size: clamp(1.7rem, 2.6vw, 2.15rem);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  margin: 0 auto 1.4rem;
+  max-width: 22ch;
+  color: rgba(255, 255, 255, 0.94);
+  text-wrap: balance;
+}
+.threshold-card.is-arrival.is-om-opening .om-opening-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  max-width: 38ch;
+  margin: 0 auto 2rem;
+}
+.threshold-card.is-arrival.is-om-opening .om-opening-body .is-arrival-line {
+  margin: 0;
+  max-width: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-style: normal;
+  font-size: 1rem;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* 6. CTA — white-light, neutral. The cipher-primary blue is
+      explicitly NOT used here because the personal palette has
+      not yet been bound. Soft luminous gate, not a product
+      button. */
+.threshold-card.is-arrival.is-om-opening .threshold-actions {
+  justify-content: center;
+  margin: 0.25rem auto 0;
+}
+.threshold-card.is-arrival.is-om-opening .threshold-btn-primary {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 22px rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  letter-spacing: 0.04em;
+  flex: 0 0 auto;
+  min-width: 14rem;
+  padding: 0.95rem 1.6rem;
+  transition: background 320ms ease, box-shadow 320ms ease, border-color 320ms ease;
+}
+.threshold-card.is-arrival.is-om-opening .threshold-btn-primary:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 0 32px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.threshold-card.is-arrival.is-om-opening .threshold-btn-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.18),
+    0 0 32px rgba(255, 255, 255, 0.22);
+}
+
+/* 7. Reduced motion — keep the field as a static composition.
+      No breath, no spectral drift, but the still backdrop is
+      still legible. */
+@media (prefers-reduced-motion: reduce) {
+  .threshold-root.is-om-field::before,
+  .threshold-root.is-om-field::after {
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Responsive — keep the field on small screens, lighten the chrome.
    ───────────────────────────────────────────────────────────────────── */
 
@@ -1027,6 +1232,15 @@ html, body {
   .threshold-card { padding: 2rem 1.25rem; border-radius: 18px; }
   .threshold-card.is-chamber { padding: 2.5rem 1rem 3rem; }
   .threshold-card.is-arrival.is-name-threshold { padding: 1.75rem 1rem 2.5rem; }
+  .threshold-card.is-arrival.is-om-opening { padding: 1.5rem 1rem 2rem; }
+  .threshold-card.is-arrival.is-om-opening .compass-mark {
+    width: clamp(150px, 48vw, 200px);
+    height: clamp(150px, 48vw, 200px);
+    margin: 0.25rem auto 1.5rem;
+  }
+  .threshold-card.is-arrival.is-om-opening .is-arrival-title { font-size: 1.55rem; }
+  .threshold-card.is-arrival.is-om-opening .om-opening-body { gap: 0.9rem; margin-bottom: 1.5rem; }
+  .threshold-card.is-arrival.is-om-opening .threshold-btn-primary { min-width: 12rem; }
   .threshold-card.is-arrival .compass-mark { width: 140px; height: 140px; margin: 0.25rem auto 1.25rem; }
   .threshold-title { font-size: 1.4rem; }
   .essay-heading, .reflection-heading { font-size: 1.25rem; }
