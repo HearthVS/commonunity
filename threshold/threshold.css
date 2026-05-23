@@ -1064,27 +1064,39 @@ html, body {
     om-breath 12s ease-in-out infinite alternate 2200ms;
 }
 .threshold-root.is-om-field::after {
-  /* Faint spectral arc — refraction at the edge of the central
-     light. Conic gradient holds all hues at very low alpha so the
-     suggestion is "all colours present" without any one dominating.
-     The base grain stays (mix-blend: screen, from the inline SVG
-     noise inherited from the unscoped ::after rule above), kept
-     low so the field reads as quiet not busy. */
+  /* Latent spectrum — "all colours present" felt as a soft
+     refraction held around the central light. The conic holds
+     every hue at a low but perceptible alpha; a faint chromatic
+     ring at ~62% radius adds a second band of refraction so the
+     spectrum is felt as a circular halo, not a flat wash. Black
+     and white remain dominant — the spectrum is the latent
+     ground, not the foreground. */
   background:
+    radial-gradient(closest-side at 50% 50%,
+      transparent 0%,
+      transparent 55%,
+      rgba(255, 140, 140, 0.10) 62%,
+      rgba(255, 210, 130, 0.10) 66%,
+      rgba(220, 230, 130, 0.10) 70%,
+      rgba(140, 230, 170, 0.10) 74%,
+      rgba(120, 200, 235, 0.10) 78%,
+      rgba(165, 140, 235, 0.10) 82%,
+      rgba(225, 140, 210, 0.10) 86%,
+      transparent 96%),
     conic-gradient(from 210deg at 50% 50%,
-      rgba(255, 120, 120, 0.06),
-      rgba(255, 200, 110, 0.06),
-      rgba(220, 230, 120, 0.06),
-      rgba(120, 220, 160, 0.06),
-      rgba(110, 200, 230, 0.06),
-      rgba(150, 140, 230, 0.06),
-      rgba(220, 130, 200, 0.06),
-      rgba(255, 120, 120, 0.06)),
+      rgba(255, 120, 120, 0.13),
+      rgba(255, 200, 110, 0.13),
+      rgba(220, 230, 120, 0.13),
+      rgba(120, 220, 160, 0.13),
+      rgba(110, 200, 230, 0.13),
+      rgba(150, 140, 230, 0.13),
+      rgba(220, 130, 200, 0.13),
+      rgba(255, 120, 120, 0.13)),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: cover, 240px 240px;
+  background-size: cover, cover, 240px 240px;
   mix-blend-mode: screen;
-  opacity: 0.55;
-  filter: blur(38px);
+  opacity: 0.78;
+  filter: blur(32px);
   animation:
     arrival-field-in 2400ms ease 200ms both,
     om-spectrum-drift 90s linear infinite 2400ms;
@@ -1098,6 +1110,31 @@ html, body {
 @keyframes om-spectrum-drift {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+/* Later threshold pages (interim chamber, name essay, reflection,
+   identity completion, welcome landing, prepared setup) sit on
+   the same pre-personal OM ground. Their default .threshold-card
+   surface and the stage-2/3 cipher-primary-tinted borders / glows
+   would compete with the spectral halo, so we neutralise them
+   here. The card stays translucent and readable; the field
+   underneath carries the colour suggestion, not the chrome.
+   Scoped strictly to .is-om-field so it can never leak into
+   cOMpass. */
+.threshold-root.is-om-field .threshold-card {
+  background:
+    linear-gradient(180deg,
+      rgba(10, 10, 14, 0.66) 0%,
+      rgba(5, 5, 7, 0.62) 100%);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.threshold-root.is-om-field[data-palette-stage="2"] .threshold-card,
+.threshold-root.is-om-field[data-palette-stage="3"] .threshold-card {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 40px 80px -30px rgba(0, 0, 0, 0.55),
+    0 0 60px -10px rgba(255, 255, 255, 0.08);
 }
 
 /* 2. Card composition — centred, transparent, vertically

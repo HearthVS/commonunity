@@ -235,19 +235,17 @@
     // hybrid). The marker is re-added inside renderOmOpening() and
     // renderNameThreshold() for the two arrival screens.
     //
-    // is-om-field is a separate marker scoped to the very first
-    // screen only. It suppresses the default blue cipher bloom
-    // and paints the pre-personal "all potential colours" field
-    // (near-black base, soft white centre, faint spectral edge).
-    // It is cleared the moment we leave om-opening so the
-    // coordinates page picks up the regular palette ladder again.
+    // is-om-field is the universal pre-personal field marker. It
+    // is set once in boot() and persists across EVERY threshold
+    // step so the black/white/spectral potential-field backdrop
+    // is the ground for the whole module until the user hands
+    // off to cOMpass. Personalised colours arrive only in the
+    // cOMpass app, never inside /threshold. We never remove it
+    // here.
     try {
       if (state.currentStep !== 'om-opening' &&
           state.currentStep !== 'name-threshold') {
         root.classList.remove('is-arrival');
-      }
-      if (state.currentStep !== 'om-opening') {
-        root.classList.remove('is-om-field');
       }
     } catch (_) {}
     switch (state.currentStep) {
@@ -389,11 +387,9 @@
   function renderOmOpening() {
     root.innerHTML = '';
     root.classList.add('is-arrival');
-    // Marker for the pre-personal OM field. Scoped CSS suppresses
-    // the default cipher-primary (blue) bloom and paints the
-    // potential-field backdrop. Cleared automatically by render()
-    // the moment we leave this step.
-    root.classList.add('is-om-field');
+    // is-om-field is set once for the whole threshold module in
+    // boot(); we do not need to (re)add it here. The page-specific
+    // composition is held by .is-om-opening on the card below.
     const card = el('div', { class: 'threshold-card is-arrival is-om-opening' });
 
     card.appendChild(brandHeader('cOMpass · Threshold'));
@@ -937,6 +933,13 @@
       return;
     }
     loadDraft();
+    // The pre-personal OM potential field is the ground for the
+    // ENTIRE threshold module — black/white/spectral backdrop on
+    // every page until the user hands off to cOMpass. Personal
+    // palette differentiation belongs only inside the cOMpass
+    // app. We mark the root once here so the marker covers every
+    // step without per-step add/remove churn.
+    try { root.classList.add('is-om-field'); } catch (_) {}
     setPaletteStage(state.currentStep);
     // Apply any existing palette draft so visuals are continuous.
     if (state.palette.primary) {
