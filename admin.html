@@ -356,7 +356,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { invites: [], events: [], metrics: {} };
+    const state = { invites: [], events: [], metrics: {}, configured: {} };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
     const magicLink = (token) => `${location.origin}/threshold?invite=${encodeURIComponent(token)}`;
 
@@ -392,6 +392,7 @@
       state.invites = invites.invites || [];
       state.metrics = metrics.metrics || {};
       state.events = metrics.events || [];
+      state.configured = metrics.configured || {};
       render();
     }
 
@@ -400,6 +401,7 @@
       $('metric-opened').textContent = state.metrics.opened || 0;
       $('metric-threshold').textContent = state.metrics.threshold_completed || 0;
       $('metric-compass').textContent = state.metrics.compass_entered || 0;
+      $('config-status').textContent = state.configured.smtp ? 'Admin room open · email ready' : 'Admin room open · SMTP needed';
 
       $('invite-rows').innerHTML = state.invites.map(inv => `
         <tr>
@@ -412,6 +414,7 @@
           <td>
             <div class="actions" style="margin:0">
               <button class="btn" data-copy="${escapeHtml(inv.token)}">Copy link</button>
+              ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
             </div>
           </td>
@@ -469,6 +472,7 @@
 
     document.addEventListener('click', async (event) => {
       const copyToken = event.target?.dataset?.copy;
+      const sendId = event.target?.dataset?.send;
       const revokeId = event.target?.dataset?.revoke;
       if (copyToken) {
         await navigator.clipboard?.writeText(magicLink(copyToken));
@@ -478,6 +482,19 @@
       if (revokeId && confirm('Revoke this invitation?')) {
         await api(`/api/admin/invites/${revokeId}/revoke`, { method: 'POST', body: '{}' });
         await loadDashboard();
+      }
+      if (sendId && confirm('Send this invitation email now?')) {
+        const original = event.target.textContent;
+        event.target.textContent = 'Sending…';
+        try {
+          const result = await api(`/api/admin/invites/${sendId}/send`, { method: 'POST', body: '{}' });
+          event.target.textContent = 'Sent';
+          $('invite-message').textContent = `Invitation sent to ${result.sent_to}.`;
+          await loadDashboard();
+        } catch (err) {
+          event.target.textContent = original;
+          $('invite-message').textContent = err.message;
+        }
       }
     });
 

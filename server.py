@@ -14,7 +14,10 @@ import hmac
 import hashlib
 import secrets
 import sqlite3
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timezone
+from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
@@ -967,6 +970,13 @@ _BETA_SECRET_ENV = "COMMONUNITY_BETA_COOKIE_SECRET"
 _ADMIN_CODE_ENV = "ADMIN_ACCESS_CODE"
 _ADMIN_SECRET_ENV = "ADMIN_COOKIE_SECRET"
 _ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"
+_PUBLIC_BASE_URL_ENV = "COMMONUNITY_PUBLIC_BASE_URL"
+_SMTP_HOST_ENV = "SMTP_HOST"
+_SMTP_PORT_ENV = "SMTP_PORT"
+_SMTP_USER_ENV = "SMTP_USER"
+_SMTP_PASSWORD_ENV = "SMTP_PASSWORD"
+_SMTP_FROM_ENV = "SMTP_FROM"
+_SMTP_USE_TLS_ENV = "SMTP_USE_TLS"
 _PRIVATE_APPS = {
     "compass": {"label": "cOMpass", "path": "/compass"},
     "studio":  {"label": "Studio",  "path": "/studio"},
@@ -1135,6 +1145,70 @@ def _record_event(
             )
     except Exception as exc:
         print(f"admin event record failed: {exc}")
+
+
+def _smtp_configured() -> bool:
+    return bool(
+        os.getenv(_SMTP_HOST_ENV, "").strip()
+        and os.getenv(_SMTP_USER_ENV, "").strip()
+        and os.getenv(_SMTP_PASSWORD_ENV, "").strip()
+    )
+
+
+def _smtp_sender() -> str:
+    return os.getenv(_SMTP_FROM_ENV, "").strip()
+
+
+def _public_base_url(request: Request) -> str:
+    configured = os.getenv(_PUBLIC_BASE_URL_ENV, "").strip().rstrip("/")
+    if configured:
+        return configured
+    return str(request.base_url).rstrip("/")
+
+
+def _invite_magic_link(request: Request, token: str) -> str:
+    return f"{_public_base_url(request)}/threshold?invite={quote(token)}"
+
+
+def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None:
+    host = os.getenv(_SMTP_HOST_ENV, "").strip()
+    user = os.getenv(_SMTP_USER_ENV, "").strip()
+    password = os.getenv(_SMTP_PASSWORD_ENV, "").strip()
+    sender = _smtp_sender()
+    port = int(os.getenv(_SMTP_PORT_ENV, "587").strip() or "587")
+    use_tls = os.getenv(_SMTP_USE_TLS_ENV, "true").strip().lower() not in {"0", "false", "no", "off"}
+    missing = [
+        name for name, value in [
+            (_SMTP_HOST_ENV, host),
+            (_SMTP_USER_ENV, user),
+            (_SMTP_PASSWORD_ENV, password),
+            (_SMTP_FROM_ENV, sender),
+        ]
+        if not value
+    ]
+    if missing:
+        raise HTTPException(status_code=503, detail=f"SMTP is not configured. Missing: {', '.join(missing)}")
+
+    greeting = f"Hi {person_name}," if person_name else "Hi,"
+    msg = EmailMessage()
+    msg["Subject"] = "Your CommonUnity threshold invitation"
+    msg["From"] = sender
+    msg["To"] = to_email
+    msg.set_content(
+        f"{greeting}\n\n"
+        "Your CommonUnity threshold is ready.\n\n"
+        "Open your private invitation here:\n"
+        f"{magic_link}\n\n"
+        "This link opens the first step of your cOMpass journey. It is personal to you, so please do not forward it.\n\n"
+        "With warmth,\n"
+        "CommonUnity\n"
+    )
+
+    with smtplib.SMTP(host, port, timeout=20) as smtp:
+        if use_tls:
+            smtp.starttls()
+        smtp.login(user, password)
+        smtp.send_message(msg)
 
 
 def _lookup_active_invite(token: str | None) -> dict | None:
@@ -1382,6 +1456,7 @@ async def admin_status(request: Request):
         "db_path": str(_admin_db_path()),
         "beta_code_configured": bool(_csv_env(_BETA_CODE_ENV)),
         "env_magic_links_configured": bool(_csv_env(_BETA_TOKENS_ENV)),
+        "smtp_configured": _smtp_configured(),
     }
 
 
@@ -1515,9 +1590,43 @@ async def admin_metrics(request: Request):
             "admin_code": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
             "beta_code": bool(_csv_env(_BETA_CODE_ENV)),
             "env_magic_links": bool(_csv_env(_BETA_TOKENS_ENV)),
+            "smtp": _smtp_configured(),
             "db_path": str(_admin_db_path()),
         },
     }
+
+
+@app.post("/api/admin/invites/{invite_id}/send")
+async def admin_send_invite(invite_id: int, request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="invite not found")
+        invite = _row_to_dict(row)
+    if invite.get("status") != "active":
+        raise HTTPException(status_code=400, detail="invite is not active")
+    email = (invite.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="invite has no email address")
+    magic_link = _invite_magic_link(request, invite.get("token", ""))
+    _send_invite_email(email, invite.get("name", ""), magic_link)
+    now = _now_iso()
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'invite_email_sent', ?, ?, '/admin', 'admin', ?, ?)
+            """,
+            (
+                now,
+                invite_id,
+                invite.get("token", ""),
+                request.headers.get("user-agent", "")[:320],
+                email,
+            ),
+        )
+    return {"ok": True, "sent_to": email, "magic_link": magic_link}
 
 
 # Serve public homepage at root
