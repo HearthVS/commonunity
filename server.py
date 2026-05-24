@@ -12,6 +12,9 @@ import pathlib
 import io
 import hmac
 import hashlib
+import secrets
+import sqlite3
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
@@ -74,6 +77,17 @@ class GenerateRequest(BaseModel):
     lens: Optional[PointData] = None
     field: Optional[PointData] = None
     call: Optional[PointData] = None
+
+class AdminLoginRequest(BaseModel):
+    code: str = ""
+
+class InviteCreateRequest(BaseModel):
+    name: str = ""
+    email: str = ""
+    notes: str = ""
+    cohort: str = ""
+    tag: str = ""
+    expires_at: str = ""
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -945,15 +959,253 @@ import pathlib
 
 _ROOT = pathlib.Path(__file__).parent
 _BETA_COOKIE = "commonunity_beta_access"
+_INVITE_COOKIE = "commonunity_invite_token"
+_ADMIN_COOKIE = "commonunity_admin_access"
 _BETA_CODE_ENV = "COMMONUNITY_BETA_CODE"
 _BETA_TOKENS_ENV = "COMMONUNITY_MAGIC_LINK_TOKENS"
 _BETA_SECRET_ENV = "COMMONUNITY_BETA_COOKIE_SECRET"
+_ADMIN_CODE_ENV = "ADMIN_ACCESS_CODE"
+_ADMIN_SECRET_ENV = "ADMIN_COOKIE_SECRET"
+_ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"
 _PRIVATE_APPS = {
     "compass": {"label": "cOMpass", "path": "/compass"},
     "studio":  {"label": "Studio",  "path": "/studio"},
     "tuner":   {"label": "Tuner",   "path": "/tuner"},
     "commons": {"label": "cOMmons", "path": "/commons"},
 }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _admin_db_path() -> pathlib.Path:
+    configured = os.getenv(_ADMIN_DB_ENV, "").strip()
+    if configured:
+        return pathlib.Path(configured)
+    return _ROOT / "data" / "commonunity_admin.sqlite3"
+
+
+def _admin_db() -> sqlite3.Connection:
+    path = _admin_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    _init_admin_db(conn)
+    return conn
+
+
+def _init_admin_db(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS invites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            cohort TEXT NOT NULL DEFAULT '',
+            tag TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            first_opened_at TEXT,
+            last_opened_at TEXT,
+            threshold_started_at TEXT,
+            threshold_completed_at TEXT,
+            compass_entered_at TEXT,
+            expires_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            type TEXT NOT NULL,
+            invite_id INTEGER,
+            token TEXT,
+            route TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY(invite_id) REFERENCES invites(id)
+        )
+        """
+    )
+    conn.commit()
+
+
+def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
+    if row is None:
+        return None
+    return {key: row[key] for key in row.keys()}
+
+
+def _admin_secret() -> str:
+    return (
+        os.getenv(_ADMIN_SECRET_ENV, "").strip()
+        or os.getenv(_BETA_SECRET_ENV, "").strip()
+        or os.getenv(_ADMIN_CODE_ENV, "").strip()
+        or _beta_secret_material()
+    )
+
+
+def _sign_value(value: str, purpose: str) -> str:
+    secret = _admin_secret()
+    if not secret:
+        return ""
+    return hmac.new(secret.encode("utf-8"), f"{purpose}:{value}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _signed_cookie_value(value: str, purpose: str) -> str:
+    sig = _sign_value(value, purpose)
+    return f"{value}.{sig}" if sig else ""
+
+
+def _read_signed_cookie(request: Request, cookie_name: str, purpose: str) -> str:
+    raw = request.cookies.get(cookie_name, "")
+    if "." not in raw:
+        return ""
+    value, sig = raw.rsplit(".", 1)
+    expected = _sign_value(value, purpose)
+    if expected and hmac.compare_digest(sig, expected):
+        return value
+    return ""
+
+
+def _has_admin_access(request: Request) -> bool:
+    return _read_signed_cookie(request, _ADMIN_COOKIE, "admin") == "open"
+
+
+def _set_admin_cookie(response: RedirectResponse | HTMLResponse, request: Request) -> None:
+    value = _signed_cookie_value("open", "admin")
+    if not value:
+        return
+    response.set_cookie(
+        _ADMIN_COOKIE,
+        value,
+        max_age=60 * 60 * 12,
+        httponly=True,
+        secure=(request.url.scheme == "https"),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _set_invite_cookie(response: RedirectResponse, request: Request, token: str) -> None:
+    value = _signed_cookie_value(token, "invite")
+    if not value:
+        return
+    response.set_cookie(
+        _INVITE_COOKIE,
+        value,
+        max_age=60 * 60 * 24 * 90,
+        httponly=True,
+        secure=(request.url.scheme == "https"),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _invite_token_from_cookie(request: Request) -> str:
+    return _read_signed_cookie(request, _INVITE_COOKIE, "invite")
+
+
+def _record_event(
+    event_type: str,
+    *,
+    token: str = "",
+    invite_id: int | None = None,
+    route: str = "",
+    source: str = "",
+    user_agent: str = "",
+    detail: str = "",
+) -> None:
+    try:
+        with _admin_db() as conn:
+            conn.execute(
+                """
+                INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (_now_iso(), event_type, invite_id, token, route, source, user_agent[:320], detail[:1000]),
+            )
+    except Exception as exc:
+        print(f"admin event record failed: {exc}")
+
+
+def _lookup_active_invite(token: str | None) -> dict | None:
+    if not token:
+        return None
+    try:
+        with _admin_db() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM invites
+                WHERE token = ? AND status = 'active'
+                LIMIT 1
+                """,
+                (token.strip(),),
+            ).fetchone()
+            invite = _row_to_dict(row)
+            if not invite:
+                return None
+            expires = (invite.get("expires_at") or "").strip()
+            if expires and expires < _now_iso():
+                return None
+            return invite
+    except Exception as exc:
+        print(f"admin invite lookup failed: {exc}")
+        return None
+
+
+def _touch_invite(token: str, request: Request, event_type: str, app_key: str = "") -> dict | None:
+    invite = _lookup_active_invite(token)
+    if not invite:
+        return None
+    now = _now_iso()
+    route = request.url.path
+    try:
+        with _admin_db() as conn:
+            conn.execute(
+                """
+                UPDATE invites
+                SET first_opened_at = COALESCE(first_opened_at, ?),
+                    last_opened_at = ?,
+                    threshold_started_at = CASE WHEN ? = 'threshold_started' THEN COALESCE(threshold_started_at, ?) ELSE threshold_started_at END,
+                    threshold_completed_at = CASE WHEN ? = 'threshold_completed' THEN COALESCE(threshold_completed_at, ?) ELSE threshold_completed_at END,
+                    compass_entered_at = CASE WHEN ? = 'compass_entered' THEN COALESCE(compass_entered_at, ?) ELSE compass_entered_at END
+                WHERE id = ?
+                """,
+                (now, now, event_type, now, event_type, now, event_type, now, invite["id"]),
+            )
+            conn.execute(
+                """
+                INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    now,
+                    event_type,
+                    invite["id"],
+                    token,
+                    route,
+                    app_key,
+                    request.headers.get("user-agent", "")[:320],
+                    "",
+                ),
+            )
+        return _lookup_active_invite(token) or invite
+    except Exception as exc:
+        print(f"admin invite touch failed: {exc}")
+        return invite
+
+
+def _beta_secret_material() -> str:
+    return "|".join(_csv_env(_BETA_CODE_ENV) + _csv_env(_BETA_TOKENS_ENV))
 
 
 def _csv_env(name: str) -> list[str]:
@@ -965,8 +1217,11 @@ def _beta_secret() -> str:
     explicit = os.getenv(_BETA_SECRET_ENV, "").strip()
     if explicit:
         return explicit
-    material = "|".join(_csv_env(_BETA_CODE_ENV) + _csv_env(_BETA_TOKENS_ENV))
-    return material
+    return (
+        _beta_secret_material()
+        or os.getenv(_ADMIN_SECRET_ENV, "").strip()
+        or os.getenv(_ADMIN_CODE_ENV, "").strip()
+    )
 
 
 def _beta_signature() -> str:
@@ -987,6 +1242,8 @@ def _has_beta_access(request: Request) -> bool:
 def _valid_invite_token(token: str | None) -> bool:
     if not token:
         return False
+    if _lookup_active_invite(token.strip()):
+        return True
     return any(hmac.compare_digest(token.strip(), allowed) for allowed in _csv_env(_BETA_TOKENS_ENV))
 
 
@@ -1032,13 +1289,35 @@ def _beta_gate(app_key: str, next_path: str | None = None) -> FileResponse:
 
 def _serve_private_file(request: Request, app_key: str, file_path: pathlib.Path, media_type: str | None = None):
     invite = request.query_params.get("invite")
-    if _valid_invite_token(invite):
-        target = _PRIVATE_APPS.get(app_key, {}).get("path", request.url.path)
+    db_invite = _lookup_active_invite(invite.strip()) if invite else None
+    if db_invite or _valid_invite_token(invite):
+        target = request.url.path
         response = RedirectResponse(url=target, status_code=303)
         _set_beta_cookie(response, request)
+        if invite:
+            _set_invite_cookie(response, request, invite.strip())
+            if db_invite:
+                _touch_invite(invite.strip(), request, "invite_opened", app_key)
+            else:
+                _record_event(
+                    "env_invite_opened",
+                    token=invite.strip(),
+                    route=request.url.path,
+                    source=app_key,
+                    user_agent=request.headers.get("user-agent", "")[:320],
+                )
         return response
     if not _has_beta_access(request):
         return _beta_gate(app_key, request.url.path)
+    stored_invite = _invite_token_from_cookie(request)
+    if stored_invite:
+        if request.url.path == "/threshold":
+            _touch_invite(stored_invite, request, "threshold_started", app_key)
+        elif request.url.path == "/compass" and request.query_params.get("threshold") == "done":
+            _touch_invite(stored_invite, request, "threshold_completed", app_key)
+            _touch_invite(stored_invite, request, "compass_entered", app_key)
+        elif request.url.path == "/compass":
+            _touch_invite(stored_invite, request, "compass_entered", app_key)
     if file_path.exists():
         kwargs = {"headers": {
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -1069,12 +1348,176 @@ async def beta_status(request: Request):
     return {
         "unlocked": _has_beta_access(request),
         "configured": bool(_beta_signature()),
+        "admin_invites_configured": _admin_db_path().exists(),
     }
 
 
 @app.get("/beta")
 async def serve_beta_gate(next: str = "/compass"):
     return _beta_gate("compass", next)
+
+
+@app.get("/admin")
+async def serve_admin():
+    page = _ROOT / "admin.html"
+    if page.exists():
+        return FileResponse(page, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        })
+    return HTMLResponse("<h1>CommonUnity admin</h1><p>Admin panel is not installed.</p>", status_code=404)
+
+
+def _require_admin(request: Request) -> None:
+    if not _has_admin_access(request):
+        raise HTTPException(status_code=401, detail="admin access required")
+
+
+@app.get("/api/admin/status")
+async def admin_status(request: Request):
+    return {
+        "unlocked": _has_admin_access(request),
+        "configured": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
+        "db_path": str(_admin_db_path()),
+        "beta_code_configured": bool(_csv_env(_BETA_CODE_ENV)),
+        "env_magic_links_configured": bool(_csv_env(_BETA_TOKENS_ENV)),
+    }
+
+
+@app.post("/api/admin/login")
+async def admin_login(request: Request, payload: AdminLoginRequest):
+    expected = os.getenv(_ADMIN_CODE_ENV, "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="ADMIN_ACCESS_CODE is not configured")
+    if not hmac.compare_digest((payload.code or "").strip(), expected):
+        _record_event(
+            "admin_login_failed",
+            route="/admin",
+            source="admin",
+            user_agent=request.headers.get("user-agent", "")[:320],
+        )
+        raise HTTPException(status_code=401, detail="invalid admin code")
+    response = HTMLResponse('{"ok":true}', media_type="application/json")
+    _set_admin_cookie(response, request)
+    _record_event(
+        "admin_login",
+        route="/admin",
+        source="admin",
+        user_agent=request.headers.get("user-agent", "")[:320],
+    )
+    return response
+
+
+@app.post("/api/admin/logout")
+async def admin_logout(request: Request):
+    response = HTMLResponse('{"ok":true}', media_type="application/json")
+    response.delete_cookie(_ADMIN_COOKIE, path="/")
+    return response
+
+
+@app.get("/api/admin/invites")
+async def admin_list_invites(request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM invites
+            ORDER BY created_at DESC, id DESC
+            LIMIT 500
+            """
+        ).fetchall()
+    return {"invites": [_row_to_dict(row) for row in rows]}
+
+
+@app.post("/api/admin/invites")
+async def admin_create_invite(request: Request, payload: InviteCreateRequest):
+    _require_admin(request)
+    token = secrets.token_urlsafe(24)
+    now = _now_iso()
+    name = (payload.name or "").strip()[:160]
+    email = (payload.email or "").strip()[:220]
+    notes = (payload.notes or "").strip()[:1200]
+    cohort = (payload.cohort or "").strip()[:120]
+    tag = (payload.tag or "").strip()[:120]
+    expires_at = (payload.expires_at or "").strip()[:80]
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    with _admin_db() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO invites (token, name, email, notes, cohort, tag, status, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+            """,
+            (token, name, email, notes, cohort, tag, now, expires_at),
+        )
+        invite_id = cur.lastrowid
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'invite_created', ?, ?, '/admin', 'admin', ?, ?)
+            """,
+            (now, invite_id, token, request.headers.get("user-agent", "")[:320], name),
+        )
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+    return {"invite": _row_to_dict(row)}
+
+
+@app.post("/api/admin/invites/{invite_id}/revoke")
+async def admin_revoke_invite(invite_id: int, request: Request):
+    _require_admin(request)
+    now = _now_iso()
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="invite not found")
+        invite = _row_to_dict(row)
+        conn.execute("UPDATE invites SET status = 'revoked' WHERE id = ?", (invite_id,))
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'invite_revoked', ?, ?, '/admin', 'admin', ?, ?)
+            """,
+            (now, invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320], invite.get("name", "")),
+        )
+    return {"ok": True}
+
+
+@app.get("/api/admin/metrics")
+async def admin_metrics(request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN status = 'revoked' THEN 1 ELSE 0 END) AS revoked,
+                SUM(CASE WHEN first_opened_at IS NOT NULL THEN 1 ELSE 0 END) AS opened,
+                SUM(CASE WHEN threshold_started_at IS NOT NULL THEN 1 ELSE 0 END) AS threshold_started,
+                SUM(CASE WHEN threshold_completed_at IS NOT NULL THEN 1 ELSE 0 END) AS threshold_completed,
+                SUM(CASE WHEN compass_entered_at IS NOT NULL THEN 1 ELSE 0 END) AS compass_entered
+            FROM invites
+            """
+        ).fetchone()
+        recent = conn.execute(
+            """
+            SELECT id, timestamp, type, invite_id, route, source, detail
+            FROM events
+            ORDER BY timestamp DESC, id DESC
+            LIMIT 80
+            """
+        ).fetchall()
+    return {
+        "metrics": _row_to_dict(row),
+        "events": [_row_to_dict(r) for r in recent],
+        "configured": {
+            "admin_code": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
+            "beta_code": bool(_csv_env(_BETA_CODE_ENV)),
+            "env_magic_links": bool(_csv_env(_BETA_TOKENS_ENV)),
+            "db_path": str(_admin_db_path()),
+        },
+    }
 
 
 # Serve public homepage at root

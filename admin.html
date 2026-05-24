@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CommonUnity Control Room</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #030306;
+      --panel: rgba(8, 8, 13, 0.68);
+      --panel-soft: rgba(255,255,255,0.055);
+      --line: rgba(247,243,234,0.14);
+      --text: #f8f2e8;
+      --muted: rgba(248,242,232,0.68);
+      --faint: rgba(248,242,232,0.46);
+      --gold: #d5ad64;
+      --rose: #c9879e;
+      --blue: #7e9ad0;
+      --green: #86b69a;
+      --danger: #e6a0a0;
+      color-scheme: dark;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(213,173,100,0.18), transparent 28rem),
+        radial-gradient(circle at 78% 14%, rgba(126,154,208,0.16), transparent 30rem),
+        radial-gradient(circle at 55% 82%, rgba(201,135,158,0.12), transparent 34rem),
+        linear-gradient(135deg, #030306, #080910 56%, #030306);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image: radial-gradient(rgba(255,255,255,0.65) 0.6px, transparent 0.7px);
+      background-size: 3px 3px;
+      mix-blend-mode: screen;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 26%, transparent, rgba(0,0,0,0.5) 74%);
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 38px 0 64px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 26px;
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--gold);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-size: 0.76rem;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 5.6rem);
+      line-height: 0.9;
+      letter-spacing: -0.075em;
+      font-weight: 520;
+    }
+    .lede {
+      max-width: 62ch;
+      margin: 18px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 1.02rem;
+    }
+    .status-pill {
+      justify-self: end;
+      align-self: start;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.045);
+      backdrop-filter: blur(16px);
+      white-space: nowrap;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), var(--panel);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.28);
+      backdrop-filter: blur(20px);
+    }
+    .login {
+      max-width: 520px;
+      margin: 8vh auto 0;
+      padding: 34px;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 0.88fr 1.12fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .metric {
+      padding: 18px;
+      min-height: 120px;
+      background: var(--panel-soft);
+    }
+    .metric strong {
+      display: block;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: -0.06em;
+      font-weight: 520;
+    }
+    .metric span {
+      display: block;
+      margin-top: 12px;
+      color: var(--faint);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .card { padding: 24px; }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(248,242,232,0.86);
+    }
+    .hint {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    label {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--faint);
+      font-size: 0.74rem;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+    input, textarea {
+      width: 100%;
+      color: var(--text);
+      border: 1px solid rgba(248,242,232,0.16);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.24);
+      outline: none;
+      padding: 14px 15px;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    input:focus, textarea:focus {
+      border-color: rgba(213,173,100,0.68);
+      box-shadow: 0 0 0 4px rgba(213,173,100,0.1);
+    }
+    .fields { display: grid; gap: 14px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn {
+      min-height: 48px;
+      border: 1px solid rgba(248,242,232,0.24);
+      border-radius: 999px;
+      padding: 0 18px;
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+    .btn-primary {
+      color: #0a0805;
+      border: 0;
+      background: linear-gradient(135deg, #f5e7bd, var(--gold));
+      box-shadow: 0 18px 42px rgba(213,173,100,0.2);
+    }
+    .btn-danger { color: var(--danger); border-color: rgba(230,160,160,0.28); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+    th, td {
+      padding: 13px 10px;
+      border-bottom: 1px solid rgba(248,242,232,0.09);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--faint);
+      font-size: 0.72rem;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    td { color: rgba(248,242,232,0.84); font-size: 0.94rem; }
+    .muted { color: var(--faint); }
+    .status {
+      display: inline-flex;
+      border: 1px solid rgba(134,182,154,0.24);
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #cbe8d3;
+      background: rgba(134,182,154,0.08);
+      font-size: 0.78rem;
+    }
+    .status.revoked {
+      color: var(--danger);
+      border-color: rgba(230,160,160,0.26);
+      background: rgba(230,160,160,0.08);
+    }
+    .events {
+      display: grid;
+      gap: 9px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .event {
+      display: grid;
+      gap: 4px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(248,242,232,0.08);
+    }
+    .event strong { font-weight: 560; }
+    .event small { color: var(--faint); }
+    .message {
+      min-height: 22px;
+      margin-top: 12px;
+      color: var(--muted);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      header, .grid, .metrics, .split { grid-template-columns: 1fr; }
+      .status-pill { justify-self: start; }
+      .shell { width: min(100% - 22px, 1180px); padding-top: 24px; }
+      .card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">CommonUnity control room</p>
+        <h1>Hold the threshold.</h1>
+        <p class="lede">Create invitations, watch the first signals of the beta field, and keep the doorway clear without leaving your own system.</p>
+      </div>
+      <div class="status-pill" id="config-status">Checking access…</div>
+    </header>
+
+    <section id="login-panel" class="panel login hidden">
+      <p class="eyebrow">Admin access</p>
+      <h2>Enter your control code</h2>
+      <p class="hint">This room is private. The code lives in Railway as <code>ADMIN_ACCESS_CODE</code>.</p>
+      <form id="login-form" class="fields">
+        <input id="admin-code" type="password" autocomplete="current-password" placeholder="Admin access code" required>
+        <button class="btn btn-primary" type="submit">Open control room</button>
+      </form>
+      <div class="message" id="login-message"></div>
+    </section>
+
+    <main id="dashboard" class="hidden">
+      <section class="metrics">
+        <div class="panel metric"><strong id="metric-total">0</strong><span>Total invites</span></div>
+        <div class="panel metric"><strong id="metric-opened">0</strong><span>Opened</span></div>
+        <div class="panel metric"><strong id="metric-threshold">0</strong><span>Threshold complete</span></div>
+        <div class="panel metric"><strong id="metric-compass">0</strong><span>cOMpass entered</span></div>
+      </section>
+
+      <section class="grid">
+        <div class="panel card">
+          <h2>Create invitation</h2>
+          <p class="hint">Give each person a named doorway. The link can later grow into cohorts, guide relationships, and companion journeys.</p>
+          <form id="invite-form" class="fields">
+            <div>
+              <label for="invite-name">Name</label>
+              <input id="invite-name" required placeholder="e.g. Eda">
+            </div>
+            <div class="split">
+              <div>
+                <label for="invite-email">Email optional</label>
+                <input id="invite-email" type="email" placeholder="person@example.com">
+              </div>
+              <div>
+                <label for="invite-cohort">Cohort optional</label>
+                <input id="invite-cohort" placeholder="beta-01">
+              </div>
+            </div>
+            <div>
+              <label for="invite-notes">Notes optional</label>
+              <textarea id="invite-notes" placeholder="Context, relationship, follow-up notes…"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Generate magic link</button>
+          </form>
+          <div class="message" id="invite-message"></div>
+        </div>
+
+        <div class="panel card">
+          <h2>Recent activity</h2>
+          <p class="hint">A light signal stream from the threshold. It is intentionally simple for now.</p>
+          <div class="events" id="events"></div>
+        </div>
+      </section>
+
+      <section class="panel card" style="margin-top:18px;">
+        <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
+          <div>
+            <h2>Invitations</h2>
+            <p class="hint">Copy links, see movement, and revoke access when needed.</p>
+          </div>
+          <button class="btn" id="refresh">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Opened</th>
+                <th>Threshold</th>
+                <th>cOMpass</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invite-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { invites: [], events: [], metrics: {} };
+    const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const magicLink = (token) => `${location.origin}/threshold?invite=${encodeURIComponent(token)}`;
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+      });
+      if (!res.ok) {
+        let detail = `Request failed (${res.status})`;
+        try { detail = (await res.json()).detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+      return res.json();
+    }
+
+    async function boot() {
+      const status = await api('/api/admin/status').catch(() => ({ unlocked: false, configured: false }));
+      $('config-status').textContent = status.configured
+        ? (status.unlocked ? 'Admin room open' : 'Admin code configured')
+        : 'ADMIN_ACCESS_CODE needed';
+      $('login-panel').classList.toggle('hidden', status.unlocked);
+      $('dashboard').classList.toggle('hidden', !status.unlocked);
+      if (status.unlocked) await loadDashboard();
+    }
+
+    async function loadDashboard() {
+      const [invites, metrics] = await Promise.all([
+        api('/api/admin/invites'),
+        api('/api/admin/metrics'),
+      ]);
+      state.invites = invites.invites || [];
+      state.metrics = metrics.metrics || {};
+      state.events = metrics.events || [];
+      render();
+    }
+
+    function render() {
+      $('metric-total').textContent = state.metrics.total || 0;
+      $('metric-opened').textContent = state.metrics.opened || 0;
+      $('metric-threshold').textContent = state.metrics.threshold_completed || 0;
+      $('metric-compass').textContent = state.metrics.compass_entered || 0;
+
+      $('invite-rows').innerHTML = state.invites.map(inv => `
+        <tr>
+          <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong><div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
+          <td><span class="status ${inv.status === 'revoked' ? 'revoked' : ''}">${escapeHtml(inv.status)}</span></td>
+          <td>${date(inv.created_at)}</td>
+          <td>${date(inv.first_opened_at)}</td>
+          <td>${date(inv.threshold_completed_at)}</td>
+          <td>${date(inv.compass_entered_at)}</td>
+          <td>
+            <div class="actions" style="margin:0">
+              <button class="btn" data-copy="${escapeHtml(inv.token)}">Copy link</button>
+              ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="7" class="muted">No invitations yet.</td></tr>';
+
+      $('events').innerHTML = state.events.map(ev => `
+        <div class="event">
+          <strong>${escapeHtml(ev.type || 'event')}</strong>
+          <small>${date(ev.timestamp)} · ${escapeHtml(ev.route || '')} ${ev.detail ? '· ' + escapeHtml(ev.detail) : ''}</small>
+        </div>
+      `).join('') || '<p class="muted">No activity yet.</p>';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    $('login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      $('login-message').textContent = 'Opening…';
+      try {
+        await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ code: $('admin-code').value }) });
+        $('login-message').textContent = '';
+        await boot();
+      } catch (err) {
+        $('login-message').textContent = err.message;
+      }
+    });
+
+    $('invite-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      $('invite-message').textContent = 'Creating doorway…';
+      try {
+        const created = await api('/api/admin/invites', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: $('invite-name').value,
+            email: $('invite-email').value,
+            cohort: $('invite-cohort').value,
+            notes: $('invite-notes').value,
+          })
+        });
+        const link = magicLink(created.invite.token);
+        await navigator.clipboard?.writeText(link).catch(() => {});
+        $('invite-form').reset();
+        $('invite-message').textContent = `Magic link created${navigator.clipboard ? ' and copied' : ''}: ${link}`;
+        await loadDashboard();
+      } catch (err) {
+        $('invite-message').textContent = err.message;
+      }
+    });
+
+    document.addEventListener('click', async (event) => {
+      const copyToken = event.target?.dataset?.copy;
+      const revokeId = event.target?.dataset?.revoke;
+      if (copyToken) {
+        await navigator.clipboard?.writeText(magicLink(copyToken));
+        event.target.textContent = 'Copied';
+        setTimeout(() => { event.target.textContent = 'Copy link'; }, 1200);
+      }
+      if (revokeId && confirm('Revoke this invitation?')) {
+        await api(`/api/admin/invites/${revokeId}/revoke`, { method: 'POST', body: '{}' });
+        await loadDashboard();
+      }
+    });
+
+    $('refresh').addEventListener('click', loadDashboard);
+    boot();
+  </script>
+</body>
+</html>
