@@ -18,7 +18,7 @@ import sqlite3
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
@@ -972,6 +972,8 @@ _ADMIN_CODE_ENV = "ADMIN_ACCESS_CODE"
 _ADMIN_SECRET_ENV = "ADMIN_COOKIE_SECRET"
 _ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"
 _PUBLIC_BASE_URL_ENV = "COMMONUNITY_PUBLIC_BASE_URL"
+_INVITE_BASE_URL_ENV = "COMMONUNITY_INVITE_BASE_URL"
+_PRODUCTION_RAILWAY_BASE_URL = "https://commonunity-production.up.railway.app"
 _SMTP_HOST_ENV = "SMTP_HOST"
 _SMTP_PORT_ENV = "SMTP_PORT"
 _SMTP_USER_ENV = "SMTP_USER"
@@ -1161,26 +1163,51 @@ def _smtp_sender() -> str:
 
 
 def _public_base_url(request: Request) -> str:
-    # Prefer the origin the admin is actually using. This prevents invite
-    # emails from pointing at a not-yet-ready custom domain while Markus is
-    # operating the control room from the Railway URL. Keep the env var as an
-    # explicit override only for cases where the admin UI is behind a proxy.
+    explicit_invite_base = os.getenv(_INVITE_BASE_URL_ENV, "").strip().rstrip("/")
+    if explicit_invite_base:
+        return explicit_invite_base
+
+    forwarded_host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").strip()
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+    if forwarded_host:
+        host = forwarded_host.split(",")[0].strip()
+        if host.endswith("commonunity-production.up.railway.app"):
+            return _PRODUCTION_RAILWAY_BASE_URL
+        if host.startswith("localhost") or host.startswith("127.0.0.1"):
+            return f"{forwarded_proto or 'http'}://{host}".rstrip("/")
+        return f"{forwarded_proto or 'https'}://{host}".rstrip("/")
+
+    base = str(request.base_url).rstrip("/")
+    if "commonunity-production.up.railway.app" in base:
+        return _PRODUCTION_RAILWAY_BASE_URL
+
+    # Keep the older public-base env as a force-only fallback so a stale
+    # commonunity.io value cannot silently hijack invite links while DNS/SSL is
+    # still settling. The new COMMONUNITY_INVITE_BASE_URL env is the intended
+    # explicit override for invite emails.
     force = os.getenv("COMMONUNITY_FORCE_PUBLIC_BASE_URL", "").strip().lower() in {"1", "true", "yes", "on"}
-    if not force:
-        return str(request.base_url).rstrip("/")
     configured = os.getenv(_PUBLIC_BASE_URL_ENV, "").strip().rstrip("/")
-    if configured:
+    if force and configured:
         return configured
-    return str(request.base_url).rstrip("/")
+    return base or _PRODUCTION_RAILWAY_BASE_URL
 
 
 def _invite_magic_link(request: Request, token: str) -> str:
     return f"{_public_base_url(request)}/threshold?invite={quote(token)}"
 
 
+def _base_url_from_link(link: str) -> str:
+    parsed = urlsplit(link)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return _PRODUCTION_RAILWAY_BASE_URL
+
+
 def _invite_email_html(person_name: str, magic_link: str) -> str:
     safe_name = html.escape(person_name or "there")
     safe_link = html.escape(magic_link)
+    asset_base = html.escape(_base_url_from_link(magic_link))
+    compass_mark = f"{asset_base}/assets/brand/compass-email-mark.png"
     return f"""<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#030306;color:#f8f2e8;font-family:Inter,Arial,sans-serif;">
@@ -1191,11 +1218,7 @@ def _invite_email_html(person_name: str, magic_link: str) -> str:
             <tr>
               <td style="padding:0;background:radial-gradient(circle at 20% 10%, rgba(213,173,100,0.28), transparent 34%),radial-gradient(circle at 82% 18%, rgba(126,154,208,0.24), transparent 34%),radial-gradient(circle at 50% 90%, rgba(201,135,158,0.18), transparent 38%),linear-gradient(135deg,#050507,#10111a);">
                 <div style="padding:42px 34px 34px;text-align:center;">
-                  <div style="display:inline-block;width:92px;height:92px;border-radius:999px;background:radial-gradient(circle,#f5e7bd 0%,rgba(245,231,189,0.18) 22%,rgba(126,154,208,0.12) 56%,transparent 72%);box-shadow:0 0 46px rgba(213,173,100,0.24);">
-                    <div style="width:92px;height:92px;line-height:92px;text-align:center;font-size:0;">
-                      <span style="display:inline-block;width:56px;height:56px;vertical-align:middle;transform:rotate(45deg);background:linear-gradient(135deg,#b8a878 0 25%,#7c8fc4 25% 50%,#6aaa8c 50% 75%,#c47c8f 75% 100%);box-shadow:inset 0 0 20px rgba(255,255,255,0.26),0 0 18px rgba(245,231,189,0.22);border-radius:8px;"></span>
-                    </div>
-                  </div>
+                  <img src="{compass_mark}" width="96" height="96" alt="cOMpass" style="display:block;width:96px;height:96px;margin:0 auto;border:0;outline:none;text-decoration:none;">
                   <p style="margin:26px 0 10px;color:#d5ad64;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;">CommonUnity invitation</p>
                   <h1 style="margin:0;color:#fff8ec;font-size:42px;line-height:0.98;letter-spacing:-0.055em;font-weight:500;">The threshold is open.</h1>
                   <p style="margin:22px auto 0;max-width:480px;color:rgba(248,242,232,0.76);font-size:17px;line-height:1.7;">Hi {safe_name}, you have been invited to begin your CommonUnity cOMpass journey.</p>
@@ -1510,6 +1533,8 @@ async def admin_status(request: Request):
         "beta_code_configured": bool(_csv_env(_BETA_CODE_ENV)),
         "env_magic_links_configured": bool(_csv_env(_BETA_TOKENS_ENV)),
         "smtp_configured": _smtp_configured(),
+        "invite_base_url": _public_base_url(request),
+        "email_template_version": "compass_png_threshold_link_v2",
     }
 
 
@@ -1645,6 +1670,8 @@ async def admin_metrics(request: Request):
             "env_magic_links": bool(_csv_env(_BETA_TOKENS_ENV)),
             "smtp": _smtp_configured(),
             "db_path": str(_admin_db_path()),
+            "invite_base_url": _public_base_url(request),
+            "email_template_version": "compass_png_threshold_link_v2",
         },
     }
 
