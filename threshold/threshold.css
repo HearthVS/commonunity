@@ -1290,11 +1290,21 @@ html, body {
   margin: 0.25rem auto 0;
 }
 .threshold-card.is-arrival.is-om-opening .threshold-btn-primary {
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)) padding-box,
+    conic-gradient(from 220deg,
+      rgba(255, 130, 130, 0.58),
+      rgba(255, 214, 132, 0.56),
+      rgba(156, 232, 180, 0.52),
+      rgba(128, 205, 238, 0.52),
+      rgba(178, 148, 238, 0.56),
+      rgba(238, 148, 216, 0.56),
+      rgba(255, 130, 130, 0.58)) border-box;
+  border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.95);
   box-shadow:
     0 0 22px rgba(255, 255, 255, 0.10),
+    0 0 34px rgba(160, 205, 255, 0.08),
     inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   letter-spacing: 0.04em;
   flex: 0 0 auto;
@@ -1303,10 +1313,19 @@ html, body {
   transition: background 320ms ease, box-shadow 320ms ease, border-color 320ms ease;
 }
 .threshold-card.is-arrival.is-om-opening .threshold-btn-primary:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.55);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.075)) padding-box,
+    conic-gradient(from 220deg,
+      rgba(255, 142, 142, 0.72),
+      rgba(255, 222, 142, 0.68),
+      rgba(164, 240, 188, 0.64),
+      rgba(136, 216, 248, 0.64),
+      rgba(188, 158, 248, 0.68),
+      rgba(248, 158, 226, 0.68),
+      rgba(255, 142, 142, 0.72)) border-box;
   box-shadow:
     0 0 32px rgba(255, 255, 255, 0.18),
+    0 0 54px rgba(190, 215, 255, 0.12),
     inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 .threshold-card.is-arrival.is-om-opening .threshold-btn-primary:focus-visible {
