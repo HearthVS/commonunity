@@ -9,7 +9,7 @@
  *   4. reflection
  *   5. identity-completion
  *   6. welcome-landing   (soft landing chamber — "Welcome to your cOMpass")
- *   7. prepared-setup    (handed off to /  ?threshold=done&enter=compass)
+ *   7. prepared-setup    (handed off to /compass?threshold=done&enter=compass)
  *
  * The module owns its own state machine and DOM. The only thing it
  * exposes to the rest of the codebase is the OM Cipher contract,
@@ -842,7 +842,7 @@
   // ---- Screen 7: Prepared Setup (handoff) --------------------------------
   //
   // We do not re-implement the existing Compass setup page. We hand off
-  // by navigating to '/?threshold=done', and index.html consumes the
+  // by navigating to '/compass?threshold=done', and index.html consumes the
   // OM Cipher contract on load.
 
   function renderPreparedSetup() {
@@ -865,7 +865,7 @@
   // view via enter=compass — index.html's contract hydration + auto-open
   // consumes the flag.
   function handoffToCompass() {
-    setTimeout(() => { window.location.href = '/?threshold=done&enter=compass'; }, 250);
+    setTimeout(() => { window.location.href = '/compass?threshold=done&enter=compass'; }, 250);
   }
 
   // ---- Persistence --------------------------------------------------------

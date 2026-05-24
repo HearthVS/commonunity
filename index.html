@@ -48,9 +48,9 @@
 (function gateRootIntoThreshold() {
   try {
     var path = window.location.pathname || '/';
-    // Only gate the cOMpass root page. /threshold and any other
+    // Only gate the cOMpass app entry page. /threshold and any other
     // route must be untouched to avoid redirect loops.
-    if (path !== '/' && path !== '/index.html') return;
+    if (path !== '/' && path !== '/index.html' && path !== '/compass') return;
     var params = new URLSearchParams(window.location.search);
     // Guide / facilitator entry surface — never gated. This is the
     // explicit escape hatch for guides who need the legacy setup
@@ -74,7 +74,7 @@
 // ============================================================
 // COMPASS HANDOFF ANTI-FLASH GUARD — runs before body parses.
 // ============================================================
-// The threshold module hands off to /?threshold=done&enter=compass.
+// The threshold module hands off to /compass?threshold=done&enter=compass.
 // Without this guard the user briefly sees the legacy SESSION SETUP
 // screen because #screen-setup defaults to display:flex in CSS, and
 // only the post-DOMContentLoaded init flow (initThresholdContract +
@@ -90,7 +90,7 @@
 (function compassHandoffAntiFlash() {
   try {
     var path = window.location.pathname || '/';
-    if (path !== '/' && path !== '/index.html') return;
+    if (path !== '/' && path !== '/index.html' && path !== '/compass') return;
     var params = new URLSearchParams(window.location.search);
     if (params.get('guide') === '1' || params.get('setup') === '1') return;
     var entering = params.get('threshold') === 'done' || params.get('enter') === 'compass';
@@ -6731,7 +6731,7 @@ function init() {
   // OM Cipher contract — hydrate from /threshold module if completed.
   initThresholdContract();
 
-  // Route-flag backstop. /?threshold=done&enter=compass is the
+  // Route-flag backstop. /compass?threshold=done&enter=compass is the
   // user-visible promise from the threshold handoff: the next
   // surface they see is cOMpass, never legacy setup. If the
   // contract hydration path above did not flip the screens (e.g.
@@ -6777,9 +6777,46 @@ function init() {
 
   // Autosave on all input events (fallback)
   document.addEventListener('input', saveToStorage);
+
+  // Last in-band firing: if this load was a threshold handoff,
+  // guarantee the user remains in cOMpass after all init helpers.
+  applyCompassEntryInvariantIfNeeded();
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// Out-of-band threshold handoff invariant. This is intentionally
+// registered at module scope so it still runs even if init() aborts
+// before the normal route-flag backstop.
+(function scheduleCompassEntryInvariant() {
+  function fireOnce() {
+    try { applyCompassEntryInvariantIfNeeded(); } catch (_) {}
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const wantsGuide = params.get('guide') === '1' || params.get('setup') === '1';
+    if (wantsGuide) return;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fireOnce, { once: true });
+    } else {
+      fireOnce();
+    }
+    setTimeout(fireOnce, 0);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () { fireOnce(); });
+    }
+    window.addEventListener('load', fireOnce, { once: true });
+    setTimeout(fireOnce, 250);
+  } catch (_) { /* best-effort */ }
+})();
+
+function applyCompassEntryInvariantIfNeeded() {
+  try {
+    if (isGuideSetupRequested()) return;
+    if (!isCompassEntryRequested()) return;
+    forceCompassScreen();
+  } catch (_) { /* best-effort */ }
+}
 
 // ============================================================
 // LAYER 3 — AI GENERATION
@@ -7646,7 +7683,7 @@ function initThresholdContract() {
   // autoPopulateGeneKeysFromState dependencies that aren't fully
   // wired when init runs), and the outer catch silently left the
   // user staring at #screen-setup. The route flag
-  // /?threshold=done&enter=compass is the user-visible promise that
+  // /compass?threshold=done&enter=compass is the user-visible promise that
   // the next thing they see is cOMpass — so we treat the screen
   // flip as an invariant, independent of whether the rich
   // hydration helpers succeed. Every helper is sandboxed so a
@@ -7675,8 +7712,9 @@ function forceCompassScreen() {
   try {
     const setupScreen   = document.getElementById('screen-setup');
     const compassScreen = document.getElementById('screen-compass');
-    if (setupScreen)   setupScreen.style.display   = 'none';
-    if (compassScreen) compassScreen.style.display = 'flex';
+    if (setupScreen)   setupScreen.style.setProperty('display', 'none', 'important');
+    if (compassScreen) compassScreen.style.setProperty('display', 'flex', 'important');
+    if (document.body) document.body.classList.add('on-compass-screen');
     try { window.scrollTo(0, 0); } catch (_) {}
     // Defensive: surface the OM Cipher pill the same way openCompass
     // does, so the affordance is reachable even if openCompass threw
@@ -7690,7 +7728,7 @@ function forceCompassScreen() {
   } catch (_) { /* best-effort; if even this fails, nothing more we can do */ }
 }
 
-// Recognise the explicit route flag /?threshold=done&enter=compass
+// Recognise the explicit route flag /compass?threshold=done&enter=compass
 // as an authoritative request for the companion cOMpass view. This
 // is the URL the threshold module hands off to; honouring it as a
 // hard invariant guards against any future regression where

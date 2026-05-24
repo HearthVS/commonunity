@@ -10,9 +10,11 @@ import os
 import json
 import pathlib
 import io
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+import hmac
+import hashlib
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
 from anthropic import Anthropic
@@ -935,23 +937,162 @@ async def generate(request: GenerateRequest):
     )
 
 
-# ── Static frontend serving ───────────────────────────────────────────────────
+# ── Static frontend serving + private beta gates ─────────────────────────────
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import pathlib
 
-# Serve index.html at root
+_ROOT = pathlib.Path(__file__).parent
+_BETA_COOKIE = "commonunity_beta_access"
+_BETA_CODE_ENV = "COMMONUNITY_BETA_CODE"
+_BETA_TOKENS_ENV = "COMMONUNITY_MAGIC_LINK_TOKENS"
+_BETA_SECRET_ENV = "COMMONUNITY_BETA_COOKIE_SECRET"
+_PRIVATE_APPS = {
+    "compass": {"label": "cOMpass", "path": "/compass"},
+    "studio":  {"label": "Studio",  "path": "/studio"},
+    "tuner":   {"label": "Tuner",   "path": "/tuner"},
+    "commons": {"label": "cOMmons", "path": "/commons"},
+}
+
+
+def _csv_env(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    return [x.strip() for x in raw.replace("\n", ",").split(",") if x.strip()]
+
+
+def _beta_secret() -> str:
+    explicit = os.getenv(_BETA_SECRET_ENV, "").strip()
+    if explicit:
+        return explicit
+    material = "|".join(_csv_env(_BETA_CODE_ENV) + _csv_env(_BETA_TOKENS_ENV))
+    return material
+
+
+def _beta_signature() -> str:
+    secret = _beta_secret()
+    if not secret:
+        return ""
+    return hmac.new(secret.encode("utf-8"), b"commonunity-beta-v1", hashlib.sha256).hexdigest()
+
+
+def _has_beta_access(request: Request) -> bool:
+    expected = _beta_signature()
+    if not expected:
+        return False
+    supplied = request.cookies.get(_BETA_COOKIE, "")
+    return hmac.compare_digest(str(supplied), expected)
+
+
+def _valid_invite_token(token: str | None) -> bool:
+    if not token:
+        return False
+    return any(hmac.compare_digest(token.strip(), allowed) for allowed in _csv_env(_BETA_TOKENS_ENV))
+
+
+def _valid_beta_code(code: str | None) -> bool:
+    if not code:
+        return False
+    return any(hmac.compare_digest(code.strip(), allowed) for allowed in _csv_env(_BETA_CODE_ENV))
+
+
+def _set_beta_cookie(response: RedirectResponse, request: Request) -> None:
+    sig = _beta_signature()
+    if not sig:
+        return
+    response.set_cookie(
+        _BETA_COOKIE,
+        sig,
+        max_age=60 * 60 * 24 * 45,
+        httponly=True,
+        secure=(request.url.scheme == "https"),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _safe_private_next(value: str | None, fallback: str = "/compass") -> str:
+    allowed = {meta["path"] for meta in _PRIVATE_APPS.values()} | {"/threshold"}
+    candidate = (value or "").strip()
+    if candidate in allowed:
+        return candidate
+    return fallback
+
+
+def _beta_gate(app_key: str, next_path: str | None = None) -> FileResponse:
+    gate = _ROOT / "beta_gate.html"
+    if gate.exists():
+        return FileResponse(gate, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "X-CommonUnity-Gate": app_key,
+            "X-CommonUnity-Next": next_path or _PRIVATE_APPS.get(app_key, {}).get("path", "/compass"),
+        })
+    return HTMLResponse("<h1>CommonUnity private beta</h1><p>This space is currently invite-only.</p>", status_code=403)
+
+
+def _serve_private_file(request: Request, app_key: str, file_path: pathlib.Path, media_type: str | None = None):
+    invite = request.query_params.get("invite")
+    if _valid_invite_token(invite):
+        target = _PRIVATE_APPS.get(app_key, {}).get("path", request.url.path)
+        response = RedirectResponse(url=target, status_code=303)
+        _set_beta_cookie(response, request)
+        return response
+    if not _has_beta_access(request):
+        return _beta_gate(app_key, request.url.path)
+    if file_path.exists():
+        kwargs = {"headers": {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }}
+        if media_type:
+            kwargs["media_type"] = media_type
+        return FileResponse(file_path, **kwargs)
+    return {"error": f"{_PRIVATE_APPS.get(app_key, {}).get('label', app_key)} not found"}
+
+
+@app.post("/api/beta/unlock")
+async def beta_unlock(request: Request, code: str = Form(...), next: str = Form("/compass"), website: Optional[str] = Form(None)):
+    safe_next = _safe_private_next(next)
+    # Honeypot: silently return to the gate.
+    if website:
+        return RedirectResponse(url=safe_next, status_code=303)
+    if not _valid_beta_code(code):
+        return RedirectResponse(url=f"/beta?next={safe_next}&error=1", status_code=303)
+    response = RedirectResponse(url=safe_next, status_code=303)
+    _set_beta_cookie(response, request)
+    return response
+
+
+@app.get("/api/beta/status")
+async def beta_status(request: Request):
+    return {
+        "unlocked": _has_beta_access(request),
+        "configured": bool(_beta_signature()),
+    }
+
+
+@app.get("/beta")
+async def serve_beta_gate(next: str = "/compass"):
+    return _beta_gate("compass", next)
+
+
+# Serve public homepage at root
 @app.get("/")
 async def serve_frontend():
-    index = pathlib.Path(__file__).parent / "index.html"
-    if index.exists():
-        return FileResponse(index, headers={
+    home = _ROOT / "homepage.html"
+    if home.exists():
+        return FileResponse(home, headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
             "Expires": "0"
         })
-    return {"error": "Frontend not found"}
+    return {"error": "Homepage not found"}
+
+
+@app.get("/compass")
+async def serve_compass(request: Request):
+    return _serve_private_file(request, "compass", _ROOT / "index.html")
 
 @app.get("/favicon.svg")
 async def serve_favicon():
@@ -980,13 +1121,12 @@ _THRESHOLD_ALLOWED = {
 }
 if _threshold_dir.exists():
     @app.get("/threshold")
-    async def serve_threshold():
+    async def serve_threshold(request: Request):
         page = _threshold_dir / "threshold.html"
-        if page.exists():
-            return FileResponse(page, media_type="text/html; charset=utf-8", headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate"
-            })
-        raise HTTPException(status_code=404, detail="threshold module missing")
+        result = _serve_private_file(request, "compass", page, media_type="text/html; charset=utf-8")
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=404, detail="threshold module missing")
+        return result
 
     @app.get("/threshold/{filename}")
     async def serve_threshold_asset(filename: str):
@@ -1512,15 +1652,8 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
 
 
 @app.get("/studio")
-async def serve_studio():
-    studio = pathlib.Path(__file__).parent / "studio.html"
-    if studio.exists():
-        return FileResponse(studio, headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        })
-    return {"error": "Studio not found"}
+async def serve_studio(request: Request):
+    return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "studio.html")
 
 # CommonUnity public homepage (served at /home for now; intended for the
 # commonunity.io apex once Compass moves to compass.commonunity.io).
@@ -1561,10 +1694,43 @@ from fastapi.responses import RedirectResponse
 TUNER_URL = _os_env.getenv("TUNER_URL", "")
 
 @app.get("/tuner")
-async def redirect_to_tuner():
+async def redirect_to_tuner(request: Request):
+    invite = request.query_params.get("invite")
+    if _valid_invite_token(invite):
+        response = RedirectResponse(url="/tuner", status_code=303)
+        _set_beta_cookie(response, request)
+        return response
+    if not _has_beta_access(request):
+        return _beta_gate("tuner", "/tuner")
     if TUNER_URL:
         return RedirectResponse(url=TUNER_URL, status_code=302)
-    return {"message": "CommonUnity Tuner is not yet deployed. Set TUNER_URL env var on the root Railway service."}
+    return HTMLResponse(
+        "<!doctype html><title>CommonUnity Tuner</title>"
+        "<main style='min-height:100vh;display:grid;place-items:center;background:#050507;color:#faf8f4;font-family:system-ui'>"
+        "<section style='max-width:560px;padding:40px;text-align:center'>"
+        "<h1>CommonUnity Tuner</h1><p>The Tuner is part of the private beta and will open here when its Railway service is connected.</p>"
+        "</section></main>",
+        status_code=200,
+    )
+
+
+@app.get("/commons")
+async def serve_commons(request: Request):
+    invite = request.query_params.get("invite")
+    if _valid_invite_token(invite):
+        response = RedirectResponse(url="/commons", status_code=303)
+        _set_beta_cookie(response, request)
+        return response
+    if not _has_beta_access(request):
+        return _beta_gate("commons", "/commons")
+    return HTMLResponse(
+        "<!doctype html><title>CommonUnity cOMmons</title>"
+        "<main style='min-height:100vh;display:grid;place-items:center;background:#050507;color:#faf8f4;font-family:system-ui'>"
+        "<section style='max-width:560px;padding:40px;text-align:center'>"
+        "<h1>CommonUnity cOMmons</h1><p>cOMmons is part of the private beta and will open here as the shared field comes online.</p>"
+        "</section></main>",
+        status_code=200,
+    )
 
 # ── Beta waitlist ────────────────────────────────────────────────────────────
 # Lightweight CSV-backed waitlist for the homepage beta signup form.
@@ -1786,4 +1952,3 @@ async def om_cipher_visibility(member_id: str, body: OmCipherVisibilityInput):
             raise HTTPException(status_code=404, detail="not found")
         rec["visibility_tier"] = body.visibility_tier
     return {"ok": True, "visibility_tier": body.visibility_tier}
-
