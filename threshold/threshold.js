@@ -797,6 +797,9 @@
 
     card.appendChild(el('h1', { class: 'welcome-title' }, 'Welcome to your cOMpass'));
     card.appendChild(el('p', { class: 'welcome-statement' }, welcomeStatement(firstName)));
+    card.appendChild(el('p', { class: 'welcome-palette-story' },
+      'As you enter, the field begins to differentiate into your own colours. The OM Cipher has received your coordinates: your name, your birth details, and the first points of your orientation. These colours do not define you. They are the first visible expression of your unique code for the path hOMe.'
+    ));
 
     const reduced = prefersReducedMotion();
 
