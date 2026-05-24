@@ -1193,7 +1193,11 @@ def _public_base_url(request: Request) -> str:
 
 
 def _invite_magic_link(request: Request, token: str) -> str:
-    return f"{_public_base_url(request)}/threshold?invite={quote(token)}"
+    # Use a path-based invite URL in emails instead of a query-string URL.
+    # Some email clients and security scanners rewrite or preview query URLs
+    # aggressively; /invite/<token> is simpler, then the server performs the
+    # threshold handoff after setting the beta/invite cookies.
+    return f"{_public_base_url(request)}/invite/{quote(token, safe='')}"
 
 
 def _base_url_from_link(link: str) -> str:
@@ -1507,6 +1511,29 @@ async def serve_beta_gate(next: str = "/compass"):
     return _beta_gate("compass", next)
 
 
+@app.get("/invite/{token}")
+async def accept_invite(token: str, request: Request):
+    clean_token = (token or "").strip()
+    db_invite = _lookup_active_invite(clean_token)
+    if not db_invite and not _valid_invite_token(clean_token):
+        return _beta_gate("threshold", "/threshold")
+
+    response = RedirectResponse(url="/threshold", status_code=303)
+    _set_beta_cookie(response, request)
+    _set_invite_cookie(response, request, clean_token)
+    if db_invite:
+        _touch_invite(clean_token, request, "invite_opened", "threshold")
+    else:
+        _record_event(
+            "env_invite_opened",
+            token=clean_token,
+            route="/invite",
+            source="threshold",
+            user_agent=request.headers.get("user-agent", "")[:320],
+        )
+    return response
+
+
 @app.get("/admin")
 async def serve_admin():
     page = _ROOT / "admin.html"
@@ -1534,7 +1561,7 @@ async def admin_status(request: Request):
         "env_magic_links_configured": bool(_csv_env(_BETA_TOKENS_ENV)),
         "smtp_configured": _smtp_configured(),
         "invite_base_url": _public_base_url(request),
-        "email_template_version": "compass_png_threshold_link_v2",
+        "email_template_version": "compass_png_path_invite_v3",
     }
 
 
@@ -1671,7 +1698,7 @@ async def admin_metrics(request: Request):
             "smtp": _smtp_configured(),
             "db_path": str(_admin_db_path()),
             "invite_base_url": _public_base_url(request),
-            "email_template_version": "compass_png_threshold_link_v2",
+            "email_template_version": "compass_png_path_invite_v3",
         },
     }
 
