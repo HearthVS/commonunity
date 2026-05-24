@@ -973,6 +973,7 @@ _ADMIN_SECRET_ENV = "ADMIN_COOKIE_SECRET"
 _ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"
 _PUBLIC_BASE_URL_ENV = "COMMONUNITY_PUBLIC_BASE_URL"
 _INVITE_BASE_URL_ENV = "COMMONUNITY_INVITE_BASE_URL"
+_BRANDED_INVITE_BASE_URL = "https://commonunity.io"
 _PRODUCTION_RAILWAY_BASE_URL = "https://commonunity-production.up.railway.app"
 _SMTP_HOST_ENV = "SMTP_HOST"
 _SMTP_PORT_ENV = "SMTP_PORT"
@@ -1172,14 +1173,16 @@ def _public_base_url(request: Request) -> str:
     if forwarded_host:
         host = forwarded_host.split(",")[0].strip()
         if host.endswith("commonunity-production.up.railway.app"):
-            return _PRODUCTION_RAILWAY_BASE_URL
+            return _BRANDED_INVITE_BASE_URL
+        if host in {"commonunity.io", "www.commonunity.io"}:
+            return f"https://{host}".rstrip("/")
         if host.startswith("localhost") or host.startswith("127.0.0.1"):
             return f"{forwarded_proto or 'http'}://{host}".rstrip("/")
         return f"{forwarded_proto or 'https'}://{host}".rstrip("/")
 
     base = str(request.base_url).rstrip("/")
     if "commonunity-production.up.railway.app" in base:
-        return _PRODUCTION_RAILWAY_BASE_URL
+        return _BRANDED_INVITE_BASE_URL
 
     # Keep the older public-base env as a force-only fallback so a stale
     # commonunity.io value cannot silently hijack invite links while DNS/SSL is
@@ -1189,7 +1192,7 @@ def _public_base_url(request: Request) -> str:
     configured = os.getenv(_PUBLIC_BASE_URL_ENV, "").strip().rstrip("/")
     if force and configured:
         return configured
-    return base or _PRODUCTION_RAILWAY_BASE_URL
+    return base or _BRANDED_INVITE_BASE_URL
 
 
 def _invite_magic_link(request: Request, token: str) -> str:
@@ -1561,7 +1564,7 @@ async def admin_status(request: Request):
         "env_magic_links_configured": bool(_csv_env(_BETA_TOKENS_ENV)),
         "smtp_configured": _smtp_configured(),
         "invite_base_url": _public_base_url(request),
-        "email_template_version": "compass_png_path_invite_v3",
+        "email_template_version": "compass_png_branded_invite_v4",
     }
 
 
@@ -1698,7 +1701,7 @@ async def admin_metrics(request: Request):
             "smtp": _smtp_configured(),
             "db_path": str(_admin_db_path()),
             "invite_base_url": _public_base_url(request),
-            "email_template_version": "compass_png_path_invite_v3",
+            "email_template_version": "compass_png_branded_invite_v4",
         },
     }
 

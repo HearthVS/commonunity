@@ -23,6 +23,7 @@ assert(server.includes('SMTP_HOST'), 'SMTP host env should be supported');
 assert(server.includes('SMTP_FROM'), 'SMTP from env should be supported');
 assert(server.includes('COMMONUNITY_PUBLIC_BASE_URL'), 'public base URL env should be supported for invite links');
 assert(server.includes('COMMONUNITY_INVITE_BASE_URL'), 'invite-specific base URL env should be supported for magic links');
+assert(server.includes('https://commonunity.io'), 'branded CommonUnity domain should be the default invite base');
 assert(server.includes('https://commonunity-production.up.railway.app'), 'Railway production invite base should be HTTPS');
 assert(server.includes('@app.get("/invite/{token}")'), 'path-based email invite route should exist');
 assert(server.includes("/invite/{quote(token, safe='')}"), 'email magic links should use the path-based invite route');
@@ -34,7 +35,7 @@ assert(server.includes('The threshold is open.'), 'invite email should include b
 assert(server.includes('Begin the threshold'), 'invite email should include a clear CTA');
 assert(server.includes('compass-email-mark.png'), 'invite email should use the cOMpass email-safe PNG mark');
 assert(server.includes('email_template_version'), 'admin status should expose the invite email template version');
-assert(server.includes('compass_png_path_invite_v3'), 'admin status should expose the path-based invite template version');
+assert(server.includes('compass_png_branded_invite_v4'), 'admin status should expose the branded invite template version');
 assert(server.includes('SMTP_FROM'), 'invite email should require explicit sender identity');
 assert(!server.includes('>cOM</div>'), 'invite email should not use the placeholder cOM/OM text logo');
 assert(!server.includes('transform:rotate(45deg);background:linear-gradient'), 'invite email should not synthesize a CSS diamond logo');
