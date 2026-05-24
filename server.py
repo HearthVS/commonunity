@@ -11,6 +11,7 @@ import json
 import pathlib
 import io
 import hmac
+import html
 import hashlib
 import secrets
 import sqlite3
@@ -1170,6 +1171,47 @@ def _invite_magic_link(request: Request, token: str) -> str:
     return f"{_public_base_url(request)}/threshold?invite={quote(token)}"
 
 
+def _invite_email_html(person_name: str, magic_link: str) -> str:
+    safe_name = html.escape(person_name or "there")
+    safe_link = html.escape(magic_link)
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#030306;color:#f8f2e8;font-family:Inter,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#030306;">
+      <tr>
+        <td align="center" style="padding:36px 18px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border:1px solid rgba(248,242,232,0.16);border-radius:30px;overflow:hidden;background:#0a0a10;">
+            <tr>
+              <td style="padding:0;background:radial-gradient(circle at 20% 10%, rgba(213,173,100,0.28), transparent 34%),radial-gradient(circle at 82% 18%, rgba(126,154,208,0.24), transparent 34%),radial-gradient(circle at 50% 90%, rgba(201,135,158,0.18), transparent 38%),linear-gradient(135deg,#050507,#10111a);">
+                <div style="padding:42px 34px 34px;text-align:center;">
+                  <div style="display:inline-block;width:86px;height:86px;border-radius:999px;background:conic-gradient(from 20deg,#d5ad64,#c9879e,#7e9ad0,#86b69a,#d5ad64);padding:1px;box-shadow:0 0 46px rgba(213,173,100,0.24);">
+                    <div style="width:84px;height:84px;border-radius:999px;background:#09090f;line-height:84px;text-align:center;color:#f8f2e8;font-size:18px;letter-spacing:0.16em;">cOM</div>
+                  </div>
+                  <p style="margin:26px 0 10px;color:#d5ad64;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;">CommonUnity invitation</p>
+                  <h1 style="margin:0;color:#fff8ec;font-size:42px;line-height:0.98;letter-spacing:-0.055em;font-weight:500;">The threshold is open.</h1>
+                  <p style="margin:22px auto 0;max-width:480px;color:rgba(248,242,232,0.76);font-size:17px;line-height:1.7;">Hi {safe_name}, you have been invited to begin your CommonUnity cOMpass journey.</p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:34px;background:linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025));">
+                <p style="margin:0 0 18px;color:rgba(248,242,232,0.82);font-size:16px;line-height:1.75;">This is not a login in the usual sense. It is a first doorway into a field of orientation: your name, your coordinates, your colours, and the beginning of a path toward your own true north.</p>
+                <p style="margin:0 0 28px;color:rgba(248,242,232,0.72);font-size:16px;line-height:1.75;">Open the link below when you have a few quiet minutes. The threshold is designed to be entered with attention.</p>
+                <div style="text-align:center;margin:30px 0;">
+                  <a href="{safe_link}" style="display:inline-block;padding:16px 28px;border-radius:999px;background:linear-gradient(135deg,#f5e7bd,#d5ad64);color:#090805;text-decoration:none;font-weight:700;box-shadow:0 18px 42px rgba(213,173,100,0.22);">Begin the threshold</a>
+                </div>
+                <p style="margin:26px 0 0;color:rgba(248,242,232,0.55);font-size:13px;line-height:1.65;">If the button does not open, copy this private link into your browser:<br><a href="{safe_link}" style="color:#f5d99b;word-break:break-all;">{safe_link}</a></p>
+                <p style="margin:26px 0 0;color:rgba(248,242,232,0.45);font-size:12px;line-height:1.6;">This invitation is personal to you. Please do not forward it.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
 def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None:
     host = os.getenv(_SMTP_HOST_ENV, "").strip()
     user = os.getenv(_SMTP_USER_ENV, "").strip()
@@ -1191,18 +1233,20 @@ def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None
 
     greeting = f"Hi {person_name}," if person_name else "Hi,"
     msg = EmailMessage()
-    msg["Subject"] = "Your CommonUnity threshold invitation"
+    msg["Subject"] = "Your CommonUnity threshold is open"
     msg["From"] = sender
     msg["To"] = to_email
     msg.set_content(
         f"{greeting}\n\n"
-        "Your CommonUnity threshold is ready.\n\n"
-        "Open your private invitation here:\n"
+        "You have been invited to begin your CommonUnity cOMpass journey.\n\n"
+        "This is not a login in the usual sense. It is a first doorway into a field of orientation: your name, your coordinates, your colours, and the beginning of a path toward your own true north.\n\n"
+        "Open the link below when you have a few quiet minutes. The threshold is designed to be entered with attention.\n\n"
         f"{magic_link}\n\n"
-        "This link opens the first step of your cOMpass journey. It is personal to you, so please do not forward it.\n\n"
+        "This invitation is personal to you. Please do not forward it.\n\n"
         "With warmth,\n"
         "CommonUnity\n"
     )
+    msg.add_alternative(_invite_email_html(person_name, magic_link), subtype="html")
 
     with smtplib.SMTP(host, port, timeout=20) as smtp:
         if use_tls:
