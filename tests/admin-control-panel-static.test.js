@@ -22,12 +22,14 @@ assert(server.includes('@app.get("/api/admin/metrics")'), 'admin metrics API sho
 assert(server.includes('SMTP_HOST'), 'SMTP host env should be supported');
 assert(server.includes('SMTP_FROM'), 'SMTP from env should be supported');
 assert(server.includes('COMMONUNITY_PUBLIC_BASE_URL'), 'public base URL env should be supported for invite links');
+assert(server.includes('COMMONUNITY_FORCE_PUBLIC_BASE_URL'), 'public base URL override should be explicit so emails default to the current admin origin');
 assert(server.includes('invite_email_sent'), 'invite email sent event should be recorded');
 assert(server.includes('EmailMessage'), 'invite email should use stdlib email message');
 assert(server.includes('add_alternative'), 'invite email should include an HTML version');
 assert(server.includes('The threshold is open.'), 'invite email should include branded opening copy');
 assert(server.includes('Begin the threshold'), 'invite email should include a clear CTA');
 assert(server.includes('SMTP_FROM'), 'invite email should require explicit sender identity');
+assert(!server.includes('>cOM</div>'), 'invite email should not use the placeholder cOM/OM text logo');
 assert(server.includes('_lookup_active_invite(token.strip())'), 'stored invites should be accepted by beta token validation');
 assert(server.includes('_set_invite_cookie(response, request, invite.strip())'), 'magic link should preserve invite context in cookie');
 assert(server.includes('target = request.url.path'), 'magic links should return to the requested doorway, including /threshold');

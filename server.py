@@ -1161,6 +1161,13 @@ def _smtp_sender() -> str:
 
 
 def _public_base_url(request: Request) -> str:
+    # Prefer the origin the admin is actually using. This prevents invite
+    # emails from pointing at a not-yet-ready custom domain while Markus is
+    # operating the control room from the Railway URL. Keep the env var as an
+    # explicit override only for cases where the admin UI is behind a proxy.
+    force = os.getenv("COMMONUNITY_FORCE_PUBLIC_BASE_URL", "").strip().lower() in {"1", "true", "yes", "on"}
+    if not force:
+        return str(request.base_url).rstrip("/")
     configured = os.getenv(_PUBLIC_BASE_URL_ENV, "").strip().rstrip("/")
     if configured:
         return configured
@@ -1184,8 +1191,10 @@ def _invite_email_html(person_name: str, magic_link: str) -> str:
             <tr>
               <td style="padding:0;background:radial-gradient(circle at 20% 10%, rgba(213,173,100,0.28), transparent 34%),radial-gradient(circle at 82% 18%, rgba(126,154,208,0.24), transparent 34%),radial-gradient(circle at 50% 90%, rgba(201,135,158,0.18), transparent 38%),linear-gradient(135deg,#050507,#10111a);">
                 <div style="padding:42px 34px 34px;text-align:center;">
-                  <div style="display:inline-block;width:86px;height:86px;border-radius:999px;background:conic-gradient(from 20deg,#d5ad64,#c9879e,#7e9ad0,#86b69a,#d5ad64);padding:1px;box-shadow:0 0 46px rgba(213,173,100,0.24);">
-                    <div style="width:84px;height:84px;border-radius:999px;background:#09090f;line-height:84px;text-align:center;color:#f8f2e8;font-size:18px;letter-spacing:0.16em;">cOM</div>
+                  <div style="display:inline-block;width:92px;height:92px;border-radius:999px;background:radial-gradient(circle,#f5e7bd 0%,rgba(245,231,189,0.18) 22%,rgba(126,154,208,0.12) 56%,transparent 72%);box-shadow:0 0 46px rgba(213,173,100,0.24);">
+                    <div style="width:92px;height:92px;line-height:92px;text-align:center;font-size:0;">
+                      <span style="display:inline-block;width:56px;height:56px;vertical-align:middle;transform:rotate(45deg);background:linear-gradient(135deg,#b8a878 0 25%,#7c8fc4 25% 50%,#6aaa8c 50% 75%,#c47c8f 75% 100%);box-shadow:inset 0 0 20px rgba(255,255,255,0.26),0 0 18px rgba(245,231,189,0.22);border-radius:8px;"></span>
+                    </div>
                   </div>
                   <p style="margin:26px 0 10px;color:#d5ad64;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;">CommonUnity invitation</p>
                   <h1 style="margin:0;color:#fff8ec;font-size:42px;line-height:0.98;letter-spacing:-0.055em;font-weight:500;">The threshold is open.</h1>
