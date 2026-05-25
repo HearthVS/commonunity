@@ -33,6 +33,9 @@ for (const [name, source] of [
 assert(betaGate.includes('id="brand-gate-logo"'), 'beta gate logo container should be targetable');
 assert(betaGate.includes('manifest.logo_svg'), 'beta gate should replace the fallback logo with manifest logo_svg');
 assert(betaGate.includes('logo.innerHTML = logoSvg'), 'beta gate should render the active control-panel logo SVG');
+assert(betaGate.includes('--font-body: ui-sans-serif, system-ui'), 'beta gate should use the same system font stack as threshold/cOMpass');
+assert(betaGate.includes('@keyframes logo-breathe'), 'beta gate should use the same rotating cOMpass motion language');
+assert(betaGate.includes("logo.classList.add('is-manifest-logo')"), 'beta gate should mark the active manifest logo once loaded');
 
 assert(thresholdCss.includes('--brand-logo-east: #4f5f8f'), 'threshold default palette should use muted indigo');
 assert(betaGate.includes('--brand-logo-west: #b4787e'), 'beta gate default palette should use rose clay');
