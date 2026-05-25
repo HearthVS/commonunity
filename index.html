@@ -2569,6 +2569,92 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 .om-cipher-card .field-group { margin-top: 0; }
 .om-cipher-card .field-group + .field-group { margin-top: var(--space-2); }
+
+.name-narrative-card {
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--setup-accent) 10%, transparent), transparent 42%),
+    color-mix(in srgb, var(--card-alt, var(--card)) 52%, transparent);
+}
+
+.name-narrative-card.is-empty {
+  opacity: 0.82;
+}
+
+.name-narrative-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.name-narrative-details > summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+}
+
+.name-narrative-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.name-narrative-summary-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.name-narrative-toggle {
+  color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--setup-accent) 28%, var(--border));
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.name-narrative-details[open] .name-narrative-toggle {
+  color: var(--setup-accent);
+  background: color-mix(in srgb, var(--setup-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--setup-accent) 54%, var(--border));
+}
+
+.name-narrative-details[open] .name-narrative-toggle::before {
+  content: 'Close';
+}
+
+.name-narrative-details:not([open]) .name-narrative-toggle::before {
+  content: 'Open';
+}
+
+.name-narrative-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.name-narrative-input {
+  min-height: 15rem;
+  line-height: 1.62;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.name-narrative-input[readonly] {
+  cursor: text;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+}
+
+.name-narrative-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* Within a two-column calc-row, keep inputs on the same baseline even
    when one label wraps — push the input to the bottom of the grid cell. */
 .om-cipher-card .calc-row > .field-group { justify-content: end; }
@@ -8747,6 +8833,46 @@ function initProfileModal() {
   const menuBtn    = document.getElementById('menu-profile');
   const pillBtn    = document.getElementById('btn-open-om-cipher');
 
+  function getThresholdNameNarrative() {
+    try {
+      if (!window.ThresholdGate || typeof window.ThresholdGate.read !== 'function') return null;
+      const contract = window.ThresholdGate.read();
+      return contract && contract.name_narrative ? contract.name_narrative : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function populateNameNarrativeEssay() {
+    const card = document.getElementById('profile-name-narrative-card');
+    const essayEl = document.getElementById('profile-name-narrative-essay');
+    const metaEl = document.getElementById('profile-name-narrative-meta');
+    if (!card || !essayEl) return;
+
+    const narrative = getThresholdNameNarrative();
+    const essay = String((narrative && narrative.essay) || '').trim();
+
+    if (!essay) {
+      card.classList.add('is-empty');
+      essayEl.value = '';
+      if (metaEl) metaEl.textContent = 'No threshold name essay stored yet.';
+      return;
+    }
+
+    card.classList.remove('is-empty');
+    essayEl.value = essay;
+    if (metaEl) {
+      let stamp = '';
+      if (narrative && narrative.generated_at) {
+        const generated = new Date(narrative.generated_at);
+        if (!isNaN(generated.getTime())) {
+          stamp = ' · ' + generated.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+      }
+      metaEl.textContent = 'Stored from the threshold' + stamp + '.';
+    }
+  }
+
   function openOmCipherModal() {
     if (modal) modal.style.display = 'flex';
     const menu = document.getElementById('more-dropdown');
@@ -8794,6 +8920,7 @@ function initProfileModal() {
         }
       });
     }
+    populateNameNarrativeEssay();
   }
 
   if (menuBtn)   menuBtn.addEventListener('click',   openOmCipherModal);
@@ -8822,6 +8949,30 @@ function initProfileModal() {
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   });
+
+  const copyNameNarrativeBtn = document.getElementById('btn-copy-name-narrative');
+  if (copyNameNarrativeBtn) {
+    copyNameNarrativeBtn.addEventListener('click', async () => {
+      const essayEl = document.getElementById('profile-name-narrative-essay');
+      const text = essayEl ? essayEl.value.trim() : '';
+      if (!text) {
+        showToast('No name narrative stored yet', 2500);
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          essayEl.focus();
+          essayEl.select();
+          document.execCommand('copy');
+        }
+        showToast('Name narrative copied');
+      } catch (_) {
+        showToast('Could not copy narrative', 3000);
+      }
+    });
+  }
 
   // Re-run the identity chart calc when birth coords / tz change.
   ['profile-birth-lat','profile-birth-lng','profile-birth-tz'].forEach(id => {
@@ -9489,6 +9640,30 @@ function initCompassNexus() {
         <textarea class="field-input" id="profile-current-cities" rows="2" placeholder="e.g. Helsinki, Finland · Lisbon, Portugal" data-profile="current_cities" autocomplete="off" style="resize:vertical;min-height:2.5em;"></textarea>
         <p class="om-cipher-card-hint" style="margin-top:6px;">Multiple cities welcome — separate with a comma or a new line.</p>
       </div>
+    </div>
+
+    <!-- ============================================================
+         NAME NARRATIVE — collapsed threshold essay
+         ============================================================ -->
+    <div class="om-cipher-card name-narrative-card is-empty" id="profile-name-narrative-card">
+      <details class="name-narrative-details">
+        <summary>
+          <span class="name-narrative-summary-copy">
+            <span class="om-cipher-card-title">The story of your name</span>
+            <span class="om-cipher-card-hint" id="profile-name-narrative-meta">Stored from the threshold when available.</span>
+          </span>
+          <span class="name-narrative-toggle" aria-hidden="true"></span>
+        </summary>
+        <div class="name-narrative-body">
+          <div class="field-group">
+            <label class="field-label" for="profile-name-narrative-essay">Name narrative</label>
+            <textarea class="field-input name-narrative-input" id="profile-name-narrative-essay" rows="10" readonly placeholder="The threshold name essay will appear here after the person completes onboarding."></textarea>
+          </div>
+          <div class="name-narrative-actions">
+            <button class="btn-secondary" type="button" id="btn-copy-name-narrative">Copy narrative</button>
+          </div>
+        </div>
+      </details>
     </div>
 
     <!-- ============================================================
