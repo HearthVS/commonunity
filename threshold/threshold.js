@@ -941,10 +941,12 @@
 
   function boot() {
     // If the contract already exists and threshold is done, allow replay
-    // by passing ?replay=1 — otherwise bounce to Compass.
+    // by passing ?replay=1 — otherwise continue into cOMpass. This used
+    // to bounce to '/', which felt like the threshold had collapsed back
+    // to the public homepage for returning/completed browsers.
     const params = new URLSearchParams(window.location.search);
     if (Contract.isThresholdCompleted() && params.get('replay') !== '1') {
-      window.location.replace('/');
+      window.location.replace('/compass?threshold=done&enter=compass');
       return;
     }
     loadDraft();

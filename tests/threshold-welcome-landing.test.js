@@ -74,6 +74,10 @@ ok(/root\.classList\.add\('is-fading-out'\)/.test(js),
    "fade-out is applied to the threshold root (whole field dims together)");
 ok(/\/compass\?threshold=done&enter=compass/.test(js),
    "handoff still navigates to /compass?threshold=done&enter=compass");
+ok(/Contract\.isThresholdCompleted\(\)[\s\S]*?window\.location\.replace\('\/compass\?threshold=done&enter=compass'\)/.test(js),
+   "completed threshold browsers continue into cOMpass instead of the homepage");
+ok(!/window\.location\.replace\('\/'\)/.test(js),
+   "threshold boot should not bounce completed users to the homepage");
 
 console.log('\n4b. welcome screen is user-driven · no auto-advance timer');
 const renderWelcomeFn = (js.split('function renderWelcomeLanding')[1] || '').split('\n  function ')[0];
