@@ -30,6 +30,10 @@ for (const [name, source] of [
   assert(!source.includes('fill="#c47c8f"'), `${name} should not hardcode the old west logo color`);
 }
 
+assert(betaGate.includes('id="brand-gate-logo"'), 'beta gate logo container should be targetable');
+assert(betaGate.includes('manifest.logo_svg'), 'beta gate should replace the fallback logo with manifest logo_svg');
+assert(betaGate.includes('logo.innerHTML = logoSvg'), 'beta gate should render the active control-panel logo SVG');
+
 assert(thresholdCss.includes('--brand-logo-east: #4f5f8f'), 'threshold default palette should use muted indigo');
 assert(betaGate.includes('--brand-logo-west: #b4787e'), 'beta gate default palette should use rose clay');
 assert(compass.includes('--brand-logo-south: #6f9a84'), 'cOMpass default palette should use living sage');
