@@ -56,6 +56,15 @@
   /* Brand gold — kept for the ring / dot accents around the cOMpass logo. */
   --om-gold: #d4a04a;
   --om-gold-soft: #e8c184;
+  --brand-logo-center: #f7ead2;
+  --brand-logo-north: #d6b36a;
+  --brand-logo-east: #4f5f8f;
+  --brand-logo-south: #6f9a84;
+  --brand-logo-west: #b4787e;
+  --brand-logo-inner-north: #f1d99d;
+  --brand-logo-inner-east: #91a0c9;
+  --brand-logo-inner-south: #a6c9b1;
+  --brand-logo-inner-west: #d6a0a2;
 }
 
 html, body {

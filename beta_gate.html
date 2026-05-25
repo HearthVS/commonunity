@@ -18,6 +18,15 @@
       --rose: #bf7c92;
       --blue: #6c8fc5;
       --green: #74a487;
+      --brand-logo-center: #f7ead2;
+      --brand-logo-north: #d6b36a;
+      --brand-logo-east: #4f5f8f;
+      --brand-logo-south: #6f9a84;
+      --brand-logo-west: #b4787e;
+      --brand-logo-inner-north: #f1d99d;
+      --brand-logo-inner-east: #91a0c9;
+      --brand-logo-inner-south: #a6c9b1;
+      --brand-logo-inner-west: #d6a0a2;
       --shadow: rgba(0, 0, 0, 0.42);
       color-scheme: dark;
     }
@@ -210,14 +219,14 @@
           <defs>
             <radialGradient id="gate-compass-aura" cx="50%" cy="50%" r="50%">
               <stop offset="55%" stop-color="#818cf8" stop-opacity="0"/>
-              <stop offset="78%" stop-color="#a5b4fc" stop-opacity="0.18"/>
-              <stop offset="100%" stop-color="#c7d2fe" stop-opacity="0"/>
+              <stop offset="78%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="var(--brand-logo-center, #f7ead2)" stop-opacity="0"/>
             </radialGradient>
             <radialGradient id="gate-compass-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.9"/>
-              <stop offset="25%" stop-color="#fde68a" stop-opacity="0.5"/>
-              <stop offset="55%" stop-color="#c4b5fd" stop-opacity="0.2"/>
-              <stop offset="100%" stop-color="#312e81" stop-opacity="0"/>
+              <stop offset="0%" stop-color="var(--brand-logo-center, #f7ead2)" stop-opacity="0.9"/>
+              <stop offset="25%" stop-color="var(--brand-logo-north, #d6b36a)" stop-opacity="0.5"/>
+              <stop offset="55%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0"/>
             </radialGradient>
             <filter id="gate-compass-fold" color-interpolation-filters="sRGB" x="-6%" y="-6%" width="112%" height="112%">
               <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>
@@ -227,19 +236,19 @@
           </defs>
           <circle cx="50" cy="50" r="50" fill="url(#gate-compass-aura)"/>
           <g filter="url(#gate-compass-fold)">
-            <polygon points="50,5 95,50 5,50 50,43" fill="#b8a878" fill-opacity="0.72"/>
-            <polygon points="95,50 50,95 50,5 57,50" fill="#7c8fc4" fill-opacity="0.68"/>
-            <polygon points="50,95 5,50 95,50 50,57" fill="#6aaa8c" fill-opacity="0.65"/>
-            <polygon points="5,50 50,5 50,95 43,50" fill="#c47c8f" fill-opacity="0.65"/>
+            <polygon points="50,5 95,50 5,50 50,43" fill="var(--brand-logo-north, #d6b36a)" fill-opacity="0.72"/>
+            <polygon points="95,50 50,95 50,5 57,50" fill="var(--brand-logo-east, #4f5f8f)" fill-opacity="0.68"/>
+            <polygon points="50,95 5,50 95,50 50,57" fill="var(--brand-logo-south, #6f9a84)" fill-opacity="0.65"/>
+            <polygon points="5,50 50,5 50,95 43,50" fill="var(--brand-logo-west, #b4787e)" fill-opacity="0.65"/>
           </g>
           <g opacity="0.5">
-            <polygon points="50,22 72,43 28,43 50,38" fill="#e8d9a0" fill-opacity="0.45"/>
-            <polygon points="72,57 57,72 57,28 62,50" fill="#a8bce0" fill-opacity="0.4"/>
-            <polygon points="50,78 28,57 72,57 50,62" fill="#9dd4b4" fill-opacity="0.4"/>
-            <polygon points="28,43 43,28 43,72 38,50" fill="#dfa0b0" fill-opacity="0.38"/>
+            <polygon points="50,22 72,43 28,43 50,38" fill="var(--brand-logo-inner-north, #f1d99d)" fill-opacity="0.45"/>
+            <polygon points="72,57 57,72 57,28 62,50" fill="var(--brand-logo-inner-east, #91a0c9)" fill-opacity="0.4"/>
+            <polygon points="50,78 28,57 72,57 50,62" fill="var(--brand-logo-inner-south, #a6c9b1)" fill-opacity="0.4"/>
+            <polygon points="28,43 43,28 43,72 38,50" fill="var(--brand-logo-inner-west, #d6a0a2)" fill-opacity="0.38"/>
           </g>
           <circle cx="50" cy="50" r="15" fill="url(#gate-compass-glow)"/>
-          <circle cx="50" cy="50" r="1.5" fill="#fef9ee" fill-opacity="0.9"/>
+          <circle cx="50" cy="50" r="1.5" fill="var(--brand-logo-center, #f7ead2)" fill-opacity="0.9"/>
         </svg>
       </div>
       <p class="eyebrow">Private beta</p>
@@ -278,6 +287,25 @@
       const app = names[next] || 'CommonUnity';
       document.getElementById('title').textContent = app + ' is opening by invitation.';
       document.getElementById('copy').textContent = 'This entrance is currently held for invited beta companions and guides. Use your magic link, or enter the shared beta code you were given.';
+      fetch('/api/brand/manifest', { credentials: 'same-origin', cache: 'no-store' })
+        .then((res) => res.ok ? res.json() : null)
+        .then((manifest) => {
+          const p = manifest && manifest.logo_palette ? manifest.logo_palette : {};
+          const style = document.documentElement.style;
+          const map = {
+            center: '--brand-logo-center',
+            north: '--brand-logo-north',
+            east: '--brand-logo-east',
+            south: '--brand-logo-south',
+            west: '--brand-logo-west',
+            inner_north: '--brand-logo-inner-north',
+            inner_east: '--brand-logo-inner-east',
+            inner_south: '--brand-logo-inner-south',
+            inner_west: '--brand-logo-inner-west'
+          };
+          Object.keys(map).forEach((key) => { if (p[key]) style.setProperty(map[key], p[key]); });
+        })
+        .catch(() => {});
     })();
   </script>
 </body>

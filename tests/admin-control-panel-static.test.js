@@ -12,6 +12,14 @@ assert(server.includes('_ADMIN_CODE_ENV = "ADMIN_ACCESS_CODE"'), 'admin code env
 assert(server.includes('_ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"'), 'admin DB path env should be declared');
 assert(server.includes('CREATE TABLE IF NOT EXISTS invites'), 'invites table should exist');
 assert(server.includes('CREATE TABLE IF NOT EXISTS events'), 'events table should exist');
+assert(server.includes('CREATE TABLE IF NOT EXISTS brand_versions'), 'brand versions table should exist');
+assert(server.includes('@app.get("/api/brand/manifest")'), 'public brand manifest API should exist');
+assert(server.includes('@app.get("/api/admin/brand/versions")'), 'admin brand version list API should exist');
+assert(server.includes('@app.post("/api/admin/brand/versions")'), 'admin brand version create API should exist');
+assert(server.includes('@app.post("/api/admin/brand/versions/{version_id}/activate")'), 'admin brand activation API should exist');
+assert(server.includes('brand_field_v1'), 'brand manifest version should be exposed');
+assert(server.includes('OM Field Pearl v1'), 'default non-primary brand version should be seeded');
+assert(server.includes('#4f5f8f'), 'default logo palette should use muted indigo, not primary blue');
 assert(server.includes('@app.get("/admin")'), '/admin page route should exist');
 assert(server.includes('@app.post("/api/admin/login")'), 'admin login API should exist');
 assert(server.includes('@app.get("/api/admin/invites")'), 'invite list API should exist');
@@ -51,8 +59,12 @@ assert(admin.includes('/api/admin/login'), 'admin page should call login API');
 assert(admin.includes('/api/admin/invites'), 'admin page should call invite API');
 assert(admin.includes('/send'), 'admin page should call invite send API');
 assert(admin.includes('Send email'), 'admin page should include send email action');
-assert(admin.includes('/threshold?invite='), 'admin page should generate threshold magic links');
+assert(admin.includes('/invite/'), 'admin page should generate path-based magic links');
 assert(admin.includes('Generate magic link'), 'admin page should include invite CTA');
+assert(admin.includes('Brand Field'), 'admin page should include the Brand Field section');
+assert(admin.includes('/api/admin/brand/versions'), 'admin page should call brand version APIs');
+assert(admin.includes('Save as draft'), 'admin page should support brand drafts');
+assert(admin.includes('Set active'), 'admin page should support activating a brand version');
 assert(!admin.includes('COMMONUNITY_BETA_CODE</code>'), 'admin should not encourage exposing beta code');
 
 console.log('admin control panel static checks passed');

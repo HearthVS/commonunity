@@ -252,9 +252,105 @@
       margin-top: 12px;
       color: var(--muted);
     }
+    .brand-field {
+      margin: 18px 0;
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .brand-preview {
+      min-height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+      background:
+        radial-gradient(circle at 50% 28%, rgba(247,234,210,0.16), transparent 16rem),
+        radial-gradient(circle at 20% 18%, rgba(214,179,106,0.16), transparent 20rem),
+        radial-gradient(circle at 78% 28%, rgba(79,95,143,0.18), transparent 20rem),
+        radial-gradient(circle at 52% 86%, rgba(111,154,132,0.13), transparent 24rem),
+        rgba(255,255,255,0.035);
+    }
+    .brand-logo-orb {
+      width: 178px;
+      height: 178px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 24px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(247,234,210,0.18), rgba(255,255,255,0.025) 64%, transparent 76%);
+      border: 1px solid rgba(247,234,210,0.12);
+      box-shadow: 0 0 68px rgba(214,179,106,0.18);
+    }
+    .brand-logo-orb svg { width: 112px; height: 112px; filter: drop-shadow(0 0 18px rgba(247,234,210,0.18)); }
+    .brand-version-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+      max-height: 240px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .brand-version {
+      display: grid;
+      gap: 8px;
+      padding: 13px;
+      border: 1px solid rgba(248,242,232,0.1);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.18);
+    }
+    .brand-version-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .color-field {
+      display: grid;
+      gap: 7px;
+    }
+    .color-field input[type="color"] {
+      min-height: 46px;
+      padding: 4px;
+      border-radius: 14px;
+    }
+    .mini-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .mini-surface {
+      min-height: 76px;
+      border-radius: 18px;
+      border: 1px solid rgba(248,242,232,0.1);
+      padding: 12px;
+      color: rgba(248,242,232,0.78);
+      font-size: 0.76rem;
+      display: flex;
+      align-items: end;
+    }
+    .mini-surface.threshold {
+      background: radial-gradient(circle at 50% 20%, rgba(247,234,210,0.18), transparent 56%), #030306;
+    }
+    .mini-surface.email {
+      color: #2b2118;
+      background: linear-gradient(135deg, #fff8ed, #ead9b8);
+    }
+    .mini-surface.compass {
+      background: radial-gradient(circle at 80% 10%, rgba(79,95,143,0.22), transparent 62%), rgba(10,14,26,0.98);
+    }
     .hidden { display: none !important; }
     @media (max-width: 900px) {
-      header, .grid, .metrics, .split { grid-template-columns: 1fr; }
+      header, .grid, .metrics, .split, .brand-field, .color-grid, .mini-preview { grid-template-columns: 1fr; }
       .status-pill { justify-self: start; }
       .shell { width: min(100% - 22px, 1180px); padding-top: 24px; }
       .card { padding: 18px; }
@@ -326,6 +422,56 @@
         </div>
       </section>
 
+      <section class="brand-field">
+        <div class="panel card brand-preview">
+          <div class="brand-logo-orb" id="brand-logo-preview" aria-label="Active cOMpass brand mark"></div>
+          <h2 id="brand-active-name">Brand Field</h2>
+          <p class="hint" id="brand-active-notes">The active cOMpass visual field will appear here.</p>
+          <div class="mini-preview">
+            <div class="mini-surface threshold">Threshold</div>
+            <div class="mini-surface compass">cOMpass</div>
+            <div class="mini-surface email">Email</div>
+          </div>
+        </div>
+
+        <div class="panel card">
+          <h2>Brand Field</h2>
+          <p class="hint">Create and test cOMpass logo palettes without touching code. Save as draft first, then set active when the field feels right.</p>
+          <form id="brand-form" class="fields">
+            <div class="split">
+              <div>
+                <label for="brand-name">Version name</label>
+                <input id="brand-name" placeholder="OM Field Pearl v2">
+              </div>
+              <div>
+                <label for="brand-email-png">Email PNG path</label>
+                <input id="brand-email-png" placeholder="/assets/brand/compass-email-mark.png">
+              </div>
+            </div>
+            <div>
+              <label>Logo palette</label>
+              <div class="color-grid">
+                <div class="color-field"><label for="brand-north">Gold</label><input id="brand-north" type="color" value="#d6b36a"></div>
+                <div class="color-field"><label for="brand-east">Indigo</label><input id="brand-east" type="color" value="#4f5f8f"></div>
+                <div class="color-field"><label for="brand-south">Sage</label><input id="brand-south" type="color" value="#6f9a84"></div>
+                <div class="color-field"><label for="brand-west">Rose clay</label><input id="brand-west" type="color" value="#b4787e"></div>
+                <div class="color-field"><label for="brand-center">Pearl</label><input id="brand-center" type="color" value="#f7ead2"></div>
+              </div>
+            </div>
+            <div>
+              <label for="brand-notes">Notes</label>
+              <textarea id="brand-notes" placeholder="What this version is trying to tune…"></textarea>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">Save as draft</button>
+              <button class="btn" type="button" id="brand-reset">Load active into editor</button>
+            </div>
+          </form>
+          <div class="message" id="brand-message"></div>
+          <div class="brand-version-list" id="brand-version-list"></div>
+        </div>
+      </section>
+
       <section class="panel card" style="margin-top:18px;">
         <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
           <div>
@@ -356,9 +502,9 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { invites: [], events: [], metrics: {}, configured: {} };
+    const state = { invites: [], events: [], metrics: {}, configured: {}, brand: { versions: [], manifest: null } };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const magicLink = (token) => `${location.origin}/threshold?invite=${encodeURIComponent(token)}`;
+    const magicLink = (token) => `${location.origin}/invite/${encodeURIComponent(token)}`;
 
     async function api(path, options = {}) {
       const res = await fetch(path, {
@@ -385,14 +531,16 @@
     }
 
     async function loadDashboard() {
-      const [invites, metrics] = await Promise.all([
+      const [invites, metrics, brand] = await Promise.all([
         api('/api/admin/invites'),
         api('/api/admin/metrics'),
+        api('/api/admin/brand/versions'),
       ]);
       state.invites = invites.invites || [];
       state.metrics = metrics.metrics || {};
       state.events = metrics.events || [];
       state.configured = metrics.configured || {};
+      state.brand = brand || { versions: [], manifest: null };
       render();
     }
 
@@ -427,6 +575,85 @@
           <small>${date(ev.timestamp)} · ${escapeHtml(ev.route || '')} ${ev.detail ? '· ' + escapeHtml(ev.detail) : ''}</small>
         </div>
       `).join('') || '<p class="muted">No activity yet.</p>';
+      renderBrand();
+    }
+
+    function activeBrand() {
+      return state.brand?.manifest?.version || state.brand?.versions?.find(v => v.status === 'active') || null;
+    }
+
+    function renderBrand() {
+      const active = activeBrand();
+      if (!active) return;
+      $('brand-logo-preview').innerHTML = active.logo_svg || '';
+      $('brand-active-name').textContent = active.name || 'Brand Field';
+      $('brand-active-notes').textContent = active.notes || 'Active cOMpass visual field.';
+      if (!$('brand-name').value) loadBrandIntoEditor(active);
+      $('brand-version-list').innerHTML = (state.brand.versions || []).map(version => `
+        <div class="brand-version">
+          <div class="brand-version-head">
+            <div>
+              <strong>${escapeHtml(version.name || 'Untitled')}</strong>
+              <div class="muted">${escapeHtml(version.status || 'draft')} · ${date(version.updated_at)}</div>
+            </div>
+            <span class="status ${version.status === 'archived' ? 'revoked' : ''}">${escapeHtml(version.status)}</span>
+          </div>
+          <div class="actions" style="margin:0">
+            <button class="btn" data-brand-load="${version.id}">Load</button>
+            ${version.status !== 'active' ? `<button class="btn btn-primary" data-brand-activate="${version.id}">Set active</button>` : ''}
+            ${version.status !== 'active' && version.status !== 'archived' ? `<button class="btn btn-danger" data-brand-archive="${version.id}">Archive</button>` : ''}
+          </div>
+        </div>
+      `).join('') || '<p class="muted">No brand versions yet.</p>';
+    }
+
+    function loadBrandIntoEditor(version = activeBrand()) {
+      if (!version) return;
+      const p = version.logo_palette || {};
+      $('brand-name').value = version.name || '';
+      $('brand-email-png').value = version.email_png_path || '/assets/brand/compass-email-mark.png';
+      $('brand-north').value = p.north || '#d6b36a';
+      $('brand-east').value = p.east || '#4f5f8f';
+      $('brand-south').value = p.south || '#6f9a84';
+      $('brand-west').value = p.west || '#b4787e';
+      $('brand-center').value = p.center || '#f7ead2';
+      $('brand-notes').value = version.notes || '';
+    }
+
+    function brandPayload() {
+      const center = $('brand-center').value || '#f7ead2';
+      const north = $('brand-north').value || '#d6b36a';
+      const east = $('brand-east').value || '#4f5f8f';
+      const south = $('brand-south').value || '#6f9a84';
+      const west = $('brand-west').value || '#b4787e';
+      return {
+        name: $('brand-name').value || 'Untitled brand field',
+        email_png_path: $('brand-email-png').value || '/assets/brand/compass-email-mark.png',
+        notes: $('brand-notes').value || '',
+        logo_palette: {
+          center, north, east, south, west,
+          inner_north: blend(center, north),
+          inner_east: blend(center, east),
+          inner_south: blend(center, south),
+          inner_west: blend(center, west),
+        },
+        field_palette: {
+          base: '#030306',
+          pearl: center,
+          gold: north,
+          indigo: east,
+          sage: south,
+          rose: west,
+        },
+      };
+    }
+
+    function blend(a, b) {
+      const ah = a.replace('#',''), bh = b.replace('#','');
+      const ar = parseInt(ah.slice(0,2),16), ag = parseInt(ah.slice(2,4),16), ab = parseInt(ah.slice(4,6),16);
+      const br = parseInt(bh.slice(0,2),16), bg = parseInt(bh.slice(2,4),16), bb = parseInt(bh.slice(4,6),16);
+      const mix = (x,y) => Math.round(x * 0.58 + y * 0.42).toString(16).padStart(2,'0');
+      return `#${mix(ar,br)}${mix(ag,bg)}${mix(ab,bb)}`;
     }
 
     function escapeHtml(value) {
@@ -470,10 +697,33 @@
       }
     });
 
+    $('brand-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      $('brand-message').textContent = 'Saving brand field draft…';
+      try {
+        const created = await api('/api/admin/brand/versions', {
+          method: 'POST',
+          body: JSON.stringify(brandPayload()),
+        });
+        $('brand-message').textContent = `Draft saved: ${created.version.name}`;
+        await loadDashboard();
+      } catch (err) {
+        $('brand-message').textContent = err.message;
+      }
+    });
+
+    $('brand-reset').addEventListener('click', () => {
+      loadBrandIntoEditor();
+      $('brand-message').textContent = 'Active brand loaded into the editor.';
+    });
+
     document.addEventListener('click', async (event) => {
       const copyToken = event.target?.dataset?.copy;
       const sendId = event.target?.dataset?.send;
       const revokeId = event.target?.dataset?.revoke;
+      const brandLoad = event.target?.dataset?.brandLoad;
+      const brandActivate = event.target?.dataset?.brandActivate;
+      const brandArchive = event.target?.dataset?.brandArchive;
       if (copyToken) {
         await navigator.clipboard?.writeText(magicLink(copyToken));
         event.target.textContent = 'Copied';
@@ -495,6 +745,21 @@
           event.target.textContent = original;
           $('invite-message').textContent = err.message;
         }
+      }
+      if (brandLoad) {
+        const version = state.brand.versions.find(v => String(v.id) === String(brandLoad));
+        loadBrandIntoEditor(version);
+        $('brand-message').textContent = `Loaded ${version?.name || 'brand version'} into the editor.`;
+      }
+      if (brandActivate && confirm('Set this brand field active for the live experience?')) {
+        await api(`/api/admin/brand/versions/${brandActivate}/activate`, { method: 'POST', body: '{}' });
+        $('brand-message').textContent = 'Brand field activated.';
+        await loadDashboard();
+      }
+      if (brandArchive && confirm('Archive this draft brand field?')) {
+        await api(`/api/admin/brand/versions/${brandArchive}/archive`, { method: 'POST', body: '{}' });
+        $('brand-message').textContent = 'Brand field archived.';
+        await loadDashboard();
       }
     });
 

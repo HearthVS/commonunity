@@ -93,6 +93,14 @@ class InviteCreateRequest(BaseModel):
     tag: str = ""
     expires_at: str = ""
 
+class BrandVersionRequest(BaseModel):
+    name: str = ""
+    logo_palette: dict = {}
+    field_palette: dict = {}
+    logo_svg: str = ""
+    email_png_path: str = ""
+    notes: str = ""
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 POINT_META = {
@@ -988,6 +996,66 @@ _PRIVATE_APPS = {
     "commons": {"label": "cOMmons", "path": "/commons"},
 }
 
+_DEFAULT_LOGO_PALETTE = {
+    "center": "#f7ead2",
+    "north": "#d6b36a",
+    "east": "#4f5f8f",
+    "south": "#6f9a84",
+    "west": "#b4787e",
+    "inner_north": "#f1d99d",
+    "inner_east": "#91a0c9",
+    "inner_south": "#a6c9b1",
+    "inner_west": "#d6a0a2",
+}
+_DEFAULT_FIELD_PALETTE = {
+    "base": "#030306",
+    "gold": "#d6b36a",
+    "indigo": "#4f5f8f",
+    "rose": "#b4787e",
+    "sage": "#6f9a84",
+    "pearl": "#f7ead2",
+}
+_DEFAULT_EMAIL_MARK = "/assets/brand/compass-email-mark.png"
+
+
+def _brand_logo_svg(palette: dict | None = None) -> str:
+    p = {**_DEFAULT_LOGO_PALETTE, **(palette or {})}
+    return f"""<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cOMpass logo">
+  <defs>
+    <radialGradient id="brand-compass-aura" cx="50%" cy="50%" r="50%">
+      <stop offset="55%" stop-color="{p['east']}" stop-opacity="0"/>
+      <stop offset="78%" stop-color="{p['east']}" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="{p['center']}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="brand-compass-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="{p['center']}" stop-opacity="0.9"/>
+      <stop offset="34%" stop-color="{p['north']}" stop-opacity="0.45"/>
+      <stop offset="62%" stop-color="{p['east']}" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="{p['east']}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="brand-compass-fold" color-interpolation-filters="sRGB" x="-6%" y="-6%" width="112%" height="112%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 28 -12" result="t"/>
+      <feComposite in="SourceGraphic" in2="t" operator="atop"/>
+    </filter>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="url(#brand-compass-aura)"/>
+  <g filter="url(#brand-compass-fold)">
+    <polygon points="50,5 95,50 5,50 50,43" fill="{p['north']}" fill-opacity="0.72"/>
+    <polygon points="95,50 50,95 50,5 57,50" fill="{p['east']}" fill-opacity="0.68"/>
+    <polygon points="50,95 5,50 95,50 50,57" fill="{p['south']}" fill-opacity="0.65"/>
+    <polygon points="5,50 50,5 50,95 43,50" fill="{p['west']}" fill-opacity="0.65"/>
+  </g>
+  <g opacity="0.5">
+    <polygon points="50,22 72,43 28,43 50,38" fill="{p['inner_north']}" fill-opacity="0.45"/>
+    <polygon points="72,57 57,72 57,28 62,50" fill="{p['inner_east']}" fill-opacity="0.4"/>
+    <polygon points="50,78 28,57 72,57 50,62" fill="{p['inner_south']}" fill-opacity="0.4"/>
+    <polygon points="28,43 43,28 43,72 38,50" fill="{p['inner_west']}" fill-opacity="0.38"/>
+  </g>
+  <circle cx="50" cy="50" r="15" fill="url(#brand-compass-glow)"/>
+  <circle cx="50" cy="50" r="1.5" fill="{p['center']}" fill-opacity="0.9"/>
+</svg>"""
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -1049,6 +1117,42 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS brand_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'draft',
+            logo_palette_json TEXT NOT NULL DEFAULT '{}',
+            field_palette_json TEXT NOT NULL DEFAULT '{}',
+            logo_svg TEXT NOT NULL DEFAULT '',
+            email_png_path TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    active = conn.execute("SELECT id FROM brand_versions WHERE status = 'active' LIMIT 1").fetchone()
+    if not active:
+        now = _now_iso()
+        conn.execute(
+            """
+            INSERT INTO brand_versions
+                (name, status, logo_palette_json, field_palette_json, logo_svg, email_png_path, notes, created_at, updated_at)
+            VALUES (?, 'active', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "OM Field Pearl v1",
+                json.dumps(_DEFAULT_LOGO_PALETTE, sort_keys=True),
+                json.dumps(_DEFAULT_FIELD_PALETTE, sort_keys=True),
+                _brand_logo_svg(_DEFAULT_LOGO_PALETTE),
+                _DEFAULT_EMAIL_MARK,
+                "Default CommonUnity cOMpass mark: pearl, muted gold, indigo, rose-clay, and living sage. Created to move away from primary-color quadrant language.",
+                now,
+                now,
+            ),
+        )
     conn.commit()
 
 
@@ -1056,6 +1160,68 @@ def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None
     return {key: row[key] for key in row.keys()}
+
+
+def _brand_row_to_dict(row: sqlite3.Row | None) -> dict:
+    if row is None:
+        now = _now_iso()
+        return {
+            "id": None,
+            "name": "OM Field Pearl v1",
+            "status": "active",
+            "logo_palette": dict(_DEFAULT_LOGO_PALETTE),
+            "field_palette": dict(_DEFAULT_FIELD_PALETTE),
+            "logo_svg": _brand_logo_svg(_DEFAULT_LOGO_PALETTE),
+            "email_png_path": _DEFAULT_EMAIL_MARK,
+            "notes": "Default CommonUnity cOMpass mark.",
+            "created_at": now,
+            "updated_at": now,
+        }
+    logo_palette = dict(_DEFAULT_LOGO_PALETTE)
+    field_palette = dict(_DEFAULT_FIELD_PALETTE)
+    try:
+        logo_palette.update(json.loads(row["logo_palette_json"] or "{}"))
+    except Exception:
+        pass
+    try:
+        field_palette.update(json.loads(row["field_palette_json"] or "{}"))
+    except Exception:
+        pass
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "status": row["status"],
+        "logo_palette": logo_palette,
+        "field_palette": field_palette,
+        "logo_svg": row["logo_svg"] or _brand_logo_svg(logo_palette),
+        "email_png_path": row["email_png_path"] or _DEFAULT_EMAIL_MARK,
+        "notes": row["notes"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _active_brand_version() -> dict:
+    try:
+        with _admin_db() as conn:
+            row = conn.execute(
+                "SELECT * FROM brand_versions WHERE status = 'active' ORDER BY updated_at DESC, id DESC LIMIT 1"
+            ).fetchone()
+        return _brand_row_to_dict(row)
+    except Exception as exc:
+        print(f"brand manifest fallback: {exc}")
+        return _brand_row_to_dict(None)
+
+
+def _brand_manifest() -> dict:
+    active = _active_brand_version()
+    return {
+        "version": active,
+        "logo_palette": active["logo_palette"],
+        "field_palette": active["field_palette"],
+        "logo_svg": active["logo_svg"],
+        "email_png_path": active["email_png_path"],
+    }
 
 
 def _admin_secret() -> str:
@@ -1214,7 +1380,10 @@ def _invite_email_html(person_name: str, magic_link: str) -> str:
     safe_name = html.escape(person_name or "there")
     safe_link = html.escape(magic_link)
     asset_base = html.escape(_base_url_from_link(magic_link))
-    compass_mark = f"{asset_base}/assets/brand/compass-email-mark.png"
+    email_mark_path = _active_brand_version().get("email_png_path") or _DEFAULT_EMAIL_MARK
+    if not str(email_mark_path).startswith("/"):
+        email_mark_path = _DEFAULT_EMAIL_MARK
+    compass_mark = f"{asset_base}{html.escape(str(email_mark_path))}"
     return f"""<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#030306;color:#f8f2e8;font-family:Inter,Arial,sans-serif;">
@@ -1554,6 +1723,13 @@ def _require_admin(request: Request) -> None:
         raise HTTPException(status_code=401, detail="admin access required")
 
 
+@app.get("/api/brand/manifest")
+async def brand_manifest():
+    response = _brand_manifest()
+    response["manifest_version"] = "brand_field_v1"
+    return response
+
+
 @app.get("/api/admin/status")
 async def admin_status(request: Request):
     return {
@@ -1565,6 +1741,7 @@ async def admin_status(request: Request):
         "smtp_configured": _smtp_configured(),
         "invite_base_url": _public_base_url(request),
         "email_template_version": "compass_png_branded_invite_v4",
+        "brand_manifest_version": "brand_field_v1",
     }
 
 
@@ -1597,6 +1774,126 @@ async def admin_logout(request: Request):
     response = HTMLResponse('{"ok":true}', media_type="application/json")
     response.delete_cookie(_ADMIN_COOKIE, path="/")
     return response
+
+
+@app.get("/api/admin/brand/versions")
+async def admin_list_brand_versions(request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM brand_versions
+            ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END, updated_at DESC, id DESC
+            LIMIT 100
+            """
+        ).fetchall()
+    return {"versions": [_brand_row_to_dict(row) for row in rows], "manifest": _brand_manifest()}
+
+
+def _clean_brand_payload(payload: BrandVersionRequest, existing: dict | None = None) -> dict:
+    logo_palette = dict((existing or {}).get("logo_palette") or _DEFAULT_LOGO_PALETTE)
+    field_palette = dict((existing or {}).get("field_palette") or _DEFAULT_FIELD_PALETTE)
+    logo_palette.update({k: str(v).strip() for k, v in (payload.logo_palette or {}).items() if str(v).strip()})
+    field_palette.update({k: str(v).strip() for k, v in (payload.field_palette or {}).items() if str(v).strip()})
+    logo_svg = (payload.logo_svg or "").strip() or _brand_logo_svg(logo_palette)
+    email_png_path = (payload.email_png_path or "").strip() or (existing or {}).get("email_png_path") or _DEFAULT_EMAIL_MARK
+    if not email_png_path.startswith("/"):
+        email_png_path = _DEFAULT_EMAIL_MARK
+    return {
+        "name": (payload.name or "").strip()[:160] or "Untitled brand field",
+        "logo_palette": logo_palette,
+        "field_palette": field_palette,
+        "logo_svg": logo_svg,
+        "email_png_path": email_png_path[:260],
+        "notes": (payload.notes or "").strip()[:1200],
+    }
+
+
+@app.post("/api/admin/brand/versions")
+async def admin_create_brand_version(request: Request, payload: BrandVersionRequest):
+    _require_admin(request)
+    clean = _clean_brand_payload(payload)
+    now = _now_iso()
+    with _admin_db() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO brand_versions
+                (name, status, logo_palette_json, field_palette_json, logo_svg, email_png_path, notes, created_at, updated_at)
+            VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                clean["name"],
+                json.dumps(clean["logo_palette"], sort_keys=True),
+                json.dumps(clean["field_palette"], sort_keys=True),
+                clean["logo_svg"],
+                clean["email_png_path"],
+                clean["notes"],
+                now,
+                now,
+            ),
+        )
+        row = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return {"version": _brand_row_to_dict(row)}
+
+
+@app.put("/api/admin/brand/versions/{version_id}")
+async def admin_update_brand_version(version_id: int, request: Request, payload: BrandVersionRequest):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="brand version not found")
+        existing = _brand_row_to_dict(row)
+        clean = _clean_brand_payload(payload, existing)
+        now = _now_iso()
+        conn.execute(
+            """
+            UPDATE brand_versions
+            SET name = ?, logo_palette_json = ?, field_palette_json = ?, logo_svg = ?, email_png_path = ?, notes = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                clean["name"],
+                json.dumps(clean["logo_palette"], sort_keys=True),
+                json.dumps(clean["field_palette"], sort_keys=True),
+                clean["logo_svg"],
+                clean["email_png_path"],
+                clean["notes"],
+                now,
+                version_id,
+            ),
+        )
+        updated = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+    return {"version": _brand_row_to_dict(updated)}
+
+
+@app.post("/api/admin/brand/versions/{version_id}/activate")
+async def admin_activate_brand_version(version_id: int, request: Request):
+    _require_admin(request)
+    now = _now_iso()
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="brand version not found")
+        conn.execute("UPDATE brand_versions SET status = 'archived', updated_at = ? WHERE status = 'active'", (now,))
+        conn.execute("UPDATE brand_versions SET status = 'active', updated_at = ? WHERE id = ?", (now, version_id))
+        active = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+    return {"version": _brand_row_to_dict(active), "manifest": _brand_manifest()}
+
+
+@app.post("/api/admin/brand/versions/{version_id}/archive")
+async def admin_archive_brand_version(version_id: int, request: Request):
+    _require_admin(request)
+    now = _now_iso()
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="brand version not found")
+        if row["status"] == "active":
+            raise HTTPException(status_code=400, detail="activate another brand version before archiving this one")
+        conn.execute("UPDATE brand_versions SET status = 'archived', updated_at = ? WHERE id = ?", (now, version_id))
+        archived = conn.execute("SELECT * FROM brand_versions WHERE id = ?", (version_id,)).fetchone()
+    return {"version": _brand_row_to_dict(archived)}
 
 
 @app.get("/api/admin/invites")
@@ -1702,6 +1999,7 @@ async def admin_metrics(request: Request):
             "db_path": str(_admin_db_path()),
             "invite_base_url": _public_base_url(request),
             "email_template_version": "compass_png_branded_invite_v4",
+            "brand_manifest_version": "brand_field_v1",
         },
     }
 
