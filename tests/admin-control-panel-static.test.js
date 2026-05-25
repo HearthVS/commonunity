@@ -55,6 +55,17 @@ assert(server.includes('compass_entered'), 'cOMpass entry event should be tracke
 
 assert(admin.includes('CommonUnity Control Room'), 'admin page should have branded title');
 assert(admin.includes('Hold the threshold.'), 'admin page should use branded motivational language');
+assert(admin.includes('Navigation dashboard'), 'admin page should expose a top navigation dashboard');
+assert(admin.includes('admin-live-links'), 'admin page should render live navigation links');
+assert(admin.includes('space-status'), 'admin page should render system status cards');
+assert(admin.includes('Check spaces'), 'admin page should let the user refresh space status');
+assert(admin.includes("['Threshold', '/threshold'"), 'admin dashboard should link to the threshold');
+assert(admin.includes("['cOMpass', '/compass'"), 'admin dashboard should link to cOMpass');
+assert(admin.includes("['Studio', '/studio'"), 'admin dashboard should link to Studio');
+assert(admin.includes("['Tuner', '/tuner'"), 'admin dashboard should link to Tuner');
+assert(admin.includes("['Beta gate', '/beta'"), 'admin dashboard should link to beta access');
+assert(admin.includes("optionalApi('/health')"), 'admin dashboard should check app health');
+assert(admin.includes("optionalApi('/api/beta/status')"), 'admin dashboard should check beta access status');
 assert(admin.includes('/api/admin/login'), 'admin page should call login API');
 assert(admin.includes('/api/admin/invites'), 'admin page should call invite API');
 assert(admin.includes('/send'), 'admin page should call invite send API');
