@@ -779,8 +779,7 @@
   // A soft landing chamber between identity completion and the cOMpass
   // companion view. Not a form, not the legacy setup page. The page
   // greets the person by their given name, holds them for a breath,
-  // then fades into cOMpass. If the user prefers reduced motion, the
-  // page does not auto-advance — they continue explicitly.
+  // then fades into cOMpass only when they press Enter.
 
   function prefersReducedMotion() {
     try {
@@ -789,26 +788,10 @@
   }
 
   function welcomeStatement(firstName) {
-    // A short reflective sentence linking name / digital self /
-    // journey ahead. Tone: calm, intimate, restrained. We compose
-    // from a few small variants so it does not read as boilerplate,
-    // keyed deterministically off the name so it is stable per user.
     const name = (firstName || '').trim();
-    const variants = name ? [
-      `${name}, the field already knows the sound of your name. What you carry from here is yours to unfold.`,
-      `${name}, this is the inside of your cOMpass. The journey ahead is met by the name you arrived with.`,
-      `${name}, the threshold closes softly behind you. From here, your digital self walks at the pace of your own breath.`,
-      `${name}, you are inside now. The compass turns with you — name, self, and journey held in the same field.`
-    ] : [
-      `The field already knows the sound of your name. What you carry from here is yours to unfold.`,
-      `This is the inside of your cOMpass. The journey ahead is met by the self you arrived with.`,
-      `The threshold closes softly behind you. From here, your digital self walks at the pace of your own breath.`
-    ];
-    // Stable per-user choice.
-    let h = 0;
-    for (let i = 0; i < name.length; i++) { h = ((h << 5) - h) + name.charCodeAt(i); h |= 0; }
-    const idx = Math.abs(h) % variants.length;
-    return variants[idx];
+    return name
+      ? `${name}, your cOMpass is your living connection to the OM field.`
+      : `Your cOMpass is your living connection to the OM field.`;
   }
 
   function renderWelcomeLanding() {
@@ -822,9 +805,13 @@
 
     card.appendChild(el('h1', { class: 'welcome-title' }, 'Welcome to your cOMpass'));
     card.appendChild(el('p', { class: 'welcome-statement' }, welcomeStatement(firstName)));
-    card.appendChild(el('p', { class: 'welcome-palette-story' },
-      'As you enter, the field begins to differentiate into your own colours. The OM Cipher has received your coordinates: your name, your birth details, and the first points of your orientation. These colours do not define you. They are the first visible expression of your unique code for the path hOMe.'
-    ));
+    const body = el('div', { class: 'welcome-body' });
+    [
+      'Your name and birth details are the foundational coordinates of your OM Cipher, your unique pattern of light and timing that has been moving with you all along.',
+      'With your Guide, you are now ready to more consciously uncover what you are here to do, to learn, to embody, and to offer the world.',
+      'The Work, The Lens, The Field, and The Call are the four points of your cOMpass, helping you tune to the signal of your own colours and come into deeper alignment with your path.'
+    ].forEach(copy => body.appendChild(el('p', { class: 'welcome-body-line' }, copy)));
+    card.appendChild(body);
 
     const reduced = prefersReducedMotion();
 
@@ -832,7 +819,7 @@
     // user-driven now — no timer — so the hint invites the press
     // rather than warning of an imminent transition.
     card.appendChild(el('p', { class: 'welcome-hint', role: 'status', 'aria-live': 'polite' },
-      'Continue when you are ready.'
+      'Ready when you are.'
     ));
 
     // Explicit continue is the ONLY way forward — no auto-advance.

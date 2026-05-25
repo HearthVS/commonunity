@@ -8,7 +8,7 @@
  * and threshold/threshold.css source. We deliberately do not boot
  * the module — the contract here is that the *flow* contains the
  * welcome state, that the copy + accessibility hooks are present,
- * and that handoff still ends at /?threshold=done&enter=compass.
+ * and that handoff still ends at /compass?threshold=done&enter=compass.
  *
  *   Run: node tests/threshold-welcome-landing.test.js
  */
@@ -50,6 +50,14 @@ ok(!/handoffToCompass\(\)/.test(idBody),
 console.log('\n3. welcome-landing screen content + accessibility');
 ok(/Welcome to your cOMpass/.test(js),
    "welcome screen carries the 'Welcome to your cOMpass' copy");
+ok(/your cOMpass is your living connection to the OM field/.test(js),
+   "welcome screen carries the dynamic name-linked OM field line");
+ok(/foundational coordinates of your OM Cipher/.test(js),
+   "welcome body explains name + birth details as OM Cipher coordinates");
+ok(/The Work, The Lens, The Field, and The Call are the four points of your cOMpass/.test(js),
+   "welcome body names the four cOMpass points");
+ok(/Ready when you are/.test(js),
+   "welcome microcopy reads 'Ready when you are'");
 ok(/function welcomeStatement/.test(js),
    "welcomeStatement composes a name-linked reflective sentence");
 ok(/aria-live/.test(js),
@@ -64,8 +72,8 @@ ok(/function beginWelcomeHandoff/.test(js),
    "beginWelcomeHandoff orchestrates fade -> handoff");
 ok(/root\.classList\.add\('is-fading-out'\)/.test(js),
    "fade-out is applied to the threshold root (whole field dims together)");
-ok(/\/\?threshold=done&enter=compass/.test(js),
-   "handoff still navigates to /?threshold=done&enter=compass");
+ok(/\/compass\?threshold=done&enter=compass/.test(js),
+   "handoff still navigates to /compass?threshold=done&enter=compass");
 
 console.log('\n4b. welcome screen is user-driven · no auto-advance timer');
 const renderWelcomeFn = (js.split('function renderWelcomeLanding')[1] || '').split('\n  function ')[0];
@@ -98,6 +106,10 @@ ok(/\.welcome-title/.test(css),
    ".welcome-title style is defined");
 ok(/\.welcome-statement/.test(css),
    ".welcome-statement style is defined");
+ok(/\.welcome-body/.test(css),
+   ".welcome-body style is defined");
+ok(/\.welcome-body-line/.test(css),
+   ".welcome-body-line style is defined");
 ok(/\.threshold-root\.is-fading-out/.test(css),
    ".is-fading-out fade transition is defined on the root");
 ok(/@media \(prefers-reduced-motion: reduce\)[\s\S]{0,400}is-welcome-landing|is-welcome-landing[\s\S]{0,400}@media \(prefers-reduced-motion: reduce\)|@media \(prefers-reduced-motion: reduce\)[\s\S]*is-fading-out/.test(css),
