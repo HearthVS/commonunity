@@ -57,7 +57,10 @@ const dom = new JSDOM(sanitized, { pretendToBeVisual: true });
 const { document } = dom.window;
 
 // ── Long paragraph behind disclosure ──────────────────────────────
-const longCopy = 'Identity-engine source data — the inputs the OM Cipher and Compass build from';
+// The opening fragment is stable across copy revisions; this avoids
+// pinning the test to the entire sentence while still asserting the
+// disclosure is populated with the identity-engine explainer.
+const longCopy = 'Identity-engine source data';
 const allText = document.body.textContent;
 assert(allText.indexOf(longCopy) >= 0,
   'long copy is present somewhere in the document');
@@ -69,6 +72,23 @@ assert(disclosure && disclosure.classList.contains('info-disclosure'),
   'disclosure has .info-disclosure class (display:none until .open is toggled)');
 assert(disclosure && disclosure.textContent.indexOf(longCopy) >= 0,
   'long copy lives inside the disclosure, not in a sibling <p>');
+
+// ── Updated copy no longer claims Human Design needs manual entry ─
+// PR #45 introduced auto-populating HD; the Compass info-disclosure
+// must not say "can be entered manually" or "require a Human Design
+// chart" any more.
+const discText = (disclosure && disclosure.textContent) || '';
+assert(!/require[s]?\s+a\s+Human Design chart/i.test(discText),
+  'info-disclosure no longer claims a Human Design chart is required');
+assert(!/can be entered manually/i.test(discText),
+  'info-disclosure no longer claims manual HD entry');
+// And it should mention the broader set of downstream extensions.
+assert(/sigil/i.test(discText),
+  'info-disclosure mentions sigils as a downstream layer');
+assert(/tissue[\s-]?salt/i.test(discText),
+  'info-disclosure mentions tissue salts');
+assert(/not medical/i.test(discText),
+  'info-disclosure carries a non-medical disclaimer for tissue salts');
 
 // Sanity: the disclosure must NOT have .open by default.
 assert(disclosure && !disclosure.classList.contains('open'),
@@ -89,8 +109,8 @@ assert(/@keyframes\s+info-button-glow/.test(indexSrc),
 
 // ── Card grouping for breathing room ─────────────────────────────
 const cards = document.querySelectorAll('#profile-modal .om-cipher-card');
-assert(cards.length >= 6,
-  '#profile-modal has ≥ 6 .om-cipher-card sections (Identity, Birth Coords, Bhramari, Gene Keys, HD, Tropical, Vedic)');
+assert(cards.length >= 7,
+  '#profile-modal has ≥ 7 .om-cipher-card sections (Identity, Birth Coords, Bhramari, Gene Keys, HD, Tropical, Vedic, Tissue Salts)');
 
 // CSS for cards must include padding + gap (visible breathing room).
 assert(/\.om-cipher-card\s*\{[^}]*padding:\s*var\(--space-[0-9]+\)/.test(indexSrc),
