@@ -130,6 +130,7 @@ function encodeSigilSeed(input = {}) {
     gene_keys = {},      // { life_work, evolution, radiance, purpose }
     compass = {},        // { work, lens, field, call } each { gk_num, gk_line }
     tone = {},           // { tonal_center, dominant_hz, seed_syllable }
+    salts = null,        // SaltConfig[] — symbolic tissue-salt layer (optional)
   } = input;
 
   const dr = birthdayDigitalRoot(birthdate);
@@ -161,6 +162,20 @@ function encodeSigilSeed(input = {}) {
 
   const proposedHandle = handle || proposeHandle(display_name);
 
+  // Normalise the salt layer if present. The canonical person profile keeps
+  // salts as SaltConfig[]: [{ saltId, weight }]. The renderer reads salts[0]
+  // for the primary geometry; secondaries are preserved for future accents.
+  let normalisedSalts = null;
+  if (Array.isArray(salts) && salts.length) {
+    normalisedSalts = salts
+      .filter(s => s && typeof s.saltId === "string")
+      .map(s => ({
+        saltId: s.saltId,
+        weight: Number.isFinite(s.weight) ? s.weight : 1,
+      }));
+    if (!normalisedSalts.length) normalisedSalts = null;
+  }
+
   return {
     handle: proposedHandle,
     display_name: display_name || null,
@@ -175,6 +190,7 @@ function encodeSigilSeed(input = {}) {
       seed_syllable: tone.seed_syllable || "Om",
     },
     color_primary: sol ? sol.color : "#d2a13a", // default: warm gold
+    salts: normalisedSalts,
   };
 }
 
@@ -227,6 +243,184 @@ function arcWedge(cx, cy, r, a0, a1) {
   const y1 = cy + Math.sin(a1) * r;
   const large = (a1 - a0) > Math.PI ? 1 : 0;
   return `M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tissue salt geometry layer — symbolic / somatic / contemplative.
+// Draws a faint inner cube (square projection) under the OM halo and Compass,
+// with primary-salt edge emphasis and bond-motif micro-marks at intersections
+// between the cube edges and the inner ring + Compass axes. Density controls
+// how many intersection points receive a motif.
+//
+// All helpers return SVG strings so they compose cleanly with renderSigilSVG.
+// The same inputs (seed + salts) always produce the same string — no random.
+// ─────────────────────────────────────────────────────────────────────────
+const { CELL_SALTS: _CELL_SALTS, getSaltGeometryProfile } = require("./cell_salts.js");
+
+function _saltGeometry(center, radius) {
+  // Square inscribed in the inner ring (corners touching the ring).
+  // Side length = radius * sqrt(2); centered on `center`.
+  const r = radius;
+  const tl = { x: center.x - r * Math.SQRT1_2, y: center.y - r * Math.SQRT1_2 };
+  const tr = { x: center.x + r * Math.SQRT1_2, y: center.y - r * Math.SQRT1_2 };
+  const br = { x: center.x + r * Math.SQRT1_2, y: center.y + r * Math.SQRT1_2 };
+  const bl = { x: center.x - r * Math.SQRT1_2, y: center.y + r * Math.SQRT1_2 };
+  // Edge midpoints — used for cardinal emphasis + intersection motifs.
+  const mid = {
+    top:    { x: (tl.x + tr.x) / 2, y: (tl.y + tr.y) / 2 },
+    right:  { x: (tr.x + br.x) / 2, y: (tr.y + br.y) / 2 },
+    bottom: { x: (bl.x + br.x) / 2, y: (bl.y + br.y) / 2 },
+    left:   { x: (tl.x + bl.x) / 2, y: (tl.y + bl.y) / 2 },
+  };
+  return { corners: { tl, tr, br, bl }, mid, radius: r, center };
+}
+
+function drawBaseSaltCube(opts) {
+  const { center, radius, lineWidth = 1, opacity = 0.14 } = opts;
+  const g = _saltGeometry(center, radius);
+  const { tl, tr, br, bl } = g.corners;
+  const stroke = `rgba(241,245,249,${opacity})`;
+  const square = `<path d="M ${tl.x.toFixed(2)} ${tl.y.toFixed(2)} L ${tr.x.toFixed(2)} ${tr.y.toFixed(2)} L ${br.x.toFixed(2)} ${br.y.toFixed(2)} L ${bl.x.toFixed(2)} ${bl.y.toFixed(2)} Z" fill="none" stroke="${stroke}" stroke-width="${lineWidth}"/>`;
+  // Optional cube-suggestion diagonals (very faint).
+  const diag = `<path d="M ${tl.x.toFixed(2)} ${tl.y.toFixed(2)} L ${br.x.toFixed(2)} ${br.y.toFixed(2)} M ${tr.x.toFixed(2)} ${tr.y.toFixed(2)} L ${bl.x.toFixed(2)} ${bl.y.toFixed(2)}" fill="none" stroke="rgba(241,245,249,${(opacity * 0.55).toFixed(3)})" stroke-width="${(lineWidth * 0.6).toFixed(2)}"/>`;
+  return square + diag;
+}
+
+function highlightSaltEdges(profile, geometry, opts = {}) {
+  if (!profile) return "";
+  const { tl, tr, br, bl } = geometry.corners;
+  const { mid, center, radius } = geometry;
+  const opacity = opts.opacity || 0.28;
+  const lineWidth = opts.lineWidth || 1.4;
+  const stroke = `rgba(241,245,249,${opacity})`;
+  const sym = profile.symmetry;
+
+  if (sym === "cubic") {
+    // Emphasise all four square edges with a slightly thicker stroke.
+    return `<path d="M ${tl.x.toFixed(2)} ${tl.y.toFixed(2)} L ${tr.x.toFixed(2)} ${tr.y.toFixed(2)} L ${br.x.toFixed(2)} ${br.y.toFixed(2)} L ${bl.x.toFixed(2)} ${bl.y.toFixed(2)} Z" fill="none" stroke="${stroke}" stroke-width="${lineWidth}"/>`;
+  }
+
+  if (sym === "orthorhombic") {
+    // Stretched/diagonal feel — emphasise the two diagonals + slightly elongate
+    // (a vertical "tall rectangle" hint inside the square via a faint inner band).
+    const innerTop = { x: center.x, y: center.y - radius * 0.85 };
+    const innerBot = { x: center.x, y: center.y + radius * 0.85 };
+    return (
+      `<path d="M ${tl.x.toFixed(2)} ${tl.y.toFixed(2)} L ${br.x.toFixed(2)} ${br.y.toFixed(2)} M ${tr.x.toFixed(2)} ${tr.y.toFixed(2)} L ${bl.x.toFixed(2)} ${bl.y.toFixed(2)}" fill="none" stroke="${stroke}" stroke-width="${lineWidth}"/>` +
+      `<path d="M ${innerTop.x.toFixed(2)} ${innerTop.y.toFixed(2)} L ${innerBot.x.toFixed(2)} ${innerBot.y.toFixed(2)}" fill="none" stroke="rgba(241,245,249,${(opacity * 0.7).toFixed(3)})" stroke-width="${(lineWidth * 0.7).toFixed(2)}"/>`
+    );
+  }
+
+  if (sym === "hexagonal") {
+    // Faint hexagon inside the square — vertices on a circle of ~radius * 0.92
+    // with the standard 60° spacing; pointy-top orientation.
+    const pts = [];
+    const hexR = radius * 0.92;
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + i * (Math.PI / 3);
+      pts.push({ x: center.x + hexR * Math.cos(a), y: center.y + hexR * Math.sin(a) });
+    }
+    const d = pts.map((p, i) => (i === 0 ? "M " : "L ") + p.x.toFixed(2) + " " + p.y.toFixed(2)).join(" ") + " Z";
+    return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${lineWidth}"/>`;
+  }
+
+  if (sym === "network") {
+    // Web-like cross-connections between edge midpoints.
+    return (
+      `<path d="M ${mid.top.x.toFixed(2)} ${mid.top.y.toFixed(2)} L ${mid.right.x.toFixed(2)} ${mid.right.y.toFixed(2)} L ${mid.bottom.x.toFixed(2)} ${mid.bottom.y.toFixed(2)} L ${mid.left.x.toFixed(2)} ${mid.left.y.toFixed(2)} Z" fill="none" stroke="${stroke}" stroke-width="${lineWidth}"/>` +
+      `<path d="M ${mid.top.x.toFixed(2)} ${mid.top.y.toFixed(2)} L ${mid.bottom.x.toFixed(2)} ${mid.bottom.y.toFixed(2)} M ${mid.left.x.toFixed(2)} ${mid.left.y.toFixed(2)} L ${mid.right.x.toFixed(2)} ${mid.right.y.toFixed(2)}" fill="none" stroke="rgba(241,245,249,${(opacity * 0.6).toFixed(3)})" stroke-width="${(lineWidth * 0.7).toFixed(2)}"/>`
+    );
+  }
+  return "";
+}
+
+function _saltIntersections(geometry) {
+  // Eight stable, deterministic intersection points used by motif decoration:
+  //   - 4 corners of the cube projection (where edges touch the inner ring)
+  //   - 4 midpoints of the cube edges (where they meet the Compass axes)
+  const { corners, mid } = geometry;
+  return [
+    corners.tl, mid.top, corners.tr, mid.right,
+    corners.br, mid.bottom, corners.bl, mid.left,
+  ];
+}
+
+function decorateSaltIntersections(profile, geometry, opts = {}) {
+  if (!profile) return "";
+  const points = _saltIntersections(geometry);
+  const density = profile.nodeDensity;
+  const motif = profile.bondMotif;
+  const opacity = opts.opacity || 0.32;
+  const color = `rgba(241,245,249,${opacity})`;
+  const scale = (geometry.radius / 80) * (opts.scale || 1); // motif size scales with sigil
+
+  // Density → modulo stride for stepping through intersection points.
+  const stride = density === "dense" ? 1 : density === "medium" ? 2 : 3;
+
+  const out = [];
+  for (let i = 0; i < points.length; i += stride) {
+    const p = points[i];
+    out.push(_motifMark(motif, p, scale, color));
+  }
+  return out.join("");
+}
+
+function _motifMark(motif, p, scale, color) {
+  const x = p.x;
+  const y = p.y;
+  const s = Math.max(2, scale * 3);
+  if (motif === "paired") {
+    // Twin dots side-by-side joined by a tiny connector.
+    return (
+      `<circle cx="${(x - s).toFixed(2)}" cy="${y.toFixed(2)}" r="${(s * 0.45).toFixed(2)}" fill="${color}"/>` +
+      `<circle cx="${(x + s).toFixed(2)}" cy="${y.toFixed(2)}" r="${(s * 0.45).toFixed(2)}" fill="${color}"/>` +
+      `<line x1="${(x - s).toFixed(2)}" y1="${y.toFixed(2)}" x2="${(x + s).toFixed(2)}" y2="${y.toFixed(2)}" stroke="${color}" stroke-width="${(s * 0.18).toFixed(2)}"/>`
+    );
+  }
+  if (motif === "cross") {
+    // Small plus.
+    return (
+      `<line x1="${(x - s).toFixed(2)}" y1="${y.toFixed(2)}" x2="${(x + s).toFixed(2)}" y2="${y.toFixed(2)}" stroke="${color}" stroke-width="${(s * 0.25).toFixed(2)}"/>` +
+      `<line x1="${x.toFixed(2)}" y1="${(y - s).toFixed(2)}" x2="${x.toFixed(2)}" y2="${(y + s).toFixed(2)}" stroke="${color}" stroke-width="${(s * 0.25).toFixed(2)}"/>`
+    );
+  }
+  if (motif === "ring") {
+    // Tiny hex-ish triangle ring.
+    const r = s * 0.95;
+    const a = -Math.PI / 2;
+    const pts = [0, 1, 2].map(i => {
+      const ang = a + i * ((Math.PI * 2) / 3);
+      return (x + r * Math.cos(ang)).toFixed(2) + "," + (y + r * Math.sin(ang)).toFixed(2);
+    });
+    return `<polygon points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="${(s * 0.22).toFixed(2)}"/>`;
+  }
+  if (motif === "branching") {
+    // Tiny Y / fork — three small arms 120° apart.
+    const r = s;
+    const arms = [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6].map(ang => {
+      const ex = x + r * Math.cos(ang);
+      const ey = y + r * Math.sin(ang);
+      return `<line x1="${x.toFixed(2)}" y1="${y.toFixed(2)}" x2="${ex.toFixed(2)}" y2="${ey.toFixed(2)}" stroke="${color}" stroke-width="${(s * 0.22).toFixed(2)}"/>`;
+    });
+    return arms.join("");
+  }
+  return "";
+}
+
+function _renderSaltLayer(seed, center, innerR) {
+  const profile = getSaltGeometryProfile(seed && seed.salts);
+  if (!profile) return "";
+  // Salt cube touches the inner ring; a hair smaller keeps the corners crisp.
+  const cubeR = innerR * 0.985;
+  const geometry = _saltGeometry(center, cubeR);
+  const cube = drawBaseSaltCube({ center, radius: cubeR, lineWidth: 1, opacity: 0.14 });
+  const edges = highlightSaltEdges(profile, geometry, { opacity: 0.28, lineWidth: 1.4 });
+  const marks = decorateSaltIntersections(profile, geometry, { opacity: 0.32 });
+  return (
+    `<g class="cu-sigil-salt-layer" data-salt-id="${profile.saltId}" data-salt-symmetry="${profile.symmetry}" data-salt-motif="${profile.bondMotif}" data-salt-density="${profile.nodeDensity}">` +
+    cube + edges + marks +
+    `</g>`
+  );
 }
 
 function renderSigilSVG(seed, opts = {}) {
@@ -300,6 +494,7 @@ function renderSigilSVG(seed, opts = {}) {
     </g>
     <rect width="${size}" height="${size}" fill="url(#vignette-${safeId})"/>
     <circle cx="${cx}" cy="${cy}" r="${innerR.toFixed(2)}" fill="none" stroke="rgba(241,245,249,0.10)" stroke-width="1"/>
+    ${_renderSaltLayer(seed, { x: cx, y: cy }, innerR)}
     <text x="${cx}" y="${(cy + glyphSize * 0.36).toFixed(2)}" text-anchor="middle"
           font-family="Cormorant Garamond, Georgia, 'Times New Roman', serif"
           font-size="${glyphSize.toFixed(2)}" font-weight="500"
@@ -357,6 +552,10 @@ module.exports = {
   encodeSigilSeed,
   renderSigilSVG,
   buildDesignPrompt,
+  // tissue salt layer helpers (symbolic/somatic, not medical)
+  drawBaseSaltCube,
+  highlightSaltEdges,
+  decorateSaltIntersections,
   // constants
   SOLFEGGIO,
   SOLFEGGIO_HZ,

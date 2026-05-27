@@ -13921,6 +13921,49 @@ if (document.readyState === 'loading') {
               '</ul>'
             : '') +
         '</div>' +
+        // ── Tissue Salts panel — symbolic / somatic / contemplative ──
+        // Compact block surfacing the primary salt collapsed and primary +
+        // secondaries expanded. Hydrated by cuRenderOmCipherTissueSalts()
+        // from window.state.compassData.profile.salts (SaltConfig[]).
+        // Not medical advice.
+        '<div class="oc-source-block oc-tissue-salts-block"' +
+            ' data-cu-om-cipher-tissue-salts="1"' +
+            ' data-cu-om-cipher-tissue-salts-state="pending">' +
+          '<details class="oc-tissue-salts-details"' +
+              ' data-cu-om-cipher-tissue-salts-details="1">' +
+            '<summary class="oc-tissue-salts-summary"' +
+                ' data-cu-om-cipher-tissue-salts-toggle="1"' +
+                ' style="cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">' +
+              '<h4 class="oc-source-title" style="margin:0;">Tissue Salts <span class="oc-source-sub">· symbolic crystal geometry</span></h4>' +
+              '<span class="oc-tissue-salts-primary-line"' +
+                  ' data-cu-om-cipher-tissue-salts-primary-line="1"' +
+                  ' style="font-size:13px;color:rgba(241,245,249,0.72);">' +
+                'Primary salt: pending source data' +
+              '</span>' +
+              '<span class="oc-disclosure-chevron" aria-hidden="true"' +
+                  ' style="margin-left:auto;">⌄</span>' +
+            '</summary>' +
+            '<div class="oc-tissue-salts-body"' +
+                ' data-cu-om-cipher-tissue-salts-body="1"' +
+                ' style="margin-top:10px;">' +
+              '<div class="oc-tissue-salts-primary"' +
+                  ' data-cu-om-cipher-tissue-salts-primary="1"' +
+                  ' style="margin:0 0 10px;font-size:13px;">' +
+                '<p style="margin:0;color:rgba(241,245,249,0.6);">' +
+                'No primary salt selected yet.</p>' +
+              '</div>' +
+              '<div class="oc-tissue-salts-secondaries"' +
+                  ' data-cu-om-cipher-tissue-salts-secondaries="1"' +
+                  ' style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:rgba(241,245,249,0.55);">' +
+              '</div>' +
+              '<p class="oc-tissue-salts-disclaimer"' +
+                  ' data-cu-om-cipher-tissue-salts-disclaimer="1"' +
+                  ' style="margin:12px 0 0;font-size:11px;letter-spacing:0.04em;color:rgba(241,245,249,0.45);">' +
+                'Symbolic and somatic only — not medical advice or diagnosis.' +
+              '</p>' +
+            '</div>' +
+          '</details>' +
+        '</div>' +
         ocSourceDataHtml +
         '</details>' +
       '</section>';
@@ -14120,6 +14163,11 @@ if (document.readyState === 'loading') {
           // placeholder copy.
           if (typeof window.cuRenderOmCipherSection === 'function') {
             window.cuRenderOmCipherSection(sigilPayload, lpBody);
+          }
+          // Tissue Salts panel — symbolic / somatic / contemplative.
+          // Hydrates from the canonical payload.salts (SaltConfig[]).
+          if (typeof window.cuRenderOmCipherTissueSalts === 'function') {
+            window.cuRenderOmCipherTissueSalts(sigilPayload, lpBody);
           }
         } catch (_) { /* safety net — never break the LP render */ }
       }
@@ -14763,6 +14811,137 @@ if (document.readyState === 'loading') {
       }, 2400);
     }
     // ── Browser-safe Sigil engine (Studio Living Profile preview) ────────
+    // Browser-side mirror of sdk/cell_salts.js — the 12 Schuessler tissue
+    // salts and the small helpers the sigil engine needs. Symbolic /
+    // somatic / contemplative, not medical. Keep in sync with the canonical
+    // sdk/cell_salts.ts.
+    (function () {
+      if (window.cuCellSalts) return;
+      var CELL_SALTS = [
+        { id: "calc_fluor", name: "Calcarea Fluorica",   formula: "CaF₂",         primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "dense",  shortBodyZone: "Elastic tissue · enamel · ligaments",   shortTheme: "Resilience held in suppleness" },
+        { id: "calc_phos",  name: "Calcarea Phosphorica", formula: "Ca₃(PO₄)₂", primarySymmetry: "hexagonal",    bondMotif: "ring",      nodeDensity: "medium", shortBodyZone: "Bone · teeth · cellular framework",      shortTheme: "Structure that grows with you" },
+        { id: "calc_sulph", name: "Calcarea Sulphurica", formula: "CaSO₄",        primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "medium", shortBodyZone: "Clearing tissues · drainage pathways",       shortTheme: "Release of what has finished" },
+        { id: "ferr_phos",  name: "Ferrum Phosphoricum", formula: "FePO₄",        primarySymmetry: "network",      bondMotif: "cross",     nodeDensity: "dense",  shortBodyZone: "Blood · oxygen transport · first response", shortTheme: "Bright vigilance at the threshold" },
+        { id: "kali_mur",   name: "Kali Muriaticum",     formula: "KCl",               primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "medium", shortBodyZone: "Fibrin · mucous membranes",                  shortTheme: "Steady weave of containment" },
+        { id: "kali_phos",  name: "Kali Phosphoricum",   formula: "K₂HPO₄",  primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "sparse", shortBodyZone: "Nerves · brain · cellular charge",       shortTheme: "Quiet electricity of attention" },
+        { id: "kali_sulph", name: "Kali Sulphuricum",    formula: "K₂SO₄",   primarySymmetry: "orthorhombic", bondMotif: "ring",      nodeDensity: "medium", shortBodyZone: "Skin · oxygen exchange in cells",            shortTheme: "Carrying breath to the edges" },
+        { id: "mag_phos",   name: "Magnesia Phosphorica", formula: "MgHPO₄",      primarySymmetry: "hexagonal",    bondMotif: "ring",      nodeDensity: "sparse", shortBodyZone: "Muscle · nerve sheath · rhythm",         shortTheme: "Release of held contraction" },
+        { id: "nat_mur",    name: "Natrum Muriaticum",   formula: "NaCl",              primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "dense",  shortBodyZone: "Fluid balance · tears · saliva",         shortTheme: "Held and let-go of water" },
+        { id: "nat_phos",   name: "Natrum Phosphoricum", formula: "Na₂HPO₄", primarySymmetry: "orthorhombic", bondMotif: "cross",     nodeDensity: "medium", shortBodyZone: "Acid–alkaline balance · digestion",      shortTheme: "Equilibrium between fire and ground" },
+        { id: "nat_sulph",  name: "Natrum Sulphuricum",  formula: "Na₂SO₄",  primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "medium", shortBodyZone: "Liver · intercellular fluid · clearing", shortTheme: "Letting old water move on" },
+        { id: "silicea",    name: "Silicea",             formula: "SiO₂",         primarySymmetry: "network",      bondMotif: "cross",     nodeDensity: "dense",  shortBodyZone: "Connective tissue · hair · nails · nerves", shortTheme: "Bright spine through delicate form" }
+      ];
+      var SALT_INDEX = {};
+      for (var i = 0; i < CELL_SALTS.length; i++) SALT_INDEX[CELL_SALTS[i].id] = CELL_SALTS[i];
+      function getCellSalt(id) { return id ? (SALT_INDEX[id] || null) : null; }
+      function getSaltGeometryProfile(salts) {
+        if (!salts || !salts.length) return null;
+        var primary = salts[0];
+        if (!primary || !primary.saltId) return null;
+        var s = getCellSalt(primary.saltId);
+        if (!s) return null;
+        return { symmetry: s.primarySymmetry, bondMotif: s.bondMotif, nodeDensity: s.nodeDensity, saltId: s.id };
+      }
+      function getPersonSaltView(salts) {
+        if (!salts || !salts.length) return { primary: null, secondary: [] };
+        var primary = getCellSalt(salts[0] && salts[0].saltId);
+        var secondary = [];
+        var max = Math.min(salts.length, 3);
+        for (var i = 1; i < max; i++) {
+          var s = getCellSalt(salts[i] && salts[i].saltId);
+          if (s) secondary.push(s);
+        }
+        return { primary: primary, secondary: secondary };
+      }
+      // ── Sign → salt mapping (Schüssler/Carey-style tropical zodiac) ───
+      var ZODIAC_SALT_MAP = {
+        aries:       "kali_phos",
+        taurus:      "nat_sulph",
+        gemini:      "kali_mur",
+        cancer:      "calc_fluor",
+        leo:         "mag_phos",
+        virgo:       "kali_sulph",
+        libra:       "nat_phos",
+        scorpio:     "calc_sulph",
+        sagittarius: "silicea",
+        capricorn:   "calc_phos",
+        aquarius:    "nat_mur",
+        pisces:      "ferr_phos"
+      };
+      function getSaltForSign(sign) {
+        if (sign == null) return null;
+        var key = String(sign).trim().toLowerCase();
+        return ZODIAC_SALT_MAP[key] || null;
+      }
+      function _saltHash32(str) {
+        var h = 0x811c9dc5;
+        var s = String(str || "");
+        for (var i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+        }
+        return h >>> 0;
+      }
+      function deriveFallbackSalts(seed) {
+        var s = String(seed == null ? "" : seed);
+        if (!s) return null;
+        var n = CELL_SALTS.length;
+        var pIdx = _saltHash32("primary:" + s) % n;
+        var mIdx = _saltHash32("moon:"    + s) % n;
+        var aIdx = _saltHash32("asc:"     + s) % n;
+        if (mIdx === pIdx) mIdx = (mIdx + 1) % n;
+        if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+        if (aIdx === mIdx) aIdx = (aIdx + 1) % n;
+        if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+        return [
+          { saltId: CELL_SALTS[pIdx].id, weight: 1.0, kind: "primary"   },
+          { saltId: CELL_SALTS[mIdx].id, weight: 0.6, kind: "secondary" },
+          { saltId: CELL_SALTS[aIdx].id, weight: 0.4, kind: "secondary" }
+        ];
+      }
+      function assignSaltsFromBirth(input) {
+        var inp = input || {};
+        var vedic = inp.vedic || {};
+        var pSign = inp.sun  || vedic.sun  || null;
+        var mSign = inp.moon || vedic.moon || null;
+        var aSign = inp.rising || inp.ascendant || vedic.ascendant || null;
+        var primaryId = getSaltForSign(pSign);
+        var moonId    = getSaltForSign(mSign);
+        var ascId     = getSaltForSign(aSign);
+        if (!primaryId && !moonId && !ascId) {
+          return inp.seed ? deriveFallbackSalts(inp.seed) : null;
+        }
+        var picks = [];
+        function tryAdd(id, weight, kind) {
+          if (!id) return;
+          for (var i = 0; i < picks.length; i++) if (picks[i].saltId === id) return;
+          picks.push({ saltId: id, weight: weight, kind: kind });
+        }
+        var primaryActual = primaryId || moonId || ascId;
+        tryAdd(primaryActual, 1.0, "primary");
+        if (primaryActual !== moonId) tryAdd(moonId, 0.6, "secondary");
+        if (primaryActual !== ascId)  tryAdd(ascId,  0.4, "secondary");
+        if (picks.length < 3 && inp.seed) {
+          var fb = deriveFallbackSalts(inp.seed) || [];
+          for (var j = 0; j < fb.length && picks.length < 3; j++) {
+            var weight = picks.length === 1 ? 0.6 : 0.4;
+            tryAdd(fb[j].saltId, weight, "secondary");
+          }
+        }
+        return picks.length ? picks : null;
+      }
+      window.cuCellSalts = {
+        CELL_SALTS: CELL_SALTS,
+        getCellSalt: getCellSalt,
+        getSaltGeometryProfile: getSaltGeometryProfile,
+        getPersonSaltView: getPersonSaltView,
+        ZODIAC_SALT_MAP: ZODIAC_SALT_MAP,
+        getSaltForSign: getSaltForSign,
+        deriveFallbackSalts: deriveFallbackSalts,
+        assignSaltsFromBirth: assignSaltsFromBirth
+      };
+    })();
+
     // Minimal port of the canonical CommonJS engine at sdk/sigil.js (also
     // vendored at field/src/sigil.js). Keep in sync with the canonical
     // source — the same input contract must produce the same SVG across
@@ -14858,6 +15037,7 @@ if (document.readyState === 'loading') {
         var gene_keys = input.gene_keys || {};
         var compass = input.compass || {};
         var tone = input.tone || {};
+        var saltsInput = input.salts;
 
         var dr = birthdayDigitalRoot(birthdate);
         var gem = gematria(full_name || display_name);
@@ -14885,6 +15065,15 @@ if (document.readyState === 'loading') {
         });
 
         var proposedHandle = handle || proposeHandle(display_name);
+        var normalisedSalts = null;
+        if (Array.isArray(saltsInput) && saltsInput.length) {
+          normalisedSalts = saltsInput
+            .filter(function (s) { return s && typeof s.saltId === "string"; })
+            .map(function (s) {
+              return { saltId: s.saltId, weight: Number.isFinite(s.weight) ? s.weight : 1 };
+            });
+          if (!normalisedSalts.length) normalisedSalts = null;
+        }
         return {
           handle: proposedHandle,
           display_name: display_name || null,
@@ -14898,7 +15087,8 @@ if (document.readyState === 'loading') {
             solfeggio: sol || null,
             seed_syllable: tone.seed_syllable || "Om"
           },
-          color_primary: sol ? sol.color : "#d2a13a"
+          color_primary: sol ? sol.color : "#d2a13a",
+          salts: normalisedSalts
         };
       }
       function fnv1a(str) {
@@ -14933,6 +15123,165 @@ if (document.readyState === 'loading') {
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&apos;");
+      }
+      // Browser-side tissue salt geometry layer — matches sdk/sigil.js.
+      // Reads window.cuCellSalts for the 12-salt lookup; symbolic/somatic,
+      // not medical.
+      function _saltGeometry(center, radius) {
+        var r = radius;
+        var tl = { x: center.x - r * Math.SQRT1_2, y: center.y - r * Math.SQRT1_2 };
+        var tr = { x: center.x + r * Math.SQRT1_2, y: center.y - r * Math.SQRT1_2 };
+        var br = { x: center.x + r * Math.SQRT1_2, y: center.y + r * Math.SQRT1_2 };
+        var bl = { x: center.x - r * Math.SQRT1_2, y: center.y + r * Math.SQRT1_2 };
+        var mid = {
+          top:    { x: (tl.x + tr.x) / 2, y: (tl.y + tr.y) / 2 },
+          right:  { x: (tr.x + br.x) / 2, y: (tr.y + br.y) / 2 },
+          bottom: { x: (bl.x + br.x) / 2, y: (bl.y + br.y) / 2 },
+          left:   { x: (tl.x + bl.x) / 2, y: (tl.y + bl.y) / 2 }
+        };
+        return { corners: { tl: tl, tr: tr, br: br, bl: bl }, mid: mid, radius: r, center: center };
+      }
+      function _drawBaseSaltCube(opts) {
+        var center = opts.center, radius = opts.radius;
+        var lineWidth = opts.lineWidth || 1, opacity = opts.opacity != null ? opts.opacity : 0.14;
+        var g = _saltGeometry(center, radius);
+        var tl = g.corners.tl, tr = g.corners.tr, br = g.corners.br, bl = g.corners.bl;
+        var stroke = "rgba(241,245,249," + opacity + ")";
+        var square = '<path d="M ' + tl.x.toFixed(2) + ' ' + tl.y.toFixed(2) +
+          ' L ' + tr.x.toFixed(2) + ' ' + tr.y.toFixed(2) +
+          ' L ' + br.x.toFixed(2) + ' ' + br.y.toFixed(2) +
+          ' L ' + bl.x.toFixed(2) + ' ' + bl.y.toFixed(2) +
+          ' Z" fill="none" stroke="' + stroke + '" stroke-width="' + lineWidth + '"/>';
+        var diag = '<path d="M ' + tl.x.toFixed(2) + ' ' + tl.y.toFixed(2) +
+          ' L ' + br.x.toFixed(2) + ' ' + br.y.toFixed(2) +
+          ' M ' + tr.x.toFixed(2) + ' ' + tr.y.toFixed(2) +
+          ' L ' + bl.x.toFixed(2) + ' ' + bl.y.toFixed(2) +
+          '" fill="none" stroke="rgba(241,245,249,' + (opacity * 0.55).toFixed(3) +
+          ')" stroke-width="' + (lineWidth * 0.6).toFixed(2) + '"/>';
+        return square + diag;
+      }
+      function _highlightSaltEdges(profile, geometry, opts) {
+        if (!profile) return "";
+        opts = opts || {};
+        var c = geometry.corners, mid = geometry.mid, center = geometry.center, radius = geometry.radius;
+        var opacity = opts.opacity || 0.28, lineWidth = opts.lineWidth || 1.4;
+        var stroke = "rgba(241,245,249," + opacity + ")";
+        if (profile.symmetry === "cubic") {
+          return '<path d="M ' + c.tl.x.toFixed(2) + ' ' + c.tl.y.toFixed(2) +
+            ' L ' + c.tr.x.toFixed(2) + ' ' + c.tr.y.toFixed(2) +
+            ' L ' + c.br.x.toFixed(2) + ' ' + c.br.y.toFixed(2) +
+            ' L ' + c.bl.x.toFixed(2) + ' ' + c.bl.y.toFixed(2) +
+            ' Z" fill="none" stroke="' + stroke + '" stroke-width="' + lineWidth + '"/>';
+        }
+        if (profile.symmetry === "orthorhombic") {
+          var iT = { x: center.x, y: center.y - radius * 0.85 };
+          var iB = { x: center.x, y: center.y + radius * 0.85 };
+          return '<path d="M ' + c.tl.x.toFixed(2) + ' ' + c.tl.y.toFixed(2) +
+            ' L ' + c.br.x.toFixed(2) + ' ' + c.br.y.toFixed(2) +
+            ' M ' + c.tr.x.toFixed(2) + ' ' + c.tr.y.toFixed(2) +
+            ' L ' + c.bl.x.toFixed(2) + ' ' + c.bl.y.toFixed(2) +
+            '" fill="none" stroke="' + stroke + '" stroke-width="' + lineWidth + '"/>' +
+            '<path d="M ' + iT.x.toFixed(2) + ' ' + iT.y.toFixed(2) +
+            ' L ' + iB.x.toFixed(2) + ' ' + iB.y.toFixed(2) +
+            '" fill="none" stroke="rgba(241,245,249,' + (opacity * 0.7).toFixed(3) +
+            ')" stroke-width="' + (lineWidth * 0.7).toFixed(2) + '"/>';
+        }
+        if (profile.symmetry === "hexagonal") {
+          var hexR = radius * 0.92;
+          var d = "";
+          for (var i = 0; i < 6; i++) {
+            var a = -Math.PI / 2 + i * (Math.PI / 3);
+            var px = (center.x + hexR * Math.cos(a)).toFixed(2);
+            var py = (center.y + hexR * Math.sin(a)).toFixed(2);
+            d += (i === 0 ? "M " : "L ") + px + " " + py + " ";
+          }
+          d += "Z";
+          return '<path d="' + d + '" fill="none" stroke="' + stroke + '" stroke-width="' + lineWidth + '"/>';
+        }
+        if (profile.symmetry === "network") {
+          return '<path d="M ' + mid.top.x.toFixed(2) + ' ' + mid.top.y.toFixed(2) +
+            ' L ' + mid.right.x.toFixed(2) + ' ' + mid.right.y.toFixed(2) +
+            ' L ' + mid.bottom.x.toFixed(2) + ' ' + mid.bottom.y.toFixed(2) +
+            ' L ' + mid.left.x.toFixed(2) + ' ' + mid.left.y.toFixed(2) +
+            ' Z" fill="none" stroke="' + stroke + '" stroke-width="' + lineWidth + '"/>' +
+            '<path d="M ' + mid.top.x.toFixed(2) + ' ' + mid.top.y.toFixed(2) +
+            ' L ' + mid.bottom.x.toFixed(2) + ' ' + mid.bottom.y.toFixed(2) +
+            ' M ' + mid.left.x.toFixed(2) + ' ' + mid.left.y.toFixed(2) +
+            ' L ' + mid.right.x.toFixed(2) + ' ' + mid.right.y.toFixed(2) +
+            '" fill="none" stroke="rgba(241,245,249,' + (opacity * 0.6).toFixed(3) +
+            ')" stroke-width="' + (lineWidth * 0.7).toFixed(2) + '"/>';
+        }
+        return "";
+      }
+      function _motifMark(motif, p, scale, color) {
+        var x = p.x, y = p.y;
+        var s = Math.max(2, scale * 3);
+        if (motif === "paired") {
+          return '<circle cx="' + (x - s).toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + (s * 0.45).toFixed(2) + '" fill="' + color + '"/>' +
+            '<circle cx="' + (x + s).toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + (s * 0.45).toFixed(2) + '" fill="' + color + '"/>' +
+            '<line x1="' + (x - s).toFixed(2) + '" y1="' + y.toFixed(2) + '" x2="' + (x + s).toFixed(2) + '" y2="' + y.toFixed(2) + '" stroke="' + color + '" stroke-width="' + (s * 0.18).toFixed(2) + '"/>';
+        }
+        if (motif === "cross") {
+          return '<line x1="' + (x - s).toFixed(2) + '" y1="' + y.toFixed(2) + '" x2="' + (x + s).toFixed(2) + '" y2="' + y.toFixed(2) + '" stroke="' + color + '" stroke-width="' + (s * 0.25).toFixed(2) + '"/>' +
+            '<line x1="' + x.toFixed(2) + '" y1="' + (y - s).toFixed(2) + '" x2="' + x.toFixed(2) + '" y2="' + (y + s).toFixed(2) + '" stroke="' + color + '" stroke-width="' + (s * 0.25).toFixed(2) + '"/>';
+        }
+        if (motif === "ring") {
+          var r = s * 0.95;
+          var a0 = -Math.PI / 2;
+          var pts = [0, 1, 2].map(function (i) {
+            var ang = a0 + i * ((Math.PI * 2) / 3);
+            return (x + r * Math.cos(ang)).toFixed(2) + "," + (y + r * Math.sin(ang)).toFixed(2);
+          });
+          return '<polygon points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="' + (s * 0.22).toFixed(2) + '"/>';
+        }
+        if (motif === "branching") {
+          var r2 = s;
+          return [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6].map(function (ang) {
+            var ex = x + r2 * Math.cos(ang);
+            var ey = y + r2 * Math.sin(ang);
+            return '<line x1="' + x.toFixed(2) + '" y1="' + y.toFixed(2) + '" x2="' + ex.toFixed(2) + '" y2="' + ey.toFixed(2) + '" stroke="' + color + '" stroke-width="' + (s * 0.22).toFixed(2) + '"/>';
+          }).join("");
+        }
+        return "";
+      }
+      function _decorateSaltIntersections(profile, geometry, opts) {
+        if (!profile) return "";
+        opts = opts || {};
+        var c = geometry.corners, mid = geometry.mid;
+        var points = [c.tl, mid.top, c.tr, mid.right, c.br, mid.bottom, c.bl, mid.left];
+        var density = profile.nodeDensity, motif = profile.bondMotif;
+        var opacity = opts.opacity || 0.32;
+        var color = "rgba(241,245,249," + opacity + ")";
+        var scale = (geometry.radius / 80) * (opts.scale || 1);
+        var stride = density === "dense" ? 1 : density === "medium" ? 2 : 3;
+        var out = [];
+        for (var i = 0; i < points.length; i += stride) {
+          out.push(_motifMark(motif, points[i], scale, color));
+        }
+        return out.join("");
+      }
+      function _getSaltGeometryProfile(salts) {
+        if (!salts || !salts.length) return null;
+        var primary = salts[0];
+        if (!primary || !primary.saltId) return null;
+        var lib = (typeof window !== "undefined") ? window.cuCellSalts : null;
+        if (!lib || typeof lib.getCellSalt !== "function") return null;
+        var salt = lib.getCellSalt(primary.saltId);
+        if (!salt) return null;
+        return { symmetry: salt.primarySymmetry, bondMotif: salt.bondMotif, nodeDensity: salt.nodeDensity, saltId: salt.id };
+      }
+      function _renderSaltLayer(seed, center, innerR) {
+        var profile = _getSaltGeometryProfile(seed && seed.salts);
+        if (!profile) return "";
+        var cubeR = innerR * 0.985;
+        var geometry = _saltGeometry(center, cubeR);
+        var cube  = _drawBaseSaltCube({ center: center, radius: cubeR, lineWidth: 1, opacity: 0.14 });
+        var edges = _highlightSaltEdges(profile, geometry, { opacity: 0.28, lineWidth: 1.4 });
+        var marks = _decorateSaltIntersections(profile, geometry, { opacity: 0.32 });
+        return '<g class="cu-sigil-salt-layer" data-salt-id="' + profile.saltId +
+          '" data-salt-symmetry="' + profile.symmetry +
+          '" data-salt-motif="' + profile.bondMotif +
+          '" data-salt-density="' + profile.nodeDensity + '">' + cube + edges + marks + '</g>';
       }
       function renderSigilSVG(seed, opts) {
         opts = opts || {};
@@ -14974,6 +15323,7 @@ if (document.readyState === 'loading') {
             '<g filter="url(#conic-' + safeId + ')">' + wedges + '</g>' +
             '<rect width="' + size + '" height="' + size + '" fill="url(#vignette-' + safeId + ')"/>' +
             '<circle cx="' + cx + '" cy="' + cy + '" r="' + innerR.toFixed(2) + '" fill="none" stroke="rgba(241,245,249,0.10)" stroke-width="1"/>' +
+            _renderSaltLayer(seed, { x: cx, y: cy }, innerR) +
             '<text x="' + cx + '" y="' + (cy + glyphSize * 0.36).toFixed(2) + '" text-anchor="middle" font-family="Cormorant Garamond, Georgia, \'Times New Roman\', serif" font-size="' + glyphSize.toFixed(2) + '" font-weight="500" fill="' + glyphColor + '" fill-opacity="0.92">' + glyph + '</text>' +
             '<text x="' + cx + '" y="' + (size - labelSize * 1.3).toFixed(2) + '" text-anchor="middle" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="' + labelSize + '" font-weight="500" letter-spacing="' + (labelSize * 0.22).toFixed(2) + '" fill="rgba(241,245,249,0.55)">DIGITAL KEY · SIGIL</text>' +
           '</g>' +
@@ -15004,7 +15354,12 @@ if (document.readyState === 'loading') {
           tonal_center: fs.tonal_center,
           dominant_hz: fs.dominant_hz,
           seed_syllable: payload.seed_syllable
-        }
+        },
+        // Tissue salt layer — symbolic / somatic / contemplative input.
+        // Salts remain on the canonical person profile so future resonance /
+        // complementarity work can reach them; the renderer only consumes
+        // salts[0] for now and secondaries are passed through for accents.
+        salts: Array.isArray(payload.salts) ? payload.salts : null
       });
     }
 
@@ -15033,6 +15388,76 @@ if (document.readyState === 'loading') {
       } catch (_) { /* preview should never break the LP render */ }
     }
     window.cuRenderSigilSlots = cuRenderSigilSlots;
+
+    // ── Tissue Salts panel hydration (OM Cipher · symbolic/somatic) ─────
+    // Reads salts off the publish payload (canonical person profile shape)
+    // and fills the Tissue Salts block with primary + secondaries from the
+    // CELL_SALTS reference data. Safe to call multiple times — idempotent.
+    function cuRenderOmCipherTissueSalts(payload, root) {
+      try {
+        if (!window.cuCellSalts) return;
+        var container = root || document;
+        var block = container.querySelector('[data-cu-om-cipher-tissue-salts]');
+        if (!block) return;
+        var p = payload || (typeof cuBuildPublishPayload === 'function' ? cuBuildPublishPayload() : null);
+        var salts = (p && Array.isArray(p.salts)) ? p.salts : null;
+        var view = window.cuCellSalts.getPersonSaltView(salts);
+        var primaryLine = block.querySelector('[data-cu-om-cipher-tissue-salts-primary-line]');
+        var primaryBox  = block.querySelector('[data-cu-om-cipher-tissue-salts-primary]');
+        var secBox      = block.querySelector('[data-cu-om-cipher-tissue-salts-secondaries]');
+
+        function esc(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function saltRow(s, kind) {
+          return '<div class="oc-tissue-salt-row"' +
+              ' data-cu-tissue-salt-id="' + esc(s.id) + '"' +
+              ' data-cu-tissue-salt-kind="' + esc(kind) + '"' +
+              ' style="margin:6px 0;">' +
+            '<div style="font-size:13px;color:rgba(241,245,249,0.9);">' +
+              '<strong>' + esc(s.name) + '</strong>' +
+              ' <span style="opacity:0.7;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">' +
+                '(' + esc(s.formula) + ')' +
+              '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;letter-spacing:0.04em;color:rgba(241,245,249,0.55);">' +
+              esc(s.shortBodyZone) +
+            '</div>' +
+            '<div style="font-size:12px;color:rgba(241,245,249,0.7);margin-top:2px;font-style:italic;">' +
+              esc(s.shortTheme) +
+            '</div>' +
+          '</div>';
+        }
+
+        if (view.primary) {
+          block.setAttribute('data-cu-om-cipher-tissue-salts-state', view.secondary.length ? 'with-secondaries' : 'primary-only');
+          if (primaryLine) {
+            primaryLine.textContent = 'Primary salt: ' + view.primary.name + ' (' + view.primary.formula + ')';
+          }
+          if (primaryBox) {
+            primaryBox.innerHTML = saltRow(view.primary, 'primary');
+          }
+          if (secBox) {
+            if (view.secondary.length) {
+              secBox.innerHTML = '<div style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(241,245,249,0.45);margin-bottom:4px;">Secondary</div>' +
+                view.secondary.map(function (s) { return saltRow(s, 'secondary'); }).join('');
+            } else {
+              secBox.innerHTML = '';
+            }
+          }
+        } else {
+          block.setAttribute('data-cu-om-cipher-tissue-salts-state', 'pending');
+          if (primaryLine) primaryLine.textContent = 'Primary salt: pending source data';
+          if (primaryBox) {
+            primaryBox.innerHTML = '<p style="margin:0;color:rgba(241,245,249,0.6);">No primary salt selected yet.</p>';
+          }
+          if (secBox) secBox.innerHTML = '';
+        }
+      } catch (_) { /* never break the LP render */ }
+    }
+    window.cuRenderOmCipherTissueSalts = cuRenderOmCipherTissueSalts;
 
     // Om Cipher flag init.
     // The OM Cipher v2 section is shipped: the renderLivingProfile() output
@@ -16040,6 +16465,40 @@ if (document.readyState === 'loading') {
           creative_stream: cd.creative_stream || [],
           offerings: cd.offerings || [],
           seed_syllable: cd.seed_syllable || 'Om',
+          // Tissue salt layer — symbolic / somatic. Kept on the canonical
+          // payload (not hidden inside the renderer) so future
+          // resonance / complementarity work can consume it directly.
+          // When the profile/Compass doesn't carry explicit salts, derive
+          // them deterministically from astrology signs (or, lacking those,
+          // a stable hash of the birth seed) so a fresh Threshold→Compass
+          // run produces a salts-bearing payload automatically.
+          salts: (function () {
+            if (Array.isArray(prof.salts) && prof.salts.length) return prof.salts;
+            if (Array.isArray(cd.salts)   && cd.salts.length)   return cd.salts;
+            try {
+              var assigner = (window.cuCellSalts && window.cuCellSalts.assignSaltsFromBirth) || null;
+              if (!assigner) return null;
+              var astro = (prof.astrology && typeof prof.astrology === 'object') ? prof.astrology : {};
+              var vedic = (prof.vedic     && typeof prof.vedic     === 'object') ? prof.vedic     : {};
+              var seedBits = [
+                prof.full_name || ((prof.first_name || '') + ' ' + (prof.last_name || '')).trim(),
+                prof.birthdate || prof.date_of_birth || cd.dob || cd.date_of_birth || '',
+                prof.birth_time || cd.tob || '',
+                prof.place_of_birth || prof.birthplace || cd.pob || ''
+              ].filter(Boolean).join('|');
+              return assigner({
+                sun:    astro.sun    || null,
+                moon:   astro.moon   || null,
+                rising: astro.rising || null,
+                vedic: {
+                  sun:       vedic.sun       || null,
+                  moon:      vedic.moon      || null,
+                  ascendant: vedic.ascendant || null
+                },
+                seed: seedBits || null
+              });
+            } catch (_) { return null; }
+          })(),
         };
       } catch (e) { return { display_name: 'Anonymous', error: String(e) }; }
     }
