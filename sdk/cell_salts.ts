@@ -233,3 +233,105 @@ export function getPersonSaltView(
   }
   return { primary, secondary };
 }
+
+// ── Sign → salt assignment (Schüssler/Carey-style tropical zodiac) ─────
+//
+// Symbolic / contemplative. NOT medical.
+
+export type ZodiacSign =
+  | "aries" | "taurus" | "gemini" | "cancer" | "leo" | "virgo"
+  | "libra" | "scorpio" | "sagittarius" | "capricorn" | "aquarius" | "pisces";
+
+export const ZODIAC_SALT_MAP: Record<ZodiacSign, CellSaltId> = {
+  aries:       "kali_phos",
+  taurus:      "nat_sulph",
+  gemini:      "kali_mur",
+  cancer:      "calc_fluor",
+  leo:         "mag_phos",
+  virgo:       "kali_sulph",
+  libra:       "nat_phos",
+  scorpio:     "calc_sulph",
+  sagittarius: "silicea",
+  capricorn:   "calc_phos",
+  aquarius:    "nat_mur",
+  pisces:      "ferr_phos",
+};
+
+export function getSaltForSign(sign: string | null | undefined): CellSaltId | null {
+  if (!sign) return null;
+  const key = String(sign).trim().toLowerCase() as ZodiacSign;
+  return (ZODIAC_SALT_MAP as Record<string, CellSaltId>)[key] || null;
+}
+
+function _hash32(s: string): number {
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+export function deriveFallbackSalts(seed: string | null | undefined): SaltConfig[] | null {
+  const s = String(seed == null ? "" : seed);
+  if (!s) return null;
+  const n = CELL_SALTS.length;
+  let pIdx = _hash32("primary:" + s) % n;
+  let mIdx = _hash32("moon:"    + s) % n;
+  let aIdx = _hash32("asc:"     + s) % n;
+  if (mIdx === pIdx) mIdx = (mIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === mIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  return [
+    { saltId: CELL_SALTS[pIdx].id, weight: 1.0 },
+    { saltId: CELL_SALTS[mIdx].id, weight: 0.6 },
+    { saltId: CELL_SALTS[aIdx].id, weight: 0.4 },
+  ];
+}
+
+export interface SaltAssignmentInput {
+  sun?: string | null;
+  moon?: string | null;
+  rising?: string | null;
+  ascendant?: string | null;
+  vedic?: { sun?: string | null; moon?: string | null; ascendant?: string | null };
+  seed?: string | null;
+}
+
+export function assignSaltsFromBirth(input: SaltAssignmentInput | null | undefined): SaltConfig[] | null {
+  const inp = input || {};
+  const vedic = inp.vedic || {};
+  const pSign = inp.sun  || vedic.sun  || null;
+  const mSign = inp.moon || vedic.moon || null;
+  const aSign = inp.rising || inp.ascendant || vedic.ascendant || null;
+
+  const primaryId = getSaltForSign(pSign);
+  const moonId    = getSaltForSign(mSign);
+  const ascId     = getSaltForSign(aSign);
+
+  if (!primaryId && !moonId && !ascId) {
+    return inp.seed ? deriveFallbackSalts(inp.seed) : null;
+  }
+
+  const picks: SaltConfig[] = [];
+  const tryAdd = (id: CellSaltId | null, weight: number) => {
+    if (!id) return;
+    if (picks.some(p => p.saltId === id)) return;
+    picks.push({ saltId: id, weight });
+  };
+
+  const primaryActual = primaryId || moonId || ascId;
+  tryAdd(primaryActual, 1.0);
+  if (primaryActual !== moonId) tryAdd(moonId, 0.6);
+  if (primaryActual !== ascId)  tryAdd(ascId,  0.4);
+
+  if (picks.length < 3 && inp.seed) {
+    const fb = deriveFallbackSalts(inp.seed) || [];
+    for (const f of fb) {
+      if (picks.length >= 3) break;
+      tryAdd(f.saltId, picks.length === 1 ? 0.6 : 0.4);
+    }
+  }
+  return picks.length ? picks : null;
+}

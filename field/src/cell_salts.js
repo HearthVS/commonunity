@@ -181,9 +181,100 @@ function getPersonSaltView(salts) {
   return { primary, secondary };
 }
 
+// ── Sign → salt mapping (mirrors sdk/cell_salts.js) ─────────────────────
+const ZODIAC_SALT_MAP = {
+  aries:       "kali_phos",
+  taurus:      "nat_sulph",
+  gemini:      "kali_mur",
+  cancer:      "calc_fluor",
+  leo:         "mag_phos",
+  virgo:       "kali_sulph",
+  libra:       "nat_phos",
+  scorpio:     "calc_sulph",
+  sagittarius: "silicea",
+  capricorn:   "calc_phos",
+  aquarius:    "nat_mur",
+  pisces:      "ferr_phos",
+};
+
+function getSaltForSign(sign) {
+  if (sign == null) return null;
+  var key = String(sign).trim().toLowerCase();
+  return ZODIAC_SALT_MAP[key] || null;
+}
+
+function _hash32(str) {
+  var h = 0x811c9dc5;
+  var s = String(str || "");
+  for (var i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function deriveFallbackSalts(seed) {
+  var s = String(seed == null ? "" : seed);
+  if (!s) return null;
+  var n = CELL_SALTS.length;
+  var pIdx = _hash32("primary:" + s) % n;
+  var mIdx = _hash32("moon:"    + s) % n;
+  var aIdx = _hash32("asc:"     + s) % n;
+  if (mIdx === pIdx) mIdx = (mIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === mIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  return [
+    { saltId: CELL_SALTS[pIdx].id, weight: 1.0, kind: "primary"   },
+    { saltId: CELL_SALTS[mIdx].id, weight: 0.6, kind: "secondary" },
+    { saltId: CELL_SALTS[aIdx].id, weight: 0.4, kind: "secondary" },
+  ];
+}
+
+function assignSaltsFromBirth(input) {
+  var inp = input || {};
+  var vedic = inp.vedic || {};
+  var pSign = inp.sun  || vedic.sun  || null;
+  var mSign = inp.moon || vedic.moon || null;
+  var aSign = inp.rising || inp.ascendant || vedic.ascendant || null;
+
+  var primaryId = getSaltForSign(pSign);
+  var moonId    = getSaltForSign(mSign);
+  var ascId     = getSaltForSign(aSign);
+
+  if (!primaryId && !moonId && !ascId) {
+    return inp.seed ? deriveFallbackSalts(inp.seed) : null;
+  }
+
+  var picks = [];
+  function tryAdd(id, weight, kind) {
+    if (!id) return;
+    for (var i = 0; i < picks.length; i++) if (picks[i].saltId === id) return;
+    picks.push({ saltId: id, weight: weight, kind: kind });
+  }
+
+  var primaryActual = primaryId || moonId || ascId;
+  tryAdd(primaryActual, 1.0, "primary");
+  if (primaryActual !== moonId) tryAdd(moonId, 0.6, "secondary");
+  if (primaryActual !== ascId)  tryAdd(ascId,  0.4, "secondary");
+
+  if (picks.length < 3 && inp.seed) {
+    var fb = deriveFallbackSalts(inp.seed) || [];
+    for (var j = 0; j < fb.length && picks.length < 3; j++) {
+      var weight = picks.length === 1 ? 0.6 : 0.4;
+      tryAdd(fb[j].saltId, weight, "secondary");
+    }
+  }
+  return picks.length ? picks : null;
+}
+
 module.exports = {
   CELL_SALTS,
   getCellSalt,
   getSaltGeometryProfile,
   getPersonSaltView,
+  ZODIAC_SALT_MAP,
+  getSaltForSign,
+  deriveFallbackSalts,
+  assignSaltsFromBirth,
 };

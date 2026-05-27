@@ -178,9 +178,147 @@ function getPersonSaltView(salts) {
   return { primary, secondary };
 }
 
+// ── Sign → salt mapping (Schüssler/Carey-style tropical zodiac) ────────
+//
+// Symbolic / contemplative. NOT medical.
+const ZODIAC_SALT_MAP = {
+  aries:       "kali_phos",
+  taurus:      "nat_sulph",
+  gemini:      "kali_mur",
+  cancer:      "calc_fluor",
+  leo:         "mag_phos",
+  virgo:       "kali_sulph",
+  libra:       "nat_phos",
+  scorpio:     "calc_sulph",
+  sagittarius: "silicea",
+  capricorn:   "calc_phos",
+  aquarius:    "nat_mur",
+  pisces:      "ferr_phos",
+};
+
+function _normSign(v) {
+  if (v == null) return "";
+  return String(v).trim().toLowerCase();
+}
+
+function getSaltForSign(sign) {
+  var key = _normSign(sign);
+  if (!key) return null;
+  return ZODIAC_SALT_MAP[key] || null;
+}
+
+// FNV-1a 32-bit hash for stable fallback selection.
+function _hash32(str) {
+  var h = 0x811c9dc5;
+  var s = String(str || "");
+  for (var i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// Deterministic fallback when no zodiac sign is available. Uses a stable
+// hash of the seed (typically birthdate or full_name+birthdate) to pick a
+// primary and two distinct secondaries from CELL_SALTS.
+function deriveFallbackSalts(seed) {
+  var s = String(seed == null ? "" : seed);
+  if (!s) return null;
+  var n = CELL_SALTS.length;
+  var hp = _hash32("primary:" + s);
+  var hm = _hash32("moon:"    + s);
+  var ha = _hash32("asc:"     + s);
+  var pIdx = hp % n;
+  var mIdx = hm % n;
+  var aIdx = ha % n;
+  // Ensure 3 distinct picks deterministically.
+  if (mIdx === pIdx) mIdx = (mIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === mIdx) aIdx = (aIdx + 1) % n;
+  if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+  return [
+    { saltId: CELL_SALTS[pIdx].id, weight: 1.0, kind: "primary"   },
+    { saltId: CELL_SALTS[mIdx].id, weight: 0.6, kind: "secondary" },
+    { saltId: CELL_SALTS[aIdx].id, weight: 0.4, kind: "secondary" },
+  ];
+}
+
+/**
+ * Assign tissue salts from astrology / birth inputs.
+ *
+ *   input: {
+ *     sun, moon, rising, ascendant   // tropical sign names (strings)
+ *     vedic: { sun, moon, ascendant }
+ *     seed                           // fallback string (e.g. birthdate)
+ *   }
+ *
+ * Strategy:
+ *   - primary    = salt(sun)       (tropical preferred, vedic fallback)
+ *   - secondary  = salt(moon), salt(rising|ascendant)
+ *   - duplicates are dropped; gaps are filled deterministically from the
+ *     hashed seed so we always emit 1 primary + up to 2 secondaries.
+ *   - if no sign info exists at all, fall back entirely to seed-derived
+ *     salts.
+ *
+ * Returns SaltConfig[] (length 1..3) or null when no usable input.
+ */
+function assignSaltsFromBirth(input) {
+  var inp = input || {};
+  var vedic = inp.vedic || {};
+  var tropicalSun  = inp.sun  || null;
+  var tropicalMoon = inp.moon || null;
+  var tropicalRis  = inp.rising || inp.ascendant || null;
+  var vedicSun  = vedic.sun  || null;
+  var vedicMoon = vedic.moon || null;
+  var vedicAsc  = vedic.ascendant || null;
+
+  var pSign = tropicalSun  || vedicSun;
+  var mSign = tropicalMoon || vedicMoon;
+  var aSign = tropicalRis  || vedicAsc;
+
+  var primaryId   = getSaltForSign(pSign);
+  var moonId      = getSaltForSign(mSign);
+  var ascId       = getSaltForSign(aSign);
+
+  // No sign info at all → pure fallback.
+  if (!primaryId && !moonId && !ascId) {
+    if (inp.seed) return deriveFallbackSalts(inp.seed);
+    return null;
+  }
+
+  var picks = [];
+  function tryAdd(id, weight, kind) {
+    if (!id) return;
+    for (var i = 0; i < picks.length; i++) if (picks[i].saltId === id) return;
+    picks.push({ saltId: id, weight: weight, kind: kind });
+  }
+
+  // Promote first available signal to primary so we always have one.
+  var primaryActual = primaryId || moonId || ascId;
+  tryAdd(primaryActual, 1.0, "primary");
+  // Then secondaries, skipping whichever was used as primary.
+  if (primaryActual !== moonId) tryAdd(moonId, 0.6, "secondary");
+  if (primaryActual !== ascId)  tryAdd(ascId,  0.4, "secondary");
+
+  // Backfill to 3 salts deterministically when we have fewer signals or
+  // collisions consumed slots.
+  if (picks.length < 3 && inp.seed) {
+    var fb = deriveFallbackSalts(inp.seed) || [];
+    for (var j = 0; j < fb.length && picks.length < 3; j++) {
+      var weight = picks.length === 1 ? 0.6 : 0.4;
+      tryAdd(fb[j].saltId, weight, "secondary");
+    }
+  }
+  return picks.length ? picks : null;
+}
+
 module.exports = {
   CELL_SALTS,
   getCellSalt,
   getSaltGeometryProfile,
   getPersonSaltView,
+  ZODIAC_SALT_MAP,
+  getSaltForSign,
+  deriveFallbackSalts,
+  assignSaltsFromBirth,
 };
