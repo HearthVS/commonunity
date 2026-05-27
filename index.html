@@ -8825,6 +8825,233 @@ function updateAllSGSTriads() {
 }
 
 // ============================================================
+// TISSUE SALTS — browser bundle + Compass OM Cipher renderer
+// Mirror of sdk/cell_salts.js. Symbolic / somatic / contemplative,
+// not medical advice. Kept consistent with the studio.html inline
+// bundle so Compass, OM Cipher, Studio, sigils, and downstream
+// resonance layers all read the same canonical salt configuration.
+// ============================================================
+(function () {
+  if (window.cuCellSalts) return;
+  var CELL_SALTS = [
+    { id: "calc_fluor", name: "Calcarea Fluorica",   formula: "CaF₂",      primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "dense",  shortBodyZone: "Elastic tissue · enamel · ligaments",   shortTheme: "Resilience held in suppleness" },
+    { id: "calc_phos",  name: "Calcarea Phosphorica", formula: "Ca₃(PO₄)₂", primarySymmetry: "hexagonal",    bondMotif: "ring",      nodeDensity: "medium", shortBodyZone: "Bone · teeth · cellular framework",     shortTheme: "Structure that grows with you" },
+    { id: "calc_sulph", name: "Calcarea Sulphurica", formula: "CaSO₄",     primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "medium", shortBodyZone: "Clearing tissues · drainage pathways",  shortTheme: "Release of what has finished" },
+    { id: "ferr_phos",  name: "Ferrum Phosphoricum", formula: "FePO₄",     primarySymmetry: "network",      bondMotif: "cross",     nodeDensity: "dense",  shortBodyZone: "Blood · oxygen transport · first response", shortTheme: "Bright vigilance at the threshold" },
+    { id: "kali_mur",   name: "Kali Muriaticum",     formula: "KCl",       primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "medium", shortBodyZone: "Fibrin · mucous membranes",             shortTheme: "Steady weave of containment" },
+    { id: "kali_phos",  name: "Kali Phosphoricum",   formula: "K₂HPO₄",    primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "sparse", shortBodyZone: "Nerves · brain · cellular charge",      shortTheme: "Quiet electricity of attention" },
+    { id: "kali_sulph", name: "Kali Sulphuricum",    formula: "K₂SO₄",     primarySymmetry: "orthorhombic", bondMotif: "ring",      nodeDensity: "medium", shortBodyZone: "Skin · oxygen exchange in cells",       shortTheme: "Carrying breath to the edges" },
+    { id: "mag_phos",   name: "Magnesia Phosphorica", formula: "MgHPO₄",   primarySymmetry: "hexagonal",    bondMotif: "ring",      nodeDensity: "sparse", shortBodyZone: "Muscle · nerve sheath · rhythm",        shortTheme: "Release of held contraction" },
+    { id: "nat_mur",    name: "Natrum Muriaticum",   formula: "NaCl",      primarySymmetry: "cubic",        bondMotif: "paired",    nodeDensity: "dense",  shortBodyZone: "Fluid balance · tears · saliva",        shortTheme: "Held and let-go of water" },
+    { id: "nat_phos",   name: "Natrum Phosphoricum", formula: "Na₂HPO₄",   primarySymmetry: "orthorhombic", bondMotif: "cross",     nodeDensity: "medium", shortBodyZone: "Acid–alkaline balance · digestion",     shortTheme: "Equilibrium between fire and ground" },
+    { id: "nat_sulph",  name: "Natrum Sulphuricum",  formula: "Na₂SO₄",    primarySymmetry: "orthorhombic", bondMotif: "branching", nodeDensity: "medium", shortBodyZone: "Liver · intercellular fluid · clearing", shortTheme: "Letting old water move on" },
+    { id: "silicea",    name: "Silicea",             formula: "SiO₂",      primarySymmetry: "network",      bondMotif: "cross",     nodeDensity: "dense",  shortBodyZone: "Connective tissue · hair · nails · nerves", shortTheme: "Bright spine through delicate form" }
+  ];
+  var SALT_INDEX = {};
+  for (var i = 0; i < CELL_SALTS.length; i++) SALT_INDEX[CELL_SALTS[i].id] = CELL_SALTS[i];
+  function getCellSalt(id) { return id ? (SALT_INDEX[id] || null) : null; }
+  function getSaltGeometryProfile(salts) {
+    if (!salts || !salts.length) return null;
+    var primary = salts[0];
+    if (!primary || !primary.saltId) return null;
+    var s = getCellSalt(primary.saltId);
+    if (!s) return null;
+    return { symmetry: s.primarySymmetry, bondMotif: s.bondMotif, nodeDensity: s.nodeDensity, saltId: s.id };
+  }
+  function getPersonSaltView(salts) {
+    if (!salts || !salts.length) return { primary: null, secondary: [] };
+    var primary = getCellSalt(salts[0] && salts[0].saltId);
+    var secondary = [];
+    var max = Math.min(salts.length, 3);
+    for (var i = 1; i < max; i++) {
+      var s = getCellSalt(salts[i] && salts[i].saltId);
+      if (s) secondary.push(s);
+    }
+    return { primary: primary, secondary: secondary };
+  }
+  var ZODIAC_SALT_MAP = {
+    aries: "kali_phos", taurus: "nat_sulph", gemini: "kali_mur",
+    cancer: "calc_fluor", leo: "mag_phos", virgo: "kali_sulph",
+    libra: "nat_phos", scorpio: "calc_sulph", sagittarius: "silicea",
+    capricorn: "calc_phos", aquarius: "nat_mur", pisces: "ferr_phos"
+  };
+  function getSaltForSign(sign) {
+    if (sign == null) return null;
+    var key = String(sign).trim().toLowerCase();
+    // Accept "Cancer 12°" / "Cancer · Punarvasu" style values.
+    var first = key.split(/[\s·,]/)[0];
+    return ZODIAC_SALT_MAP[first] || null;
+  }
+  function _saltHash32(str) {
+    var h = 0x811c9dc5;
+    var s = String(str || "");
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function deriveFallbackSalts(seed) {
+    var s = String(seed == null ? "" : seed);
+    if (!s) return null;
+    var n = CELL_SALTS.length;
+    var pIdx = _saltHash32("primary:" + s) % n;
+    var mIdx = _saltHash32("moon:"    + s) % n;
+    var aIdx = _saltHash32("asc:"     + s) % n;
+    if (mIdx === pIdx) mIdx = (mIdx + 1) % n;
+    if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+    if (aIdx === mIdx) aIdx = (aIdx + 1) % n;
+    if (aIdx === pIdx) aIdx = (aIdx + 1) % n;
+    return [
+      { saltId: CELL_SALTS[pIdx].id, weight: 1.0, kind: "primary"   },
+      { saltId: CELL_SALTS[mIdx].id, weight: 0.6, kind: "secondary" },
+      { saltId: CELL_SALTS[aIdx].id, weight: 0.4, kind: "secondary" }
+    ];
+  }
+  function assignSaltsFromBirth(input) {
+    var inp = input || {};
+    var vedic = inp.vedic || {};
+    var pSign = inp.sun  || vedic.sun  || null;
+    var mSign = inp.moon || vedic.moon || null;
+    var aSign = inp.rising || inp.ascendant || vedic.ascendant || null;
+    var primaryId = getSaltForSign(pSign);
+    var moonId    = getSaltForSign(mSign);
+    var ascId     = getSaltForSign(aSign);
+    if (!primaryId && !moonId && !ascId) {
+      return inp.seed ? deriveFallbackSalts(inp.seed) : null;
+    }
+    var picks = [];
+    function tryAdd(id, weight, kind) {
+      if (!id) return;
+      for (var i = 0; i < picks.length; i++) if (picks[i].saltId === id) return;
+      picks.push({ saltId: id, weight: weight, kind: kind });
+    }
+    var primaryActual = primaryId || moonId || ascId;
+    tryAdd(primaryActual, 1.0, "primary");
+    if (primaryActual !== moonId) tryAdd(moonId, 0.6, "secondary");
+    if (primaryActual !== ascId)  tryAdd(ascId,  0.4, "secondary");
+    if (picks.length < 3 && inp.seed) {
+      var fb = deriveFallbackSalts(inp.seed) || [];
+      for (var j = 0; j < fb.length && picks.length < 3; j++) {
+        var weight = picks.length === 1 ? 0.6 : 0.4;
+        tryAdd(fb[j].saltId, weight, "secondary");
+      }
+    }
+    return picks.length ? picks : null;
+  }
+  window.cuCellSalts = {
+    CELL_SALTS: CELL_SALTS,
+    getCellSalt: getCellSalt,
+    getSaltGeometryProfile: getSaltGeometryProfile,
+    getPersonSaltView: getPersonSaltView,
+    ZODIAC_SALT_MAP: ZODIAC_SALT_MAP,
+    getSaltForSign: getSaltForSign,
+    deriveFallbackSalts: deriveFallbackSalts,
+    assignSaltsFromBirth: assignSaltsFromBirth
+  };
+})();
+
+// Derive salts from the live Compass profile state. Same input
+// contract as the Studio publish payload (PR #45) so Compass and
+// Studio agree on what salts a fresh person receives. The result
+// is also written back to state.profile.salts so the canonical
+// source record carries them through to publish/export.
+function cuComputeCompassSalts() {
+  try {
+    if (!window.cuCellSalts) return null;
+    var p = (typeof state !== 'undefined' && state && state.profile) ? state.profile : null;
+    if (!p) return null;
+    // Honour an explicitly stored canonical value.
+    if (Array.isArray(p.salts) && p.salts.length) return p.salts;
+    var inp = {
+      sun:    p.astrology_sun    || null,
+      moon:   p.astrology_moon   || null,
+      rising: p.astrology_rising || null,
+      vedic: {
+        sun:       p.vedic_sun       || null,
+        moon:      p.vedic_moon      || null,
+        ascendant: p.vedic_ascendant || null
+      },
+      seed: [p.full_name, p.first_name, p.last_name, p.birthdate, p.birth_date]
+        .filter(Boolean).join('|') || null
+    };
+    var salts = window.cuCellSalts.assignSaltsFromBirth(inp);
+    if (Array.isArray(salts) && salts.length) {
+      // Cache on the canonical source record so downstream extensions
+      // (publish payload, Studio, sigil) read from the same place.
+      p.salts = salts;
+    }
+    return salts;
+  } catch (_) {
+    return null;
+  }
+}
+
+function cuRenderCompassTissueSalts() {
+  try {
+    if (!window.cuCellSalts) return;
+    var block = document.querySelector('[data-cu-om-cipher-tissue-salts]');
+    if (!block) return;
+    var salts = cuComputeCompassSalts();
+    var view = window.cuCellSalts.getPersonSaltView(salts);
+    var primaryLine = block.querySelector('[data-cu-om-cipher-tissue-salts-primary-line]');
+    var primaryBox  = block.querySelector('[data-cu-om-cipher-tissue-salts-primary]');
+    var secBox      = block.querySelector('[data-cu-om-cipher-tissue-salts-secondaries]');
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function saltRow(s, kind) {
+      return '<div class="oc-tissue-salt-row"' +
+          ' data-cu-tissue-salt-id="' + esc(s.id) + '"' +
+          ' data-cu-tissue-salt-kind="' + esc(kind) + '"' +
+          ' style="margin:0;">' +
+        '<div style="font-size:var(--text-sm);color:var(--text);">' +
+          '<strong>' + esc(s.name) + '</strong>' +
+          ' <span style="color:var(--text-faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">' +
+            '(' + esc(s.formula) + ')' +
+          '</span>' +
+        '</div>' +
+        '<div style="font-size:var(--text-xs);letter-spacing:0.04em;color:var(--text-faint);">' +
+          esc(s.shortBodyZone) +
+        '</div>' +
+        '<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:2px;font-style:italic;">' +
+          esc(s.shortTheme) +
+        '</div>' +
+      '</div>';
+    }
+
+    if (view.primary) {
+      block.setAttribute('data-cu-om-cipher-tissue-salts-state', view.secondary.length ? 'with-secondaries' : 'primary-only');
+      if (primaryLine) {
+        primaryLine.textContent = 'Primary salt: ' + view.primary.name + ' (' + view.primary.formula + ')';
+      }
+      if (primaryBox) {
+        primaryBox.innerHTML = saltRow(view.primary, 'primary');
+      }
+      if (secBox) {
+        if (view.secondary.length) {
+          secBox.innerHTML = '<div style="font-size:var(--text-xs);letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px;">Secondary</div>' +
+            view.secondary.map(function (s) { return saltRow(s, 'secondary'); }).join('');
+        } else {
+          secBox.innerHTML = '';
+        }
+      }
+    } else {
+      block.setAttribute('data-cu-om-cipher-tissue-salts-state', 'pending');
+      if (primaryLine) primaryLine.textContent = 'Primary salt: pending source data';
+      if (primaryBox) {
+        primaryBox.innerHTML = '<p style="margin:0;color:var(--text-faint);font-size:var(--text-sm);">No primary salt selected yet — complete birth date / time / place to populate.</p>';
+      }
+      if (secBox) secBox.innerHTML = '';
+    }
+  } catch (_) { /* never break the modal */ }
+}
+window.cuRenderCompassTissueSalts = cuRenderCompassTissueSalts;
+
+// ============================================================
 // PROFILE MODAL
 // ============================================================
 function initProfileModal() {
@@ -8921,6 +9148,13 @@ function initProfileModal() {
       });
     }
     populateNameNarrativeEssay();
+    // Tissue salts — derived from the same canonical state.profile that
+    // every other source-data field reads. Cached back onto
+    // state.profile.salts so Studio + sigil + publish payload all see
+    // the same record. Symbolic / somatic, not medical.
+    if (typeof cuRenderCompassTissueSalts === 'function') {
+      cuRenderCompassTissueSalts();
+    }
   }
 
   if (menuBtn)   menuBtn.addEventListener('click',   openOmCipherModal);
@@ -8982,6 +9216,11 @@ function initProfileModal() {
       if (typeof calcIdentityChartFromState === 'function') {
         calcIdentityChartFromState();
         saveToStorage();
+      }
+      // Astrology may have changed → re-derive tissue salts so the
+      // panel stays in sync without requiring a modal re-open.
+      if (typeof cuRenderCompassTissueSalts === 'function') {
+        cuRenderCompassTissueSalts();
       }
     });
   });
@@ -9615,7 +9854,7 @@ function initCompassNexus() {
       <button class="profile-modal-close" id="profile-modal-close" aria-label="Close OM Cipher">✕</button>
     </div>
     <div class="info-disclosure" id="om-cipher-info-disclosure" role="region" aria-label="OM Cipher overview">
-      Identity-engine source data — the inputs the OM Cipher and Compass build from. Some fields are calculated from your birth date (sun sign, Gene Keys activation sequence). Adding a birth time and coordinates unlocks Moon, Rising, and sidereal Lagna; full bodygraph type / authority still require a Human Design chart and can be entered manually.
+      Identity-engine source data — the structured inputs that Compass, OM Cipher, Studio, sigils, and future resonance layers build from. Your birth date, time, and place populate the astrological and contemplative fields behind the scenes, including Sun, Moon, Rising/Lagna, Gene Keys, Human Design, and the tissue-salt profile where available. This panel lets you review the source pattern behind your Compass Cipher so every downstream extension speaks from the same record. Tissue salts are symbolic/somatic reflections, not medical advice. Fields can be reviewed and adjusted here — calculated values fill blanks automatically and never overwrite something you've set.
     </div>
 
     <!-- ============================================================
@@ -9825,6 +10064,47 @@ function initCompassNexus() {
         </div>
       </div>
       <p class="om-cipher-card-hint">Lahiri ayanamsha (approx.).</p>
+    </div>
+
+    <!-- ============================================================
+         TISSUE SALTS — Card 8: symbolic/somatic crystal geometry
+         Hydrated from state.profile.salts (canonical) or derived on
+         demand from the same astrology/birth inputs via
+         window.cuCellSalts.assignSaltsFromBirth — see PR #45.
+         ============================================================ -->
+    <div class="om-cipher-card oc-tissue-salts-block"
+         id="profile-tissue-salts-card"
+         data-cu-om-cipher-tissue-salts="1"
+         data-cu-om-cipher-tissue-salts-state="pending">
+      <div class="om-cipher-section-head">
+        <h3 class="om-cipher-card-title">Tissue Salts <span style="color:var(--text-faint);font-size:var(--text-xs);font-weight:500;text-transform:none;letter-spacing:normal;">— symbolic crystal geometry</span></h3>
+        <button class="info-button" type="button" id="tissue-salts-info-btn" aria-label="About tissue salts" aria-expanded="false" aria-controls="tissue-salts-info-disclosure">i</button>
+      </div>
+      <div class="info-disclosure" id="tissue-salts-info-disclosure" role="region" aria-label="Tissue salts explanation">
+        Twelve Schuessler tissue salts mapped to your astrological signature — primary from your Sun (or first available signal), secondaries from Moon and Rising/Lagna. These are symbolic and somatic reflections used by the Sigil engine as an inner crystal-geometry layer. Not medical advice or diagnosis.
+      </div>
+      <p class="om-cipher-card-hint"
+         data-cu-om-cipher-tissue-salts-primary-line="1"
+         id="profile-tissue-salts-primary-line">
+        Primary salt: pending source data
+      </p>
+      <div class="oc-tissue-salts-body"
+           data-cu-om-cipher-tissue-salts-body="1"
+           style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="oc-tissue-salts-primary"
+             data-cu-om-cipher-tissue-salts-primary="1">
+          <p style="margin:0;color:var(--text-faint);font-size:var(--text-sm);">No primary salt selected yet — complete birth date / time / place to populate.</p>
+        </div>
+        <div class="oc-tissue-salts-secondaries"
+             data-cu-om-cipher-tissue-salts-secondaries="1"
+             style="display:flex;flex-direction:column;gap:var(--space-2);">
+        </div>
+      </div>
+      <p class="om-cipher-card-hint oc-tissue-salts-disclaimer"
+         data-cu-om-cipher-tissue-salts-disclaimer="1"
+         style="margin-top:var(--space-3);font-style:italic;">
+        Symbolic and somatic only — not medical advice or diagnosis.
+      </p>
     </div>
 
     <!-- ============================================================
