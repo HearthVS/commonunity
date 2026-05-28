@@ -1,8 +1,10 @@
 # Trust Messaging Audit — Revision Area 1
 
-Status: v0.1. Audit only. **No rewrite in this document.** The rewrite is a separate, later step.
+Status: v0.2. Audit only. **No rewrite in this document.** The rewrite is a separate, later step.
 
-This audit is the first of six revision passes against the Golden Thread framework (see [`../../foundation/om-field-golden-thread.md`](../../foundation/om-field-golden-thread.md) and [`../../foundation/nexus-guidance-charter.md`](../../foundation/nexus-guidance-charter.md)). It surfaces, with line numbers and rule citations, where the current member-facing trust language conflicts with the Charter and the four Golden Thread modules.
+This audit is the first of six revision passes against the Golden Thread framework (see [`../../foundation/om-field-golden-thread.md`](../../foundation/om-field-golden-thread.md), [`../../foundation/nexus-guidance-charter.md`](../../foundation/nexus-guidance-charter.md), and [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md)). It surfaces, with line numbers and rule citations, where the current member-facing trust language conflicts with the Charter, the four Golden Thread modules, and the four-layer architecture.
+
+**v0.2 changes from v0.1.** The four-layer architecture (Field → Orientation → stUdio → Cipher), the sanctuary clause, and the consume → live → serve arc are now named in the foundation. This audit has been updated to use them as positive frames the rewrite calibrates against, not just as additional rules to fail. One new conflict (Conflict 11) is added against the four-layer architecture. The original ten conflicts and the *what stays* section remain valid.
 
 ---
 
@@ -163,6 +165,18 @@ Each conflict is named with:
 
 ---
 
+### Conflict 11 — "Compass, Studio, and Tuner all meet you through the same Key" reads against the four-layer architecture
+
+- **Where:** `homepage.html:1401` (the *Coherent across tools* feature card; previously surfaced under Conflict 7 for a different reason).
+- **String:** "Compass, Studio, and Tuner all meet you through the same Key. The same person, recognised everywhere."
+- **Why it conflicts:**
+  - The four-layer architecture in [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md) names **Compass** as part of Orientation, **Studio** as the stUdio layer, and the **Cipher** ("Key" in older language) as the visible expression of Orientation. "Compass, Studio, and Tuner" mixes layers without showing the structure that holds them.
+  - Tuner is a tool within the Cipher / Orientation surface, not a peer layer; listing it beside Compass and Studio reads as if all three are the same kind of thing.
+  - The verb *"meet you"* in this position implies the tools are agents recognising the member, where the four-layer model is clear that the **Cipher** is what is recognised across surfaces, not the surfaces themselves.
+- **Severity:** low — a tilt of the sentence resolves it. Flagged as a v0.2 addition because the four-layer model gives the rewriter a cleaner alternative: name what is constant (the Cipher), not who is doing the recognising.
+
+---
+
 ## 4. Patterns underneath the conflicts
 
 Three patterns recur across the audit. Naming them helps the rewrite stay disciplined rather than line-by-line.
@@ -172,6 +186,47 @@ Three patterns recur across the audit. Naming them helps the rewrite stay discip
 2. **Defensive vocabulary imported from elsewhere.** "Vendor lock-in," "hostage data," "platform dependency," "algorithmic identity," "fragmented age." This is the language of SaaS critique. It is well-aimed in that conversation but produces charge, not stillness, when imported here.
 
 3. **Identity-shaped invitations.** "Digital sovereignty seekers," "conscious creators," and similar persona framings invite a reader to *become* a labelled type. Charter §4 and Golden Thread Module D resist this directly.
+
+---
+
+## 4a. Positive frames the rewrite calibrates against (v0.2)
+
+The original audit named the problem patterns. The foundation now also names the positive frames the rewrite should *move toward*. These are the alternatives — the rewriter is not just *removing* defensive vocabulary, *avoiding* identity-shaped invitations, and *retiring* protector posture. There are three named places to move toward instead.
+
+### Frame A — Sanctuary
+
+From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md) §Sanctuary:
+
+> A member can bring their reflections, contradictions, and unfinished thinking into the system without fear that what they say will be used against them. Reflections live in the member's own personal storage. They are not harvested for external models or external optimisation. Nexus treats what a member shares the way a confessional treats what is spoken: held, not extracted; useful to the member's path, not to any other purpose.
+
+**Implication for the rewrite:** trust messaging does not *reassure* a member about extraction — it *describes the sanctuary* in plain terms. The member is the one who decides what stays and what goes. *"Held, not extracted"* is the working register. *"No spam. Your data stays yours"* (Conflict 3) is replaced by a sentence that describes the sanctuary, not one that defends against intrusion.
+
+### Frame B — The four-layer architecture
+
+From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md): Field → Orientation → stUdio → Cipher. A member never reads *"there are four layers,"* but copy can lean on the structure quietly:
+
+- The **Cipher** is what is constant across surfaces. (Resolves Conflict 7 and Conflict 11.)
+- **stUdio** is the room where the member does their own work, not where the system performs for them. (Resolves part of Conflict 6 — the system holds the room; it does not *protect the path*.)
+- The **Field** is where trust ultimately rests — not in CommonUnity, not in Nexus, not in the system at all. (Resolves Conflict 4 — trust is what arises in the sanctuary, not infrastructure the platform supplies.)
+- **Orientation** lenses (OM Cipher, Gene Keys, Human Design, Compass, tissue salts inside the Cipher) refract the field through the member's pattern. They do not define the member. (Reinforces Conflict 2.)
+
+### Frame C — Consume → live → serve
+
+From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md) §"The arc":
+
+> CommonUnity is for people coming from a long history of consuming wisdom — books, talks, courses, retreats, frameworks — and arriving at the question whose old methods cannot answer it: who am I?
+
+**Implication for the rewrite:** this is the alternative to identity-shaped persona cards (Conflict 2). Instead of *"are you a digital sovereignty seeker?"*, the question is *"where, on the arc, do you currently find yourself?"* — a member is **in the middle of something**, not **a kind of person**. The arc is also not a funnel; the rewrite should not present *serve* as a graduation reward.
+
+### How the three frames interact
+
+These frames are not separate sections of copy. They are the **single posture** the rewrite carries:
+
+- *Sanctuary* sets the trust commitment.
+- *Four-layer architecture* gives the structural grammar.
+- *Consume → live → serve* describes where the member is in time.
+
+A reader of the rewritten copy will not name these. They will feel: *"this is a room I can bring my whole self into; what holds me is a structure that pre-dates this product; and the path is long."*
 
 ---
 
@@ -201,9 +256,13 @@ The audit also names what to keep — these passages already sit inside the Char
 
 5. **Reframe "sacred infrastructure" and "trust as infrastructure."** Use *practice* and *ground* rather than *infrastructure*. Attention is not sacred; what attention can become is precious. Trust is not infrastructure; trust is what arises when the conditions are clean.
 
-6. **Treat the waitlist micro-copy as a Charter test.** *"No spam. Your data stays yours."* is small but sets the first commitment's tone. The replacement should not reassure; it should describe what happens. Example direction (not final copy): *"One quiet email when the field opens to you. The file we make together is yours."*
+6. **Treat the waitlist micro-copy as a Charter test.** *"No spam. Your data stays yours."* is small but sets the first commitment's tone. The replacement should not reassure; it should describe the sanctuary. Example direction (not final copy): *"One quiet email when the field opens to you. The file we make together is yours."*
 
-7. **Cross-check each rewritten string against the seven-point self-check** at the bottom of `nexus-guidance-charter.md`. If a sentence fails any of the seven, rewrite.
+7. **Use the four-layer architecture quietly to fix Conflict 7 and Conflict 11.** Name what is *constant* across surfaces (the **Cipher**), not who is *recognising* the member. *"Compass, Studio, and Tuner all meet you through the same Key"* becomes a sentence about a single Cipher that holds across the surfaces a member moves through.
+
+8. **Use the consume → live → serve arc to retire or reframe the persona section.** Either remove the persona cards, or rewrite each as *what stage of the arc someone is in*, not *what kind of person they are*. (Conflict 2.)
+
+9. **Cross-check each rewritten string against the seven-point self-check** at the bottom of `nexus-guidance-charter.md` **and** against the three positive frames in §4a. If a sentence fails any of the seven, or does not sit cleanly inside one of the three frames, rewrite.
 
 ---
 
