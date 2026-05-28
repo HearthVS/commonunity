@@ -24,4 +24,6 @@ Keep entries terse. The full context belongs in the linked artifact, not here.
 - 2026-05-16 — Adapted 8 limbs adopted as audit framework — The 8 limbs are now both the decision-making frame (pre-build) and creation-audit frame (per milestone). See [`./audit-rituals.md`](./audit-rituals.md).
 - 2026-05-16 — Documentation system surfaces — GitHub is source of truth; Notion is human workspace; Railway is deployment/runtime reference. See [`../README.md`](../README.md).
 
+- 2026-05-28 — Sanskrit exemption — *chakra* (and other widely-understood, comprehension-load-bearing Sanskrit terms by explicit decision) is exempt from Charter §3's no-Sanskrit rule. Not a blanket allow; case-by-case. Surfaced during Studio vocabulary audit; reclassifies Conflict 4 as retained. Charter §3 wording amendment flagged as a small follow-up edit.
+- 2026-05-28 — Studio vocabulary audit (revision area 2) opened — Sixteen items surfaced across `studio.html` member-facing surfaces; fifteen active after Sanskrit reclassification. Audit-only PR; rewrite is a separate later step. See [`../handoffs/audits/studio-vocabulary-audit.md`](../handoffs/audits/studio-vocabulary-audit.md).
 <!-- Add new entries above this line, most recent at top. -->
