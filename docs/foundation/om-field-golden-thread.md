@@ -144,6 +144,7 @@ The Sutras sit underneath all of these as the implicit map. None of these system
 ---
 
 See also:
+- [`./four-layer-architecture.md`](./four-layer-architecture.md) — the structural complement to this document: Field → Orientation → stUdio → Cipher.
 - [`./philosophical-principles.md`](./philosophical-principles.md) — orienting commitments.
 - [`./adapted-8-limbs.md`](./adapted-8-limbs.md) — the eightfold path as decision and audit framework.
 - [`./nexus-guidance-charter.md`](./nexus-guidance-charter.md) — concrete behavioural rules for Nexus, derived from this document.

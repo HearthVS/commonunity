@@ -27,6 +27,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     adapted-8-limbs.md                   ← decision + audit framework
     om-field.md
     om-field-golden-thread.md            ← Sutra-rooted framework for the OM Field
+    four-layer-architecture.md           ← Field → Orientation → stUdio → Cipher (added in PR #50)
     nexus-guidance-charter.md            ← behavioural rules for Nexus
     codex-golden-thread.md               ← compressed codex entry, primary retrieval
     om-cipher.md                         ← foundational framing of the cipher
