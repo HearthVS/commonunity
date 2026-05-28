@@ -24,7 +24,7 @@ Member-facing Studio vocabulary is concentrated in `studio.html`. Density is une
 
 Two surfaces are not in scope here even though they share the *Studio* name:
 
-- **`tuner/client/public/studio.html`** appears to be a deployed snapshot of an older Studio (different version meta; differs from the root `studio.html`). It carries some of the same strings. Auditing it requires first deciding whether it is the same surface or a parallel — that decision is logged for follow-up rather than re-litigated here.
+- **`tuner/client/public/studio.html`** — **intentionally out of scope.** Founder direction (28 May 2026): the Tuner surface keeps the sound-healing experiential register as-is. *Frequency*, *vibration*, *chakra*, and the rest of that vocabulary belong there because they are the words the field uses for common understanding. This audit does not propose changes to that surface and the rewrite will not touch it.
 - **`docs/product/studio.md`** is an internal product stub, not member-facing. Its language (*"manifest Unity in practice"*) is flagged for completeness in §5 below but is not in scope for the rewrite.
 
 ---
@@ -143,7 +143,15 @@ The SPARK_LIBRARY prompts (~L11691–11726) are generally Charter-aligned — th
 
 ## 3. Conflicts surfaced
 
-Sixteen items were surfaced in the first pass. Following the 28 May 2026 direction on Sanskrit, **Conflict 4 (*chakra*) is reclassified as retained** and is no longer a conflict to resolve in the rewrite — leaving fifteen active items. Numbering is preserved so cross-references and the §8 step list don't drift.
+### A note on posture (28 May 2026)
+
+This audit — in its first pass — read the Charter and the voice-samples banned list as if they were the ceiling rather than the floor. The founder's standing direction is the reverse: foundation docs are a *floor*; the Charter is a default the project can override, term by term, with explicit decision. Several first-pass conflicts have been reclassified as **retained** because the vocabulary is a *conscious authorial choice* that does load-bearing work the Charter's defaults do not anticipate.
+
+A related principle, added in this revision of the audit: **the goal is not flat, neutral, or boring language.** Studio's register is allowed to be felt, textured, even idiosyncratic where the founder's voice and the sound-healing / experiential tradition require it. The audit's job is to surface tension; the founder decides whether the tension resolves toward the Charter or whether the Charter updates toward the project.
+
+Reclassified-as-retained in this pass: Conflicts **4** (*chakra*), **3** (frequency tooltips — experiential register, no ahimsa violation), **5** (*Activate*), **7** (*co-emerge / co-emergence / human emergence* — founder-coined to name a real relationship), **9** (*frequency* as a noun — conscious choice), **12** (*ON AIR* — conscious metaphor for *someone is in their studio*). The `tuner/client/public/studio.html` surface is now classified as **intentionally out of scope** — sound-healing register stays as-is, not pending a parallel-surface decision.
+
+This leaves **nine active items** for the Studio rewrite: Conflicts 1, 2, 6, 8, 10, 11, 13, 14, 15 (plus 16 as a procedural note). Numbering is preserved so cross-references don't drift; reclassified items keep their slot with an explicit *Status: retained* line.
 
 Each conflict names:
 - **Where** (file + line),
@@ -170,17 +178,16 @@ Each conflict names:
   - The trust-messaging rewrite established that *sacred* is the strongest superlative available; calling a 528 Hz / 111 Hz preset *sacred* applies it to a system-level claim about tones.
 - **Severity:** medium. The category needs a name; *sacred* is the wrong one.
 
-### Conflict 3 — Frequency tooltips assert health claims
+### Conflict 3 — Frequency tooltips *(reclassified — retained)*
 
 - **Where:** `studio.html:7008–7009` (and to a lesser degree the planetary tooltips at `7019–7025`).
 - **Strings:** *"111 Hz — cell regeneration, endorphins"*, *"528 Hz — love frequency, DNA repair"*.
-- **Why it conflicts:**
-  - Charter §4 (Ethical constraints): *never glorify subtle capacities ("powers," "rare types," "high resonance"). When such capacities are named, immediately attach responsibility and service.* The tooltips name capacities (*DNA repair*, *cell regeneration*) without grounding, qualification, or alternative reading.
-  - Charter §4: *never route a user away from medical, legal, or safety help they need.* The tooltips read as factual physiological claims rather than as labels on a sound preset.
-  - Charter §3: *no jargon the user did not introduce first.* *Love frequency* is jargon imported from another conversation.
-  - Voice samples §195: *frequency (as a noun)* is banned vocabulary unless the user introduced it; the tooltip introduces it.
-  - The Tuner page (the practitioner bench) is where claims of this kind can be discussed with proper context. Studio is for the member doing their own work; the tooltip pretends to certainty Studio does not own.
-- **Severity:** high. These are unsupported medical-adjacent claims rendered as titles, not aspirations.
+- **Status:** **Retained.** Per founder direction (28 May 2026): these are not medical claims in the regulated sense — they are descriptive labels inside the sound-healing tradition, and none of them violate the ahimsa principle (no harm proposed, no medical advice substituted). The tooltips name resonances the practice has long associated with these tones; the lay reader who knows the field reads them as such, and the lay reader who does not is not harmed by them.
+- **What this means for the rewrite:**
+  - Tooltip text stays as written.
+  - The same posture covers the planetary tooltips at `7019–7025`.
+  - The Charter §4 reading that drove this conflict (treating *cell regeneration* / *DNA repair* as medical claims) is too rigid for Studio's experiential register; the founder's clarification stands.
+- **Severity:** n/a — no longer a conflict to resolve. Kept in the numbered list for traceability.
 
 ### Conflict 4 — *Chakra* in member-facing copy *(reclassified — retained)*
 
@@ -193,15 +200,15 @@ Each conflict names:
   - Charter §3 wording (*"No Sanskrit"*) should be amended in a small follow-up edit to read closer to *"No Sanskrit by default; exceptions for terms that are internationally understood and load-bearing for comprehension — currently: chakra. Add others by explicit decision."* Flagged here, not landed in this PR.
 - **Severity:** n/a — no longer a conflict to resolve. Kept in the numbered list for traceability of the reclassification.
 
-### Conflict 5 — "Activate my profile" — activation language
+### Conflict 5 — "Activate my profile" *(reclassified — retained)*
 
 - **Where:** `studio.html:6819` (calculator submit button); echoed at `11102` (*"To activate it, hold your attention on the centre until it opens"*).
 - **String:** *"Activate my profile"* (button) and *"To activate it"* (Nexus overlay).
-- **Why it conflicts:**
-  - Charter §4: *never make a person's pattern sound like destiny, fate, or a fixed identity. Pattern is observed; it is not the person.* *Activate* implies the profile is dormant and a button turns it on — a small but persistent identity claim.
-  - The Compass intake is described in [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md) §Orientation as a *sealing* operation, not an activation one. The vocabulary already exists internally — *seal*, *render*, *reveal* — and it does not import the activation register.
-  - The Nexus overlay use of *activate* is gentler (*"To activate it, hold your attention…"*) but inherits the same charge.
-- **Severity:** medium. Two surfaces; one label.
+- **Status:** **Retained.** Per founder direction (28 May 2026): there are not many other verbs that fit this slot cleanly. *Seal* / *render* / *reveal* read precisely inside the four-layer architecture doc but do not work as button labels in the member-facing UI. *Activate* is plain, action-shaped, and member-comprehensible.
+- **What this means for the rewrite:**
+  - Button label and overlay verb both stay.
+  - The first-pass framing (*Activate implies dormancy → identity claim*) was an over-read; the verb does its UI job without the claim.
+- **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
 ### Conflict 6 — "Three levels of *your authentic digital self*" — identity claim
 
@@ -215,15 +222,16 @@ Each conflict names:
   - The L1 lede already contains the cleaner reading: *"built from who you actually are, not platform templates."* The cleaner phrase can do the work without *authentic*.
 - **Severity:** high. This is the framing label for the entire builder.
 
-### Conflict 7 — "Co-emerge with AI" / "Technology serving human emergence" — invented mystic-tech vocabulary
+### Conflict 7 — "Co-emerge with AI" / "Technology serving human emergence" *(reclassified — retained)*
 
 - **Where:** `studio.html:6764` (entrance trail L3 line); `7374` (Studio Path lede); `11651` (BUILDER_STANDARD `os` lede).
 - **Strings:** *"co-emerge with AI"*, *"co-emerging with AI"*, *"Technology serving human emergence, not replacement"*.
-- **Why it conflicts:**
-  - Charter §3: *no jargon the user did not introduce first.* *Co-emerge / co-emerging* is invented mystic-tech compound vocabulary; it does not sit inside any of the four Golden Thread modules or the four-layer architecture.
-  - The consume → live → serve arc in [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer-architecture.md) §"The arc" names the three movements precisely. *Co-emerge* is not a fourth movement and confuses the arc by introducing one. The L3 spec inherits this — *"create, learn, serve, and co-emerge with AI"* mixes the arc's *serve* with two non-arc verbs (*learn*, *co-emerge*).
-  - *Human emergence* is the same jargon family at the next level up.
-- **Severity:** medium. The L3 surface is genuinely about AI collaboration; the vocabulary for it needs replacing, not removing.
+- **Status:** **Retained.** Per founder direction (28 May 2026): *co-emergence* is founder-coined. It names the relationship that is in fact emerging between the founder (and others like him) and AI. The first-pass reading — *"jargon the user did not introduce first"* — is wrong: the user *did* introduce it, and the word does load-bearing work no other word does cleanly. *Human emergence* sits in the same family and stays.
+- **What this means for the rewrite:**
+  - All three surfaces keep *co-emerge / co-emerging / human emergence* as written.
+  - The consume → live → serve arc reading (treating *co-emerge* as a contraband fourth movement) was too literal; *co-emerge* is the *mode* in which the AI collaboration happens, not a movement in the arc.
+  - **Canonical source note (carry-forward from Conflict 16):** because the term recurs in three surfaces, a one-line canonical definition belongs somewhere durable — likely `om-field-golden-thread.md` or a new short glossary. Flagged as a small foundation-doc edit for after this revision area.
+- **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
 ### Conflict 8 — "Honesty over performance — this is the trust architecture"
 
@@ -235,17 +243,18 @@ Each conflict names:
   - Charter §5 (Identity and relationship): the tail re-centres the system as the trust-supplier.
 - **Severity:** medium. Two surfaces share the line; the head survives, the tail does not.
 
-### Conflict 9 — *Frequency* as a noun, generically
+### Conflict 9 — *Frequency* as a noun, generically *(reclassified — retained)*
 
 - **Where:** Multiple. Most visible at:
   - `studio.html:11536` (L1 builder field-summary prompt: *"the frequency you transmit"*),
   - `studio.html:11100` (Nexus overlay: *"returns questions from the frequency of where you are"*),
   - `studio.html:11103` (Nexus overlay: *"It speaks from the frequency of this direction"*),
-  - `studio.html:7694` (Nexus opening prompt: *"Where is your energy going that it perhaps shouldn't be?"* — *energy* as a noun is in the same banned family).
-- **Why it conflicts:**
-  - Voice samples §195 lists, verbatim: *no reply uses…energy (as a noun), vibration, aligned, manifest, abundance, high vibe, or frequency (except where the user introduced it).* The Charter applies the same rule to all member-facing surfaces in Studio.
-  - The Tuner page is the place where *frequency* has a precise technical meaning (Hz). Carrying it into Studio's intimate surfaces — the Nexus and the L1 field-summary prompt — uses the word in its loose mystical sense, which the Charter prefers to avoid.
-- **Severity:** medium. The word is doing different work in different places; the rewrite will have to disentangle the technical from the mystical use.
+  - `studio.html:7694` (Nexus opening prompt: *"Where is your energy going that it perhaps shouldn't be?"*).
+- **Status:** **Retained.** Per founder direction (28 May 2026): *frequency* as a noun is a conscious authorial choice. The voice-samples §195 banned-vocabulary entry on *frequency* is amended in spirit — *frequency* is in fact a register the founder owns and the project deploys deliberately. *Energy* (as in the Rose opening prompt) sits in the same family and stays.
+- **What this means for the rewrite:**
+  - All four sites keep *frequency* / *energy* as written.
+  - The voice-samples §195 banned list should be amended in a small follow-up edit to remove *frequency* and *energy (as a noun)* from the banned set, replacing them with guidance about *register* rather than *prohibition*. Flagged here, not landed in this PR.
+- **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
 ### Conflict 10 — *Sigil* persists in member-facing UI
 
@@ -267,15 +276,15 @@ Each conflict names:
   - The consume → live → serve arc is *explicitly not a funnel*; members do not graduate. *"Unlocks"* turns the arc into a funnel.
 - **Severity:** medium. The criteria are well-chosen; the verb is wrong.
 
-### Conflict 12 — *"ON AIR"* — broadcast metaphor against Charter §1
+### Conflict 12 — *"ON AIR"* *(reclassified — retained)*
 
 - **Where:** `studio.html:6946–6950` (session pill).
 - **String:** *"ON AIR"* + session timer.
-- **Why it conflicts:**
-  - Charter §1: *reduce stimulation.* *ON AIR* imports a broadcast register — radio, live performance — that puts the member on stage. The lede of the trust audit's tonal anchor work (*"held, not extracted"*) sits opposite to this.
-  - The Studio Path modal itself explicitly says *"Honesty over performance"* (Conflict 8 tail aside, the head is good). The *ON AIR* pill quietly reasserts performance.
-  - The timer is useful; the framing is the issue.
-- **Severity:** low. Small pill, but it is visually persistent in the room header.
+- **Status:** **Retained.** Per founder direction (28 May 2026): *ON AIR* is a conscious metaphor for *someone is in their studio* — the studio metaphor is the primary frame, the broadcast association is intentional and earns its place. Could be replaced with *Active* or *Present*, but those are flatter; *ON AIR* keeps the texture the surface wants.
+- **What this means for the rewrite:**
+  - Pill stays as written.
+  - The first-pass reading (*broadcast register reasserts performance*) was too rigid; the founder's intent for the pill is the studio metaphor, not a performance pulse.
+- **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
 ### Conflict 13 — Per-room subtitle *"the way you are here to perceive"* (Lens) — destiny tilt
 
@@ -339,13 +348,13 @@ These survivors are the calibration set for the rewrite: anything the rewrite pr
 
 Three patterns recur. Naming them helps the rewrite stay disciplined.
 
-1. **Imported registers that don't sit inside the foundation.** *Sacred*, *frequency* (loose), *vibe*, *gematria*, *co-emerge*. These come from neighbouring conversations — wellness marketing, esoteric studies, AI-collaboration discourse — and arrive without grounding. The trust audit's *"defensive vocabulary imported from elsewhere"* pattern shows up here as *mystic/wellness vocabulary imported from elsewhere*. Same structural issue, different register. (*Chakra* sits in a different category — see Conflict 4: load-bearing Sanskrit retained by explicit decision.)
+1. **Imported registers that don't sit inside the foundation — narrowed.** After the 28 May 2026 reclassifications, the genuinely imported registers are *sacred* (Conflict 2), *vibe* (Conflict 1), and *gematria* (inside Conflict 10's neighbourhood). *Frequency*, *co-emergence*, *chakra*, *energy* are not in this pattern — they are conscious authorial choices or load-bearing terms the founder owns.
 
 2. **Identity-shaped claims as default framing.** *Authentic digital self*, *digital self*, *minimum viable digital self*, *the way you are here to perceive*. The Studio is the layer where the member *does their work*, but the framing repeatedly names *who they are*. The Charter's pattern-is-observed-not-the-person rule (§6) gets stretched.
 
-3. **Achievement / activation register.** *Activate my profile*, *Unlocks when…*, *Locked / Unlocked / Active / Evolving*, *ON AIR*. Studio's gentleness is undermined in small places by small motivational pulses. The arc is not a funnel; the language sometimes treats it as one.
+3. **Achievement-gating register — narrowed.** *Unlocks when…*, *Locked / Unlocked / Active / Evolving*. Studio's gentleness is undermined in small places by gating language imported from game UIs. *Activate* and *ON AIR* are no longer in this pattern (retained per Conflicts 5 and 12).
 
-A fourth, lesser pattern: **vocabulary drift without a canonical source** (Conflict 16). *Co-emerge*, *trust architecture*, *authentic*, *sigil* all appear in multiple surfaces. The fix needs to be made at all instances in one PR, not piecemeal.
+A fourth pattern: **vocabulary drift without a canonical source** (Conflict 16). *Co-emerge*, *trust architecture*, *authentic*, *sigil* appear in multiple surfaces. For *co-emerge* (now retained), the fix is to land a canonical one-line definition somewhere durable. For *trust architecture*, *authentic*, *sigil*, the fix is the rewrite applied at every instance in one PR.
 
 ---
 
@@ -389,40 +398,38 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 
 - **The Gene Keys vocabulary** — *Life's Work, Evolution, Radiance, Purpose, Shadow → Gift, movement names.* User instruction: Gene Keys remain at core of Compass and stUdio. The Spark library's use of Gene Keys movement / arc taxonomy survives in full.
 - **The room names** — *The Work, The Lens, The Field, The Call.* These are the canonical four; they survive.
-- **`tuner/client/public/studio.html`** — out of scope until the question of *is this the same Studio or a parallel one?* is resolved. Logged for follow-up.
+- **`tuner/client/public/studio.html`** — **intentionally untouched.** Sound-healing experiential register is the right register for that surface. The founder owns this vocabulary choice; the audit defers to it.
 - **`docs/product/studio.md`** — internal doc; *"manifest Unity in practice"* on L9 imports banned vocabulary, but the doc is contributor-facing. Flagged for incidental cleanup, not for this revision area.
 - **The four-layer architecture's use of *"stUdio"* (lowercase t, capital U) in foundation docs** — this is internal-precision typography; member-facing surfaces continue to use *Studio*. No conflict.
-- **The Tuner's existing frequency vocabulary** — Tuner is the practitioner bench where frequency-as-Hz is precise; this audit does not touch Tuner.
+- **The Tuner's existing frequency vocabulary** — Tuner uses the sound-healing field's working vocabulary for common understanding. This audit does not touch Tuner.
 
 ---
 
 ## 8. Proposed approach to the rewrite
 
-(Approach only. The actual rewrite is a separate PR, pending your approval of this audit.)
+(Approach only. The actual rewrite is a separate PR, pending your approval of this audit. Steps are renumbered to reflect the 28 May 2026 reclassifications; only active items remain.)
+
+**A note on register, before steps.** The rewrite is not aiming for neutral, flat, or maximally compliant language. Studio is allowed to be felt and textured. The rewrite's job is to soften the items the founder agreed are active — not to scrub the surface clean of voice.
 
 1. **Anchor the voice on the Studio surfaces that already work** — the Notepad placeholder (`7181`), the Save confirmation (`7183`), the Nexus knock line (`7285`), the *Compass points you home* modal title (`7474`), and the *Step across the threshold* lede (`7476`). Whatever replaces the failing strings should sit beside these without standing out as louder.
 
-2. **Treat Conflicts 6 + 8 + 15 as one paragraph rewrite.** *Three levels of your authentic digital self* + *trust architecture* + the Studio Path lede are interlocked. Rewrite the modal title and lede together; do not patch sentences in isolation.
+2. **Treat Conflicts 6 + 8 + 15 as one paragraph rewrite.** *Three levels of your authentic digital self* + *trust architecture* + the Studio Path lede are interlocked. Rewrite the modal title and lede together; do not patch sentences in isolation. *Co-emerge* in the lede stays (Conflict 7 retained); *authentic digital self* and the *trust architecture* tail do not.
 
-3. **Decide the *sigil → Cipher* migration here** (Conflict 10). This audit names it; the rewrite executes it across all five Studio surfaces in the same PR. Carry the same decision into the L1 *Digital key · sigil* and L2 *Home · sigil* field labels in `BUILDER_STANDARD`. Note: this completes the carry-forward from the trust-messaging rewrite.
+3. **Execute the *sigil → Cipher* migration** (Conflict 10). Across all five Studio surfaces in the same PR. Carry the same decision into the L1 *Digital key · sigil* and L2 *Home · sigil* field labels in `BUILDER_STANDARD`. This completes the carry-forward from the trust-messaging rewrite.
 
-4. **Replace *vibe* and *sacred* with plain descriptors** (Conflicts 1, 2). The control is fine; the labels are the problem. *Set Your Vibe* → a label that names what the panel does (atmosphere, sound + light, room conditions). *Sacred Tones* → a sound category name that describes the tones, not their status.
+4. **Replace *vibe* and *sacred* with plain descriptors** (Conflicts 1, 2). The control is fine; the labels are the problem. *Set Your Vibe* → a label that names what the panel does (atmosphere, sound + light, room conditions). *Sacred Tones* → a sound category name that describes the tones, not their status. Per the register note above, the replacements should still feel — not become Marriott bathroom signage.
 
-5. **Pull *frequency* tooltips back to factual labels** (Conflict 3). The Hz numbers are factual; the *cell regeneration*, *DNA repair*, *love frequency* claims are not. Replace with neutral descriptors or remove the descriptive tail entirely. This is a Charter §4 hard-edge — *never route a user away from medical help they need* — and must not be deferred.
+5. **Replace *Unlocks when…* and gamified status pills** (Conflict 11). *Unlocks when…* → a phrasing that names what is in place, not what is unlocked. *Locked / Unlocked / Active / Evolving* → simpler status words that don't import the game-UI register. *Activate my profile* stays (Conflict 5 retained).
 
-6. **~~Remove Sanskrit from member-facing tooltips~~** *(Conflict 4 — no longer in scope.)* *Chakra* and the seven body-locator names are retained per 28 May 2026 direction. A small Charter §3 wording amendment is flagged separately. Step number kept so subsequent step references don't drift.
+6. **Soften the destiny tilt on the Lens room subtitle** (Conflict 13). *"the way you are here to perceive"* → a phrasing closer to the other three room subtitles in register (*the work that finds you*, *your fertile ground*, *the music within you*). One word's worth of work.
 
-7. **Replace *Activate* and *Unlocks*** (Conflicts 5, 11). *Activate my profile* → a verb that names what happens (the calculator runs against birth data and seals the Cipher). *Unlocks when…* → a phrasing that names what is in place, not what is unlocked.
+7. **Resolve *direction* vs. *room*** (Conflict 14). One choice; applied everywhere. *Room* is dominant elsewhere in `studio.html` and is the four-layer-architecture-aligned word.
 
-8. **Reframe the L3 (Personal OS) lede around the arc, not around *co-emerge*** (Conflict 7). The L3 surface is the *live* layer becoming visible enough to *serve*. The AI collaboration is the medium, not a new movement.
+8. **Land a canonical one-line definition of *co-emergence*** somewhere durable (Conflict 16 + carry-forward from Conflict 7). Likely `om-field-golden-thread.md` or a new short glossary. Small foundation-doc edit, separate PR.
 
-9. **Resolve *direction* vs. *room*** (Conflict 14). One choice; applied everywhere. *Room* is dominant elsewhere in `studio.html` and is the four-layer-architecture-aligned word.
+9. **Touch all instances of a duplicated phrase in a single PR.** *Authentic*, *trust architecture*, *sigil* appear in multiple surfaces. The PR must replace every instance.
 
-10. **Reframe *ON AIR*** (Conflict 12). Keep the timer, drop the broadcast metaphor. The pill can mark *session active* or *studio open* without the performance vocabulary.
-
-11. **Cross-check each rewritten string against the seven-point self-check** in `nexus-guidance-charter.md` **and** against the three positive frames in §6 above. If a sentence fails any of the seven, or does not sit cleanly inside one of the three frames, rewrite. The same gate the trust-messaging rewrite used.
-
-12. **Touch all instances of a duplicated phrase in a single PR** (Conflict 16 procedural note). *Co-emerge*, *authentic*, *trust architecture*, *sigil* all appear in multiple surfaces. The PR must replace every instance; otherwise the next person reading one of the survivors will reintroduce the phrase elsewhere.
+10. **Cross-check each rewritten string against the seven-point self-check** in `nexus-guidance-charter.md` **and** against the three positive frames in §6 above. If a sentence fails any of the seven, or does not sit cleanly inside one of the three frames, rewrite. Same gate the trust-messaging rewrite used.
 
 ---
 
@@ -441,10 +448,11 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 If you approve this audit:
 
 - I open a separate PR titled *Studio vocabulary rewrite — revision area 2* with proposed replacement strings as a diff, citing the Charter rule that drove each non-obvious change.
-- Each string is replaced in `studio.html`. `tuner/client/public/studio.html` stays untouched pending the *is this the same surface?* decision.
+- The rewrite addresses the **nine active conflicts** (1, 2, 6, 8, 10, 11, 13, 14, 15) plus the procedural carry-forward (16). Retained items (3, 4, 5, 7, 9, 12) stay as written.
+- `tuner/client/public/studio.html` stays untouched — intentional, per founder direction.
 - The *sigil → Cipher* migration lands in the same PR (Conflict 10).
-- The medical-adjacent claims at `7008–7009` are addressed in the same PR, not deferred (Conflict 3 is the only Charter §4 hard-edge in this audit).
-- No other surfaces are touched in that PR.
+- The canonical-source definition of *co-emergence* (carry-forward from Conflicts 7 + 16) lands in a small separate foundation-doc PR.
+- Charter §3 (Sanskrit) and voice-samples §195 (banned vocabulary) wording amendments are flagged here and land as their own small follow-up PR after this revision area is complete.
 
 If you want changes to the audit first, mark them inline in this document on the PR.
 
