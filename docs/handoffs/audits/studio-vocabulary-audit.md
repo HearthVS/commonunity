@@ -149,9 +149,19 @@ This audit — in its first pass — read the Charter and the voice-samples bann
 
 A related principle, added in this revision of the audit: **the goal is not flat, neutral, or boring language.** Studio's register is allowed to be felt, textured, even idiosyncratic where the founder's voice and the sound-healing / experiential tradition require it. The audit's job is to surface tension; the founder decides whether the tension resolves toward the Charter or whether the Charter updates toward the project.
 
-Reclassified-as-retained in this pass: Conflicts **4** (*chakra*), **3** (frequency tooltips — experiential register, no ahimsa violation), **5** (*Activate*), **7** (*co-emerge / co-emergence / human emergence* — founder-coined to name a real relationship), **9** (*frequency* as a noun — conscious choice), **12** (*ON AIR* — conscious metaphor for *someone is in their studio*). The `tuner/client/public/studio.html` surface is now classified as **intentionally out of scope** — sound-healing register stays as-is, not pending a parallel-surface decision.
+**Scoping principle (added third pass, 28 May 2026):** none of the items in this audit break ahimsa or any core ethical commitment the project actually stands on. They are *texture* concerns, not principle violations. The active list is *items worth a founder decision*, not *items that must change*. The founder may retain any of them.
 
-This leaves **nine active items** for the Studio rewrite: Conflicts 1, 2, 6, 8, 10, 11, 13, 14, 15 (plus 16 as a procedural note). Numbering is preserved so cross-references don't drift; reclassified items keep their slot with an explicit *Status: retained* line.
+A second scoping principle, also added third pass: **Charter rules about pattern-language and superlatives** (§6 *prefer "this profile shows…" over "you are…"*; §7 *avoid superlatives*) apply to **Nexus replies and system-level claims**, not to founder-authored framing copy or category labels. Founder-owned vocabulary lives at frame level; Charter rules apply at conversation level. The first pass conflated these and over-applied conversation-level rules to frame-level copy.
+
+Reclassified-as-retained across all three passes: Conflicts **2** (*Sacred Tones* — sound-healing register, not a superlative claim at system level), **3** (frequency tooltips — experiential register, no ahimsa violation), **4** (*chakra* — Sanskrit exemption), **5** (*Activate* — plain UI verb), **6** (*authentic digital self* — founder-introduced, holds an open question), **7** (*co-emerge / co-emergence / human emergence* — founder-coined), **8** (*trust architecture* — founder-introduced, names what the project is building), **9** (*frequency* as a noun — conscious choice), **12** (*ON AIR* — conscious studio metaphor). The `tuner/client/public/studio.html` surface is **intentionally out of scope** — sound-healing register stays as-is.
+
+This leaves **four active items plus three small carry-forwards** for the Studio refinements PR:
+
+- **Active:** Conflicts **10** (*sigil → Cipher* migration — explicit standing instruction), **11** (*Unlocks when…* + gamified status pills), **13** (*the way you are here to perceive* Lens subtitle — destiny tilt), **14** (*direction* vs *room* coherence).
+- **Carry-forwards from retentions:** *minimum viable digital self* phrase-level edge (from Conflict 6), the *trust architecture* cross-surface divergence with PR #52 (from Conflict 8), and the canonical-source note for *co-emergence* (from Conflict 7 + 16).
+- **Conflict 15 (Studio Path lede paragraph)** now only carries the small coherence work from Conflict 11 (gating language inside the lede) — not a paragraph reframe.
+
+Numbering is preserved so cross-references don't drift; reclassified items keep their slot with an explicit *Status: retained* line.
 
 Each conflict names:
 - **Where** (file + line),
@@ -159,24 +169,26 @@ Each conflict names:
 - **Why it conflicts** (Charter rule or Golden Thread module),
 - **Severity** — `high` = directly contradicts a hard rule, `medium` = posture is off but recoverable in tone, `low` = small wording artifact.
 
-### Conflict 1 — "Set Your Vibe" — imperative + banned-vocab family
+### Conflict 1 — "Set Your Vibe" — open for founder decision
 
 - **Where:** `studio.html:6965` (panel title), repeated in info overlay title at `11081` (*Space Tuner*).
 - **String:** *"Set Your Vibe"*.
-- **Why it conflicts:**
-  - Charter §3 (Tone rules): *match the user's register but not their charge.* *Vibe* is in the same family as the banned vocabulary explicitly named in voice samples §195 (*aligned, manifest, abundance, high vibe, frequency*). *High vibe* is named; *vibe* alone carries the same charge.
-  - Charter §1 (Intention): *guidance should tend to reduce confusion, not increase stimulation.* The imperative *"Set Your"* invites a performance action, not a settling one.
-  - Title-case `Set Your Vibe` against the sentence-case style most of Studio's headers use is also inconsistent; that is a cosmetic, not a Charter, issue.
-- **Severity:** medium. The control itself is well-designed — sound and colour as part of the working surface, not decoration (the overlay text says exactly this). The label just imports a register the rest of the system avoids.
+- **What this is:** A small register question. *Vibe* sits in the same family as *frequency* and *energy* — informal vocabulary the founder may or may not own as deliberate.
+  - If retained: *Set Your Vibe* stays; voice-samples §195 amendment notes *vibe* alongside *frequency* and *energy* as register-not-prohibition.
+  - If refined: candidate replacements that keep the texture — *Set the Room*, *Tune the Room*, *Set the Mood* — each a one-word swap on the existing structure.
+- **Surrounding observations** (not weight, just context): the *Set Your* imperative is a small performance pulse against Studio's *held / sanctuary* register; that issue applies regardless of which noun follows. Title-case *Set Your Vibe* against the sentence-case style most of Studio's headers use is a cosmetic inconsistency.
+- **Severity:** low. Founder decision in the refinements PR; either direction is workable.
 
-### Conflict 2 — "Sacred Tones" — borrowed sanctity
+### Conflict 2 — "Sacred Tones" *(reclassified — retained)*
 
 - **Where:** `studio.html:7006` (sound dropdown section).
 - **String:** *"Sacred Tones"*.
-- **Why it conflicts:**
-  - Charter §7 (Working with subtle capacities): *avoid superlatives.* This is the same Conflict 5 the trust-messaging rewrite resolved on the manifesto (*"sacred infrastructure"* → *"a practice, not a commodity"*). The same word is doing the same work here.
-  - The trust-messaging rewrite established that *sacred* is the strongest superlative available; calling a 528 Hz / 111 Hz preset *sacred* applies it to a system-level claim about tones.
-- **Severity:** medium. The category needs a name; *sacred* is the wrong one.
+- **Status:** **Retained.** Per founder direction (28 May 2026): *sacred* is not on the alarm list. It is the right word for the tones the tradition has long named that way; the audit's first-pass reading (treating *sacred* as a Charter §7 superlative) over-applied a rule meant for system-level claims to a category label inside the sound-healing register.
+- **What this means for the rewrite:**
+  - *Sacred Tones* stays.
+  - The trust-messaging rewrite's retirement of *sacred infrastructure* on the manifesto stands on its own merits (system-level marketing claim, different load); Studio's *Sacred Tones* is a category label and does not inherit that decision.
+  - Charter §7 wording should be amended in a small follow-up edit to scope *avoid superlatives* to *system-level claims about CommonUnity itself*, not to vocabulary inside experiential / sound-healing surfaces. Flagged here, not landed.
+- **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
 ### Conflict 3 — Frequency tooltips *(reclassified — retained)*
 
@@ -210,17 +222,16 @@ Each conflict names:
   - The first-pass framing (*Activate implies dormancy → identity claim*) was an over-read; the verb does its UI job without the claim.
 - **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
-### Conflict 6 — "Three levels of *your authentic digital self*" — identity claim
+### Conflict 6 — "Three levels of *your authentic digital self*" *(reclassified — retained)*
 
 - **Where:** `studio.html:7369` (Studio Path modal title); reinforced by `6750`, `11497` (*"the first level of authentic self-representation"*), and `11131` (*"A minimum viable digital self"*).
 - **Strings:** *"Three levels of your authentic digital self"*, *"authentic self-representation"*, *"minimum viable digital self"*, *"digital calling card"*.
-- **Why it conflicts:**
-  - Charter §4: pattern is observed; it is not the person. The framing *"your authentic digital self"* names a thing the member possesses (*self*) and modifies it with a truth claim (*authentic*) — exactly the move the Charter resists in pattern outputs.
-  - Charter §6 (Working with pattern outputs): *prefer "this profile shows…" or "one reading of this pattern is…" over "you are…".* *"Your authentic digital self"* is a category claim about who the member is.
-  - Golden Thread Module D (Freedom from identification): the deepest meaning here is that the user is *not* the profile. *Authentic* glues them together.
-  - *"Minimum viable digital self"* additionally imports startup vocabulary into spiritual register; *digital self* is the noun, *MVP* is the modifier.
-  - The L1 lede already contains the cleaner reading: *"built from who you actually are, not platform templates."* The cleaner phrase can do the work without *authentic*.
-- **Severity:** high. This is the framing label for the entire builder.
+- **Status:** **Retained.** Per founder direction (28 May 2026): *authentic digital self* is founder-introduced and sits inside an open question the project is genuinely asking — *"how digital can I be?"* The phrase holds a tension worth keeping: the founder is explicit that *"of course, I will never be authentic in a digital way as humans are not reducible to that duality"* — and that unresolved tension is part of what the term names. Resolving it into safer language would close a question the project means to keep open.
+- **What this means for the rewrite:**
+  - *Authentic digital self*, *authentic self-representation*, *digital calling card* all stay.
+  - *Minimum viable digital self* is a separate edge: the *minimum viable* startup register is the part that's off, not *digital self*. Flagged as a small phrase-level item for the refinements PR (likely *first form of a digital self* or similar), not a top-level conflict.
+  - Charter §6 (*prefer "this profile shows…" over "you are…"*) remains as guidance for Nexus *replies*. The Studio Path modal *title* is allowed to make a stronger framing claim than a Nexus reply would; founder-owned vocabulary lives at frame level, not at conversation level. Same scope distinction as Conflict 8.
+- **Severity:** n/a — no longer a top-level conflict. The *minimum viable digital self* edge remains as a small phrase-level item carried into the refinements PR.
 
 ### Conflict 7 — "Co-emerge with AI" / "Technology serving human emergence" *(reclassified — retained)*
 
@@ -233,15 +244,19 @@ Each conflict names:
   - **Canonical source note (carry-forward from Conflict 16):** because the term recurs in three surfaces, a one-line canonical definition belongs somewhere durable — likely `om-field-golden-thread.md` or a new short glossary. Flagged as a small foundation-doc edit for after this revision area.
 - **Severity:** n/a — no longer a conflict to resolve. Kept for traceability.
 
-### Conflict 8 — "Honesty over performance — this is the trust architecture"
+### Conflict 8 — "Honesty over performance — this is the trust architecture" *(reclassified — retained)*
 
 - **Where:** `studio.html:7378` (Studio Path lede); repeated verbatim at `11133` (Living Profile overlay).
 - **String:** *"Honesty over performance — this is the trust architecture."*
-- **Why it conflicts:**
-  - This is the same *trust architecture* phrase the trust messaging rewrite retired on `manifesto.html:960` (Conflict 6 of the trust audit). The vocabulary has been judged against the Charter once; it is unchanged here.
-  - *"Honesty over performance"* itself is clean and earns its place. The tail (*— this is the trust architecture*) is the part that needs the same treatment the manifesto entry received.
-  - Charter §5 (Identity and relationship): the tail re-centres the system as the trust-supplier.
-- **Severity:** medium. Two surfaces share the line; the head survives, the tail does not.
+- **Status:** **Retained.** Per founder direction (28 May 2026): *trust architecture* is founder-introduced and names what the project is actually building. The audit's first-pass reading (treating it as a vocabulary import to be retired) inherited that judgement from the trust-messaging rewrite's manifesto edit; the founder's clarification reverses that direction — the term stays in Studio.
+- **What this means for the rewrite:**
+  - Both Studio surfaces keep *"Honesty over performance — this is the trust architecture"* as written.
+  - **Cross-surface divergence with PR #52:** the trust-messaging rewrite *did* retire *"trust architecture for conscious technology"* on the manifesto and homepage. That decision was made before the founder's clarification today. The two surfaces now sit in different states. Resolution options for the founder:
+    1. **Restore *trust architecture* on the manifesto / homepage** (carry-forward to revision area 4, or a small reversal PR sooner).
+    2. **Keep the manifesto change as scoped to that specific phrase** (*"trust architecture for conscious technology"* — the *for conscious technology* tail was the part the rewrite retired) while keeping *trust architecture* alone available elsewhere.
+  - Either is workable; flagged for founder decision in the refinements PR.
+  - Same frame-vs-conversation scope distinction as Conflict 6: Charter §5 (*system as trust-supplier*) applies to Nexus replies, not to founder-authored framing copy.
+- **Severity:** n/a — no longer a conflict to resolve. The cross-surface divergence with PR #52 is the remaining item.
 
 ### Conflict 9 — *Frequency* as a noun, generically *(reclassified — retained)*
 
@@ -346,15 +361,17 @@ These survivors are the calibration set for the rewrite: anything the rewrite pr
 
 ## 5. Patterns underneath the conflicts
 
-Three patterns recur. Naming them helps the rewrite stay disciplined.
+After three passes of founder reclassifications, the surviving patterns are narrower than the first pass suggested.
 
-1. **Imported registers that don't sit inside the foundation — narrowed.** After the 28 May 2026 reclassifications, the genuinely imported registers are *sacred* (Conflict 2), *vibe* (Conflict 1), and *gematria* (inside Conflict 10's neighbourhood). *Frequency*, *co-emergence*, *chakra*, *energy* are not in this pattern — they are conscious authorial choices or load-bearing terms the founder owns.
+1. **Achievement-gating register.** *Unlocks when…*, *Locked / Unlocked / Active / Evolving*. Studio's gentleness is undermined in small places by gating language imported from game UIs. The arc is not a funnel; the language sometimes treats it as one. (Conflict 11.)
 
-2. **Identity-shaped claims as default framing.** *Authentic digital self*, *digital self*, *minimum viable digital self*, *the way you are here to perceive*. The Studio is the layer where the member *does their work*, but the framing repeatedly names *who they are*. The Charter's pattern-is-observed-not-the-person rule (§6) gets stretched.
+2. **Coherence drift across surfaces.** The same surface uses *direction* and *room* interchangeably (Conflict 14); the Lens subtitle tilts toward destiny where the other three room subtitles do not (Conflict 13). Small but visible.
 
-3. **Achievement-gating register — narrowed.** *Unlocks when…*, *Locked / Unlocked / Active / Evolving*. Studio's gentleness is undermined in small places by gating language imported from game UIs. *Activate* and *ON AIR* are no longer in this pattern (retained per Conflicts 5 and 12).
+3. **Standing vocabulary instructions not yet executed.** *Sigil → Cipher* migration (Conflict 10) is the only explicit standing instruction in this audit — the founder named it directly, not as a Charter inference. Five member-facing sites in `studio.html` still carry *sigil*.
 
-A fourth pattern: **vocabulary drift without a canonical source** (Conflict 16). *Co-emerge*, *trust architecture*, *authentic*, *sigil* appear in multiple surfaces. For *co-emerge* (now retained), the fix is to land a canonical one-line definition somewhere durable. For *trust architecture*, *authentic*, *sigil*, the fix is the rewrite applied at every instance in one PR.
+**What is *not* a pattern (corrected from the first pass):** *frequency*, *energy*, *vibration*, *sacred*, *chakra*, *co-emergence*, *authentic digital self*, *trust architecture*, *ON AIR*, *Activate*. These were first-pass conflicts but are founder-owned vocabulary. The audit's first-pass mistake was treating Charter defaults as ceilings; the corrected reading treats them as defaults the project overrides where authorial intent is explicit.
+
+**Procedural carry-forward:** *co-emergence* recurs in three surfaces without a canonical source. A one-line definition belongs somewhere durable (foundation glossary) so future contributors don't drift it. Same applies to *trust architecture* given the cross-surface state between PR #52 and Studio.
 
 ---
 
@@ -369,8 +386,8 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 > **stUdio** is the room where the member does their own work, not where the system performs for them.
 
 **Implication for the rewrite:**
-- Studio's framing copy should describe what *the member does in Studio*, not what *Studio does for the member*. *Activate* and *Unlocks* both invert this.
-- The room metaphor is doing real work — keep it, keep it consistent (Conflict 14), and let it carry the structural framing without needing *digital self* glosses.
+- The room metaphor is doing real work — keep it, keep it consistent (Conflict 14), and let it carry the structural framing.
+- *Unlocks* inverts the member-does-the-work direction by suggesting Studio gates progress; the gating-language refinement (Conflict 11) follows from this frame.
 
 ### Frame B — Sanctuary
 
@@ -388,9 +405,8 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 > **Live.** What stUdio is for. The inner work becomes form. Practice, reflection, embodiment. The path is the practice, not the reading about the practice.
 
 **Implication for the rewrite:**
-- Studio is the *live* surface; that fact can do the work that *authentic* / *co-emerge* / *emergence* are currently doing.
-- The L3 (Personal OS) lede should be reframed around the arc rather than around *co-emerge with AI*; the AI collaboration is the *form* the live work takes, not a fourth movement.
-- The *Unlocks when…* phrasing can be replaced by language that names what is in place when L3 becomes useful, rather than language that gates progress.
+- *Co-emerge* and *human emergence* are now retained (Conflict 7); they name the *mode* the L3 work happens in, not a contraband fourth movement. The arc still holds underneath.
+- The *Unlocks when…* phrasing on the L3 readiness gate (Conflict 11) can be replaced by language that names what is in place when L3 becomes useful, rather than language that gates progress — same arc-not-funnel reading.
 
 ---
 
@@ -405,31 +421,31 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 
 ---
 
-## 8. Proposed approach to the rewrite
+## 8. Proposed approach to the refinements PR
 
-(Approach only. The actual rewrite is a separate PR, pending your approval of this audit. Steps are renumbered to reflect the 28 May 2026 reclassifications; only active items remain.)
+(Approach only. The actual refinements are a separate PR. Now scoped to **four active items plus three small carry-forwards**, all in the *texture* category — none break principles. Founder may retain any item.)
 
-**A note on register, before steps.** The rewrite is not aiming for neutral, flat, or maximally compliant language. Studio is allowed to be felt and textured. The rewrite's job is to soften the items the founder agreed are active — not to scrub the surface clean of voice.
+**A note on register, before steps.** The refinements are not aiming for neutral, flat, or maximally compliant language. Studio is allowed to be felt and textured. Each refinement is a *proposed* change with candidates; the founder picks per item.
 
-1. **Anchor the voice on the Studio surfaces that already work** — the Notepad placeholder (`7181`), the Save confirmation (`7183`), the Nexus knock line (`7285`), the *Compass points you home* modal title (`7474`), and the *Step across the threshold* lede (`7476`). Whatever replaces the failing strings should sit beside these without standing out as louder.
+1. **Execute the *sigil → Cipher* migration** (Conflict 10). Five member-facing surfaces in `studio.html`, plus the L1 *Digital key · sigil* and L2 *Home · sigil* field labels in `BUILDER_STANDARD`. This is the only item in the PR that is a *direct standing instruction* rather than a refinement proposal.
 
-2. **Treat Conflicts 6 + 8 + 15 as one paragraph rewrite.** *Three levels of your authentic digital self* + *trust architecture* + the Studio Path lede are interlocked. Rewrite the modal title and lede together; do not patch sentences in isolation. *Co-emerge* in the lede stays (Conflict 7 retained); *authentic digital self* and the *trust architecture* tail do not.
+2. **Refine the gating-language pattern** (Conflict 11). *Unlocks when…* and *Locked / Unlocked / Active / Evolving* get candidate replacements. *Activate my profile* stays (Conflict 5 retained); this item is only about the L3 readiness gate and the OS status pills.
 
-3. **Execute the *sigil → Cipher* migration** (Conflict 10). Across all five Studio surfaces in the same PR. Carry the same decision into the L1 *Digital key · sigil* and L2 *Home · sigil* field labels in `BUILDER_STANDARD`. This completes the carry-forward from the trust-messaging rewrite.
+3. **Refine the Lens subtitle** (Conflict 13). Single phrase, candidates that match the register of the other three room subtitles.
 
-4. **Replace *vibe* and *sacred* with plain descriptors** (Conflicts 1, 2). The control is fine; the labels are the problem. *Set Your Vibe* → a label that names what the panel does (atmosphere, sound + light, room conditions). *Sacred Tones* → a sound category name that describes the tones, not their status. Per the register note above, the replacements should still feel — not become Marriott bathroom signage.
+4. **Resolve *direction* vs. *room*** (Conflict 14). Coherence pick; founder chooses which word survives.
 
-5. **Replace *Unlocks when…* and gamified status pills** (Conflict 11). *Unlocks when…* → a phrasing that names what is in place, not what is unlocked. *Locked / Unlocked / Active / Evolving* → simpler status words that don't import the game-UI register. *Activate my profile* stays (Conflict 5 retained).
+5. **Phrase-level carry-forward: *minimum viable digital self*** (from Conflict 6). The *minimum viable* startup register is the part that's off; candidates proposed.
 
-6. **Soften the destiny tilt on the Lens room subtitle** (Conflict 13). *"the way you are here to perceive"* → a phrasing closer to the other three room subtitles in register (*the work that finds you*, *your fertile ground*, *the music within you*). One word's worth of work.
+6. **Cross-surface carry-forward: *trust architecture* divergence with PR #52** (from Conflict 8). Founder picks between restoring on manifesto/homepage or scoping PR #52's edit to the specific *for conscious technology* tail.
 
-7. **Resolve *direction* vs. *room*** (Conflict 14). One choice; applied everywhere. *Room* is dominant elsewhere in `studio.html` and is the four-layer-architecture-aligned word.
+7. **Founder decision on Conflict 1 (*Set Your Vibe*).** Retain or refine; candidates listed in the conflict entry.
 
-8. **Land a canonical one-line definition of *co-emergence*** somewhere durable (Conflict 16 + carry-forward from Conflict 7). Likely `om-field-golden-thread.md` or a new short glossary. Small foundation-doc edit, separate PR.
+8. **Optional carry-forward: canonical definition of *co-emergence*** (from Conflict 7 + 16). Lands as a small separate foundation-doc PR, not in the refinements PR itself.
 
-9. **Touch all instances of a duplicated phrase in a single PR.** *Authentic*, *trust architecture*, *sigil* appear in multiple surfaces. The PR must replace every instance.
+9. **Optional carry-forward: Charter / voice-samples amendments** — §3 (Sanskrit exemption), §7 (superlatives scoped to system-level), §6 / §5 (frame-vs-conversation scope), §195 (drop *frequency*, *energy*, possibly *vibe* from banned list, replace with register guidance). Bundle as one small follow-up PR after the refinements PR is in.
 
-10. **Cross-check each rewritten string against the seven-point self-check** in `nexus-guidance-charter.md` **and** against the three positive frames in §6 above. If a sentence fails any of the seven, or does not sit cleanly inside one of the three frames, rewrite. Same gate the trust-messaging rewrite used.
+**Process for each item:** before / after / rationale / 1–3 candidate replacements where applicable. Founder picks per item. Nothing replaces silently.
 
 ---
 
@@ -447,14 +463,16 @@ From [`../../foundation/four-layer-architecture.md`](../../foundation/four-layer
 
 If you approve this audit:
 
-- I open a separate PR titled *Studio vocabulary rewrite — revision area 2* with proposed replacement strings as a diff, citing the Charter rule that drove each non-obvious change.
-- The rewrite addresses the **nine active conflicts** (1, 2, 6, 8, 10, 11, 13, 14, 15) plus the procedural carry-forward (16). Retained items (3, 4, 5, 7, 9, 12) stay as written.
+- I open a separate PR titled *Studio vocabulary refinements — revision area 2* with proposed changes and candidate replacements per item. Founder picks per item; nothing replaces silently.
+- The refinements PR addresses **Conflict 10** (*sigil → Cipher*, the one standing instruction) plus the texture-level items **11**, **13**, **14**, plus three carry-forwards: *minimum viable digital self*, *trust architecture* cross-surface divergence, and **Conflict 1** (*Set Your Vibe*) as a founder decision.
+- Retained items (2, 3, 4, 5, 6, 7, 8, 9, 12) stay as written.
 - `tuner/client/public/studio.html` stays untouched — intentional, per founder direction.
-- The *sigil → Cipher* migration lands in the same PR (Conflict 10).
-- The canonical-source definition of *co-emergence* (carry-forward from Conflicts 7 + 16) lands in a small separate foundation-doc PR.
-- Charter §3 (Sanskrit) and voice-samples §195 (banned vocabulary) wording amendments are flagged here and land as their own small follow-up PR after this revision area is complete.
+- The canonical-source definition of *co-emergence* lands in a small separate foundation-doc PR.
+- Charter §3, §5, §6, §7 and voice-samples §195 wording amendments bundle as one small follow-up PR after the refinements PR is in.
 
 If you want changes to the audit first, mark them inline in this document on the PR.
+
+**Related work landing in parallel:** a one-page spec for an admin-panel vocabulary-governance feature (`docs/product/vocabulary-governance.md`) on its own branch. The spec captures the *living vocabulary surface* idea — audit / Nexus / member flags arrive in a queue, founder decides retain / refine / remove / hold, decisions write to the decision log and propose Charter edits. Independent of this audit; both land in their own PRs.
 
 ---
 
