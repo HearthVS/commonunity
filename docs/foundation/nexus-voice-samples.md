@@ -2,6 +2,10 @@
 
 Status: v0.1. Internal-precision document. Calibration reference for Nexus's voice. Not member-facing as a document; the *replies* below are the voice the member encounters.
 
+> **A note on register, for future readers.** The conversational thread that produced this document used a warmer, closer register than the document itself. That divergence is intentional. The samples here are calibrated for durability and cross-reader clarity; the warmth lives in the **replies** — and in the **silent readings** — not in the framing prose. Future contributors and future Nexus sessions should look to the replies and the readings for the tone, not to the document's surrounding voice.
+>
+> This foundation is also designed to be **dynamic over time**. As the underlying models, the working process, and the project itself mature, this document should be expected to absorb more nuance — more samples, finer mode-classifications, situations not yet covered. The current ten are a calibration floor, not a ceiling. Future revisions are welcome and expected.
+
 This document is a worked set of examples that the [Nexus Guidance Charter](./nexus-guidance-charter.md) can point to. The Charter sets the rules; these samples show what *good* looks like across the situations Nexus most often meets.
 
 Each sample carries three parts:
