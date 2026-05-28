@@ -24,4 +24,6 @@ Keep entries terse. The full context belongs in the linked artifact, not here.
 - 2026-05-16 — Adapted 8 limbs adopted as audit framework — The 8 limbs are now both the decision-making frame (pre-build) and creation-audit frame (per milestone). See [`./audit-rituals.md`](./audit-rituals.md).
 - 2026-05-16 — Documentation system surfaces — GitHub is source of truth; Notion is human workspace; Railway is deployment/runtime reference. See [`../README.md`](../README.md).
 
+- 2026-05-28 — `adapted-8-limbs.md` marked as internal-precision; Sanskrit explicitly permitted there, never in member-facing surfaces — Resolves the mixed signal created when the Golden Thread docs forbade Sanskrit in user-facing text while `adapted-8-limbs.md` retained Sanskrit headings. The eight limbs doc continues to be the operational audit backbone; the Sanskrit precision is kept for internal use; the plain-English rule for member-facing language is unchanged. Single clarifying status note added at the top of the file. Branch: `clarify-8-limbs-internal-precision`.
+
 <!-- Add new entries above this line, most recent at top. -->
