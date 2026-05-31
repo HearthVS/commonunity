@@ -1086,5 +1086,168 @@
   </div>
 </footer>
 
+<!-- CommonUnity Feedback Widget -->
+<div id="cu-feedback-widget">
+  <button id="cu-fb-trigger" title="Send feedback" aria-label="Send feedback">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6l-4 3V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div id="cu-fb-panel" class="cu-hidden">
+    <div id="cu-fb-head">
+      <span>Beta feedback</span>
+      <button id="cu-fb-close">×</button>
+    </div>
+    <form id="cu-fb-form">
+      <div class="cu-fb-row">
+        <label>Type</label>
+        <div class="cu-fb-radios">
+          <label><input type="radio" name="fb-type" value="bug" /> Bug</label>
+          <label><input type="radio" name="fb-type" value="feature" /> Feature</label>
+          <label><input type="radio" name="fb-type" value="general" checked /> General</label>
+        </div>
+      </div>
+      <div class="cu-fb-row">
+        <label>App</label>
+        <select id="cu-fb-app">
+          <option value="compass">cOMpass</option>
+          <option value="studio">stUdio</option>
+          <option value="tuner">Tuner</option>
+          <option value="hexagram-reader">Hexagram Reader</option>
+          <option value="threshold">Threshold</option>
+          <option value="commons">cOMmons</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="cu-fb-row">
+        <label>Message</label>
+        <textarea id="cu-fb-message" placeholder="What's on your mind?" required></textarea>
+      </div>
+      <div class="cu-fb-row">
+        <label>Your name (optional)</label>
+        <input id="cu-fb-name" type="text" placeholder="Leave blank to stay anonymous">
+      </div>
+      <button type="submit" id="cu-fb-submit">Send</button>
+      <div id="cu-fb-msg"></div>
+    </form>
+  </div>
+</div>
+<style>
+#cu-feedback-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9000;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+#cu-fb-trigger {
+  width: 46px; height: 46px;
+  border-radius: 999px;
+  border: 1px solid rgba(213,173,100,0.35);
+  background: rgba(8,8,13,0.88);
+  color: rgba(213,173,100,0.8);
+  display: grid; place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.36);
+  backdrop-filter: blur(12px);
+  transition: color 180ms, border-color 180ms, transform 120ms;
+}
+#cu-fb-trigger:hover { color: #d5ad64; border-color: rgba(213,173,100,0.6); transform: scale(1.06); }
+#cu-fb-panel {
+  position: absolute;
+  bottom: 58px; right: 0;
+  width: 320px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(8,8,13,0.96);
+  border: 1px solid rgba(248,242,232,0.16);
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.46);
+  overflow: hidden;
+}
+#cu-fb-panel.cu-hidden { display: none; }
+#cu-fb-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid rgba(248,242,232,0.09);
+  color: rgba(248,242,232,0.86);
+  font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase;
+}
+#cu-fb-close {
+  background: none; border: none; color: rgba(248,242,232,0.46);
+  font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0;
+}
+#cu-fb-form { padding: 14px 18px 18px; display: grid; gap: 12px; }
+.cu-fb-row { display: grid; gap: 6px; }
+.cu-fb-row label { font-size: 0.72rem; color: rgba(248,242,232,0.46); letter-spacing: 0.12em; text-transform: uppercase; }
+.cu-fb-radios { display: flex; gap: 12px; }
+.cu-fb-radios label { font-size: 0.84rem; color: rgba(248,242,232,0.78); text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+#cu-fb-form textarea, #cu-fb-form input[type="text"], #cu-fb-form select {
+  width: 100%; color: rgba(248,242,232,0.9);
+  border: 1px solid rgba(248,242,232,0.16); border-radius: 12px;
+  background: rgba(0,0,0,0.24); padding: 10px 12px; font: inherit; font-size: 0.9rem; outline: none;
+}
+#cu-fb-form textarea { min-height: 80px; resize: vertical; }
+#cu-fb-form textarea:focus, #cu-fb-form input:focus, #cu-fb-form select:focus {
+  border-color: rgba(213,173,100,0.52);
+  box-shadow: 0 0 0 3px rgba(213,173,100,0.1);
+}
+#cu-fb-submit {
+  width: 100%; padding: 11px; border: 0; border-radius: 999px;
+  background: linear-gradient(135deg, #f5e7bd, #d5ad64);
+  color: #0a0805; font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+#cu-fb-msg { font-size: 0.8rem; color: rgba(248,242,232,0.6); min-height: 18px; }
+</style>
+<script>
+(function() {
+  const trigger = document.getElementById('cu-fb-trigger');
+  const panel = document.getElementById('cu-fb-panel');
+  const closeBtn = document.getElementById('cu-fb-close');
+  const form = document.getElementById('cu-fb-form');
+  const msg = document.getElementById('cu-fb-msg');
+
+  trigger.addEventListener('click', () => panel.classList.toggle('cu-hidden'));
+  closeBtn.addEventListener('click', () => panel.classList.add('cu-hidden'));
+
+  // Detect current app from URL
+  const path = location.pathname;
+  const appMap = { '/compass': 'compass', '/studio': 'studio', '/tuner': 'tuner', '/commons': 'commons', '/threshold': 'threshold' };
+  const detectedApp = Object.entries(appMap).find(([k]) => path.startsWith(k))?.[1] || 'other';
+  const appSelect = document.getElementById('cu-fb-app');
+  if (appSelect) appSelect.value = detectedApp;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('cu-fb-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    try {
+      const type = form.querySelector('input[name="fb-type"]:checked')?.value || 'general';
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          app: appSelect.value,
+          message: document.getElementById('cu-fb-message').value,
+          name: document.getElementById('cu-fb-name').value,
+        }),
+      });
+      if (res.ok) {
+        msg.textContent = 'Thank you — received.';
+        form.reset();
+        appSelect.value = detectedApp;
+        setTimeout(() => { panel.classList.add('cu-hidden'); msg.textContent = ''; }, 1800);
+      } else {
+        msg.textContent = 'Could not send. Please try again.';
+      }
+    } catch {
+      msg.textContent = 'Network error. Please try again.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send';
+    }
+  });
+})();
+</script>
 </body>
 </html>

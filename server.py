@@ -1154,6 +1154,69 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
                 now,
             ),
         )
+    # ── OM Cipher members table ───────────────────────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS om_cipher_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL DEFAULT '',
+            birth_date TEXT NOT NULL DEFAULT '',
+            birth_time TEXT,
+            legal_name TEXT NOT NULL DEFAULT '',
+            life_path INTEGER,
+            expression INTEGER,
+            soul_urge INTEGER,
+            personality INTEGER,
+            lunar_phase INTEGER,
+            solar_quarter INTEGER,
+            gk_gate INTEGER,
+            gk_line INTEGER,
+            hd_type TEXT NOT NULL DEFAULT '',
+            hd_authority TEXT NOT NULL DEFAULT '',
+            hd_profile TEXT NOT NULL DEFAULT '',
+            visibility_tier TEXT NOT NULL DEFAULT 'private',
+            om_cipher_seed TEXT NOT NULL DEFAULT '',
+            sigil_svg TEXT NOT NULL DEFAULT '',
+            full_record_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    # ── Waitlist table ────────────────────────────────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS waitlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            email TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            interest TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    # ── Feedback table ────────────────────────────────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'general',
+            app TEXT NOT NULL DEFAULT 'other',
+            message TEXT NOT NULL DEFAULT '',
+            name TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'new'
+        )
+        """
+    )
     conn.commit()
 
 
@@ -2811,14 +2874,23 @@ _WAITLIST_LOCK = _threading.Lock()
 _WAITLIST_FIELDS = ["timestamp", "email", "name", "interest", "source", "user_agent", "ip"]
 
 def _waitlist_append(row: dict) -> None:
-    with _WAITLIST_LOCK:
-        new_file = not _WAITLIST_PATH.exists()
-        _WAITLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with _WAITLIST_PATH.open("a", newline="", encoding="utf-8") as fh:
-            writer = _csv.DictWriter(fh, fieldnames=_WAITLIST_FIELDS, extrasaction="ignore")
-            if new_file:
-                writer.writeheader()
-            writer.writerow(row)
+    """Append a waitlist signup to SQLite (and optionally legacy CSV)."""
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO waitlist (timestamp, email, name, interest, source, user_agent, ip)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row.get("timestamp", _now_iso()),
+                row.get("email", ""),
+                row.get("name", ""),
+                row.get("interest", ""),
+                row.get("source", "homepage"),
+                row.get("user_agent", ""),
+                row.get("ip", ""),
+            ),
+        )
 
 @app.post("/api/waitlist")
 async def waitlist_submit(
@@ -2895,12 +2967,88 @@ class ResonanceEventInput(BaseModel):
     source_surface: Optional[str] = None
 
 
-# In-memory v1 store. The implementation plan calls for SQL tables; v1 ships
-# an additive in-memory shim so the routes can be wired and exercised end-to-
-# end without a migration. Persistence belongs to the next phase.
+# SQLite-backed store (migrated from in-memory shim).
 _OM_STORE_LOCK = _om_threading.Lock()
-_OM_RECORDS: dict[str, dict] = {}
-_OM_EVENTS: dict[str, list[dict]] = {}
+_OM_EVENTS: dict[str, list[dict]] = {}  # Resonance events remain in-memory (future: SQLite)
+
+def _om_save(record: dict) -> None:
+    """Persist an OM Cipher record to SQLite."""
+    member_id = record.get("member_id", "")
+    meta = record.get("metadata", {}) or {}
+    lp = meta.get("life_path") or {}
+    expr = meta.get("expression") or {}
+    su = meta.get("soul_urge") or {}
+    pe = meta.get("personality") or {}
+    gk = meta.get("gk_primary") or {}
+    temporal = {}
+    if meta.get("lunar_phase"):
+        temporal["lunar_phase"] = meta["lunar_phase"].get("value")
+    if meta.get("solar_quarter"):
+        temporal["solar_quarter"] = meta["solar_quarter"].get("value")
+    hd = record.get("input", {}) or {}
+    hd_data = hd.get("human_design") or {}
+    now = _now_iso()
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO om_cipher_members
+                (member_id, name, birth_date, birth_time, legal_name,
+                 life_path, expression, soul_urge, personality,
+                 lunar_phase, solar_quarter, gk_gate, gk_line,
+                 hd_type, hd_authority, hd_profile, visibility_tier,
+                 om_cipher_seed, sigil_svg, full_record_json, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(member_id) DO UPDATE SET
+                name=excluded.name, updated_at=excluded.updated_at,
+                visibility_tier=excluded.visibility_tier,
+                full_record_json=excluded.full_record_json,
+                sigil_svg=excluded.sigil_svg
+            """,
+            (
+                member_id,
+                (record.get("input") or {}).get("preferred_name") or (record.get("input") or {}).get("legal_name") or "",
+                (record.get("input") or {}).get("birth_date") or "",
+                (record.get("input") or {}).get("birth_time"),
+                (record.get("input") or {}).get("legal_name") or "",
+                lp.get("value"),
+                expr.get("value"),
+                su.get("value"),
+                pe.get("value"),
+                temporal.get("lunar_phase"),
+                temporal.get("solar_quarter"),
+                gk.get("gate"),
+                gk.get("line"),
+                hd_data.get("type") or "",
+                hd_data.get("authority") or "",
+                hd_data.get("profile") or "",
+                record.get("visibility_tier") or "private",
+                record.get("om_cipher_seed") or "",
+                record.get("sigil_svg") or "",
+                json.dumps(record, default=str),
+                now, now,
+            ),
+        )
+
+def _om_load(member_id: str) -> dict | None:
+    """Load an OM Cipher record from SQLite."""
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT full_record_json FROM om_cipher_members WHERE member_id=?", (member_id,)
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["full_record_json"])
+    except Exception:
+        return None
+
+def _om_all() -> list[dict]:
+    """Load all OM Cipher members (summary rows) from SQLite."""
+    with _admin_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM om_cipher_members ORDER BY created_at DESC"
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 def _om_disabled_response():
@@ -2919,12 +3067,11 @@ async def om_cipher_generate(body: OmCipherInput):
     if record.get("pending"):
         raise HTTPException(status_code=400, detail=record.get("reason", "invalid input"))
     with _OM_STORE_LOCK:
-        existing = _OM_RECORDS.get(member_id)
+        existing = _om_load(member_id)
         if existing and existing.get("input_hash") == record["input_hash"]:
-            # Idempotent — already generated with this exact identity bundle.
             return {"ok": True, "member_id": member_id, "om_cipher": existing, "reused": True}
         record["member_id"] = member_id
-        _OM_RECORDS[member_id] = record
+        _om_save(record)
     return {"ok": True, "member_id": member_id, "om_cipher": record}
 
 
@@ -2933,7 +3080,7 @@ async def om_cipher_get(member_id: str):
     if not _om_engine.is_enabled():
         _om_disabled_response()
     with _OM_STORE_LOCK:
-        rec = _OM_RECORDS.get(member_id)
+        rec = _om_load(member_id)
     if not rec:
         raise HTTPException(status_code=404, detail="not found")
     return {"ok": True, "om_cipher": rec}
@@ -2944,7 +3091,7 @@ async def om_cipher_public(member_id: str):
     if not _om_engine.is_enabled():
         _om_disabled_response()
     with _OM_STORE_LOCK:
-        rec = _OM_RECORDS.get(member_id)
+        rec = _om_load(member_id)
     if not rec:
         raise HTTPException(status_code=404, detail="not found")
     if rec.get("visibility_tier") != "shared":
@@ -2958,7 +3105,7 @@ async def om_cipher_badge(member_id: str):
     if not _om_engine.is_enabled():
         _om_disabled_response()
     with _OM_STORE_LOCK:
-        rec = _OM_RECORDS.get(member_id)
+        rec = _om_load(member_id)
     if not rec:
         raise HTTPException(status_code=404, detail="not found")
     proj = _om_engine.to_public_projection(rec, tier="badge")
@@ -2972,7 +3119,7 @@ async def om_cipher_resonance_event(member_id: str, body: ResonanceEventInput):
     if not _om_engine.is_bhramari_enabled():
         raise HTTPException(status_code=404, detail="bhramari capture disabled")
     with _OM_STORE_LOCK:
-        rec = _OM_RECORDS.get(member_id)
+        rec = _om_load(member_id)
     capture = {
         "hz": body.hz,
         "metadata": body.metadata or {},
@@ -3012,8 +3159,100 @@ async def om_cipher_visibility(member_id: str, body: OmCipherVisibilityInput):
     if body.visibility_tier not in ("private", "shared"):
         raise HTTPException(status_code=400, detail="invalid visibility_tier")
     with _OM_STORE_LOCK:
-        rec = _OM_RECORDS.get(member_id)
+        rec = _om_load(member_id)
         if not rec:
             raise HTTPException(status_code=404, detail="not found")
         rec["visibility_tier"] = body.visibility_tier
+        _om_save(rec)
     return {"ok": True, "visibility_tier": body.visibility_tier}
+
+# ── Admin: OM Cipher members ──────────────────────────────────────────────────
+
+@app.get("/api/admin/members")
+async def admin_members(request: Request):
+    _require_admin(request)
+    members = _om_all()
+    return {"members": members, "total": len(members)}
+
+
+# ── Admin: Waitlist ───────────────────────────────────────────────────────────
+
+@app.get("/api/admin/waitlist")
+async def admin_waitlist(request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM waitlist ORDER BY timestamp DESC"
+        ).fetchall()
+    entries = [_row_to_dict(r) for r in rows]
+    return {"entries": entries, "total": len(entries)}
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+class FeedbackSubmitRequest(BaseModel):
+    type: str = "general"
+    app: str = "other"
+    message: str = ""
+    name: str = ""
+    email: str = ""
+    invite_token: str = ""
+
+
+@app.post("/api/feedback")
+async def submit_feedback(body: FeedbackSubmitRequest, request: Request):
+    """Public endpoint — any visitor can submit feedback."""
+    msg = (body.message or "").strip()
+    if not msg or len(msg) > 4000:
+        raise HTTPException(status_code=400, detail="Message required (max 4000 chars)")
+    allowed_types = {"bug", "feature", "general"}
+    allowed_apps = {"compass", "studio", "tuner", "hexagram-reader", "commons", "threshold", "other"}
+    fb_type = body.type if body.type in allowed_types else "general"
+    fb_app = body.app if body.app in allowed_apps else "other"
+    now = _now_iso()
+    ua = request.headers.get("user-agent", "")[:300]
+    ip = (request.client.host if request.client else "") or ""
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO feedback (timestamp, type, app, message, name, email, invite_token, user_agent, ip, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+            """,
+            (now, fb_type, fb_app, msg,
+             (body.name or "").strip()[:200],
+             (body.email or "").strip()[:254],
+             (body.invite_token or "").strip()[:200],
+             ua, ip),
+        )
+    return {"ok": True}
+
+
+@app.get("/api/admin/feedback")
+async def admin_feedback(request: Request, status: str = ""):
+    _require_admin(request)
+    with _admin_db() as conn:
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM feedback WHERE status=? ORDER BY timestamp DESC", (status,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM feedback ORDER BY timestamp DESC"
+            ).fetchall()
+        unread = conn.execute(
+            "SELECT COUNT(*) as n FROM feedback WHERE status='new'"
+        ).fetchone()["n"]
+    return {"entries": [_row_to_dict(r) for r in rows], "unread": unread}
+
+
+@app.post("/api/admin/feedback/{feedback_id}/acknowledge")
+async def acknowledge_feedback(feedback_id: int, request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT id FROM feedback WHERE id=?", (feedback_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute(
+            "UPDATE feedback SET status='acknowledged' WHERE id=?", (feedback_id,)
+        )
+    return {"ok": True}

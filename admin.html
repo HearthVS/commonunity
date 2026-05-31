@@ -566,6 +566,285 @@
       background: radial-gradient(circle at 80% 10%, rgba(79,95,143,0.22), transparent 62%), rgba(10,14,26,0.98);
     }
     .hidden { display: none !important; }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      padding: 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(248,242,232,0.1);
+      width: fit-content;
+    }
+    .tab-btn {
+      position: relative;
+      padding: 9px 22px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font: inherit;
+      font-size: 0.84rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 180ms ease;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      background: rgba(213,173,100,0.15);
+      color: var(--gold);
+      border: 1px solid rgba(213,173,100,0.28);
+    }
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--rose);
+      color: #0a0805;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-left: 7px;
+      vertical-align: middle;
+    }
+    .tab-badge.hidden { display: none; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Members ── */
+    .member-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .member-card {
+      padding: 18px;
+      border: 1px solid rgba(248,242,232,0.1);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: border-color 180ms ease, background 180ms ease;
+      display: grid;
+      gap: 10px;
+    }
+    .member-card:hover {
+      border-color: rgba(213,173,100,0.36);
+      background: rgba(213,173,100,0.05);
+    }
+    .member-sigil {
+      width: 72px;
+      height: 72px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.24);
+      border: 1px solid rgba(248,242,232,0.1);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .member-sigil svg { width: 56px; height: 56px; }
+    .member-name { font-weight: 560; font-size: 1rem; }
+    .member-meta { color: var(--faint); font-size: 0.78rem; line-height: 1.6; }
+    .member-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .member-tag {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(248,242,232,0.14);
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(3,3,6,0.82);
+      backdrop-filter: blur(8px);
+      display: grid; place-items: center;
+      padding: 20px;
+    }
+    .modal-box {
+      background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.03)), rgba(8,8,13,0.96);
+      border: 1px solid rgba(248,242,232,0.16);
+      border-radius: 28px;
+      padding: 32px;
+      max-width: 540px; width: 100%;
+      max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+    }
+    .modal-close {
+      float: right;
+      background: none; border: none;
+      color: var(--faint); font-size: 1.4rem;
+      cursor: pointer; line-height: 1;
+    }
+    .modal-dl {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px 18px;
+      margin: 18px 0 0;
+    }
+    .modal-dl dt {
+      color: var(--faint);
+      font-size: 0.76rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding-top: 2px;
+      white-space: nowrap;
+    }
+    .modal-dl dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+
+    /* ── Waitlist ── */
+    .waitlist-table { min-width: 680px; }
+
+    /* ── Feedback ── */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .filter-btn {
+      padding: 6px 16px;
+      border: 1px solid rgba(248,242,232,0.16);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .filter-btn:hover { color: var(--text); }
+    .filter-btn.active {
+      background: rgba(213,173,100,0.12);
+      color: var(--gold);
+      border-color: rgba(213,173,100,0.28);
+    }
+    .feedback-card {
+      padding: 18px 22px;
+      border: 1px solid rgba(248,242,232,0.1);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .feedback-card.is-new {
+      border-color: rgba(201,135,158,0.28);
+      background: rgba(201,135,158,0.04);
+    }
+    .feedback-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .feedback-type-tag {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .feedback-type-tag.bug { background: rgba(230,160,160,0.12); color: var(--danger); border: 1px solid rgba(230,160,160,0.22); }
+    .feedback-type-tag.feature { background: rgba(126,154,208,0.12); color: var(--blue); border: 1px solid rgba(126,154,208,0.22); }
+    .feedback-type-tag.general { background: rgba(134,182,154,0.12); color: var(--green); border: 1px solid rgba(134,182,154,0.22); }
+    .feedback-app-tag {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      border: 1px solid rgba(248,242,232,0.14);
+      color: var(--muted);
+    }
+    .feedback-status-pill {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      margin-left: auto;
+    }
+    .feedback-status-pill.new {
+      background: rgba(201,135,158,0.14);
+      color: var(--rose);
+      border: 1px solid rgba(201,135,158,0.28);
+    }
+    .feedback-status-pill.acknowledged {
+      background: rgba(248,242,232,0.05);
+      color: var(--faint);
+      border: 1px solid rgba(248,242,232,0.12);
+    }
+    .feedback-message {
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 0.94rem;
+    }
+    .feedback-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--faint);
+      font-size: 0.78rem;
+      flex-wrap: wrap;
+    }
+    .feedback-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-sm {
+      min-height: 34px;
+      padding: 0 14px;
+      font-size: 0.82rem;
+      border: 1px solid rgba(248,242,232,0.2);
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+    }
+
+    /* ── Pane headers ── */
+    .pane-header {
+      margin-bottom: 20px;
+    }
+    .pane-header h2 {
+      margin: 0 0 6px;
+      font-size: 1.4rem;
+      font-weight: 520;
+      letter-spacing: -0.02em;
+    }
+    .pane-header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .pane-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .count-badge {
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(248,242,232,0.12);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
     @media (max-width: 900px) {
       header, .grid, .metrics, .split, .brand-field, .color-grid, .mini-preview, .section-divider, .system-grid, .quick-links { grid-template-columns: 1fr; }
       .section-divider::before, .section-divider::after { display: none; }
@@ -573,6 +852,9 @@
       .shell { width: min(100% - 22px, 1180px); padding-top: 24px; }
       .card { padding: 18px; }
       .ops-head { display: grid; }
+      .member-grid { grid-template-columns: 1fr; }
+      .tab-bar { flex-wrap: wrap; width: 100%; border-radius: 18px; }
+      .tab-btn { flex: 1; text-align: center; font-size: 0.76rem; padding: 8px 12px; }
     }
   </style>
 </head>
@@ -599,157 +881,257 @@
     </section>
 
     <main id="dashboard" class="hidden">
-      <section class="panel card ops-dashboard" aria-labelledby="ops-dashboard-title">
-        <div class="ops-head">
+      <!-- Tab bar -->
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="field">Field</button>
+        <button class="tab-btn" data-tab="members">Members</button>
+        <button class="tab-btn" data-tab="waitlist">Waitlist</button>
+        <button class="tab-btn" data-tab="feedback">Feedback <span class="tab-badge hidden" id="feedback-badge">0</span></button>
+        <button class="tab-btn" data-tab="system">System</button>
+      </nav>
+
+      <!-- ═══ Tab: Field ═══ -->
+      <div class="tab-pane active" data-pane="field">
+        <div class="section-intro">
           <div>
-            <h2 id="ops-dashboard-title">Navigation dashboard</h2>
-            <p class="hint">A live reference surface for the main CommonUnity spaces. This is the place to orient yourself before opening the field, inviting someone, or checking whether a doorway needs attention.</p>
+            <h2>Invitation field</h2>
+            <p>Create the doorway, send the first contact, and watch each person move from invitation into threshold and cOMpass.</p>
           </div>
-          <button class="btn ops-refresh" id="ops-refresh" type="button">Check spaces</button>
         </div>
-        <div class="system-grid" id="space-status"></div>
-        <div class="quick-links" id="admin-live-links"></div>
 
-        <!-- Claude API spend widget -->
-        <div class="claude-spend-bar" id="claude-spend-bar">
-          <div class="spend-label">
-            <span class="spend-icon">◈</span>
-            <strong>Claude API spend</strong>
-          </div>
-          <div class="spend-months" id="spend-months">
-            <span class="spend-loading">Loading…</span>
-          </div>
-          <a class="spend-link" id="spend-billing-link" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">Billing ↗</a>
-        </div>
-      </section>
+        <section class="metrics">
+          <div class="panel metric"><strong id="metric-total">0</strong><span>Total invites</span></div>
+          <div class="panel metric"><strong id="metric-opened">0</strong><span>Opened</span></div>
+          <div class="panel metric"><strong id="metric-threshold">0</strong><span>Threshold complete</span></div>
+          <div class="panel metric"><strong id="metric-compass">0</strong><span>cOMpass entered</span></div>
+        </section>
 
-      <div class="section-intro">
-        <div>
-          <h2>Invitation field</h2>
-          <p>Create the doorway, send the first contact, and watch each person move from invitation into threshold and cOMpass.</p>
-        </div>
-      </div>
-
-      <section class="metrics">
-        <div class="panel metric"><strong id="metric-total">0</strong><span>Total invites</span></div>
-        <div class="panel metric"><strong id="metric-opened">0</strong><span>Opened</span></div>
-        <div class="panel metric"><strong id="metric-threshold">0</strong><span>Threshold complete</span></div>
-        <div class="panel metric"><strong id="metric-compass">0</strong><span>cOMpass entered</span></div>
-      </section>
-
-      <section class="grid">
-        <div class="panel card">
-          <h2>Create invitation</h2>
-          <p class="hint">Give each person a named doorway. The link can later grow into cohorts, guide relationships, and companion journeys.</p>
-          <form id="invite-form" class="fields">
-            <div>
-              <label for="invite-name">Name</label>
-              <input id="invite-name" required placeholder="e.g. Eda">
-            </div>
-            <div class="split">
+        <section class="grid">
+          <div class="panel card">
+            <h2>Create invitation</h2>
+            <p class="hint">Give each person a named doorway. The link can later grow into cohorts, guide relationships, and companion journeys.</p>
+            <form id="invite-form" class="fields">
               <div>
-                <label for="invite-email">Email optional</label>
-                <input id="invite-email" type="email" placeholder="person@example.com">
+                <label for="invite-name">Name</label>
+                <input id="invite-name" required placeholder="e.g. Eda">
+              </div>
+              <div class="split">
+                <div>
+                  <label for="invite-email">Email optional</label>
+                  <input id="invite-email" type="email" placeholder="person@example.com">
+                </div>
+                <div>
+                  <label for="invite-cohort">Cohort optional</label>
+                  <input id="invite-cohort" placeholder="beta-01">
+                </div>
               </div>
               <div>
-                <label for="invite-cohort">Cohort optional</label>
-                <input id="invite-cohort" placeholder="beta-01">
+                <label for="invite-notes">Notes optional</label>
+                <textarea id="invite-notes" placeholder="Context, relationship, follow-up notes…"></textarea>
               </div>
-            </div>
-            <div>
-              <label for="invite-notes">Notes optional</label>
-              <textarea id="invite-notes" placeholder="Context, relationship, follow-up notes…"></textarea>
-            </div>
-            <button class="btn btn-primary" type="submit">Generate magic link</button>
-          </form>
-          <div class="message" id="invite-message"></div>
-        </div>
-
-        <div class="panel card">
-          <h2>Recent activity</h2>
-          <p class="hint">A light signal stream from the threshold. It is intentionally simple for now.</p>
-          <div class="events" id="events"></div>
-        </div>
-      </section>
-
-      <section class="panel card" style="margin-top:18px;">
-        <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
-          <div>
-            <h2>Invitations</h2>
-            <p class="hint">Copy links, see movement, and revoke access when needed.</p>
+              <button class="btn btn-primary" type="submit">Generate magic link</button>
+            </form>
+            <div class="message" id="invite-message"></div>
           </div>
-          <button class="btn" id="refresh">Refresh</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Opened</th>
-                <th>Threshold</th>
-                <th>cOMpass</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="invite-rows"></tbody>
-          </table>
-        </div>
-      </section>
 
-      <div class="section-divider">Visual field</div>
+          <div class="panel card">
+            <h2>Recent activity</h2>
+            <p class="hint">A light signal stream from the threshold. It is intentionally simple for now.</p>
+            <div class="events" id="events"></div>
+          </div>
+        </section>
 
-      <section class="brand-field">
-        <div class="panel card brand-preview">
-          <div class="brand-logo-orb" id="brand-logo-preview" aria-label="Active cOMpass brand mark"></div>
-          <h2 id="brand-active-name">Brand Field</h2>
-          <p class="hint" id="brand-active-notes">The active cOMpass visual field will appear here.</p>
-          <div class="mini-preview">
-            <div class="mini-surface threshold">Threshold</div>
-            <div class="mini-surface compass">cOMpass</div>
-            <div class="mini-surface email">Email</div>
+        <section class="panel card" style="margin-top:18px;">
+          <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
+            <div>
+              <h2>Invitations</h2>
+              <p class="hint">Copy links, see movement, and revoke access when needed.</p>
+            </div>
+            <button class="btn" id="refresh">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Opened</th>
+                  <th>Threshold</th>
+                  <th>cOMpass</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invite-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="section-divider">Visual field</div>
+
+        <section class="brand-field">
+          <div class="panel card brand-preview">
+            <div class="brand-logo-orb" id="brand-logo-preview" aria-label="Active cOMpass brand mark"></div>
+            <h2 id="brand-active-name">Brand Field</h2>
+            <p class="hint" id="brand-active-notes">The active cOMpass visual field will appear here.</p>
+            <div class="mini-preview">
+              <div class="mini-surface threshold">Threshold</div>
+              <div class="mini-surface compass">cOMpass</div>
+              <div class="mini-surface email">Email</div>
+            </div>
+          </div>
+
+          <div class="panel card">
+            <h2>Brand Field</h2>
+            <p class="hint">Create and test cOMpass logo palettes without touching code. Save as draft first, then set active when the field feels right.</p>
+            <form id="brand-form" class="fields">
+              <div class="split">
+                <div>
+                  <label for="brand-name">Version name</label>
+                  <input id="brand-name" placeholder="OM Field Pearl v2">
+                </div>
+                <div>
+                  <label for="brand-email-png">Email PNG path</label>
+                  <input id="brand-email-png" placeholder="/assets/brand/compass-email-mark.png">
+                </div>
+              </div>
+              <div>
+                <label>Logo palette</label>
+                <div class="color-grid">
+                  <div class="color-field"><label for="brand-north">Gold</label><input id="brand-north" type="color" value="#d6b36a"></div>
+                  <div class="color-field"><label for="brand-east">Indigo</label><input id="brand-east" type="color" value="#4f5f8f"></div>
+                  <div class="color-field"><label for="brand-south">Sage</label><input id="brand-south" type="color" value="#6f9a84"></div>
+                  <div class="color-field"><label for="brand-west">Rose clay</label><input id="brand-west" type="color" value="#b4787e"></div>
+                  <div class="color-field"><label for="brand-center">Pearl</label><input id="brand-center" type="color" value="#f7ead2"></div>
+                </div>
+              </div>
+              <div>
+                <label for="brand-notes">Notes</label>
+                <textarea id="brand-notes" placeholder="What this version is trying to tune…"></textarea>
+              </div>
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Save as draft</button>
+                <button class="btn" type="button" id="brand-reset">Load active into editor</button>
+              </div>
+            </form>
+            <div class="message" id="brand-message"></div>
+            <div class="brand-version-list" id="brand-version-list"></div>
+          </div>
+        </section>
+      </div><!-- /tab-pane field -->
+
+      <!-- ═══ Tab: Members ═══ -->
+      <div class="tab-pane" data-pane="members">
+        <div class="pane-header-row">
+          <div class="pane-header" style="margin-bottom:0;">
+            <h2>cOMpass members</h2>
+            <p>People who have generated their OM Cipher.</p>
+          </div>
+          <span class="count-badge" id="members-count">—</span>
+        </div>
+        <div id="members-loading" class="muted" style="padding:24px 0;">Loading members…</div>
+        <div class="member-grid" id="member-grid"></div>
+        <div id="members-empty" class="hidden" style="padding:48px 0;text-align:center;color:var(--faint);">
+          No members yet. Once someone generates their OM Cipher in cOMpass, they will appear here.
+        </div>
+      </div><!-- /tab-pane members -->
+
+      <!-- ═══ Tab: Waitlist ═══ -->
+      <div class="tab-pane" data-pane="waitlist">
+        <div class="pane-header-row">
+          <div class="pane-header" style="margin-bottom:0;">
+            <h2>Waitlist</h2>
+            <p>Homepage signups waiting for an invitation.</p>
+          </div>
+          <span class="count-badge" id="waitlist-count">—</span>
+        </div>
+        <div id="waitlist-loading" class="muted" style="padding:24px 0;">Loading waitlist…</div>
+        <div class="panel card" id="waitlist-panel" style="display:none;">
+          <div class="table-wrap">
+            <table class="waitlist-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Interest</th>
+                  <th>Source</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="waitlist-rows"></tbody>
+            </table>
           </div>
         </div>
-
-        <div class="panel card">
-          <h2>Brand Field</h2>
-          <p class="hint">Create and test cOMpass logo palettes without touching code. Save as draft first, then set active when the field feels right.</p>
-          <form id="brand-form" class="fields">
-            <div class="split">
-              <div>
-                <label for="brand-name">Version name</label>
-                <input id="brand-name" placeholder="OM Field Pearl v2">
-              </div>
-              <div>
-                <label for="brand-email-png">Email PNG path</label>
-                <input id="brand-email-png" placeholder="/assets/brand/compass-email-mark.png">
-              </div>
-            </div>
-            <div>
-              <label>Logo palette</label>
-              <div class="color-grid">
-                <div class="color-field"><label for="brand-north">Gold</label><input id="brand-north" type="color" value="#d6b36a"></div>
-                <div class="color-field"><label for="brand-east">Indigo</label><input id="brand-east" type="color" value="#4f5f8f"></div>
-                <div class="color-field"><label for="brand-south">Sage</label><input id="brand-south" type="color" value="#6f9a84"></div>
-                <div class="color-field"><label for="brand-west">Rose clay</label><input id="brand-west" type="color" value="#b4787e"></div>
-                <div class="color-field"><label for="brand-center">Pearl</label><input id="brand-center" type="color" value="#f7ead2"></div>
-              </div>
-            </div>
-            <div>
-              <label for="brand-notes">Notes</label>
-              <textarea id="brand-notes" placeholder="What this version is trying to tune…"></textarea>
-            </div>
-            <div class="actions">
-              <button class="btn btn-primary" type="submit">Save as draft</button>
-              <button class="btn" type="button" id="brand-reset">Load active into editor</button>
-            </div>
-          </form>
-          <div class="message" id="brand-message"></div>
-          <div class="brand-version-list" id="brand-version-list"></div>
+        <div id="waitlist-empty" class="hidden" style="padding:48px 0;text-align:center;color:var(--faint);">
+          No waitlist signups yet.
         </div>
-      </section>
+      </div><!-- /tab-pane waitlist -->
+
+      <!-- ═══ Tab: Feedback ═══ -->
+      <div class="tab-pane" data-pane="feedback">
+        <div class="pane-header-row">
+          <div class="pane-header" style="margin-bottom:0;">
+            <h2>Beta feedback</h2>
+            <p>Direct signal from the field — bugs, requests, and ideas from your beta group.</p>
+          </div>
+          <span class="count-badge" id="feedback-count">—</span>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="new">New</button>
+          <button class="filter-btn" data-filter="acknowledged">Acknowledged</button>
+        </div>
+        <div id="feedback-loading" class="muted" style="padding:24px 0;">Loading feedback…</div>
+        <div id="feedback-list"></div>
+        <div id="feedback-empty" class="hidden" style="padding:48px 0;text-align:center;color:var(--faint);">
+          No feedback yet.
+        </div>
+      </div><!-- /tab-pane feedback -->
+
+      <!-- ═══ Tab: System ═══ -->
+      <div class="tab-pane" data-pane="system">
+        <section class="panel card ops-dashboard" aria-labelledby="ops-dashboard-title">
+          <div class="ops-head">
+            <div>
+              <h2 id="ops-dashboard-title">Navigation dashboard</h2>
+              <p class="hint">A live reference surface for the main CommonUnity spaces. This is the place to orient yourself before opening the field, inviting someone, or checking whether a doorway needs attention.</p>
+            </div>
+            <button class="btn ops-refresh" id="ops-refresh" type="button">Check spaces</button>
+          </div>
+          <div class="system-grid" id="space-status"></div>
+          <div class="quick-links" id="admin-live-links"></div>
+
+          <!-- Claude API spend widget -->
+          <div class="claude-spend-bar" id="claude-spend-bar">
+            <div class="spend-label">
+              <span class="spend-icon">◈</span>
+              <strong>Claude API spend</strong>
+            </div>
+            <div class="spend-months" id="spend-months">
+              <span class="spend-loading">Loading…</span>
+            </div>
+            <a class="spend-link" id="spend-billing-link" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">Billing ↗</a>
+          </div>
+        </section>
+
+        <!-- Configuration checklist -->
+        <section class="panel card" style="margin-top:18px;">
+          <h2>Configuration</h2>
+          <p class="hint">Environment variables and service readiness. Green means configured and active.</p>
+          <div id="config-checklist" style="display:grid;gap:10px;margin-top:16px;"></div>
+        </section>
+      </div><!-- /tab-pane system -->
+
     </main>
+  </div>
+
+  <!-- Member detail modal -->
+  <div id="member-modal" style="display:none;" class="modal-backdrop">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close">×</button>
+      <div id="modal-content"></div>
+    </div>
   </div>
 
   <script>
@@ -760,7 +1142,15 @@
       metrics: {},
       configured: {},
       system: { health: null, beta: null },
-      brand: { versions: [], manifest: null }
+      brand: { versions: [], manifest: null },
+      members: [],
+      membersLoaded: false,
+      waitlist: [],
+      waitlistLoaded: false,
+      feedback: [],
+      feedbackUnread: 0,
+      feedbackFilter: 'all',
+      activeTab: 'field',
     };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
     const magicLink = (token) => `${location.origin}/invite/${encodeURIComponent(token)}`;
@@ -772,8 +1162,14 @@
       ['Studio', '/studio', 'Creation rooms'],
       ['Tuner', '/tuner', 'Sound and tuning'],
       ['cOMmons', '/commons', 'Community field'],
-      ['Brand manifest', '/api/brand/manifest', 'Active logo and field source']
+      ['Brand manifest', '/api/brand/manifest', 'Active logo and field source'],
     ];
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
 
     async function api(path, options = {}) {
       const res = await fetch(path, {
@@ -797,6 +1193,28 @@
       }
     }
 
+    // ── Tab switching ──
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
+      state.activeTab = name;
+      if (name === 'members') loadMembers();
+      if (name === 'waitlist') loadWaitlist();
+      if (name === 'feedback') loadFeedback();
+    }
+    document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+    // ── Filter buttons for feedback ──
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(f => f.classList.remove('active'));
+        b.classList.add('active');
+        state.feedbackFilter = b.dataset.filter;
+        renderFeedback();
+      });
+    });
+
+    // ── Boot ──
     async function boot() {
       const status = await api('/api/admin/status').catch(() => ({ unlocked: false, configured: false }));
       $('config-status').textContent = status.configured
@@ -823,12 +1241,17 @@
       state.system.beta = beta;
       state.brand = brand || { versions: [], manifest: null };
       render();
-      // Load Claude spend separately — slower external call, non-blocking
+      // Non-blocking extras
       optionalApi('/api/admin/claude-usage').then(renderClaudeSpend);
+      loadFeedback(); // always refresh feedback count
+      // Lazy load active tab data
+      if (state.activeTab === 'members') { state.membersLoaded = false; loadMembers(); }
+      if (state.activeTab === 'waitlist') { state.waitlistLoaded = false; loadWaitlist(); }
     }
 
     function render() {
       renderOpsDashboard();
+      renderConfigChecklist();
       $('metric-total').textContent = state.metrics.total || 0;
       $('metric-opened').textContent = state.metrics.opened || 0;
       $('metric-threshold').textContent = state.metrics.threshold_completed || 0;
@@ -859,9 +1282,11 @@
           <small>${date(ev.timestamp)} · ${escapeHtml(ev.route || '')} ${ev.detail ? '· ' + escapeHtml(ev.detail) : ''}</small>
         </div>
       `).join('') || '<p class="muted">No activity yet.</p>';
+
       renderBrand();
     }
 
+    // ── Ops dashboard (System tab) ──
     function renderOpsDashboard() {
       $('admin-live-links').innerHTML = liveLinks.map(([label, path, detail]) => {
         const href = new URL(path, location.origin).toString();
@@ -911,6 +1336,30 @@
       `).join('');
     }
 
+    // ── Config checklist ──
+    function renderConfigChecklist() {
+      const items = [
+        { key: 'admin_code', label: 'Admin access code', env: 'ADMIN_ACCESS_CODE' },
+        { key: 'beta_code', label: 'Beta access codes', env: 'BETA_ACCESS_CODE' },
+        { key: 'smtp', label: 'SMTP email', env: 'SMTP_HOST / SMTP_USER / SMTP_PASS' },
+        { key: 'env_magic_links', label: 'Magic link tokens', env: 'BETA_TOKENS' },
+      ];
+      const el = $('config-checklist');
+      if (!el) return;
+      el.innerHTML = items.map(item => {
+        const ok = !!state.configured[item.key];
+        return `<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;background:rgba(0,0,0,0.14);border:1px solid rgba(248,242,232,0.08);">
+          <span style="width:10px;height:10px;border-radius:999px;flex-shrink:0;background:${ok ? 'var(--green)' : 'var(--danger)'};box-shadow:0 0 0 3px ${ok ? 'rgba(134,182,154,0.1)' : 'rgba(230,160,160,0.1)'};"></span>
+          <div style="flex:1">
+            <div style="font-size:0.88rem;font-weight:540;">${escapeHtml(item.label)}</div>
+            <div style="font-size:0.74rem;color:var(--faint);font-family:monospace;margin-top:2px;">${escapeHtml(item.env)}</div>
+          </div>
+          <span style="font-size:0.75rem;color:${ok ? 'var(--green)' : 'var(--danger)'};">${ok ? 'Configured' : 'Missing'}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Claude spend ──
     function renderClaudeSpend(data) {
       const el = $('spend-months');
       const linkEl = $('spend-billing-link');
@@ -936,6 +1385,7 @@
       el.innerHTML = fmt(data.this_month, true) + fmt(data.last_month, false);
     }
 
+    // ── Brand helpers ──
     function activeBrand() {
       return state.brand?.manifest?.version || state.brand?.versions?.find(v => v.status === 'active') || null;
     }
@@ -1014,12 +1464,254 @@
       return `#${mix(ar,br)}${mix(ag,bg)}${mix(ab,bb)}`;
     }
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[ch]));
+    // ── Members ──
+    async function loadMembers() {
+      if (state.membersLoaded) return;
+      $('members-loading').style.display = 'block';
+      $('member-grid').innerHTML = '';
+      $('members-empty').classList.add('hidden');
+      const data = await optionalApi('/api/admin/members');
+      state.members = data.members || [];
+      state.membersLoaded = true;
+      $('members-loading').style.display = 'none';
+      renderMembers();
     }
 
+    function renderMembers() {
+      const count = state.members.length;
+      $('members-count').textContent = count === 1 ? '1 member' : `${count} members`;
+      if (count === 0) {
+        $('member-grid').innerHTML = '';
+        $('members-empty').classList.remove('hidden');
+        return;
+      }
+      $('members-empty').classList.add('hidden');
+      $('member-grid').innerHTML = state.members.map((m, idx) => {
+        const name = m.name || 'Unnamed';
+        const tags = [];
+        if (m.hd_type) tags.push(m.hd_type);
+        if (m.visibility_tier) tags.push(m.visibility_tier);
+        const metaParts = [];
+        if (m.life_path) metaParts.push(`Life Path ${m.life_path}`);
+        if (m.expression) metaParts.push(`Expression ${m.expression}`);
+        if (m.gk_gate && m.gk_line) metaParts.push(`GK ${m.gk_gate}/${m.gk_line}`);
+        const sigil = m.sigil_svg
+          ? `<div class="member-sigil">${m.sigil_svg}</div>`
+          : `<div class="member-sigil" style="font-size:1.6rem;color:var(--faint);">◎</div>`;
+        return `<div class="member-card" data-member-idx="${idx}">
+          ${sigil}
+          <div class="member-name">${escapeHtml(name)}</div>
+          ${metaParts.length ? `<div class="member-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+          ${tags.length ? `<div class="member-tags">${tags.map(t => `<span class="member-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+          <div style="font-size:0.76rem;color:var(--faint);">${date(m.created_at)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function openMemberModal(idx) {
+      const m = state.members[idx];
+      if (!m) return;
+      const fields = [
+        ['Name', m.name || 'Unnamed'],
+        ['Birth date', m.birth_date || '—'],
+        ['Birth time', m.birth_time || '—'],
+        ['Life Path', m.life_path ? `${m.life_path}${m.life_path_label ? ' — ' + m.life_path_label : ''}` : '—'],
+        ['Expression', m.expression ?? '—'],
+        ['Soul Urge', m.soul_urge ?? '—'],
+        ['Personality', m.personality ?? '—'],
+        ['Gene Key', (m.gk_gate && m.gk_line) ? `Gate ${m.gk_gate} / Line ${m.gk_line}` : '—'],
+        ['HD type', m.hd_type || '—'],
+        ['HD authority', m.hd_authority || '—'],
+        ['HD profile', m.hd_profile || '—'],
+        ['Lunar phase', m.lunar_phase || '—'],
+        ['Solar quarter', m.solar_quarter || '—'],
+        ['Visibility tier', m.visibility_tier || '—'],
+        ['OM Cipher seed', m.om_cipher_seed ? m.om_cipher_seed.slice(0, 16) + '…' : '—'],
+        ['Member ID', m.id || '—'],
+        ['Joined', date(m.created_at)],
+      ];
+      $('modal-content').innerHTML = `
+        <h3 style="margin:0 0 4px;font-size:1.2rem;font-weight:520;">${escapeHtml(m.name || 'Unnamed')}</h3>
+        <p style="margin:0 0 4px;color:var(--faint);font-size:0.82rem;">Member record</p>
+        <dl class="modal-dl">
+          ${fields.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v ?? '—'))}</dd>`).join('')}
+        </dl>
+      `;
+      $('member-modal').style.display = 'grid';
+    }
+
+    $('modal-close').addEventListener('click', () => { $('member-modal').style.display = 'none'; });
+    $('member-modal').addEventListener('click', (e) => { if (e.target === $('member-modal')) $('member-modal').style.display = 'none'; });
+
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.member-card');
+      if (card && card.dataset.memberIdx !== undefined) {
+        openMemberModal(Number(card.dataset.memberIdx));
+      }
+    });
+
+    // ── Waitlist ──
+    async function loadWaitlist() {
+      if (state.waitlistLoaded) return;
+      $('waitlist-loading').style.display = 'block';
+      $('waitlist-panel').style.display = 'none';
+      $('waitlist-empty').classList.add('hidden');
+      const data = await optionalApi('/api/admin/waitlist');
+      state.waitlist = data.entries || [];
+      state.waitlistLoaded = true;
+      $('waitlist-loading').style.display = 'none';
+      renderWaitlist();
+    }
+
+    function renderWaitlist() {
+      const count = state.waitlist.length;
+      $('waitlist-count').textContent = count === 1 ? '1 signup' : `${count} signups`;
+      if (count === 0) {
+        $('waitlist-panel').style.display = 'none';
+        $('waitlist-empty').classList.remove('hidden');
+        return;
+      }
+      $('waitlist-empty').classList.add('hidden');
+      $('waitlist-panel').style.display = 'block';
+      // Sort newest first
+      const sorted = [...state.waitlist].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      $('waitlist-rows').innerHTML = sorted.map(entry => `
+        <tr>
+          <td><strong>${escapeHtml(entry.name || '—')}</strong></td>
+          <td>${escapeHtml(entry.email || '—')}</td>
+          <td>${escapeHtml(entry.interest || '—')}</td>
+          <td>${escapeHtml(entry.source || '—')}</td>
+          <td>${date(entry.created_at)}</td>
+          <td>
+            <button class="btn btn-sm" data-invite-from-name="${escapeHtml(entry.name || '')}" data-invite-from-email="${escapeHtml(entry.email || '')}">Invite</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="muted">No signups.</td></tr>';
+    }
+
+    function inviteFromWaitlist(name, email) {
+      switchTab('field');
+      $('invite-name').value = name;
+      $('invite-email').value = email;
+      $('invite-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ── Feedback ──
+    async function loadFeedback() {
+      $('feedback-loading').style.display = 'block';
+      const data = await optionalApi('/api/admin/feedback');
+      state.feedback = data.entries || [];
+      state.feedbackUnread = data.unread || 0;
+      $('feedback-loading').style.display = 'none';
+      renderFeedback();
+      updateFeedbackBadge();
+    }
+
+    function updateFeedbackBadge() {
+      const badge = $('feedback-badge');
+      if (!badge) return;
+      badge.textContent = state.feedbackUnread;
+      badge.classList.toggle('hidden', state.feedbackUnread === 0);
+    }
+
+    function renderFeedback() {
+      const filter = state.feedbackFilter;
+      let entries = state.feedback;
+      if (filter === 'new') entries = entries.filter(f => f.status === 'new');
+      if (filter === 'acknowledged') entries = entries.filter(f => f.status === 'acknowledged');
+
+      $('feedback-count').textContent = `${entries.length} item${entries.length !== 1 ? 's' : ''}`;
+
+      if (entries.length === 0) {
+        $('feedback-list').innerHTML = '';
+        $('feedback-empty').classList.remove('hidden');
+        return;
+      }
+      $('feedback-empty').classList.add('hidden');
+
+      $('feedback-list').innerHTML = entries.map(f => {
+        const isNew = f.status === 'new';
+        const typeClass = (f.type || 'general').toLowerCase();
+        const authorName = f.name || f.email ? [f.name, f.email].filter(Boolean).join(' · ') : 'Anonymous';
+        return `<div class="feedback-card${isNew ? ' is-new' : ''}">
+          <div class="feedback-header">
+            <span class="feedback-type-tag ${typeClass}">${escapeHtml(f.type || 'general')}</span>
+            ${f.app ? `<span class="feedback-app-tag">${escapeHtml(f.app)}</span>` : ''}
+            <span class="feedback-status-pill ${f.status || 'new'}">${escapeHtml(f.status || 'new')}</span>
+          </div>
+          <div class="feedback-message">${escapeHtml(f.message || '')}</div>
+          <div class="feedback-meta">
+            <span>${escapeHtml(authorName)}</span>
+            <span>${date(f.created_at)}</span>
+          </div>
+          ${isNew ? `<div class="feedback-actions"><button class="btn btn-sm" data-acknowledge="${escapeHtml(f.id)}">Acknowledge</button></div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function acknowledgeFeedback(id) {
+      await api(`/api/admin/feedback/${id}/acknowledge`, { method: 'POST', body: '{}' });
+      await loadFeedback();
+    }
+
+    // ── Global click handler ──
+    document.addEventListener('click', async (event) => {
+      const copyToken = event.target?.dataset?.copy;
+      const sendId = event.target?.dataset?.send;
+      const revokeId = event.target?.dataset?.revoke;
+      const brandLoad = event.target?.dataset?.brandLoad;
+      const brandActivate = event.target?.dataset?.brandActivate;
+      const brandArchive = event.target?.dataset?.brandArchive;
+      const ackId = event.target?.dataset?.acknowledge;
+      const inviteFromName = event.target?.dataset?.inviteFromName;
+
+      if (copyToken) {
+        await navigator.clipboard?.writeText(magicLink(copyToken));
+        event.target.textContent = 'Copied';
+        setTimeout(() => { event.target.textContent = 'Copy link'; }, 1200);
+      }
+      if (revokeId && confirm('Revoke this invitation?')) {
+        await api(`/api/admin/invites/${revokeId}/revoke`, { method: 'POST', body: '{}' });
+        await loadDashboard();
+      }
+      if (sendId && confirm('Send this invitation email now?')) {
+        const original = event.target.textContent;
+        event.target.textContent = 'Sending…';
+        try {
+          const result = await api(`/api/admin/invites/${sendId}/send`, { method: 'POST', body: '{}' });
+          event.target.textContent = 'Sent';
+          $('invite-message').textContent = `Invitation sent to ${result.sent_to}.`;
+          await loadDashboard();
+        } catch (err) {
+          event.target.textContent = original;
+          $('invite-message').textContent = err.message;
+        }
+      }
+      if (brandLoad) {
+        const version = state.brand.versions.find(v => String(v.id) === String(brandLoad));
+        loadBrandIntoEditor(version);
+        $('brand-message').textContent = `Loaded ${version?.name || 'brand version'} into the editor.`;
+      }
+      if (brandActivate && confirm('Set this brand field active for the live experience?')) {
+        await api(`/api/admin/brand/versions/${brandActivate}/activate`, { method: 'POST', body: '{}' });
+        $('brand-message').textContent = 'Brand field activated.';
+        await loadDashboard();
+      }
+      if (brandArchive && confirm('Archive this draft brand field?')) {
+        await api(`/api/admin/brand/versions/${brandArchive}/archive`, { method: 'POST', body: '{}' });
+        $('brand-message').textContent = 'Brand field archived.';
+        await loadDashboard();
+      }
+      if (ackId) {
+        await acknowledgeFeedback(ackId);
+      }
+      if (inviteFromName !== undefined) {
+        const email = event.target?.dataset?.inviteFromEmail || '';
+        inviteFromWaitlist(inviteFromName, email);
+      }
+    });
+
+    // ── Form handlers ──
     $('login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       $('login-message').textContent = 'Opening…';
@@ -1075,54 +1767,9 @@
       $('brand-message').textContent = 'Active brand loaded into the editor.';
     });
 
-    document.addEventListener('click', async (event) => {
-      const copyToken = event.target?.dataset?.copy;
-      const sendId = event.target?.dataset?.send;
-      const revokeId = event.target?.dataset?.revoke;
-      const brandLoad = event.target?.dataset?.brandLoad;
-      const brandActivate = event.target?.dataset?.brandActivate;
-      const brandArchive = event.target?.dataset?.brandArchive;
-      if (copyToken) {
-        await navigator.clipboard?.writeText(magicLink(copyToken));
-        event.target.textContent = 'Copied';
-        setTimeout(() => { event.target.textContent = 'Copy link'; }, 1200);
-      }
-      if (revokeId && confirm('Revoke this invitation?')) {
-        await api(`/api/admin/invites/${revokeId}/revoke`, { method: 'POST', body: '{}' });
-        await loadDashboard();
-      }
-      if (sendId && confirm('Send this invitation email now?')) {
-        const original = event.target.textContent;
-        event.target.textContent = 'Sending…';
-        try {
-          const result = await api(`/api/admin/invites/${sendId}/send`, { method: 'POST', body: '{}' });
-          event.target.textContent = 'Sent';
-          $('invite-message').textContent = `Invitation sent to ${result.sent_to}.`;
-          await loadDashboard();
-        } catch (err) {
-          event.target.textContent = original;
-          $('invite-message').textContent = err.message;
-        }
-      }
-      if (brandLoad) {
-        const version = state.brand.versions.find(v => String(v.id) === String(brandLoad));
-        loadBrandIntoEditor(version);
-        $('brand-message').textContent = `Loaded ${version?.name || 'brand version'} into the editor.`;
-      }
-      if (brandActivate && confirm('Set this brand field active for the live experience?')) {
-        await api(`/api/admin/brand/versions/${brandActivate}/activate`, { method: 'POST', body: '{}' });
-        $('brand-message').textContent = 'Brand field activated.';
-        await loadDashboard();
-      }
-      if (brandArchive && confirm('Archive this draft brand field?')) {
-        await api(`/api/admin/brand/versions/${brandArchive}/archive`, { method: 'POST', body: '{}' });
-        $('brand-message').textContent = 'Brand field archived.';
-        await loadDashboard();
-      }
-    });
-
     $('refresh').addEventListener('click', loadDashboard);
     $('ops-refresh').addEventListener('click', loadDashboard);
+
     boot();
   </script>
 </body>
