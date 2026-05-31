@@ -1,6 +1,8 @@
 # The Adapted 8 Limbs
 
-Status: v0.1. This document defines CommonUnity's adapted reading of Patanjali's eight limbs of yoga (ashtanga) as a **decision-making and creation-audit framework**. It is the operational backbone of [`../governance/audit-rituals.md`](../governance/audit-rituals.md).
+Status: v0.1. **Internal-precision document.** This document defines CommonUnity's adapted reading of Patanjali's eight limbs of yoga (ashtanga) as a **decision-making and creation-audit framework**. It is the operational backbone of [`../governance/audit-rituals.md`](../governance/audit-rituals.md).
+
+> **Language note.** Sanskrit terms are permitted in this document for operational precision. The eight limbs are a working instrument used by the team and by Nexus internally, and the Sanskrit names carry meaning that the English translations do not fully capture in audit contexts. **None of the Sanskrit terms used here are to appear in member-facing surfaces.** For the broader rule — plain English only in anything a member reads — see [`./om-field-golden-thread.md`](./om-field-golden-thread.md) and [`./nexus-guidance-charter.md`](./nexus-guidance-charter.md). This doc sits inside the framework those docs establish; it is the operational backbone, not an exception to the language rule.
 
 The classical eight limbs are: *yama, niyama, asana, pranayama, pratyahara, dharana, dhyana, samadhi.* In CommonUnity, they are reread as eight conditions a piece of work must satisfy to be considered whole. Each limb is both a question (for decision-making before building) and a test (for auditing after building).
 
