@@ -6489,6 +6489,8 @@ function loadJSON(file) {
       applyTheme(state.theme);
       if (data.tradition) { currentTradition = data.tradition; state.tradition = data.tradition; }
       restoreAllFields();
+      restoreQA();
+      POINTS.forEach(p => restoreL3Output(p));
       updateAllLineThemes();
       showToast('Session loaded');
     } catch(err) {
