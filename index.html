@@ -5306,6 +5306,11 @@ function lookupGK(point) {
   renderLineTheme(point, line);
   // Keep SGS triad in sync whenever GK changes
   updateSGSTriad(point);
+  // Eagerly fetch full hexagram JSON + line data so Nexus has them ready
+  if (num >= 1 && num <= 64) {
+    loadHexagram(num).then(hex => { if (hex) state.hexagramsByPoint[point] = hex; });
+    loadLineData(point);
+  }
 }
 
 // ============================================================
@@ -9250,6 +9255,26 @@ let HEX_LAST_LANG = { work:'en', lens:'en', field:'en', call:'en' };
 
 // In-memory cache: gk_num -> full JSON object. Populated lazily.
 const HEX_CACHE = {};
+const LINE_CACHE = {}; // keyed by point, contains array of 6 line objects
+
+async function loadLineData(point) {
+  if (LINE_CACHE[point]) return LINE_CACHE[point];
+  try {
+    const res = await fetch(`/data/lines/${point}_lines.json`, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    LINE_CACHE[point] = json;
+    return json;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getLineForPoint(point, lineNum) {
+  const lines = LINE_CACHE[point];
+  if (!lines || !lineNum) return null;
+  return lines.find(l => l.line === parseInt(lineNum)) || null;
+}
 
 // Session-only translation cache. Key: `${hex.number}|${layer}|${lang}` ->
 // { subtitle, subtitle_title, content }. Cleared on page reload.
@@ -9626,6 +9651,7 @@ function compassNexusSeedContext() {
   const meta = HEX_ROOM_META[point] || { title: point, subtitle: '' };
   const pt = state.points[point] || {};
   const hex = state.hexagramsByPoint?.[point] || HEX_CACHE[parseInt(pt.gk_num || '0')] || null;
+  const lineData = getLineForPoint(point, pt.gk_line);
   return {
     point,
     room_title: meta.title,
@@ -9633,7 +9659,8 @@ function compassNexusSeedContext() {
     user_notes: pt.raw || '',
     hexagram: hex,
     gk_num: pt.gk_num || '',
-    gk_line: pt.gk_line || ''
+    gk_line: pt.gk_line || '',
+    line_data: lineData
   };
 }
 
@@ -9699,18 +9726,33 @@ async function sendCompassNexusMessage() {
   // the user's current notes — per the Compass spec. We piggy-back on
   // the existing /rose-mirror endpoint by stuffing the seed into the
   // session_notes field so NEXUS_SYSTEM has everything it needs.
+  const lineData = ctx.line_data || null;
+  const lineSection = lineData
+    ? `Their line is Line ${lineData.line} — "${lineData.title}"${lineData.qualifier ? ' (' + lineData.qualifier + ')' : ''}.
+${lineData.keynote ? 'Line keynote: ' + lineData.keynote + '.' : ''}
+
+Line description for this compass point (${ctx.room_title}):
+${lineData.content}
+${lineData.shadow_keynote ? 'Shadow keynote: ' + lineData.shadow_keynote + '.' : ''}
+${lineData.circuit_breaker ? 'Circuit breaker: ' + lineData.circuit_breaker : ''}`
+    : (ctx.gk_line ? `Their line is Line ${ctx.gk_line} (line data not yet loaded).` : 'No specific line assigned.');
+
   const seed = `You are Nexus, a contemplative guide within CommonUnity Compass.
 The user is currently in the ${ctx.room_title} room — "${ctx.room_subtitle}".
 Their assigned hexagram is ${hex.number || '—'} · ${hex.title || '—'}.
+Their Gene Key line: ${ctx.gk_line || '—'}.
 
 Full hexagram data:
 ${hexJsonString}
+
+${lineSection}
 
 User's current contemplation notes:
 ${(ctx.user_notes || '').slice(0, 2000)}
 
 Your role is to support their contemplation — answer questions, offer insight,
-and provide guidance related to their hexagram journey. You are a supplement
+and provide guidance related to their hexagram and line. Speak to both the Gene Key
+and the specific quality of their line within this compass point. You are a supplement
 to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
 
   try {
