@@ -7608,6 +7608,44 @@ function initParticles() {
 }
 
 // ============================================================
+// HEXAGRAM + LINE DATA CACHE (full JSON, lazy-fetched)
+// ============================================================
+const STUDIO_HEX_CACHE = {};
+const STUDIO_LINE_CACHE = {};
+
+async function studioLoadHexagram(num) {
+  if (!num) return null;
+  const n = parseInt(num);
+  if (!n || n < 1 || n > 64) return null;
+  if (STUDIO_HEX_CACHE[n]) return STUDIO_HEX_CACHE[n];
+  try {
+    const padded = String(n).padStart(2, '0');
+    const res = await fetch(`/data/hexagrams/gk_${padded}.json`, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    STUDIO_HEX_CACHE[n] = json;
+    return json;
+  } catch (e) { return null; }
+}
+
+async function studioLoadLineData(point) {
+  if (STUDIO_LINE_CACHE[point]) return STUDIO_LINE_CACHE[point];
+  try {
+    const res = await fetch(`/data/lines/${point}_lines.json`, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    STUDIO_LINE_CACHE[point] = json;
+    return json;
+  } catch (e) { return null; }
+}
+
+function studioGetLine(point, lineNum) {
+  const lines = STUDIO_LINE_CACHE[point];
+  if (!lines || !lineNum) return null;
+  return lines.find(l => l.line === parseInt(lineNum)) || null;
+}
+
+// ============================================================
 // GENE KEYS DATA
 // ============================================================
 const GENE_KEYS = {
@@ -9069,8 +9107,15 @@ async function sendMirrorMessage() {
 
   const meta = ROOM_META[currentRoom];
   const gkNum = state.compassData?.points?.[currentRoom]?.gk_num || '';
+  const gkLine = state.compassData?.points?.[currentRoom]?.gk_line || '';
   const gkData = gkNum ? GENE_KEYS[parseInt(gkNum)] : null;
   const pt = state.compassData?.points?.[currentRoom];
+  // Fetch full hexagram + line data (cached after first call)
+  const [fullHex, _lineCache] = await Promise.all([
+    studioLoadHexagram(gkNum),
+    studioLoadLineData(currentRoom)
+  ]);
+  const lineData = studioGetLine(currentRoom, gkLine);
 
   // Build context
   const history = (state.rooms[currentRoom]?.mirrorHistory || []).slice(-8);
@@ -9097,9 +9142,14 @@ async function sendMirrorMessage() {
         room_title: meta.title,
         room_subtitle: meta.subtitle,
         gk_num: gkNum,
-        gk_shadow: gkData?.shadow || '',
-        gk_gift: gkData?.gift || '',
-        gk_siddhi: gkData?.siddhi || '',
+        gk_line: gkLine,
+        gk_shadow: fullHex?.shadow?.content || gkData?.shadow || '',
+        gk_gift:   fullHex?.gift?.content   || gkData?.gift   || '',
+        gk_siddhi: fullHex?.siddhi?.content || gkData?.siddhi || '',
+        gk_line_title: lineData ? `Line ${lineData.line} — ${lineData.title}` : '',
+        gk_line_content: lineData?.content || '',
+        gk_line_keynote: lineData?.keynote || '',
+        gk_line_shadow_keynote: lineData?.shadow_keynote || '',
         session_notes: sessionContext.slice(0, 2000),
         workbench_entries: workbenchContext.slice(0, 600),
         history: history,

@@ -2324,9 +2324,15 @@ class RoseMirrorRequest(BaseModel):
     room_title: str = ""
     room_subtitle: str = ""
     gk_num: str = ""
+    gk_line: str = ""
     gk_shadow: str = ""
     gk_gift: str = ""
     gk_siddhi: str = ""
+    # Activation line data for the current room
+    gk_line_title: str = ""
+    gk_line_content: str = ""
+    gk_line_keynote: str = ""
+    gk_line_shadow_keynote: str = ""
     session_notes: str = ""
     workbench_entries: str = ""
     history: list = []
@@ -2424,9 +2430,24 @@ async def rose_mirror(request: RoseMirrorRequest):
     # Build full Gene Keys profile
     gk_profile = ""
     if request.gk_num:
-        gk_profile = f"This room ({request.room_title}) is held by Gene Key {request.gk_num}: Shadow = {request.gk_shadow}, Gift = {request.gk_gift}, Siddhi = {request.gk_siddhi}."
+        line_label = f", Line {request.gk_line}" if request.gk_line else ""
+        gk_profile = f"This room ({request.room_title}) is held by Gene Key {request.gk_num}{line_label}."
+        if request.gk_shadow or request.gk_gift or request.gk_siddhi:
+            # Full content if available (may be long), else word labels
+            shadow_str = request.gk_shadow[:800] if len(request.gk_shadow) > 30 else request.gk_shadow
+            gift_str   = request.gk_gift[:800]   if len(request.gk_gift)   > 30 else request.gk_gift
+            siddhi_str = request.gk_siddhi[:800] if len(request.gk_siddhi) > 30 else request.gk_siddhi
+            gk_profile += f"\n\nShadow:\n{shadow_str}\n\nGift:\n{gift_str}\n\nSiddhi:\n{siddhi_str}"
+    if request.gk_line_title:
+        gk_profile += f"\n\nActivation line for {request.room_title}: {request.gk_line_title}"
+        if request.gk_line_keynote:
+            gk_profile += f" — keynote: {request.gk_line_keynote}"
+        if request.gk_line_content:
+            gk_profile += f"\n{request.gk_line_content[:600]}"
+        if request.gk_line_shadow_keynote:
+            gk_profile += f"\nShadow keynote: {request.gk_line_shadow_keynote}"
     if any([request.gk_work, request.gk_lens, request.gk_field, request.gk_call]):
-        gk_profile += f"\nFull Gene Keys profile: The Work = {request.gk_work} | The Lens = {request.gk_lens} | The Field = {request.gk_field} | The Call = {request.gk_call}"
+        gk_profile += f"\n\nFull Gene Keys profile: The Work = {request.gk_work} | The Lens = {request.gk_lens} | The Field = {request.gk_field} | The Call = {request.gk_call}"
 
     # Build accumulated memory and cross-room context
     extended_context = ""
