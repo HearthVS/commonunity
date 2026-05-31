@@ -360,6 +360,82 @@
       background: var(--danger);
       box-shadow: 0 0 0 4px rgba(230,160,160,0.1), 0 0 18px rgba(230,160,160,0.2);
     }
+    /* Claude spend bar */
+    .claude-spend-bar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-top: 14px;
+      padding: 13px 18px;
+      background: rgba(213,173,100,0.07);
+      border: 1px solid rgba(213,173,100,0.18);
+      border-radius: 10px;
+      flex-wrap: wrap;
+    }
+    .spend-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .spend-icon {
+      font-size: 1.1rem;
+      color: var(--gold);
+      opacity: 0.85;
+    }
+    .spend-label strong {
+      color: var(--gold);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .spend-months {
+      display: flex;
+      gap: 22px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+    .spend-month {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .spend-month .spend-amount {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.1;
+    }
+    .spend-month .spend-month-label {
+      font-size: 0.74rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .spend-month.current .spend-amount {
+      color: var(--gold);
+    }
+    .spend-loading {
+      font-size: 0.82rem;
+      color: var(--faint);
+    }
+    .spend-note {
+      font-size: 0.78rem;
+      color: var(--faint);
+      font-style: italic;
+    }
+    .spend-link {
+      font-size: 0.78rem;
+      color: var(--gold);
+      opacity: 0.75;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 5px 10px;
+      border: 1px solid rgba(213,173,100,0.25);
+      border-radius: 6px;
+      transition: opacity 0.15s;
+    }
+    .spend-link:hover { opacity: 1; }
+
     .quick-links {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -533,6 +609,18 @@
         </div>
         <div class="system-grid" id="space-status"></div>
         <div class="quick-links" id="admin-live-links"></div>
+
+        <!-- Claude API spend widget -->
+        <div class="claude-spend-bar" id="claude-spend-bar">
+          <div class="spend-label">
+            <span class="spend-icon">◈</span>
+            <strong>Claude API spend</strong>
+          </div>
+          <div class="spend-months" id="spend-months">
+            <span class="spend-loading">Loading…</span>
+          </div>
+          <a class="spend-link" id="spend-billing-link" href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">Billing ↗</a>
+        </div>
       </section>
 
       <div class="section-intro">
@@ -735,6 +823,8 @@
       state.system.beta = beta;
       state.brand = brand || { versions: [], manifest: null };
       render();
+      // Load Claude spend separately — slower external call, non-blocking
+      optionalApi('/api/admin/claude-usage').then(renderClaudeSpend);
     }
 
     function render() {
@@ -819,6 +909,31 @@
           <small>${escapeHtml(card.detail)}</small>
         </div>
       `).join('');
+    }
+
+    function renderClaudeSpend(data) {
+      const el = $('spend-months');
+      const linkEl = $('spend-billing-link');
+      if (!el) return;
+      if (data.billing_url && linkEl) linkEl.href = data.billing_url;
+
+      if (!data.configured) {
+        el.innerHTML = `<span class="spend-note">Set <code>ANTHROPIC_ADMIN_KEY</code> in Railway env vars to see live spend.</span>`;
+        return;
+      }
+
+      const fmt = (m, isCurrent) => {
+        if (!m) return '';
+        const amount = m.usd !== null && m.usd !== undefined
+          ? `$${m.usd.toFixed(2)}`
+          : '<span style="opacity:0.45">—</span>';
+        return `<div class="spend-month${isCurrent ? ' current' : ''}">
+          <span class="spend-amount">${amount}</span>
+          <span class="spend-month-label">${escapeHtml(m.label)}${isCurrent ? ' · so far' : ''}</span>
+        </div>`;
+      };
+
+      el.innerHTML = fmt(data.this_month, true) + fmt(data.last_month, false);
     }
 
     function activeBrand() {

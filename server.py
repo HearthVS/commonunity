@@ -16,6 +16,7 @@ import hashlib
 import secrets
 import sqlite3
 import smtplib
+import asyncio
 from email.message import EmailMessage
 from datetime import datetime, timezone
 from urllib.parse import quote, urlsplit
@@ -2001,6 +2002,110 @@ async def admin_metrics(request: Request):
             "email_template_version": "compass_png_branded_invite_v4",
             "brand_manifest_version": "brand_field_v1",
         },
+    }
+
+
+@app.get("/api/admin/claude-usage")
+async def admin_claude_usage(request: Request):
+    """
+    Returns Anthropic API spend for the current calendar month plus the
+    previous month, using the Admin API usage/cost endpoint.
+
+    Requires ANTHROPIC_ADMIN_KEY env var (sk-ant-admin...) — different from
+    the standard ANTHROPIC_API_KEY.  If not configured, returns a graceful
+    stub so the admin panel still renders.
+
+    Response shape:
+      {
+        "configured": bool,
+        "this_month": { "label": "May 2026", "usd": 4.23, "cents": 423 },
+        "last_month": { "label": "Apr 2026", "usd": 11.07, "cents": 1107 },
+        "billing_url": "https://console.anthropic.com/settings/billing"
+      }
+    """
+    _require_admin(request)
+
+    BILLING_URL = "https://console.anthropic.com/settings/billing"
+    admin_key = os.getenv("ANTHROPIC_ADMIN_KEY", "").strip()
+
+    if not admin_key:
+        return {
+            "configured": False,
+            "this_month": None,
+            "last_month": None,
+            "billing_url": BILLING_URL,
+            "note": "Set ANTHROPIC_ADMIN_KEY (sk-ant-admin...) to enable live spend data.",
+        }
+
+    import httpx  # noqa: F401 — confirmed in requirements.txt
+
+    now = datetime.now(timezone.utc)
+
+    def _month_range(year: int, month: int):
+        import calendar
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        last_day = calendar.monthrange(year, month)[1]
+        end   = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+        return start.strftime("%Y-%m-%dT%H:%M:%SZ"), end.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    this_y, this_m = now.year, now.month
+    last_m = this_m - 1 if this_m > 1 else 12
+    last_y = this_y if this_m > 1 else this_y - 1
+
+    month_label = lambda y, m: datetime(y, m, 1).strftime("%b %Y")
+
+    headers = {
+        "x-api-key": admin_key,
+        "anthropic-version": "2023-06-01",
+    }
+
+    async def _fetch_cost(year: int, month: int) -> int:
+        """Returns total cost in cents for the given month, or -1 on error."""
+        start, end = _month_range(year, month)
+        url = (
+            f"https://api.anthropic.com/v1/organizations/cost_report"
+            f"?starting_at={start}&ending_at={end}&bucket_width=1d"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=10) as hx:
+                r = await hx.get(url, headers=headers)
+            if r.status_code != 200:
+                return -1
+            data = r.json()
+            # Sum all cost buckets — values are in cents as decimal strings
+            total = 0
+            for bucket in data.get("data", []):
+                for entry in bucket.get("costs", [data.get("costs", [])]):
+                    if isinstance(entry, dict):
+                        try:
+                            total += int(float(entry.get("total_cost", 0)))
+                        except (TypeError, ValueError):
+                            pass
+            # Fallback: flat total_cost at root
+            if total == 0 and "total_cost" in data:
+                try:
+                    total = int(float(data["total_cost"]))
+                except (TypeError, ValueError):
+                    pass
+            return total
+        except Exception:
+            return -1
+
+    this_cents, last_cents = await asyncio.gather(
+        _fetch_cost(this_y, this_m),
+        _fetch_cost(last_y, last_m),
+    )
+
+    def _shape(cents: int, label: str):
+        if cents < 0:
+            return {"label": label, "usd": None, "cents": None, "error": "fetch failed"}
+        return {"label": label, "usd": round(cents / 100, 2), "cents": cents}
+
+    return {
+        "configured": True,
+        "this_month": _shape(this_cents, month_label(this_y, this_m)),
+        "last_month":  _shape(last_cents, month_label(last_y, last_m)),
+        "billing_url": BILLING_URL,
     }
 
 

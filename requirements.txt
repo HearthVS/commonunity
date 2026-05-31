@@ -4,3 +4,4 @@ anthropic
 pypdf
 python-multipart
 aiofiles
+httpx
