@@ -10207,7 +10207,8 @@ function initCompassNexus() {
 
 <!-- CommonUnity Feedback Widget -->
 <div id="cu-feedback-widget">
-  <button id="cu-fb-trigger" title="Send feedback" aria-label="Send feedback">
+  <div id="cu-fb-tooltip">Beta feedback</div>
+  <button id="cu-fb-trigger" aria-label="Beta feedback">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
       <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6l-4 3V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>
@@ -10252,6 +10253,28 @@ function initCompassNexus() {
   </div>
 </div>
 <style>
+#cu-fb-tooltip {
+  position: absolute;
+  right: 54px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(8,8,13,0.92);
+  border: 1px solid rgba(248,242,232,0.16);
+  color: rgba(248,242,232,0.82);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 5px 11px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+#cu-feedback-widget:hover #cu-fb-tooltip {
+  opacity: 1;
+}
 #cu-feedback-widget {
   position: fixed;
   bottom: 100px;
