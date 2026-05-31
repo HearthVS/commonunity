@@ -1217,6 +1217,20 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── Golden Thread table ───────────────────────────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS golden_thread (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            companion TEXT NOT NULL DEFAULT '',
+            source_app TEXT NOT NULL DEFAULT '',
+            content TEXT NOT NULL DEFAULT '',
+            note TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
     conn.commit()
 
 
@@ -2387,6 +2401,7 @@ class RoseMirrorRequest(BaseModel):
     all_rooms_summary: str = ""   # all four rooms' recent material
     session_history: str = ""      # session log summary
     nexus_memory: str = ""         # accumulated profile
+    golden_thread: str = ""        # member's saved Golden Thread entries
     # Full Gene Keys profile
     gk_work: str = ""
     gk_lens: str = ""
@@ -2497,6 +2512,8 @@ async def rose_mirror(request: RoseMirrorRequest):
 
     # Build accumulated memory and cross-room context
     extended_context = ""
+    if request.golden_thread:
+        extended_context += f"\n\nGolden Thread — moments {request.companion or 'this person'} chose to carry forward:\n{request.golden_thread[:1200]}"
     if request.nexus_memory:
         extended_context += f"\n\nWhat you know about {request.companion or 'this person'} across sessions:\n{request.nexus_memory}"
     if request.session_history:
@@ -3323,3 +3340,76 @@ async def acknowledge_feedback(feedback_id: int, request: Request):
             "UPDATE feedback SET status='acknowledged' WHERE id=?", (feedback_id,)
         )
     return {"ok": True}
+
+
+# ── Golden Thread endpoints ──────────────────────────────────────────────────
+
+class GoldenThreadSaveRequest(BaseModel):
+    content: str
+    companion: str = ""
+    source_app: str = "compass"  # "compass" | "studio"
+    note: str = ""
+    invite_token: str = ""
+
+
+@app.post("/api/golden-thread")
+async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
+    """Save a Nexus response to the member's Golden Thread."""
+    if not request.content.strip():
+        raise HTTPException(status_code=400, detail="content required")
+    now = _now_iso()
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO golden_thread (timestamp, companion, source_app, content, note, invite_token)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                now,
+                request.companion.strip(),
+                request.source_app.strip() or "compass",
+                request.content.strip(),
+                request.note.strip(),
+                request.invite_token.strip(),
+            ),
+        )
+    return {"ok": True, "timestamp": now}
+
+
+@app.get("/api/golden-thread")
+async def get_golden_thread(companion: str = "", limit: int = 20):
+    """Fetch a member's Golden Thread entries (most recent first)."""
+    with _admin_db() as conn:
+        if companion:
+            rows = conn.execute(
+                "SELECT * FROM golden_thread WHERE companion=? ORDER BY timestamp DESC LIMIT ?",
+                (companion, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM golden_thread ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    return {"threads": [_row_to_dict(r) for r in rows]}
+
+
+@app.delete("/api/golden-thread/{thread_id}")
+async def delete_golden_thread(thread_id: int, req: Request):
+    """Delete a single Golden Thread entry (member-initiated)."""
+    with _admin_db() as conn:
+        row = conn.execute("SELECT id FROM golden_thread WHERE id=?", (thread_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute("DELETE FROM golden_thread WHERE id=?", (thread_id,))
+    return {"ok": True}
+
+
+@app.get("/api/admin/golden-thread")
+async def admin_golden_thread(request: Request, limit: int = 100):
+    """Admin: view all Golden Thread entries across all members."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM golden_thread ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return {"threads": [_row_to_dict(r) for r in rows]}

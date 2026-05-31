@@ -3193,6 +3193,25 @@ body.companion-mode .companion-mode-banner { display: block; }
   color: var(--text-faint);
   margin-bottom: 4px;
 }
+.compass-nexus-gt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  border: 1px solid color-mix(in srgb, #c8a96e 40%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, #c8a96e 8%, transparent);
+  color: #c8a96e;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+.compass-nexus-gt-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, #c8a96e 16%, transparent);
+}
 .compass-nexus-intro {
   font-size: 12px;
   color: var(--text-faint);
@@ -9638,8 +9657,38 @@ const COMPASS_NEXUS_HOLD_MS = 700;
 const compassNexusState = {
   history: [],
   holdTimer: null,
-  isOpen: false
+  isOpen: false,
+  goldenThread: []   // loaded from server at session open
 };
+
+async function compassLoadGoldenThread() {
+  const companion = (state.companion || '').trim();
+  if (!companion) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/golden-thread?companion=${encodeURIComponent(companion)}&limit=10`);
+    if (!res.ok) return;
+    const data = await res.json();
+    compassNexusState.goldenThread = (data.threads || []).map(t => {
+      const date = t.timestamp ? t.timestamp.slice(0, 10) : '';
+      return `[${date}${t.source_app ? ' · ' + t.source_app : ''}] ${t.content}${t.note ? ' \u2014 Note: ' + t.note : ''}`;
+    });
+  } catch (_) {}
+}
+
+async function compassSaveGoldenThread(content) {
+  const companion = (state.companion || '').trim();
+  try {
+    await fetch(`${API_BASE}/api/golden-thread`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, companion, source_app: 'compass' })
+    });
+    // prepend locally so it's available this session
+    const date = new Date().toISOString().slice(0, 10);
+    compassNexusState.goldenThread.unshift(`[${date} · compass] ${content}`);
+    if (compassNexusState.goldenThread.length > 10) compassNexusState.goldenThread.pop();
+  } catch (_) {}
+}
 
 function compassCurrentPoint() {
   const activeTab = document.querySelector('.compass-tab-btn.active');
@@ -9685,6 +9734,8 @@ function openCompassNexus() {
   if (!modal) return;
   compassNexusState.isOpen = true;
   modal.classList.add('is-open');
+  // Load Golden Thread silently in the background
+  compassLoadGoldenThread();
   // Reset conversation for a fresh seeding each open
   compassNexusState.history = [];
   const conv = document.getElementById('compass-nexus-convo');
@@ -9771,7 +9822,8 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         session_notes: seed,
         workbench_entries: '',
         history: compassNexusState.history.slice(-8),
-        companion: state.companion || ''
+        companion: state.companion || '',
+        golden_thread: compassNexusState.goldenThread.join('\n---\n')
       })
     });
     if (!res.ok) throw new Error('Server error');
@@ -9792,6 +9844,19 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
           sendBtn.classList.remove('loading');
           compassNexusState.history.push({ role: 'user', text: msg });
           compassNexusState.history.push({ role: 'rose', text });
+          // Add Golden Thread button
+          const gtBtn = document.createElement('button');
+          gtBtn.className = 'compass-nexus-gt-btn';
+          gtBtn.title = 'Weave into your Golden Thread';
+          gtBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 2 Q14 6 10 10 Q6 14 10 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><circle cx="10" cy="2" r="1.5" fill="currentColor"/><circle cx="10" cy="18" r="1.5" fill="currentColor"/></svg> Golden Thread`;
+          gtBtn.addEventListener('click', async () => {
+            gtBtn.disabled = true;
+            gtBtn.textContent = 'Saved ✓';
+            gtBtn.style.opacity = '0.5';
+            await compassSaveGoldenThread(text);
+          });
+          div.appendChild(gtBtn);
+          conv.scrollTop = conv.scrollHeight;
           return;
         }
         decoder.decode(value).split('\n').forEach(line => {

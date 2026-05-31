@@ -887,6 +887,7 @@
         <button class="tab-btn" data-tab="members">Members</button>
         <button class="tab-btn" data-tab="waitlist">Waitlist</button>
         <button class="tab-btn" data-tab="feedback">Feedback <span class="tab-badge hidden" id="feedback-badge">0</span></button>
+        <button class="tab-btn" data-tab="golden-thread">Golden Thread</button>
         <button class="tab-btn" data-tab="system">System</button>
       </nav>
 
@@ -1089,6 +1090,22 @@
         </div>
       </div><!-- /tab-pane feedback -->
 
+      <!-- ═══ Tab: Golden Thread ═══ -->
+      <div class="tab-pane" data-pane="golden-thread">
+        <section class="panel card">
+          <div class="ops-head">
+            <div>
+              <h2>Golden Thread</h2>
+              <p class="hint">Moments members chose to carry forward from their Nexus conversations. Each entry shows companion, source app, and date.</p>
+            </div>
+            <button class="btn-secondary" onclick="loadGoldenThreadAdmin()">Reload</button>
+          </div>
+          <div id="gt-list" style="margin-top:16px;display:flex;flex-direction:column;gap:12px;">
+            <p class="hint" style="color:var(--text-faint)">Loading...</p>
+          </div>
+        </section>
+      </div><!-- /tab-pane golden-thread -->
+
       <!-- ═══ Tab: System ═══ -->
       <div class="tab-pane" data-pane="system">
         <section class="panel card ops-dashboard" aria-labelledby="ops-dashboard-title">
@@ -1201,6 +1218,7 @@
       if (name === 'members') loadMembers();
       if (name === 'waitlist') loadWaitlist();
       if (name === 'feedback') loadFeedback();
+      if (name === 'golden-thread') loadGoldenThreadAdmin();
     }
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -1652,6 +1670,39 @@
     async function acknowledgeFeedback(id) {
       await api(`/api/admin/feedback/${id}/acknowledge`, { method: 'POST', body: '{}' });
       await loadFeedback();
+    }
+
+    // ── Golden Thread admin viewer ──
+    async function loadGoldenThreadAdmin() {
+      const list = document.getElementById('gt-list');
+      if (!list) return;
+      list.innerHTML = '<p style="color:var(--text-faint);font-size:13px">Loading…</p>';
+      try {
+        const data = await optionalApi('/api/admin/golden-thread?limit=100');
+        const threads = data.threads || [];
+        if (threads.length === 0) {
+          list.innerHTML = '<p style="color:var(--text-faint);font-size:13px">No threads yet.</p>';
+          return;
+        }
+        list.innerHTML = threads.map(t => {
+          const d = (t.timestamp || '').slice(0, 10);
+          const app = t.source_app || '';
+          const companion = t.companion || 'Unknown';
+          const content = t.content || '';
+          const note = t.note || '';
+          return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--card);">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:700;color:var(--text);">${escapeHtml(companion)}</span>
+              ${app ? `<span style="font-size:10px;background:color-mix(in srgb,#c8a96e 15%,transparent);color:#c8a96e;border-radius:10px;padding:1px 7px;">${escapeHtml(app)}</span>` : ''}
+              <span style="font-size:10px;color:var(--text-faint);margin-left:auto;">${escapeHtml(d)}</span>
+            </div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">${escapeHtml(content)}</div>
+            ${note ? `<div style="font-size:11px;color:var(--text-faint);margin-top:6px;font-style:italic;">Note: ${escapeHtml(note)}</div>` : ''}
+          </div>`;
+        }).join('');
+      } catch (e) {
+        list.innerHTML = '<p style="color:var(--text-faint);font-size:13px">Could not load.</p>';
+      }
     }
 
     // ── Global click handler ──

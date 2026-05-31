@@ -2534,6 +2534,25 @@ input, textarea { font: inherit; color: inherit; }
 }
 .mirror-sender { font-size: 9px; color: var(--text-faint); letter-spacing: 0.06em; text-transform: uppercase; padding: 0 var(--space-1); }
 .mirror-message.user .mirror-sender { text-align: right; }
+.mirror-gt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  padding: 3px 9px;
+  font-size: 11px;
+  border: 1px solid color-mix(in srgb, #c8a96e 40%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, #c8a96e 8%, transparent);
+  color: #c8a96e;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+.mirror-gt-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, #c8a96e 16%, transparent);
+}
 
 /* Rose input — elegant */
 .mirror-input-area {
@@ -7751,6 +7770,7 @@ let state = {
   },
   sessionLog: [],        // appended on every session close
   nexusMemory: '',       // compressed profile updated each session
+  goldenThread: [],      // member's saved Golden Thread entries (loaded at session start)
   studioWindow: [],      // shopfront image roll — up to STUDIO_WINDOW_MAX
   identityMedia: {       // visual identity slots — Living Profile + Personal Home
     profileImage: null   // { src: dataURL, createdAt: ISO } | null
@@ -9157,6 +9177,7 @@ async function sendMirrorMessage() {
         all_rooms_summary: allRoomsSummary,
         session_history: sessionHistory,
         nexus_memory: state.nexusMemory || '',
+        golden_thread: (state.goldenThread || []).join('\n---\n'),
         gk_work: gkLabels.work,
         gk_lens: gkLabels.lens,
         gk_field: gkLabels.field,
@@ -9183,6 +9204,19 @@ async function sendMirrorMessage() {
           if (!state.rooms[currentRoom].mirrorHistory) state.rooms[currentRoom].mirrorHistory = [];
           state.rooms[currentRoom].mirrorHistory.push({ role: 'rose', text });
           saveState();
+          // Add Golden Thread button
+          const gtBtn = document.createElement('button');
+          gtBtn.className = 'mirror-gt-btn';
+          gtBtn.title = 'Weave into your Golden Thread';
+          gtBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 2 Q14 6 10 10 Q6 14 10 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><circle cx="10" cy="2" r="1.5" fill="currentColor"/><circle cx="10" cy="18" r="1.5" fill="currentColor"/></svg> Golden Thread`;
+          gtBtn.addEventListener('click', async () => {
+            gtBtn.disabled = true;
+            gtBtn.textContent = 'Saved ✓';
+            gtBtn.style.opacity = '0.5';
+            await studioSaveGoldenThread(text);
+          });
+          div.appendChild(gtBtn);
+          conv.scrollTop = conv.scrollHeight;
           return;
         }
         decoder.decode(value).split('\n').forEach(line => {
@@ -9992,6 +10026,37 @@ function initOmCipherPalette() {
 // finishes parsing, before DOMContentLoaded fires.
 try { initOmCipherPalette(); } catch (_) { /* defensive */ }
 
+// ── Golden Thread — Studio ──────────────────────────────────────────────────
+
+async function studioLoadGoldenThread() {
+  const companion = (state.compassData?.companion || state.person || '').trim();
+  if (!companion) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/golden-thread?companion=${encodeURIComponent(companion)}&limit=10`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.goldenThread = (data.threads || []).map(t => {
+      const date = t.timestamp ? t.timestamp.slice(0, 10) : '';
+      return `[${date}${t.source_app ? ' · ' + t.source_app : ''}] ${t.content}${t.note ? ' — Note: ' + t.note : ''}`;
+    });
+  } catch (_) {}
+}
+
+async function studioSaveGoldenThread(content) {
+  const companion = (state.compassData?.companion || state.person || '').trim();
+  try {
+    await fetch(`${API_BASE}/api/golden-thread`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, companion, source_app: 'studio' })
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    if (!state.goldenThread) state.goldenThread = [];
+    state.goldenThread.unshift(`[${date} · studio] ${content}`);
+    if (state.goldenThread.length > 10) state.goldenThread.pop();
+  } catch (_) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Re-apply after DOMContentLoaded as a safety net in case the
   // contract was written between script parse and DOMContentLoaded,
@@ -10000,6 +10065,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initOmCipherPalette();
   initEntrance();
   initParticles();
+  studioLoadGoldenThread();
   initPortalTooltips();
   initInfoPopups();
   initStudioJSON();
