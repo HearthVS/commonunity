@@ -2419,7 +2419,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
 
 @app.post("/rose-mirror")
 async def rose_mirror(request: RoseMirrorRequest):
-    """The Nexus ongoing conversation within a Studio room."""
+    """Nexus ongoing conversation within a Studio room."""
 
     # Build full Gene Keys profile
     gk_profile = ""

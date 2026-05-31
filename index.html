@@ -4769,7 +4769,7 @@ body.companion-mode .companion-mode-banner { display: block; }
   <!-- Nexus floating activator — press-and-hold 700ms to open.
        Reuses the Studio Nexus 12-point vector equilibrium + hexagram SVG
        and the rotate/glow animation (adapted as compass-nexus-* keyframes). -->
-  <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to open the Nexus" aria-label="The Nexus — hold to open">
+  <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to open the Nexus" aria-label="Nexus — hold to open">
     <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="32" cy="32" r="29" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent)" stroke-width="0.75"/>
       <g stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 35%, transparent)" stroke-width="0.6">
@@ -4805,11 +4805,11 @@ body.companion-mode .companion-mode-banner { display: block; }
   <div class="compass-nexus-modal" id="compass-nexus-modal" role="dialog" aria-modal="true" aria-labelledby="compass-nexus-title">
     <div class="compass-nexus-panel">
       <div class="compass-nexus-header">
-        <span class="compass-nexus-header-title" id="compass-nexus-title">The Nexus</span>
+        <span class="compass-nexus-header-title" id="compass-nexus-title">Nexus</span>
         <button type="button" class="compass-nexus-close" id="compass-nexus-close" aria-label="Close Nexus">✕</button>
       </div>
       <div class="compass-nexus-convo" id="compass-nexus-convo">
-        <div class="compass-nexus-intro">The Nexus is present.</div>
+        <div class="compass-nexus-intro">Nexus is present.</div>
       </div>
       <div class="compass-nexus-input-row">
         <textarea class="compass-nexus-input" id="compass-nexus-input" rows="2" placeholder="enter the nexus…"></textarea>
@@ -9645,7 +9645,7 @@ function appendCompassNexusMsg(role, text) {
   if (role === 'user') {
     div.textContent = text;
   } else {
-    div.innerHTML = `<span class="compass-nexus-sender">The Nexus</span><div class="compass-nexus-bubble"></div>`;
+    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"></div>`;
     div.querySelector('.compass-nexus-bubble').textContent = text;
   }
   conv.appendChild(div);
@@ -9738,7 +9738,7 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
 
     const div = document.createElement('div');
     div.className = 'compass-nexus-msg is-nexus';
-    div.innerHTML = `<span class="compass-nexus-sender">The Nexus</span><div class="compass-nexus-bubble"></div>`;
+    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"></div>`;
     document.getElementById('compass-nexus-convo').appendChild(div);
     const bubble = div.querySelector('.compass-nexus-bubble');
     const conv = document.getElementById('compass-nexus-convo');

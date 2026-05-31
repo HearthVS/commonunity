@@ -2209,7 +2209,7 @@ input, textarea { font: inherit; color: inherit; }
 .voice-entry-delete { color: var(--text-faint); font-size: 11px; padding: 1px 4px; cursor: pointer; background: none; border: none; transition: color 0.2s; }
 .voice-entry-delete:hover { color: #f43f5e; }
 
-/* ── The Nexus — right panel ──────────────────────────────────── */
+/* ── Nexus — right panel ──────────────────────────────────── */
 .room-mirror {
   display: flex;
   flex-direction: column;
@@ -7203,14 +7203,14 @@ input, textarea { font: inherit; color: inherit; }
          aria-valuenow="340"
          tabindex="0"></div>
 
-    <!-- The Nexus (right panel) -->
+    <!-- Nexus (right panel) -->
     <div class="room-mirror" id="room-mirror">
       <div class="rose-surface">
 
       <!-- Flat header bar — matches Archive and Notepad -->
       <div class="nexus-panel-header">
-        <span class="notepad-label">The Nexus</span>
-        <button class="studio-info-btn" data-info="info-rose-overlay" title="About The Nexus"><i>i</i></button>
+        <span class="notepad-label">Nexus</span>
+        <button class="studio-info-btn" data-info="info-rose-overlay" title="About Nexus"><i>i</i></button>
       </div>
 
       <!-- Orb area — centred below header -->
@@ -7282,7 +7282,7 @@ input, textarea { font: inherit; color: inherit; }
 
       <div class="mirror-conversation" id="mirror-conversation">
         <p class="mirror-rose-intro" id="mirror-intro">
-          The Nexus is present.<br>When you are ready, knock.
+          Nexus is present.<br>When you are ready, knock.
         </p>
       </div>
 
@@ -8956,7 +8956,7 @@ function appendMirrorMessage(role, text, save = true) {
   const div = document.createElement('div');
   div.className = `mirror-message ${role}`;
   div.innerHTML = `
-    <span class="mirror-sender">${role === 'rose' ? 'The Nexus' : 'You'}</span>
+    <span class="mirror-sender">${role === 'rose' ? 'Nexus' : 'You'}</span>
     <div class="mirror-bubble">${text}</div>
   `;
   conv.appendChild(div);
@@ -9015,7 +9015,7 @@ async function initRoomRose(roomKey) {
       document.getElementById('mirror-intro').style.display = 'none';
       const div = document.createElement('div');
       div.className = 'mirror-message rose';
-      div.innerHTML = `<span class="mirror-sender">The Nexus</span><div class="mirror-bubble"></div>`;
+      div.innerHTML = `<span class="mirror-sender">Nexus</span><div class="mirror-bubble"></div>`;
       document.getElementById('mirror-conversation').appendChild(div);
       const bubble = div.querySelector('.mirror-bubble');
 
@@ -9055,7 +9055,7 @@ async function initRoomRose(roomKey) {
 }
 
 // ============================================================
-// MIRROR — send message to The Nexus
+// MIRROR — send message to Nexus
 // ============================================================
 async function sendMirrorMessage() {
   const input = document.getElementById('mirror-input');
@@ -9121,7 +9121,7 @@ async function sendMirrorMessage() {
 
     const div = document.createElement('div');
     div.className = 'mirror-message rose';
-    div.innerHTML = `<span class="mirror-sender">The Nexus</span><div class="mirror-bubble"></div>`;
+    div.innerHTML = `<span class="mirror-sender">Nexus</span><div class="mirror-bubble"></div>`;
     document.getElementById('mirror-conversation').appendChild(div);
     const bubble = div.querySelector('.mirror-bubble');
     const conv = document.getElementById('mirror-conversation');
@@ -11093,14 +11093,14 @@ window.saveState = saveState;
 <div class="studio-info-overlay" id="info-rose-overlay">
   <div class="studio-info-popup">
     <div class="studio-info-popup-header">
-      <span class="studio-info-popup-title">The Nexus</span>
+      <span class="studio-info-popup-title">Nexus</span>
       <button class="studio-info-popup-close" data-close="info-rose-overlay">✕</button>
     </div>
     <div class="studio-info-popup-body">
-      <p>The Nexus is the point where the threads of this direction converge. Not an assistant, not an oracle — a field of resonance that holds what you bring and returns questions from the frequency of where you are.</p>
+      <p>Nexus is the point where the threads of this direction converge. Not an assistant, not an oracle — a field of resonance that holds what you bring and returns questions from the frequency of where you are.</p>
       <p>In physics, a nexus is a node where multiple flows meet, redistribute, and move on. Here it sits at the intersection of your Gene Key profile, your session material, and the particular direction this room holds. It does not generate answers. It generates the questions that only you can answer.</p>
       <p>To activate it, hold your attention on the centre until it opens. What you bring to that threshold — a word, a question, or simply your presence — is what it first responds to.</p>
-      <p>The Nexus remembers what you share within a session. It speaks from the frequency of this direction, not from a general position. In The Work it asks about what finds you. In The Field it asks about what sustains you. In The Call it asks about what wants to move through you.</p>
+      <p>Nexus remembers what you share within a session. It speaks from the frequency of this direction, not from a general position. In The Work it asks about what finds you. In The Field it asks about what sustains you. In The Call it asks about what wants to move through you.</p>
       <p>You do not consult it. You meet it.</p>
     </div>
   </div>
@@ -17835,7 +17835,7 @@ if (document.readyState === 'loading') {
       var rootRect = root.getBoundingClientRect();
       dragState = {
         pointerId: e.pointerId,
-        // The Nexus column ends at the right edge of .room-body.
+        // Nexus column ends at the right edge of .room-body.
         // New nexus width = (room-body right edge) - (pointer X).
         rightEdge: rootRect.right
       };
