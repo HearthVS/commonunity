@@ -39,10 +39,13 @@
   -webkit-backdrop-filter: blur(14px) saturate(1.05);
 }
 
-.arrival-mark-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.4rem;
+/* Canonical cOMpass logo (.compass-mark + aura/ring/svg) is styled by
+   /threshold/threshold.css. Constrain it to a header scale here so the
+   reading page leads with the mark without dominating it. */
+.arrival-card .compass-mark {
+  width: clamp(96px, 18vw, 128px);
+  height: clamp(96px, 18vw, 128px);
+  margin: 0 auto 1.4rem;
 }
 
 .arrival-title {
@@ -143,6 +146,57 @@
 .arrival-path-card:hover {
   border-color: color-mix(in srgb, var(--threshold-border) 50%, var(--cipher-primary) 50%);
   box-shadow: 0 0 50px -18px color-mix(in srgb, var(--cipher-primary) 60%, transparent);
+}
+
+/* Intentional asymmetry: the guided card carries the request action and is
+   given slightly more presence; the solo card is a quieter preparation
+   surface that points down to the steps + the single CTA below. */
+.arrival-path-card-guided {
+  border-color: color-mix(in srgb, var(--threshold-border) 45%, var(--cipher-primary) 55%);
+  background: color-mix(in srgb, var(--field-base-2) 78%, transparent);
+}
+
+.arrival-path-card-solo {
+  background: color-mix(in srgb, var(--field-base-2) 55%, transparent);
+}
+
+/* Small label chip so each card's nature reads at a glance. */
+.arrival-path-badge {
+  align-self: flex-start;
+  margin-bottom: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cipher-accent);
+  background: color-mix(in srgb, var(--cipher-primary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cipher-primary) 30%, transparent);
+}
+
+.arrival-path-badge-solo {
+  color: var(--threshold-text-muted);
+  background: color-mix(in srgb, var(--threshold-text-muted) 8%, transparent);
+  border-color: color-mix(in srgb, var(--threshold-border) 70%, transparent);
+}
+
+/* Subtle paid-facilitation note — quiet, never a sales pitch. */
+.arrival-path-note {
+  margin: -0.5rem 0 1.2rem !important;
+  font-size: 0.82rem !important;
+  line-height: 1.55 !important;
+  color: var(--threshold-text-faint) !important;
+  flex: 0 0 auto !important;
+}
+
+/* Non-navigating cue that anchors the eye to the steps + CTA below. */
+.arrival-path-cue {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--cipher-accent);
 }
 
 .arrival-path-card h3 {

@@ -65,22 +65,66 @@
     return full.trim().split(/\s+/)[0] || '';
   }
 
-  // ---- cOMpass mark (small, decorative) -----------------------------------
-  // A simple gold ring echo of the threshold's compass mark. Kept minimal
-  // and self-contained so the arrival module has no coupling to threshold.js.
-  function compassMark() {
-    var ns = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('width', '56');
-    svg.setAttribute('height', '56');
+  // ---- Canonical cOMpass logo --------------------------------------------
+  // The faceted-diamond / four-sided compass used beside the `cOMpass`
+  // wordmark in index.html and theatrically in the threshold (threshold.js
+  // compassLogoSvg + .compass-mark). The markup is copied verbatim so the
+  // arrival chamber reads as the same product; the .compass-mark* aura/ring
+  // styles + the --brand-logo-* palette tokens both come from the
+  // /threshold/threshold.css this page already loads.
+  var _compassLogoSeq = 0;
+  function compassLogoSvg() {
+    var u = 'arr-cmp-' + (++_compassLogoSeq);
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('fill', 'none');
     svg.setAttribute('aria-hidden', 'true');
     svg.innerHTML =
-      '<circle cx="50" cy="50" r="34" fill="none" stroke="var(--cipher-primary)" stroke-opacity="0.55" stroke-width="1.5"/>' +
-      '<circle cx="50" cy="50" r="22" fill="none" stroke="var(--cipher-accent)" stroke-opacity="0.5" stroke-width="1"/>' +
-      '<circle cx="50" cy="50" r="2.4" fill="var(--brand-logo-center, #f7ead2)"/>' +
-      '<path d="M50 14 L54 46 L50 50 L46 46 Z" fill="var(--cipher-accent)" fill-opacity="0.85"/>';
-    return el('div', { class: 'arrival-mark-wrap' }, [svg]);
+      '<defs>' +
+        '<radialGradient id="' + u + '-aura" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="55%" stop-color="#818cf8" stop-opacity="0"/>' +
+          '<stop offset="78%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0.18"/>' +
+          '<stop offset="100%" stop-color="var(--brand-logo-center, #f7ead2)" stop-opacity="0"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="' + u + '-glow" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="var(--brand-logo-center, #f7ead2)" stop-opacity="0.9"/>' +
+          '<stop offset="25%" stop-color="var(--brand-logo-north, #d6b36a)" stop-opacity="0.5"/>' +
+          '<stop offset="55%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0.2"/>' +
+          '<stop offset="100%" stop-color="var(--brand-logo-east, #4f5f8f)" stop-opacity="0"/>' +
+        '</radialGradient>' +
+        '<filter id="' + u + '-fold" color-interpolation-filters="sRGB" x="-6%" y="-6%" width="112%" height="112%">' +
+          '<feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>' +
+          '<feColorMatrix in="b" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 28 -12" result="t"/>' +
+          '<feComposite in="SourceGraphic" in2="t" operator="atop"/>' +
+        '</filter>' +
+      '</defs>' +
+      '<circle cx="50" cy="50" r="50" fill="url(#' + u + '-aura)"/>' +
+      '<g filter="url(#' + u + '-fold)">' +
+        '<polygon points="50,5 95,50 5,50 50,43" fill="var(--brand-logo-north, #d6b36a)" fill-opacity="0.72"/>' +
+        '<polygon points="95,50 50,95 50,5 57,50" fill="var(--brand-logo-east, #4f5f8f)" fill-opacity="0.68"/>' +
+        '<polygon points="50,95 5,50 95,50 50,57" fill="var(--brand-logo-south, #6f9a84)" fill-opacity="0.65"/>' +
+        '<polygon points="5,50 50,5 50,95 43,50" fill="var(--brand-logo-west, #b4787e)" fill-opacity="0.65"/>' +
+      '</g>' +
+      '<g opacity="0.5">' +
+        '<polygon points="50,22 72,43 28,43 50,38" fill="var(--brand-logo-inner-north, #f1d99d)" fill-opacity="0.45"/>' +
+        '<polygon points="72,57 57,72 57,28 62,50" fill="var(--brand-logo-inner-east, #91a0c9)" fill-opacity="0.4"/>' +
+        '<polygon points="50,78 28,57 72,57 50,62" fill="var(--brand-logo-inner-south, #a6c9b1)" fill-opacity="0.4"/>' +
+        '<polygon points="28,43 43,28 43,72 38,50" fill="var(--brand-logo-inner-west, #d6a0a2)" fill-opacity="0.38"/>' +
+      '</g>' +
+      '<circle cx="50" cy="50" r="15" fill="url(#' + u + '-glow)"/>' +
+      '<circle cx="50" cy="50" r="1.5" fill="var(--brand-logo-center, #f7ead2)" fill-opacity="0.9"/>';
+    return svg;
+  }
+
+  function compassMark() {
+    var wrap = el('div', { class: 'compass-mark', role: 'img', 'aria-label': 'cOMpass logo' }, [
+      el('span', { class: 'compass-mark-aura', 'aria-hidden': 'true' }),
+      el('span', { class: 'compass-mark-ring', 'aria-hidden': 'true' })
+    ]);
+    var svg = compassLogoSvg();
+    svg.setAttribute('class', 'compass-mark-svg');
+    wrap.appendChild(svg);
+    return wrap;
   }
 
   // ---- Orientation copy ---------------------------------------------------
@@ -116,7 +160,7 @@
     var btn = el('button', {
       class: 'threshold-btn threshold-btn-primary',
       type: 'button'
-    }, ['Request one-on-one']);
+    }, ['Request guided orientation']);
 
     btn.addEventListener('click', function () {
       btn.disabled = true;
@@ -135,7 +179,7 @@
         if (!res.ok) throw new Error('bad status');
         btn.style.display = 'none';
         stateBox.textContent =
-          'One-on-one requested. Markus will reach out personally. ' +
+          'Guided orientation requested. Markus will reach out personally. ' +
           'You can still begin your first solo session while you wait.';
         stateBox.classList.add('is-visible');
         try { window.localStorage.setItem('commonunity_oneonone_requested_v1', '1'); } catch (_) {}
@@ -146,12 +190,20 @@
       });
     });
 
-    var card = el('div', { class: 'arrival-path-card' }, [
-      el('h3', null, ['Request one-on-one orientation']),
+    var card = el('div', { class: 'arrival-path-card arrival-path-card-guided' }, [
+      el('span', { class: 'arrival-path-badge' }, ['Guided']),
+      el('h3', null, ['Request guided orientation']),
       el('p', null, [
         'If you would like Markus to personally guide you through your first ' +
-        'cOMpass session, let him know here. He will reach out to arrange a ' +
-        'time directly.'
+        'cOMpass orientation, let him know here. The guided path can unfold ' +
+        'over four sessions, exploring the laws of awareness, clarity, ' +
+        'balance, and creation while integrating other practices and ' +
+        'traditions. Markus will reach out directly to arrange what is ' +
+        'appropriate.'
+      ]),
+      el('p', { class: 'arrival-path-note' }, [
+        'These guided sessions are normally offered as paid facilitation; ' +
+        'first beta requests are arranged personally.'
       ]),
       btn,
       stateBox,
@@ -163,7 +215,7 @@
       if (window.localStorage.getItem('commonunity_oneonone_requested_v1') === '1') {
         btn.style.display = 'none';
         stateBox.textContent =
-          'One-on-one requested. Markus will reach out personally. ' +
+          'Guided orientation requested. Markus will reach out personally. ' +
           'You can still begin your first solo session while you wait.';
         stateBox.classList.add('is-visible');
       }
@@ -172,21 +224,19 @@
     return card;
   }
 
-  function buildSoloCard(onBegin) {
-    var btn = el('button', {
-      class: 'threshold-btn threshold-btn-ghost',
-      type: 'button'
-    }, ['Begin solo session']);
-    btn.addEventListener('click', onBegin);
-
-    return el('div', { class: 'arrival-path-card' }, [
+  // The solo card is informational/preparation only — it does NOT navigate
+  // into cOMpass. The single solo handoff lives in the footer below the
+  // numbered steps, so everyone reads the steps before entering once.
+  function buildSoloCard() {
+    return el('div', { class: 'arrival-path-card arrival-path-card-solo' }, [
+      el('span', { class: 'arrival-path-badge arrival-path-badge-solo' }, ['Solo']),
       el('h3', null, ['Begin your first solo session']),
       el('p', null, [
-        'If you would like to begin now, start with your first Gene Key ' +
-        'hexagram. Read slowly, take notes, and let the first contemplation ' +
-        'open naturally.'
+        'If you would like to begin now, start by reading your first Gene ' +
+        'Key hexagram. Your solo path is outlined below so you can enter ' +
+        'cOMpass with a clear first step.'
       ]),
-      btn
+      el('div', { class: 'arrival-path-cue' }, ['Review the solo steps below ↓'])
     ]);
   }
 
@@ -245,7 +295,7 @@
 
     var paths = el('div', { class: 'arrival-paths' });
     paths.appendChild(buildOneOnOneCard());
-    paths.appendChild(buildSoloCard(handoffToCompass));
+    paths.appendChild(buildSoloCard());
     card.appendChild(paths);
 
     // Solo session instructions — visible on the page so the user knows
