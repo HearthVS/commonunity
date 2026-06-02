@@ -3196,21 +3196,28 @@ body.companion-mode .companion-mode-banner { display: block; }
 .compass-nexus-gt-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding: 3px 9px;
-  font-size: 11px;
-  border: 1px solid color-mix(in srgb, #c8a96e 40%, transparent);
-  border-radius: 20px;
-  background: color-mix(in srgb, #c8a96e 8%, transparent);
+  justify-content: center;
+  margin-top: 7px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, #c8a96e 35%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, #c8a96e 7%, transparent);
   color: #c8a96e;
   cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.15s, background 0.15s;
+  opacity: 0.75;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+  flex-shrink: 0;
 }
 .compass-nexus-gt-btn:hover {
   opacity: 1;
   background: color-mix(in srgb, #c8a96e 16%, transparent);
+  transform: scale(1.1);
+}
+.compass-nexus-gt-btn.saved {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 .compass-nexus-intro {
   font-size: 12px;
@@ -9729,6 +9736,20 @@ function appendCompassNexusMsg(role, text) {
   return div;
 }
 
+const COMPASS_NEXUS_STORAGE_KEY = 'cu.nexus.compass.session';
+
+function compassNexusSaveSession(conv) {
+  // Save current conversation HTML to localStorage
+  try {
+    const data = { html: conv.innerHTML, ts: Date.now() };
+    localStorage.setItem(COMPASS_NEXUS_STORAGE_KEY, JSON.stringify(data));
+  } catch(_) {}
+}
+
+function compassNexusClearSession() {
+  try { localStorage.removeItem(COMPASS_NEXUS_STORAGE_KEY); } catch(_) {}
+}
+
 function openCompassNexus() {
   const modal = document.getElementById('compass-nexus-modal');
   if (!modal) return;
@@ -9736,26 +9757,86 @@ function openCompassNexus() {
   modal.classList.add('is-open');
   // Load Golden Thread silently in the background
   compassLoadGoldenThread();
-  // Reset conversation for a fresh seeding each open
-  compassNexusState.history = [];
   const conv = document.getElementById('compass-nexus-convo');
   if (conv) {
-    const ctx = compassNexusSeedContext();
-    const hexLine = ctx.hexagram
-      ? `${ctx.hexagram.number} · ${ctx.hexagram.title}`
-      : (ctx.gk_num ? `Gene Key ${ctx.gk_num}` : 'no hexagram set');
-    conv.innerHTML = `<div class="compass-nexus-intro">In <strong>${escapeHtml(ctx.room_title)}</strong> — held by ${escapeHtml(hexLine)}.<br>When you are ready, knock.</div>`;
+    // Try to rehydrate from localStorage (same session)
+    let restored = false;
+    try {
+      const saved = localStorage.getItem(COMPASS_NEXUS_STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        // Only restore if saved within last 4 hours
+        if (data.html && (Date.now() - data.ts) < 4 * 60 * 60 * 1000) {
+          conv.innerHTML = data.html;
+          // Re-attach knot button listeners after rehydration
+          conv.querySelectorAll('.compass-nexus-gt-btn:not(.saved)').forEach(btn => {
+            const bubble = btn.closest('.compass-nexus-msg')?.querySelector('.compass-nexus-bubble');
+            if (bubble) {
+              btn.addEventListener('click', async () => {
+                btn.classList.add('saved');
+                btn.title = 'Knotted ✓';
+                await compassSaveGoldenThread(bubble.textContent);
+              });
+            }
+          });
+          // Restore history from DOM
+          compassNexusState.history = [];
+          conv.querySelectorAll('.compass-nexus-msg').forEach(el => {
+            const role = el.classList.contains('is-nexus') ? 'rose' : 'user';
+            const bubble = el.querySelector('.compass-nexus-bubble');
+            if (bubble) compassNexusState.history.push({ role, text: bubble.textContent });
+          });
+          restored = true;
+          // Show a small "restored" notice
+          const notice = document.createElement('div');
+          notice.style.cssText = 'font-size:10px;color:var(--text-faint);text-align:center;padding:4px 0 2px;opacity:0.6;';
+          notice.textContent = '— previous conversation restored —';
+          conv.insertBefore(notice, conv.firstChild);
+        }
+      }
+    } catch(_) {}
+
+    if (!restored) {
+      compassNexusState.history = [];
+      const ctx = compassNexusSeedContext();
+      const hexLine = ctx.hexagram
+        ? `${ctx.hexagram.number} · ${ctx.hexagram.title}`
+        : (ctx.gk_num ? `Gene Key ${ctx.gk_num}` : 'no hexagram set');
+      const knotSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+      conv.innerHTML = `<div class="compass-nexus-intro">In <strong>${escapeHtml(ctx.room_title)}</strong> — held by ${escapeHtml(hexLine)}.<br>When you are ready, knock.<br><span style="font-size:10px;opacity:0.5;display:inline-flex;align-items:center;gap:4px;margin-top:6px;">${knotSvg} Tie a knot on anything worth keeping.</span></div>`;
+    }
   }
   setTimeout(() => {
     document.getElementById('compass-nexus-input')?.focus();
   }, 100);
 }
 
-function closeCompassNexus() {
+function closeCompassNexus(force) {
   const modal = document.getElementById('compass-nexus-modal');
   if (!modal) return;
+  // Soft warning if mid-conversation and not forced
+  if (!force && compassNexusState.history.length > 0) {
+    const conv = document.getElementById('compass-nexus-convo');
+    // Show inline warning instead of closing immediately
+    const existing = document.getElementById('nexus-close-warning');
+    if (existing) { existing.remove(); doCloseCompassNexus(modal); return; }
+    const warn = document.createElement('div');
+    warn.id = 'nexus-close-warning';
+    warn.style.cssText = 'font-size:11px;color:var(--text-faint);text-align:center;padding:8px 12px;border-top:1px solid var(--border);margin-top:4px;';
+    warn.innerHTML = 'Tie a knot on anything worth keeping before you leave. <button id="nexus-close-confirm" style="background:none;border:none;color:var(--text-faint);text-decoration:underline;cursor:pointer;font-size:11px;">Close anyway</button>';
+    conv?.appendChild(warn);
+    conv?.scrollTo({ top: conv.scrollHeight, behavior: 'smooth' });
+    document.getElementById('nexus-close-confirm')?.addEventListener('click', () => doCloseCompassNexus(modal));
+    return;
+  }
+  doCloseCompassNexus(modal);
+}
+
+function doCloseCompassNexus(modal) {
   compassNexusState.isOpen = false;
   modal.classList.remove('is-open');
+  compassNexusClearSession();
+  compassNexusState.history = [];
 }
 
 async function sendCompassNexusMessage() {
@@ -9844,15 +9925,16 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
           sendBtn.classList.remove('loading');
           compassNexusState.history.push({ role: 'user', text: msg });
           compassNexusState.history.push({ role: 'rose', text });
+          // Persist conversation to localStorage
+          compassNexusSaveSession(conv);
           // Add Golden Thread button
           const gtBtn = document.createElement('button');
           gtBtn.className = 'compass-nexus-gt-btn';
-          gtBtn.title = 'Weave into your Golden Thread';
-          gtBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 2 Q14 6 10 10 Q6 14 10 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><circle cx="10" cy="2" r="1.5" fill="currentColor"/><circle cx="10" cy="18" r="1.5" fill="currentColor"/></svg> Golden Thread`;
+          gtBtn.title = 'Tie a knot — bind this to your Golden Thread';
+          gtBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
           gtBtn.addEventListener('click', async () => {
-            gtBtn.disabled = true;
-            gtBtn.textContent = 'Saved ✓';
-            gtBtn.style.opacity = '0.5';
+            gtBtn.classList.add('saved');
+            gtBtn.title = 'Knotted ✓';
             await compassSaveGoldenThread(text);
           });
           div.appendChild(gtBtn);
@@ -9919,7 +10001,7 @@ function initCompassNexus() {
   closeBtn?.addEventListener('click', closeCompassNexus);
   // Click outside the panel closes the modal
   modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeCompassNexus();
+    if (e.target === modal) closeCompassNexus(false);
   });
   // Escape closes
   document.addEventListener('keydown', (e) => {

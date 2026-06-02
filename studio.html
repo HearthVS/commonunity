@@ -2537,21 +2537,28 @@ input, textarea { font: inherit; color: inherit; }
 .mirror-gt-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 5px;
-  padding: 3px 9px;
-  font-size: 11px;
-  border: 1px solid color-mix(in srgb, #c8a96e 40%, transparent);
-  border-radius: 20px;
-  background: color-mix(in srgb, #c8a96e 8%, transparent);
+  justify-content: center;
+  margin-top: 6px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, #c8a96e 35%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, #c8a96e 7%, transparent);
   color: #c8a96e;
   cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.15s, background 0.15s;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+  flex-shrink: 0;
 }
 .mirror-gt-btn:hover {
   opacity: 1;
   background: color-mix(in srgb, #c8a96e 16%, transparent);
+  transform: scale(1.1);
+}
+.mirror-gt-btn.saved {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
 
 /* Rose input — elegant */
@@ -7301,7 +7308,7 @@ input, textarea { font: inherit; color: inherit; }
 
       <div class="mirror-conversation" id="mirror-conversation">
         <p class="mirror-rose-intro" id="mirror-intro">
-          Nexus is present.<br>When you are ready, knock.
+          Nexus is present.<br>When you are ready, knock.<br><span style="font-size:10px;opacity:0.45;display:inline-flex;align-items:center;gap:4px;margin-top:6px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> Tie a knot on anything worth keeping.</span>
         </p>
       </div>
 
@@ -9007,6 +9014,8 @@ function renderMirrorHistory(roomKey) {
   conv.scrollTop = conv.scrollHeight;
 }
 
+const STUDIO_KNOT_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+
 function appendMirrorMessage(role, text, save = true) {
   const conv = document.getElementById('mirror-conversation');
   document.getElementById('mirror-intro').style.display = 'none';
@@ -9017,6 +9026,19 @@ function appendMirrorMessage(role, text, save = true) {
     <span class="mirror-sender">${role === 'rose' ? 'Nexus' : 'You'}</span>
     <div class="mirror-bubble">${text}</div>
   `;
+  // Add knot button for Nexus messages
+  if (role === 'rose') {
+    const gtBtn = document.createElement('button');
+    gtBtn.className = 'mirror-gt-btn';
+    gtBtn.title = 'Tie a knot — bind this to your Golden Thread';
+    gtBtn.innerHTML = STUDIO_KNOT_SVG;
+    gtBtn.addEventListener('click', async () => {
+      gtBtn.classList.add('saved');
+      gtBtn.title = 'Knotted ✓';
+      await studioSaveGoldenThread(text);
+    });
+    div.appendChild(gtBtn);
+  }
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
 
@@ -9204,15 +9226,14 @@ async function sendMirrorMessage() {
           if (!state.rooms[currentRoom].mirrorHistory) state.rooms[currentRoom].mirrorHistory = [];
           state.rooms[currentRoom].mirrorHistory.push({ role: 'rose', text });
           saveState();
-          // Add Golden Thread button
+          // Add knot button via appendMirrorMessage pattern
           const gtBtn = document.createElement('button');
           gtBtn.className = 'mirror-gt-btn';
-          gtBtn.title = 'Weave into your Golden Thread';
-          gtBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 2 Q14 6 10 10 Q6 14 10 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><circle cx="10" cy="2" r="1.5" fill="currentColor"/><circle cx="10" cy="18" r="1.5" fill="currentColor"/></svg> Golden Thread`;
+          gtBtn.title = 'Tie a knot — bind this to your Golden Thread';
+          gtBtn.innerHTML = STUDIO_KNOT_SVG;
           gtBtn.addEventListener('click', async () => {
-            gtBtn.disabled = true;
-            gtBtn.textContent = 'Saved ✓';
-            gtBtn.style.opacity = '0.5';
+            gtBtn.classList.add('saved');
+            gtBtn.title = 'Knotted ✓';
             await studioSaveGoldenThread(text);
           });
           div.appendChild(gtBtn);
