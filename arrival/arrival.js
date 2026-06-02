@@ -100,7 +100,7 @@
     'Add your own session notes.',
     'Answer the facilitation questions.',
     'Begin adding your contemplations as they arise.',
-    'Chat with Nexus if you want reflective support.',
+    'Chat with Nexus if you want reflective support. Nexus is the CommonUnity reflection companion, here to help you clarify and deepen your contemplations without replacing your own inner authority.',
     'Stop when the session feels complete. You can return later and continue.'
   ];
 
@@ -253,6 +253,17 @@
     card.appendChild(el('h2', { class: 'arrival-section-title', style: 'margin-top:clamp(1.8rem,4vw,2.6rem);' },
       ['Your first solo session']));
     card.appendChild(buildInstructions());
+
+    // Local-first trust note. Accurate to the implementation: your cOMpass
+    // contemplations + session notes are kept in this browser (localStorage),
+    // not in a CommonUnity account. (Nexus replies still require sending your
+    // message to be answered — so the note speaks to your cOMpass data, not a
+    // blanket "nothing ever leaves your device" claim.)
+    card.appendChild(el('p', { class: 'arrival-trust-note' }, [
+      'Trust note: your cOMpass contemplations and notes stay on your own ' +
+      'computer, in this browser. This is part of CommonUnity’s ' +
+      'local-first trust architecture.'
+    ]));
 
     var soloFooter = el('div', { class: 'arrival-solo-footer' });
     var soloBtn = el('button', {
