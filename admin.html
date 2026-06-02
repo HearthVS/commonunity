@@ -1084,6 +1084,15 @@
           <button class="filter-btn" data-filter="new">New</button>
           <button class="filter-btn" data-filter="acknowledged">Acknowledged</button>
         </div>
+        <div class="pane-header" style="margin:8px 0 12px;">
+          <h2 style="font-size:1rem;">One-on-one orientation requests</h2>
+          <p>Companions who asked Markus to personally guide their first cOMpass session.</p>
+        </div>
+        <div id="orientation-list"></div>
+        <div id="orientation-empty" class="hidden" style="padding:24px 0;color:var(--faint);">
+          No one-on-one requests yet.
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
         <div id="feedback-loading" class="muted" style="padding:24px 0;">Loading feedback…</div>
         <div id="feedback-list"></div>
         <div id="feedback-empty" class="hidden" style="padding:48px 0;text-align:center;color:var(--faint);">
@@ -1228,6 +1237,7 @@
       feedback: [],
       feedbackUnread: 0,
       feedbackFilter: 'all',
+      orientationRequests: [],
       activeTab: 'field',
     };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -1685,6 +1695,48 @@
       $('feedback-loading').style.display = 'none';
       renderFeedback();
       updateFeedbackBadge();
+      loadOrientationRequests();
+    }
+
+    async function loadOrientationRequests() {
+      const data = await optionalApi('/api/admin/orientation-requests');
+      state.orientationRequests = data.entries || [];
+      renderOrientationRequests();
+    }
+
+    function renderOrientationRequests() {
+      const entries = state.orientationRequests;
+      const list = $('orientation-list');
+      const empty = $('orientation-empty');
+      if (!list || !empty) return;
+      if (entries.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      list.innerHTML = entries.map(r => {
+        const isNew = r.status === 'new';
+        const who = r.name || 'Anonymous companion';
+        const meta = [r.birth_date, r.invite_token].filter(Boolean).join(' · ');
+        return `<div class="feedback-card${isNew ? ' is-new' : ''}">
+          <div class="feedback-header">
+            <span class="feedback-type-tag feature">one-on-one</span>
+            <span class="feedback-status-pill ${r.status || 'new'}">${escapeHtml(r.status || 'new')}</span>
+          </div>
+          <div class="feedback-message">${escapeHtml(who)} requested a personal orientation with Markus.</div>
+          <div class="feedback-meta">
+            <span>${escapeHtml(meta || '—')}</span>
+            <span>${date(r.timestamp)}</span>
+          </div>
+          ${isNew ? `<div class="feedback-actions"><button class="btn btn-sm" data-ack-orientation="${escapeHtml(r.id)}">Acknowledge</button></div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function acknowledgeOrientationRequest(id) {
+      await api(`/api/admin/orientation-requests/${id}/acknowledge`, { method: 'POST', body: '{}' });
+      await loadOrientationRequests();
     }
 
     function updateFeedbackBadge() {
@@ -1868,6 +1920,7 @@
       const brandActivate = event.target?.dataset?.brandActivate;
       const brandArchive = event.target?.dataset?.brandArchive;
       const ackId = event.target?.dataset?.acknowledge;
+      const ackOrientationId = event.target?.dataset?.ackOrientation;
       const inviteFromName = event.target?.dataset?.inviteFromName;
 
       if (copyToken) {
@@ -1909,6 +1962,9 @@
       }
       if (ackId) {
         await acknowledgeFeedback(ackId);
+      }
+      if (ackOrientationId) {
+        await acknowledgeOrientationRequest(ackOrientationId);
       }
       if (inviteFromName !== undefined) {
         const email = event.target?.dataset?.inviteFromEmail || '';

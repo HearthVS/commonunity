@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cOMpass — Arrival</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Reuse the threshold module's visual language so the arrival
+       chamber feels continuous with the threshold the user just left. -->
+  <link rel="stylesheet" href="/threshold/threshold.css">
+  <link rel="stylesheet" href="/compass/arrival/arrival.css">
+</head>
+<body>
+  <main id="arrival-root" class="threshold-root arrival-root" data-palette-stage="3"></main>
+
+  <!-- Read-only access to the same OM Cipher contract the threshold wrote.
+       The arrival chamber never writes the contract; it only reads palette
+       + identity to personalise the welcome. -->
+  <script src="/threshold/contract.js"></script>
+  <script src="/compass/arrival/arrival.js"></script>
+</body>
+</html>

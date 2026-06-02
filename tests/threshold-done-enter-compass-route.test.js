@@ -143,9 +143,11 @@ const lastSearchIdx = initBody.lastIndexOf('initSearch()');
 ok(finalApplyIdx > 0 && lastSearchIdx > 0 && finalApplyIdx > lastSearchIdx,
    "applyCompassEntryInvariantIfNeeded is invoked AFTER initSearch() (last in-band firing)");
 
-console.log('\n7. threshold writer hands off to /compass?threshold=done&enter=compass');
-ok(/\/compass\?threshold=done&enter=compass/.test(thresholdJs),
-   "threshold.js navigates to /compass?threshold=done&enter=compass after the welcome landing");
+console.log('\n7. threshold writer hands off to the arrival chamber, which routes into cOMpass');
+ok(/function handoffToCompass\s*\([\s\S]*?window\.location\.href\s*=\s*'\/compass\/arrival'/.test(thresholdJs),
+   "threshold.js navigates to /compass/arrival after the welcome landing");
+ok(/window\.location\.replace\('\/compass\?threshold=done&enter=compass'\)/.test(thresholdJs),
+   "returning/completed browsers still go straight to /compass?threshold=done&enter=compass");
 
 console.log('\n8. functional check · simulated init failure cannot strand the user');
 // Reproduce the production failure mode in jsdom:
