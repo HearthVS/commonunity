@@ -3594,6 +3594,9 @@ async def acknowledge_feedback(feedback_id: int, request: Request):
 # solo path, which the arrival page lets the companion start in parallel.
 
 _ORIENTATION_NOTIFY_ENV = "ORIENTATION_NOTIFY_EMAIL"
+# Beta default recipient — Markus asked to be emailed directly rather than
+# watch the admin panel. ORIENTATION_NOTIFY_EMAIL overrides this when set.
+_ORIENTATION_NOTIFY_DEFAULT = "markus@jointidea.com"
 
 
 class OrientationRequest(BaseModel):
@@ -3604,11 +3607,12 @@ class OrientationRequest(BaseModel):
 def _notify_orientation_request(name: str, birth_date: str, invite_token: str) -> None:
     """Best-effort email to Markus when a one-on-one is requested.
 
-    Silent no-op unless both SMTP and ORIENTATION_NOTIFY_EMAIL are set, so a
-    missing config never breaks the companion's request (it is already
-    persisted for the admin surface either way).
+    Recipient defaults to markus@jointidea.com so the beta works without an
+    extra env var; ORIENTATION_NOTIFY_EMAIL overrides it. Still a silent no-op
+    when SMTP is unconfigured, so a missing config never breaks the companion's
+    request (it is already persisted for the admin surface either way).
     """
-    notify_to = os.getenv(_ORIENTATION_NOTIFY_ENV, "").strip()
+    notify_to = os.getenv(_ORIENTATION_NOTIFY_ENV, "").strip() or _ORIENTATION_NOTIFY_DEFAULT
     if not notify_to or not _smtp_configured():
         return
     try:

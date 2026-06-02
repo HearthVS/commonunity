@@ -123,5 +123,11 @@ ok(/buythebook/.test(serverPy),
 ok(/For when you choose to begin on your own/.test(serverPy),
    'passcode is framed gently for those beginning alone');
 
+console.log('\n11. one-on-one notification defaults to Markus, env overrides');
+ok(/_ORIENTATION_NOTIFY_DEFAULT\s*=\s*"markus@jointidea\.com"/.test(serverPy),
+   'notification recipient defaults to markus@jointidea.com');
+ok(/os\.getenv\(_ORIENTATION_NOTIFY_ENV, ""\)\.strip\(\)\s*or\s*_ORIENTATION_NOTIFY_DEFAULT/.test(serverPy),
+   'ORIENTATION_NOTIFY_EMAIL overrides the default when set');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
