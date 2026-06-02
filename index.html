@@ -9802,8 +9802,9 @@ function openCompassNexus() {
       const hexLine = ctx.hexagram
         ? `${ctx.hexagram.number} · ${ctx.hexagram.title}`
         : (ctx.gk_num ? `Gene Key ${ctx.gk_num}` : 'no hexagram set');
-      const knotSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
-      conv.innerHTML = `<div class="compass-nexus-intro">In <strong>${escapeHtml(ctx.room_title)}</strong> — held by ${escapeHtml(hexLine)}.<br>When you are ready, knock.<br><span style="font-size:10px;opacity:0.5;display:inline-flex;align-items:center;gap:4px;margin-top:6px;">${knotSvg} Tie a knot on anything worth keeping.</span></div>`;
+      const knotSvg = `<svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="19" y1="19" x2="29" y2="29" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M13 13 C13 10 15 8 17 9 C20 10 21 13 19 15 C17 17 14 17 12 15 C10 13 10 10 12 8 C14 6 18 6 20 8 C22 10 22 14 20 16 C18 18 15 19 13 19 C11 19 9 18 8 16" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+      const lineRef = ctx.gk_line ? ` · Line ${ctx.gk_line}${ctx.line_data?.title ? ' · ' + ctx.line_data.title : ''}` : '';
+      conv.innerHTML = `<div class="compass-nexus-intro">In <strong>${escapeHtml(ctx.room_title)}</strong> — held by ${escapeHtml(hexLine)}${escapeHtml(lineRef)}.<br>When you are ready, knock.<br><span style="font-size:11px;opacity:0.7;display:inline-flex;align-items:center;gap:5px;margin-top:8px;color:var(--text-muted,#aaa);">${knotSvg} Press to tie a knot and save to your Golden Thread.</span></div>`;
     }
   }
   setTimeout(() => {
@@ -9931,7 +9932,7 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
           const gtBtn = document.createElement('button');
           gtBtn.className = 'compass-nexus-gt-btn';
           gtBtn.title = 'Tie a knot — bind this to your Golden Thread';
-          gtBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3 C8 3 5 6 6 9 C7 12 11 11 13 9 C15 7 14 4 12 3 Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 9 C4 11 4 15 7 17 C9 18.5 11 18 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M13 9 C16 10 18 13 17 16 C16 18.5 13.5 19.5 12 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M12 17 L11 21 M12 17 L13 21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+          gtBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="19" y1="19" x2="29" y2="29" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M13 13 C13 10 15 8 17 9 C20 10 21 13 19 15 C17 17 14 17 12 15 C10 13 10 10 12 8 C14 6 18 6 20 8 C22 10 22 14 20 16 C18 18 15 19 13 19 C11 19 9 18 8 16" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
           gtBtn.addEventListener('click', async () => {
             gtBtn.classList.add('saved');
             gtBtn.title = 'Knotted ✓';
