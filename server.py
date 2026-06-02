@@ -1231,6 +1231,23 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS token_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            companion TEXT NOT NULL DEFAULT '',
+            endpoint TEXT NOT NULL DEFAULT '',
+            room TEXT NOT NULL DEFAULT '',
+            model TEXT NOT NULL DEFAULT '',
+            input_tokens INTEGER NOT NULL DEFAULT 0,
+            output_tokens INTEGER NOT NULL DEFAULT 0,
+            total_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_usd REAL NOT NULL DEFAULT 0.0,
+            invite_token TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
     conn.commit()
 
 
@@ -1238,6 +1255,39 @@ def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None
     return {key: row[key] for key in row.keys()}
+
+
+# ── Token logging ─────────────────────────────────────────────────────────
+# Pricing as of Claude Sonnet 4.5 ($/million tokens)
+_TOKEN_PRICE_INPUT  = 3.00   # $3.00 / M input tokens
+_TOKEN_PRICE_OUTPUT = 15.00  # $15.00 / M output tokens
+
+def log_tokens(
+    companion: str,
+    endpoint: str,
+    room: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    invite_token: str = "",
+):
+    """Write a token usage row to the database. Fire-and-forget — errors are swallowed."""
+    try:
+        db = _get_db()
+        if db is None:
+            return
+        cost = (input_tokens * _TOKEN_PRICE_INPUT + output_tokens * _TOKEN_PRICE_OUTPUT) / 1_000_000
+        db.execute(
+            """INSERT INTO token_log
+               (timestamp, companion, endpoint, room, model,
+                input_tokens, output_tokens, total_tokens, cost_usd, invite_token)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (_now_iso(), companion, endpoint, room, model,
+             input_tokens, output_tokens, input_tokens + output_tokens, cost, invite_token)
+        )
+        db.commit()
+    except Exception:
+        pass  # never let logging break the main request
 
 
 def _brand_row_to_dict(row: sqlite3.Row | None) -> dict:
@@ -2516,6 +2566,18 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
             ) as s:
                 for text in s.text_stream:
                     yield f"data: {json.dumps({'chunk': text})}\n\n"
+                try:
+                    final = s.get_final_message()
+                    log_tokens(
+                        companion=request.companion or "",
+                        endpoint="rose-room-opening",
+                        room=request.room or "",
+                        model="claude-sonnet-4-5",
+                        input_tokens=final.usage.input_tokens,
+                        output_tokens=final.usage.output_tokens,
+                    )
+                except Exception:
+                    pass
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -2612,6 +2674,20 @@ Respond with precision and care. Ask the next question that genuinely matters. O
             ) as s:
                 for text in s.text_stream:
                     yield f"data: {json.dumps({'chunk': text})}\n\n"
+                # Capture usage after stream completes
+                try:
+                    final = s.get_final_message()
+                    log_tokens(
+                        companion=request.companion or "",
+                        endpoint="rose-mirror",
+                        room=request.room or "",
+                        model="claude-sonnet-4-5",
+                        input_tokens=final.usage.input_tokens,
+                        output_tokens=final.usage.output_tokens,
+                        invite_token=getattr(request, "invite_token", "") or "",
+                    )
+                except Exception:
+                    pass
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -3474,3 +3550,93 @@ async def admin_golden_thread(request: Request, limit: int = 100):
             "SELECT * FROM golden_thread ORDER BY timestamp DESC LIMIT ?", (limit,)
         ).fetchall()
     return {"threads": [_row_to_dict(r) for r in rows]}
+
+
+# ── Token log admin endpoints ─────────────────────────────────────────────
+
+@app.get("/api/admin/token-log")
+async def admin_token_log(request: Request, limit: int = 200, companion: str = ""):
+    """Admin: raw token log — most recent entries."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        if companion:
+            rows = conn.execute(
+                "SELECT * FROM token_log WHERE companion=? ORDER BY timestamp DESC LIMIT ?",
+                (companion, limit)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM token_log ORDER BY timestamp DESC LIMIT ?", (limit,)
+            ).fetchall()
+    return {"rows": [dict(r) for r in rows]}
+
+
+@app.get("/api/admin/token-stats")
+async def admin_token_stats(request: Request):
+    """Admin: aggregated token stats — per user, per room, per day."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        # ── Per-user totals ───────────────────────────────────────────────
+        per_user = conn.execute("""
+            SELECT
+                companion,
+                COUNT(*)           AS exchanges,
+                SUM(input_tokens)  AS total_input,
+                SUM(output_tokens) AS total_output,
+                SUM(total_tokens)  AS total_tokens,
+                ROUND(SUM(cost_usd), 4) AS total_cost_usd,
+                MIN(timestamp)     AS first_seen,
+                MAX(timestamp)     AS last_seen
+            FROM token_log
+            WHERE companion != ''
+            GROUP BY companion
+            ORDER BY total_cost_usd DESC
+        """).fetchall()
+
+        # ── Per-room totals ───────────────────────────────────────────────
+        per_room = conn.execute("""
+            SELECT
+                room,
+                COUNT(*)           AS exchanges,
+                SUM(input_tokens)  AS total_input,
+                SUM(output_tokens) AS total_output,
+                ROUND(SUM(cost_usd), 4) AS total_cost_usd
+            FROM token_log
+            WHERE room != ''
+            GROUP BY room
+            ORDER BY total_cost_usd DESC
+        """).fetchall()
+
+        # ── Daily totals (last 30 days) ───────────────────────────────────
+        daily = conn.execute("""
+            SELECT
+                DATE(timestamp)    AS day,
+                COUNT(*)           AS exchanges,
+                COUNT(DISTINCT companion) AS active_users,
+                SUM(total_tokens)  AS total_tokens,
+                ROUND(SUM(cost_usd), 4) AS total_cost_usd
+            FROM token_log
+            WHERE timestamp >= DATE('now', '-30 days')
+            GROUP BY DATE(timestamp)
+            ORDER BY day DESC
+        """).fetchall()
+
+        # ── All-time summary ──────────────────────────────────────────────
+        summary = conn.execute("""
+            SELECT
+                COUNT(*)                   AS total_exchanges,
+                COUNT(DISTINCT companion)  AS total_users,
+                SUM(input_tokens)          AS total_input,
+                SUM(output_tokens)         AS total_output,
+                SUM(total_tokens)          AS total_tokens,
+                ROUND(SUM(cost_usd), 4)    AS total_cost_usd,
+                ROUND(AVG(total_tokens), 0) AS avg_tokens_per_exchange
+            FROM token_log
+        """).fetchone()
+
+    return {
+        "summary":  dict(summary) if summary else {},
+        "per_user": [dict(r) for r in per_user],
+        "per_room": [dict(r) for r in per_room],
+        "daily":    [dict(r) for r in daily],
+    }

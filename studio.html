@@ -7494,6 +7494,10 @@ input, textarea { font: inherit; color: inherit; }
           <button id="nexus-memory-toggle" style="background:none;border:none;cursor:pointer;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);opacity:0.5;padding:var(--space-1) 0;width:100%;text-align:center;">what nexus knows ▾</button>
           <div id="nexus-memory-body" style="display:none;font-size:10px;color:var(--text-faint);line-height:1.6;padding:var(--space-2) var(--space-3);background:color-mix(in srgb,var(--card) 40%,transparent);border-radius:var(--radius-md);margin-top:4px;white-space:pre-wrap;"></div>
         </div>
+        <!-- Beta session stats -->
+        <div id="nexus-session-stats" style="display:none;text-align:center;margin-top:4px;">
+          <span id="nexus-stats-text" style="font-size:9px;letter-spacing:0.08em;color:var(--text-faint);opacity:0.45;"></span>
+        </div>
       </div>
 
       <div class="mirror-conversation" id="mirror-conversation">
@@ -9047,6 +9051,7 @@ function doEnterRoom(roomKey, meta) {
 
   // Update context bar for this room
   updateContextBar();
+  updateSessionStats();
 }
 
 function renderRoomSGS(roomKey) {
@@ -9244,6 +9249,7 @@ function appendMirrorMessage(role, text, save = true) {
     }
     saveState();
     updateContextBar();
+  updateSessionStats();
   }
 }
 
@@ -9300,6 +9306,7 @@ async function initRoomRose(roomKey) {
             state.rooms[roomKey].mirrorHistory.push({ role: 'rose', text });
             saveState();
             updateContextBar();
+  updateSessionStats();
             return;
           }
           decoder.decode(value).split('\n').forEach(line => {
@@ -9425,6 +9432,7 @@ async function sendMirrorMessage() {
           state.rooms[currentRoom].mirrorHistory.push({ role: 'rose', text });
           saveState();
           updateContextBar();
+  updateSessionStats();
           // Add knot button via appendMirrorMessage pattern
           const gtBtn = document.createElement('button');
           gtBtn.className = 'mirror-gt-btn';
@@ -11402,6 +11410,31 @@ function updateContextBar() {
   }
 }
 
+// ── Session stats (beta) ─────────────────────────────────────────────────
+// Pricing mirrors server constants ($/M tokens)
+const NEXUS_PRICE_INPUT  = 3.00;
+const NEXUS_PRICE_OUTPUT = 15.00;
+
+function updateSessionStats() {
+  const statsEl = document.getElementById('nexus-session-stats');
+  const textEl  = document.getElementById('nexus-stats-text');
+  if (!statsEl || !textEl || !currentRoom) return;
+
+  const history = state.rooms[currentRoom]?.mirrorHistory || [];
+  if (history.length === 0) { statsEl.style.display = 'none'; return; }
+
+  const exchanges = Math.floor(history.length / 2);
+  // Estimate tokens from char count (~4 chars / token)
+  const inputChars  = history.filter(m => m.role === 'user').reduce((s, m) => s + (m.text?.length || 0), 0);
+  const outputChars = history.filter(m => m.role === 'rose').reduce((s, m) => s + (m.text?.length || 0), 0);
+  const inputEst  = Math.round(inputChars / 4);
+  const outputEst = Math.round(outputChars / 4);
+  const costEst   = (inputEst * NEXUS_PRICE_INPUT + outputEst * NEXUS_PRICE_OUTPUT) / 1_000_000;
+
+  textEl.textContent = `beta · ${exchanges} exchange${exchanges !== 1 ? 's' : ''} · ~${(inputEst + outputEst).toLocaleString()} tk · est. $${costEst.toFixed(4)}`;
+  statsEl.style.display = 'block';
+}
+
 // ── New Project reset ─────────────────────────────────────────
 function nexusNewProject() {
   if (!currentRoom) return;
@@ -11426,6 +11459,7 @@ function nexusNewProject() {
 
   saveState();
   updateContextBar();
+  updateSessionStats();
 
   // Re-show dormant state
   const mirror = document.getElementById('room-mirror');
@@ -11571,6 +11605,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNexusEtiquette();
   initNexusNewProject();
   updateContextBar();
+  updateSessionStats();
 });
 
 // Expose the live Studio state + saveState to the Builder IIFE in

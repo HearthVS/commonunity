@@ -888,6 +888,7 @@
         <button class="tab-btn" data-tab="waitlist">Waitlist</button>
         <button class="tab-btn" data-tab="feedback">Feedback <span class="tab-badge hidden" id="feedback-badge">0</span></button>
         <button class="tab-btn" data-tab="golden-thread">Golden Thread</button>
+        <button class="tab-btn" data-tab="token-usage">Token Usage</button>
         <button class="tab-btn" data-tab="system">System</button>
       </nav>
 
@@ -1106,6 +1107,66 @@
         </section>
       </div><!-- /tab-pane golden-thread -->
 
+      <!-- ═══ Tab: Token Usage ═══ -->
+      <div class="tab-pane" data-pane="token-usage">
+        <section class="panel card">
+          <div class="ops-head">
+            <div>
+              <h2>Token Usage</h2>
+              <p class="hint">Live instrumentation of every Nexus exchange — input/output tokens, estimated cost, per user and per room. Beta benchmark data.</p>
+            </div>
+            <button class="btn-secondary" onclick="loadTokenStats()">Reload</button>
+          </div>
+
+          <!-- Summary bar -->
+          <div id="tu-summary" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;"></div>
+
+          <!-- Per-user table -->
+          <h3 style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin:24px 0 8px;">Per Member</h3>
+          <div style="overflow-x:auto;">
+            <table id="tu-user-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="text-align:left;padding:6px 8px;color:var(--text-faint);font-weight:600;">Member</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Exchanges</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Input tk</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Output tk</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Total tk</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Cost (USD)</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Last seen</th>
+                </tr>
+              </thead>
+              <tbody id="tu-user-body">
+                <tr><td colspan="7" style="padding:12px 8px;color:var(--text-faint);">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Per-room breakdown -->
+          <h3 style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin:24px 0 8px;">Per Room</h3>
+          <div id="tu-room-bars" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+          <!-- Daily trend (last 30 days) -->
+          <h3 style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin:24px 0 8px;">Daily — last 30 days</h3>
+          <div style="overflow-x:auto;">
+            <table id="tu-daily-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="text-align:left;padding:6px 8px;color:var(--text-faint);font-weight:600;">Day</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Exchanges</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Active users</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Total tokens</th>
+                  <th style="text-align:right;padding:6px 8px;color:var(--text-faint);font-weight:600;">Cost (USD)</th>
+                </tr>
+              </thead>
+              <tbody id="tu-daily-body">
+                <tr><td colspan="5" style="padding:12px 8px;color:var(--text-faint);">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div><!-- /tab-pane token-usage -->
+
       <!-- ═══ Tab: System ═══ -->
       <div class="tab-pane" data-pane="system">
         <section class="panel card ops-dashboard" aria-labelledby="ops-dashboard-title">
@@ -1219,6 +1280,7 @@
       if (name === 'waitlist') loadWaitlist();
       if (name === 'feedback') loadFeedback();
       if (name === 'golden-thread') loadGoldenThreadAdmin();
+      if (name === 'token-usage') loadTokenStats();
     }
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -1673,6 +1735,98 @@
     }
 
     // ── Golden Thread admin viewer ──
+    async function loadTokenStats() {
+      // Summary chips
+      const summaryEl = document.getElementById('tu-summary');
+      const userBody   = document.getElementById('tu-user-body');
+      const roomBars   = document.getElementById('tu-room-bars');
+      const dailyBody  = document.getElementById('tu-daily-body');
+      if (!summaryEl) return;
+
+      summaryEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px">Loading…</span>';
+
+      try {
+        const data = await optionalApi('/api/admin/token-stats');
+        const s = data.summary || {};
+        const users = data.per_user || [];
+        const rooms = data.per_room || [];
+        const daily = data.daily || [];
+
+        // ── Summary chips ──
+        const chips = [
+          { label: 'Total exchanges', value: (s.total_exchanges || 0).toLocaleString() },
+          { label: 'Members tracked', value: (s.total_users || 0).toLocaleString() },
+          { label: 'Total tokens',    value: (s.total_tokens || 0).toLocaleString() },
+          { label: 'Est. cost (USD)', value: '$' + ((s.total_cost_usd || 0)).toFixed(4) },
+          { label: 'Avg / exchange',  value: Math.round(s.avg_tokens_per_exchange || 0).toLocaleString() + ' tk' },
+        ];
+        summaryEl.innerHTML = chips.map(c => `
+          <div style="flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
+            <div style="font-size:10px;color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">${c.label}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text);">${c.value}</div>
+          </div>`).join('');
+
+        // ── Per-user table ──
+        if (userBody) {
+          if (users.length === 0) {
+            userBody.innerHTML = '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-faint);">No data yet.</td></tr>';
+          } else {
+            userBody.innerHTML = users.map(u => `
+              <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);">
+                <td style="padding:7px 8px;font-weight:600;color:var(--text);">${escapeHtml(u.companion || '—')}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(u.exchanges||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(u.total_input||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(u.total_output||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(u.total_tokens||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text);">$${(u.total_cost_usd||0).toFixed(4)}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-faint);font-size:11px;">${(u.last_seen||'').slice(0,10)}</td>
+              </tr>`).join('');
+          }
+        }
+
+        // ── Per-room bars ──
+        if (roomBars) {
+          if (rooms.length === 0) {
+            roomBars.innerHTML = '<p style="color:var(--text-faint);font-size:12px">No data yet.</p>';
+          } else {
+            const maxCost = Math.max(...rooms.map(r => r.total_cost_usd || 0), 0.0001);
+            const ROOM_COLORS = { work: '#c8a96e', lens: '#7eb8c8', field: '#8cc87e', call: '#c87ea8' };
+            roomBars.innerHTML = rooms.map(r => {
+              const pct = Math.round(((r.total_cost_usd || 0) / maxCost) * 100);
+              const col = ROOM_COLORS[r.room] || '#c4b5fd';
+              return `<div style="display:flex;align-items:center;gap:12px;">
+                <span style="width:52px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-faint);">${escapeHtml(r.room||'—')}</span>
+                <div style="flex:1;height:8px;background:color-mix(in srgb,var(--border) 60%,transparent);border-radius:4px;overflow:hidden;">
+                  <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;transition:width 0.5s ease;"></div>
+                </div>
+                <span style="width:60px;text-align:right;font-size:11px;color:var(--text-muted);">${(r.exchanges||0)} exch</span>
+                <span style="width:64px;text-align:right;font-size:11px;font-weight:600;color:var(--text);">$${(r.total_cost_usd||0).toFixed(4)}</span>
+              </div>`;
+            }).join('');
+          }
+        }
+
+        // ── Daily table ──
+        if (dailyBody) {
+          if (daily.length === 0) {
+            dailyBody.innerHTML = '<tr><td colspan="5" style="padding:12px 8px;color:var(--text-faint);">No data yet.</td></tr>';
+          } else {
+            dailyBody.innerHTML = daily.map(d => `
+              <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);">
+                <td style="padding:7px 8px;color:var(--text);">${escapeHtml(d.day||'')}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(d.exchanges||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(d.active_users||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;color:var(--text-muted);">${(d.total_tokens||0).toLocaleString()}</td>
+                <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text);">$${(d.total_cost_usd||0).toFixed(4)}</td>
+              </tr>`).join('');
+          }
+        }
+
+      } catch (e) {
+        summaryEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px">Could not load token stats.</span>';
+      }
+    }
+
     async function loadGoldenThreadAdmin() {
       const list = document.getElementById('gt-list');
       if (!list) return;
