@@ -2267,6 +2267,171 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
+/* ── Nexus context bar ─────────────────────────────────────── */
+.nexus-context-bar-track {
+  height: 3px;
+  width: 100%;
+  flex-shrink: 0;
+  background: transparent;
+  border-top: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose-color, #c4b5fd) 12%, transparent);
+}
+.nexus-context-bar-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0%;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent);
+  transition: width 0.6s cubic-bezier(0.16,1,0.3,1), background 0.6s ease;
+  border-radius: 0 2px 2px 0;
+}
+.nexus-context-bar-fill.amber {
+  background: color-mix(in srgb, #f59e0b 70%, transparent);
+}
+.nexus-context-bar-fill.deep-amber {
+  background: color-mix(in srgb, #d97706 80%, transparent);
+}
+.nexus-context-bar-fill.red {
+  background: color-mix(in srgb, #ef4444 75%, transparent);
+  animation: nexus-bar-pulse 1.8s ease-in-out infinite;
+}
+@keyframes nexus-bar-pulse {
+  0%,100% { opacity: 0.8; }
+  50%      { opacity: 1; }
+}
+
+/* ── Nexus etiquette button ────────────────────────────────── */
+.nexus-etiquette-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 35%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--text-faint) 80%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+.nexus-etiquette-btn:hover {
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 65%, transparent);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
+}
+
+/* ── Nexus new-project button ──────────────────────────────── */
+.nexus-new-project-btn {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 30%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--text-faint) 70%, transparent);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, opacity 0.4s;
+  white-space: nowrap;
+}
+.nexus-new-project-btn:hover {
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, transparent);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
+}
+.nexus-new-project-btn.pulse {
+  animation: nexus-btn-pulse 1.8s ease-in-out infinite;
+}
+@keyframes nexus-btn-pulse {
+  0%,100% { border-color: color-mix(in srgb, #ef4444 35%, transparent); }
+  50%      { border-color: color-mix(in srgb, #ef4444 70%, transparent); }
+}
+.nexus-new-project-btn.nexus-dormant-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Nexus etiquette overlay ───────────────────────────────── */
+.nexus-etiquette-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+.nexus-etiquette-overlay.open {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.nexus-etiquette-inner {
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+  padding-top: var(--space-6);
+}
+.nexus-etiquette-inner h3 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, var(--text-secondary));
+  margin-bottom: var(--space-4);
+}
+.nexus-etiquette-inner p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+.nexus-etiquette-inner ul {
+  padding-left: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.nexus-etiquette-inner li {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+.nexus-etiquette-inner strong {
+  color: var(--text-primary);
+}
+.nexus-etiquette-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+.nexus-etiquette-close:hover {
+  color: var(--text-secondary);
+}
+/* ensure rose-surface is position:relative for overlay to anchor */
+.rose-surface {
+  position: relative;
+}
+
+
 .rose-orb-header {
   display: flex;
   flex-direction: column;
@@ -7236,7 +7401,32 @@ input, textarea { font: inherit; color: inherit; }
       <!-- Flat header bar — matches Archive and Notepad -->
       <div class="nexus-panel-header">
         <span class="notepad-label">Nexus</span>
-        <button class="studio-info-btn" data-info="info-rose-overlay" title="About Nexus"><i>i</i></button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="nexus-etiquette-btn" id="nexus-etiquette-btn" title="How to work with Nexus">?</button>
+          <button class="nexus-new-project-btn nexus-dormant-hidden" id="nexus-new-project-btn" title="Start a new project — clears this session">New project</button>
+          <button class="studio-info-btn" data-info="info-rose-overlay" title="About Nexus"><i>i</i></button>
+        </div>
+      </div>
+      <!-- Context depth bar -->
+      <div class="nexus-context-bar-track" id="nexus-context-bar-track">
+        <div class="nexus-context-bar-fill" id="nexus-context-bar-fill"></div>
+      </div>
+      <!-- Etiquette overlay -->
+      <div class="nexus-etiquette-overlay" id="nexus-etiquette-overlay">
+        <div class="nexus-etiquette-inner">
+          <button class="nexus-etiquette-close" id="nexus-etiquette-close">×</button>
+          <h3>Working with Nexus</h3>
+          <p>Nexus works best when you arrive with clarity. Not because it can’t handle confusion — but because what you bring shapes what can emerge between you.</p>
+          <p>This is co-emergence, not extraction. The quality of what comes back is inseparable from the quality of what you offer.</p>
+          <ul>
+            <li><strong>One thing at a time.</strong> A single clear question lands better than three bundled together.</li>
+            <li><strong>Name what you’re actually working on.</strong> Vague input produces vague output. The more precise you are, the more useful Nexus becomes.</li>
+            <li><strong>Leave emotional charge outside.</strong> Bring the situation, not the feeling about the situation. Nexus can work with facts; it gets tangled in charge.</li>
+            <li><strong>When you have enough, act.</strong> Don’t keep asking until certainty arrives. Move with what you have.</li>
+            <li><strong>Start a new project when one ends.</strong> Each project deserves a clean beginning. The context bar shows how full this session is — reset when the work is complete.</li>
+          </ul>
+          <p style="font-size:10px;opacity:0.5;margin-top:12px;">The context bar above the conversation shows session depth. A faint outline means the session is fresh. As it fills, consider whether the project is complete and a reset would serve the next one.</p>
+        </div>
       </div>
 
       <!-- Orb area — centred below header -->
@@ -8854,6 +9044,9 @@ function doEnterRoom(roomKey, meta) {
 
   // Scroll to top
   window.scrollTo(0, 0);
+
+  // Update context bar for this room
+  updateContextBar();
 }
 
 function renderRoomSGS(roomKey) {
@@ -9050,6 +9243,7 @@ function appendMirrorMessage(role, text, save = true) {
       state.rooms[currentRoom].mirrorHistory = state.rooms[currentRoom].mirrorHistory.slice(-20);
     }
     saveState();
+    updateContextBar();
   }
 }
 
@@ -9105,6 +9299,7 @@ async function initRoomRose(roomKey) {
             if (!state.rooms[roomKey].mirrorHistory) state.rooms[roomKey].mirrorHistory = [];
             state.rooms[roomKey].mirrorHistory.push({ role: 'rose', text });
             saveState();
+            updateContextBar();
             return;
           }
           decoder.decode(value).split('\n').forEach(line => {
@@ -9203,7 +9398,10 @@ async function sendMirrorMessage() {
         gk_work: gkLabels.work,
         gk_lens: gkLabels.lens,
         gk_field: gkLabels.field,
-        gk_call: gkLabels.call
+        gk_call: gkLabels.call,
+        mode: 'studio',
+        studio_context: buildStudioContext(currentRoom),
+        room: currentRoom
       })
     });
 
@@ -9226,6 +9424,7 @@ async function sendMirrorMessage() {
           if (!state.rooms[currentRoom].mirrorHistory) state.rooms[currentRoom].mirrorHistory = [];
           state.rooms[currentRoom].mirrorHistory.push({ role: 'rose', text });
           saveState();
+          updateContextBar();
           // Add knot button via appendMirrorMessage pattern
           const gtBtn = document.createElement('button');
           gtBtn.className = 'mirror-gt-btn';
@@ -11161,6 +11360,218 @@ function renderVoiceEntries(roomKey) {
     container.appendChild(div);
   });
 }
+
+
+// ============================================================
+// STUDIO NEXUS — Context Bar, Progressive Context, New Project
+// ============================================================
+
+const NEXUS_CONTEXT_CEILING = 24000; // characters — configurable
+
+// ── Context bar ──────────────────────────────────────────────
+function updateContextBar() {
+  const fill  = document.getElementById('nexus-context-bar-fill');
+  const npBtn = document.getElementById('nexus-new-project-btn');
+  if (!fill || !currentRoom) return;
+
+  const history = state.rooms[currentRoom]?.mirrorHistory || [];
+  const totalChars = history.reduce((sum, m) => sum + (m.text?.length || 0), 0);
+  const pct = Math.min((totalChars / NEXUS_CONTEXT_CEILING) * 100, 100);
+
+  fill.style.width = pct + '%';
+
+  // Colour stages
+  fill.classList.remove('amber', 'deep-amber', 'red');
+  if (pct >= 100) {
+    fill.classList.add('red');
+  } else if (pct >= 80) {
+    fill.classList.add('deep-amber');
+  } else if (pct >= 60) {
+    fill.classList.add('amber');
+  }
+
+  // New Project button: show when session has content
+  if (npBtn) {
+    if (history.length > 0) {
+      npBtn.classList.remove('nexus-dormant-hidden');
+      npBtn.classList.toggle('pulse', pct >= 100);
+    } else {
+      npBtn.classList.add('nexus-dormant-hidden');
+      npBtn.classList.remove('pulse');
+    }
+  }
+}
+
+// ── New Project reset ─────────────────────────────────────────
+function nexusNewProject() {
+  if (!currentRoom) return;
+  const confirmed = window.confirm(
+    'Start a new project? This will clear the Nexus conversation for this room. Your workbench entries are kept.'
+  );
+  if (!confirmed) return;
+
+  // Clear history
+  if (state.rooms[currentRoom]) {
+    state.rooms[currentRoom].mirrorHistory = [];
+  }
+
+  // Clear conversation DOM
+  const conv = document.getElementById('mirror-conversation');
+  if (conv) conv.innerHTML = '';
+
+  // Reset specialist tiers for this room
+  if (window._nexusSpecialistTiers) {
+    window._nexusSpecialistTiers[currentRoom] = 'base';
+  }
+
+  saveState();
+  updateContextBar();
+
+  // Re-show dormant state
+  const mirror = document.getElementById('room-mirror');
+  if (mirror) {
+    mirror.classList.remove('orb-active');
+  }
+  const row = document.getElementById('mirror-input-row');
+  if (row) {
+    row.classList.remove('nexus-awakened');
+    row.classList.add('nexus-dormant-hidden');
+  }
+  const orbWrap = document.getElementById('nexus-orb-wrap');
+  if (orbWrap) {
+    orbWrap.classList.add('nexus-orb-dormant');
+  }
+  window.nexusAwakened = false;
+
+  // Fire a fresh opening message
+  setTimeout(() => { initRoomRose(currentRoom); }, 300);
+}
+
+// ── Progressive context loading ───────────────────────────────
+// Track per-room specialist tier in memory (not persisted — resets on reload)
+window._nexusSpecialistTiers = { work: 'base', lens: 'base', field: 'base', call: 'base' };
+
+const NEXUS_KEYWORD_TIERS = {
+  work: [
+    {
+      tier: 'financial',
+      keywords: ['pricing', 'price', 'revenue', 'margin', 'cost', 'profit', 'income',
+                 'subscription', 'tier', 'payment', 'monetise', 'monetize', 'financial',
+                 'budget', 'fee', 'rate', 'charge'],
+      context: 'SPECIALIST TIER — FINANCIAL: You are now qualified on pricing architecture, revenue models, margin thinking, and financial projections. When asked, give specific frameworks: tiered vs flat, freemium triggers, break-even logic. Numbers are welcome here.'
+    },
+    {
+      tier: 'planning',
+      keywords: ['roadmap', 'milestone', 'sprint', 'launch', 'timeline', 'phase',
+                 'plan', 'planning', 'strategy', 'quarter', 'deadline', 'delivery', 'scope'],
+      context: 'SPECIALIST TIER — PLANNING: You are now qualified on roadmap architecture, milestone sequencing, and project scoping. Help break work into phases with clear outputs. Prioritisation and dependency mapping are in scope.'
+    }
+  ],
+  lens: [
+    {
+      tier: 'writing',
+      keywords: ['write', 'writing', 'draft', 'chapter', 'essay', 'article', 'post',
+                 'edit', 'editing', 'structure', 'narrative', 'voice', 'prose', 'manuscript'],
+      context: 'SPECIALIST TIER — WRITING: You are now qualified on writing structure, editorial feedback, narrative arc, and voice consistency. You may engage with drafts directly: suggest cuts, restructures, or reframes. Line-level editing is welcome.'
+    },
+    {
+      tier: 'audience',
+      keywords: ['audience', 'reader', 'publish', 'publishing', 'platform', 'reach',
+                 'format', 'distribution', 'newsletter', 'substack', 'blog', 'book'],
+      context: 'SPECIALIST TIER — AUDIENCE: You are now qualified on audience development, distribution strategy, and publishing formats. Help think through who the work is for, where it reaches them, and in what form.'
+    }
+  ],
+  field: [
+    {
+      tier: 'offering',
+      keywords: ['offering', 'offer', 'programme', 'program', 'retreat', 'class',
+                 'session', 'workshop', 'course', 'practice', 'shareable', 'curriculum'],
+      context: 'SPECIALIST TIER — OFFERING: You are now qualified on turning personal practice into shareable form. Help structure programmes, retreats, or workshops: arc, sequence, container, pricing, and boundaries of the work.'
+    },
+    {
+      tier: 'community',
+      keywords: ['community', 'group', 'gather', 'gathering', 'circle', 'cohort',
+                 'membership', 'tribe', 'network', 'space', 'container', 'belonging'],
+      context: 'SPECIALIST TIER — COMMUNITY: You are now qualified on community architecture and cultivation. Help think through containers, gathering rhythms, onboarding, values agreements, and how belonging is built.'
+    }
+  ],
+  call: [
+    {
+      tier: 'legacy',
+      keywords: ['legacy', 'lifetime', 'contribution', 'impact', 'life work', 'lifework',
+                 'purpose', 'meaning', 'why', 'calling', 'vocation', 'mission statement'],
+      context: 'SPECIALIST TIER — LEGACY: You are now qualified on lifetime contribution and legacy framing. Help articulate the through-line of a life\'s work: the gift being given, to whom, over what horizon.'
+    },
+    {
+      tier: 'activation',
+      keywords: ['next step', 'next move', 'action', 'activate', 'start', 'begin',
+                 'commit', 'decide', 'threshold', 'now', 'today', 'this week', 'move'],
+      context: 'SPECIALIST TIER — ACTIVATION: You are now qualified on specific next moves. Shift from reflection to traction. Help identify the one clear action that would move the mission forward this week.'
+    }
+  ]
+};
+
+function buildStudioContext(roomKey) {
+  if (!roomKey || !window._nexusSpecialistTiers) return '';
+  const history = state.rooms[roomKey]?.mirrorHistory || [];
+  if (history.length === 0) return '';
+
+  // Look at last 3 user messages
+  const recentUser = history
+    .filter(m => m.role === 'user')
+    .slice(-3)
+    .map(m => (m.text || '').toLowerCase())
+    .join(' ');
+
+  const tiers = NEXUS_KEYWORD_TIERS[roomKey] || [];
+  const active = [];
+
+  for (const tier of tiers) {
+    const matched = tier.keywords.some(kw => recentUser.includes(kw));
+    if (matched) {
+      // Promote and lock this tier
+      if (window._nexusSpecialistTiers[roomKey] !== tier.tier) {
+        window._nexusSpecialistTiers[roomKey] = tier.tier;
+      }
+      active.push(tier.context);
+    }
+  }
+
+  return active.join('\n\n');
+}
+
+// ── Etiquette overlay ─────────────────────────────────────────
+function initNexusEtiquette() {
+  const btn     = document.getElementById('nexus-etiquette-btn');
+  const overlay = document.getElementById('nexus-etiquette-overlay');
+  const close   = document.getElementById('nexus-etiquette-close');
+  if (!btn || !overlay || !close) return;
+
+  btn.addEventListener('click', () => {
+    overlay.classList.add('open');
+  });
+  close.addEventListener('click', () => {
+    overlay.classList.remove('open');
+  });
+  // Close on outside click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+}
+
+// ── New Project button ────────────────────────────────────────
+function initNexusNewProject() {
+  const btn = document.getElementById('nexus-new-project-btn');
+  if (!btn) return;
+  btn.addEventListener('click', nexusNewProject);
+}
+
+// ── Init all on DOMContentLoaded ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initNexusEtiquette();
+  initNexusNewProject();
+  updateContextBar();
+});
 
 // Expose the live Studio state + saveState to the Builder IIFE in
 // the next <script> block. `let state` does not auto-attach to
