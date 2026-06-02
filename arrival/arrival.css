@@ -287,6 +287,16 @@
   font-weight: 600;
 }
 
+/* Local-first trust note — quiet, visible before the final CTA. */
+.arrival-trust-note {
+  margin: 1.4rem auto 0;
+  max-width: 56ch;
+  text-align: center;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--threshold-text-faint);
+}
+
 /* The solo-begin footer holds the primary route into the working view. */
 .arrival-solo-footer {
   margin-top: 1.6rem;
