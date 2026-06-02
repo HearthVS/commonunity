@@ -1,0 +1,119 @@
+/* trust-guardrails · regression test
+ *
+ * The first trust-architecture guardrails. Static string checks (no jsdom)
+ * against server.py + the cOMpass/Studio frontends. The contract under test:
+ *   • member data egress endpoints are gated (no world-readable Golden Thread,
+ *     no ungated Nexus / Golden-Thread writes)
+ *   • cOMpass shows a one-time Nexus consent/disclosure before the first
+ *     message leaves the browser
+ *   • only a first name (never the full legal name) is sent to Nexus/Claude
+ *
+ *   Run: node tests/trust-guardrails.test.js
+ */
+'use strict';
+
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+
+const server = read('server.py');
+const index = read('index.html');
+const studio = read('studio.html');
+
+let pass = 0;
+function ok(cond, label) {
+  assert(cond, label);
+  console.log('  ok  ' + label);
+  pass++;
+}
+
+console.log('1. shared member-access gate exists');
+ok(/def _has_member_access\(request: Request\) -> bool:/.test(server),
+   '_has_member_access(request) helper is defined');
+ok(/_has_admin_access\(request\)/.test(server) &&
+   /_has_beta_access\(request\)/.test(server) &&
+   /_valid_invite_token\(/.test(server),
+   '_has_member_access checks admin OR beta OR valid invite token');
+
+// Narrow the search to the helper body so we know it composes the checks.
+const helperBody = (server.match(/def _has_member_access[\s\S]*?\n\n\n/) || [''])[0];
+ok(/_has_admin_access\(request\)/.test(helperBody) &&
+   /_has_beta_access\(request\)/.test(helperBody) &&
+   /_invite_token_from_cookie\(request\)/.test(helperBody) &&
+   /request\.query_params\.get\("invite"\)/.test(helperBody),
+   'helper combines admin, beta cookie, invite cookie, and ?invite= param');
+
+console.log('\n2. GET /api/golden-thread is no longer world-readable');
+const getGt = (server.match(/@app\.get\("\/api\/golden-thread"\)[\s\S]*?\n\n\n/) || [''])[0];
+ok(/async def get_golden_thread\(req: Request/.test(getGt),
+   'get_golden_thread takes req: Request');
+ok(/if not _has_member_access\(req\):/.test(getGt) && /status_code=403/.test(getGt),
+   'get_golden_thread 403s without member access');
+
+console.log('\n3. POST /api/golden-thread is gated');
+const postGt = (server.match(/@app\.post\("\/api\/golden-thread"\)[\s\S]*?return \{"ok": True/) || [''])[0];
+ok(/if not _has_member_access\(req\):/.test(postGt) && /status_code=403/.test(postGt),
+   'save_golden_thread 403s without member access');
+
+console.log('\n4. /rose-mirror (Nexus) is gated and can read cookies');
+const roseSig = (server.match(/@app\.post\("\/rose-mirror"\)[\s\S]{0,400}/) || [''])[0];
+ok(/async def rose_mirror\(request: RoseMirrorRequest, req: Request\):/.test(roseSig),
+   'rose_mirror takes req: Request (so it can read the gate cookies)');
+ok(/if not _has_member_access\(req\):/.test(roseSig) && /status_code=403/.test(roseSig),
+   'rose_mirror 403s without member access');
+
+console.log('\n5. admin Golden Thread view stays admin-gated (unchanged)');
+const adminGt = (server.match(/@app\.get\("\/api\/admin\/golden-thread"\)[\s\S]*?return/) || [''])[0];
+ok(/_require_admin\(request\)/.test(adminGt),
+   'admin_golden_thread still requires admin');
+
+console.log('\n6. cOMpass first-use Nexus consent disclosure');
+ok(/commonunity_nexus_consent_v1/.test(index),
+   'a versioned consent localStorage key exists');
+ok(/function compassNexusHasConsent\(/.test(index) &&
+   /function compassNexusGrantConsent\(/.test(index),
+   'consent read + grant helpers exist');
+ok(/function compassNexusRequestConsent\(/.test(index),
+   'the disclosure renderer exists');
+// The send path must check consent before posting to the AI.
+const sendFn = (index.match(/async function sendCompassNexusMessage[\s\S]*?\n  sendBtn\.classList\.add\('loading'\);/) || [''])[0];
+ok(/if \(!compassNexusHasConsent\(\)\)/.test(sendFn) &&
+   /await compassNexusRequestConsent\(\)/.test(sendFn),
+   'sendCompassNexusMessage gates the first send behind consent');
+// Disclosure copy must name the recipient + the reflection-companion framing.
+ok(/sends that message and relevant cOMpass[\s\S]*?context[\s\S]*?to Claude/.test(index),
+   'disclosure states the message + context is sent to Claude');
+ok(/not a private diary[\s\S]*?not a[\s\S]*?replacement for your own inner authority/.test(index),
+   'disclosure frames Nexus as a reflection companion, not a diary/authority');
+
+console.log('\n7. identity minimization: first name only to Nexus/Claude');
+ok(/function compassNexusIdentity\(\)/.test(index),
+   'cOMpass exposes a first-name-only identity helper');
+ok(/\(state\.companion \|\| ''\)\.trim\(\)\.split\(\/\\s\+\/\)\[0\]/.test(index),
+   'cOMpass identity helper takes only the first whitespace-delimited token');
+// Scope the check to the /rose-mirror send so unrelated endpoints (e.g.
+// /search) that legitimately carry the full companion are not flagged.
+const roseSend = (index.match(/fetch\(`\$\{API_BASE\}\/rose-mirror`[\s\S]*?golden_thread:/) || [''])[0];
+ok(/companion: compassNexusIdentity\(\)/.test(roseSend),
+   'the /rose-mirror payload sends the minimized identity');
+ok(!/companion: state\.companion/.test(roseSend),
+   'the /rose-mirror payload no longer sends the full name raw to the AI');
+
+ok(/function studioNexusIdentity\(\)/.test(studio),
+   'Studio exposes a first-name-only identity helper');
+ok(/companion: studioNexusIdentity\(\)/.test(studio),
+   'Studio AI payloads send the minimized identity');
+// Both Studio AI payloads (rose-room-opening + rose-mirror) must be minimized.
+ok((studio.match(/companion: studioNexusIdentity\(\)/g) || []).length >= 2,
+   'both Studio AI payloads send the minimized identity');
+
+console.log('\n8. interim choice is documented for the real fix');
+ok(/TODO\(trust-architecture\)/.test(server),
+   'server flags the pseudonymous-node follow-up');
+ok(/TODO\(trust-architecture\)/.test(index) || /TODO\(trust-architecture\)/.test(studio),
+   'frontend flags the pseudonymous-node follow-up');
+
+console.log(`\n${pass} passed`);

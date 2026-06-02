@@ -7990,6 +7990,14 @@ let state = {
   livingProfile: { auto: {} }
 };
 
+// Identity minimization (interim): Nexus/Claude receives only the user's FIRST
+// name, never the full legal name. TODO(trust-architecture): replace with a
+// pseudonymous OM Cipher node so no real-name fragment reaches the AI at all.
+function studioNexusIdentity() {
+  const full = state.compassData?.companion || state.person || '';
+  return String(full).trim().split(/\s+/)[0] || '';
+}
+
 // ── Studio Window ────────────────────────────────────────────
 // A small shopfront/window managed from inside Studio. Each slot
 // is a single still image tagged to one of the four rooms — Work,
@@ -9279,7 +9287,8 @@ async function initRoomRose(roomKey) {
           gk_gift: gkData.gift,
           gk_siddhi: gkData.siddhi,
           session_notes: ((pt?.raw || '') + (buildTranscriptContext(roomKey, 1200) ? '\n\n' + buildTranscriptContext(roomKey, 1200) : '')).slice(0, 2000),
-          companion: state.compassData?.companion || state.person || '',
+          // Identity minimization (interim): send only the first name to the AI.
+          companion: studioNexusIdentity(),
           all_rooms_summary: buildCrossRoomSummary(roomKey),
           session_history: buildSessionHistorySummary(),
           nexus_memory: state.nexusMemory || '',
@@ -9397,7 +9406,8 @@ async function sendMirrorMessage() {
         session_notes: sessionContext.slice(0, 2000),
         workbench_entries: workbenchContext.slice(0, 600),
         history: history,
-        companion: state.compassData?.companion || state.person || '',
+        // Identity minimization (interim): send only the first name to the AI.
+        companion: studioNexusIdentity(),
         all_rooms_summary: allRoomsSummary,
         session_history: sessionHistory,
         nexus_memory: state.nexusMemory || '',
