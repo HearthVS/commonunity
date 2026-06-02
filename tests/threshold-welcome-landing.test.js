@@ -72,10 +72,10 @@ ok(/function beginWelcomeHandoff/.test(js),
    "beginWelcomeHandoff orchestrates fade -> handoff");
 ok(/root\.classList\.add\('is-fading-out'\)/.test(js),
    "fade-out is applied to the threshold root (whole field dims together)");
-ok(/\/compass\?threshold=done&enter=compass/.test(js),
-   "handoff still navigates to /compass?threshold=done&enter=compass");
+ok(/function handoffToCompass\s*\([\s\S]*?window\.location\.href\s*=\s*'\/compass\/arrival'/.test(js),
+   "first-completion handoff now navigates to the cOMpass arrival chamber (/compass/arrival)");
 ok(/Contract\.isThresholdCompleted\(\)[\s\S]*?window\.location\.replace\('\/compass\?threshold=done&enter=compass'\)/.test(js),
-   "completed threshold browsers continue into cOMpass instead of the homepage");
+   "completed threshold browsers continue straight into cOMpass (skipping the arrival chamber)");
 ok(!/window\.location\.replace\('\/'\)/.test(js),
    "threshold boot should not bounce completed users to the homepage");
 

@@ -1217,6 +1217,26 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── One-on-one orientation requests ───────────────────────────────────
+    # A companion arriving in cOMpass can ask Markus to personally guide
+    # their first session. This is intentionally NOT either/or with the
+    # solo path — it only records the ask so Markus can reach out. Mirrors
+    # the feedback table shape so the admin surface + notification path are
+    # familiar.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS orientation_request (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            birth_date TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'new'
+        )
+        """
+    )
     # ── Golden Thread table ───────────────────────────────────────────────
     conn.execute(
         """
@@ -1577,6 +1597,10 @@ def _invite_email_html(person_name: str, magic_link: str) -> str:
                   <a href="{safe_link}" style="display:inline-block;padding:16px 28px;border-radius:999px;background:linear-gradient(135deg,#f5e7bd,#d5ad64);color:#090805;text-decoration:none;font-weight:700;box-shadow:0 18px 42px rgba(213,173,100,0.22);">Begin the threshold</a>
                 </div>
                 <p style="margin:26px 0 0;color:rgba(248,242,232,0.55);font-size:13px;line-height:1.65;">If the button does not open, copy this private link into your browser:<br><a href="{safe_link}" style="color:#f5d99b;word-break:break-all;">{safe_link}</a></p>
+                <div style="margin:30px 0 0;padding:18px 20px;border-radius:16px;border:1px solid rgba(213,173,100,0.22);background:rgba(213,173,100,0.06);">
+                  <p style="margin:0 0 6px;color:#d5ad64;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;">For when you choose to begin on your own</p>
+                  <p style="margin:0;color:rgba(248,242,232,0.72);font-size:14px;line-height:1.65;">If you would like to read your first Gene Key inside cOMpass, the Hexagram Reader opens with this passcode: <strong style="color:#f5d99b;letter-spacing:0.04em;">buythebook</strong>. There is no rush — keep it nearby for whenever the moment feels right.</p>
+                </div>
                 <p style="margin:26px 0 0;color:rgba(248,242,232,0.45);font-size:12px;line-height:1.6;">This invitation is personal to you. Please do not forward it.</p>
               </td>
             </tr>
@@ -1618,6 +1642,9 @@ def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None
         "This is not a login in the usual sense. It is a first doorway into a field of orientation: your name, your coordinates, your colours, and the beginning of a path toward your own true north.\n\n"
         "Open the link below when you have a few quiet minutes. The threshold is designed to be entered with attention.\n\n"
         f"{magic_link}\n\n"
+        "For when you choose to begin on your own: if you would like to read your first Gene Key inside cOMpass, "
+        "the Hexagram Reader opens with this passcode: buythebook. There is no rush — keep it nearby for whenever "
+        "the moment feels right.\n\n"
         "This invitation is personal to you. Please do not forward it.\n\n"
         "With warmth,\n"
         "CommonUnity\n"
@@ -2368,6 +2395,37 @@ if _threshold_dir.exists():
         if not f.exists():
             raise HTTPException(status_code=404, detail="not found")
         return FileResponse(f, media_type=_THRESHOLD_ALLOWED[filename], headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        })
+
+# cOMpass arrival chamber — bolt-on module. The FIRST page inside cOMpass,
+# shown once after the threshold completes and before the working cOMpass
+# view. Served at /compass/arrival with assets at /compass/arrival/<file>.
+# Like the threshold it is gated behind the same private-beta access, and
+# it reuses /threshold/threshold.css for its visual language.
+_arrival_dir = pathlib.Path(__file__).parent / "arrival"
+_ARRIVAL_ALLOWED = {
+    "arrival.html": "text/html; charset=utf-8",
+    "arrival.css":  "text/css; charset=utf-8",
+    "arrival.js":   "application/javascript; charset=utf-8",
+}
+if _arrival_dir.exists():
+    @app.get("/compass/arrival")
+    async def serve_arrival(request: Request):
+        page = _arrival_dir / "arrival.html"
+        result = _serve_private_file(request, "compass", page, media_type="text/html; charset=utf-8")
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=404, detail="arrival module missing")
+        return result
+
+    @app.get("/compass/arrival/{filename}")
+    async def serve_arrival_asset(filename: str):
+        if filename not in _ARRIVAL_ALLOWED:
+            raise HTTPException(status_code=404, detail="not found")
+        f = _arrival_dir / filename
+        if not f.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(f, media_type=_ARRIVAL_ALLOWED[filename], headers={
             "Cache-Control": "no-cache, no-store, must-revalidate"
         })
 
@@ -3524,6 +3582,121 @@ async def acknowledge_feedback(feedback_id: int, request: Request):
             raise HTTPException(status_code=404, detail="not found")
         conn.execute(
             "UPDATE feedback SET status='acknowledged' WHERE id=?", (feedback_id,)
+        )
+    return {"ok": True}
+
+
+# ── One-on-one orientation requests ───────────────────────────────────────────
+#
+# Surfaced on the cOMpass arrival chamber. A companion can ask Markus to
+# personally guide their first session. This records the ask (and, if a
+# notify address + SMTP are configured, emails Markus) — it never gates the
+# solo path, which the arrival page lets the companion start in parallel.
+
+_ORIENTATION_NOTIFY_ENV = "ORIENTATION_NOTIFY_EMAIL"
+# Beta default recipient — Markus asked to be emailed directly rather than
+# watch the admin panel. ORIENTATION_NOTIFY_EMAIL overrides this when set.
+_ORIENTATION_NOTIFY_DEFAULT = "markus@jointidea.com"
+
+
+class OrientationRequest(BaseModel):
+    name: str = ""
+    birth_date: str = ""
+
+
+def _notify_orientation_request(name: str, birth_date: str, invite_token: str) -> None:
+    """Best-effort email to Markus when a one-on-one is requested.
+
+    Recipient defaults to markus@jointidea.com so the beta works without an
+    extra env var; ORIENTATION_NOTIFY_EMAIL overrides it. Still a silent no-op
+    when SMTP is unconfigured, so a missing config never breaks the companion's
+    request (it is already persisted for the admin surface either way).
+    """
+    notify_to = os.getenv(_ORIENTATION_NOTIFY_ENV, "").strip() or _ORIENTATION_NOTIFY_DEFAULT
+    if not notify_to or not _smtp_configured():
+        return
+    try:
+        host = os.getenv(_SMTP_HOST_ENV, "").strip()
+        user = os.getenv(_SMTP_USER_ENV, "").strip()
+        password = os.getenv(_SMTP_PASSWORD_ENV, "").strip()
+        sender = _smtp_sender()
+        port = int(os.getenv(_SMTP_PORT_ENV, "587").strip() or "587")
+        use_tls = os.getenv(_SMTP_USE_TLS_ENV, "true").strip().lower() not in {"0", "false", "no", "off"}
+        who = name.strip() or "A companion"
+        msg = EmailMessage()
+        msg["Subject"] = "cOMpass: one-on-one orientation requested"
+        msg["From"] = sender
+        msg["To"] = notify_to
+        body = (
+            f"{who} has requested a personal one-on-one orientation in cOMpass.\n\n"
+            f"Name: {name or '(not provided)'}\n"
+            f"Birth date: {birth_date or '(not provided)'}\n"
+            f"Invite token: {invite_token or '(none)'}\n\n"
+            "They may also have begun a solo session while waiting.\n"
+        )
+        msg.set_content(body)
+        with smtplib.SMTP(host, port, timeout=20) as smtp:
+            if use_tls:
+                smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+    except Exception:
+        # Notification is best-effort; the request is already persisted.
+        pass
+
+
+@app.post("/api/orientation-request")
+async def submit_orientation_request(body: OrientationRequest, request: Request):
+    """Public (beta-gated) endpoint — record a one-on-one orientation ask."""
+    now = _now_iso()
+    ua = request.headers.get("user-agent", "")[:300]
+    ip = (request.client.host if request.client else "") or ""
+    invite_token = _invite_token_from_cookie(request)
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO orientation_request (timestamp, name, birth_date, invite_token, user_agent, ip, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'new')
+            """,
+            (now,
+             (body.name or "").strip()[:200],
+             (body.birth_date or "").strip()[:40],
+             (invite_token or "").strip()[:200],
+             ua, ip),
+        )
+    if invite_token:
+        _touch_invite(invite_token, request, "one_on_one_requested", "compass")
+    _notify_orientation_request((body.name or "").strip(), (body.birth_date or "").strip(), invite_token)
+    return {"ok": True}
+
+
+@app.get("/api/admin/orientation-requests")
+async def admin_orientation_requests(request: Request, status: str = ""):
+    _require_admin(request)
+    with _admin_db() as conn:
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM orientation_request WHERE status=? ORDER BY timestamp DESC", (status,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM orientation_request ORDER BY timestamp DESC"
+            ).fetchall()
+        unread = conn.execute(
+            "SELECT COUNT(*) as n FROM orientation_request WHERE status='new'"
+        ).fetchone()["n"]
+    return {"entries": [_row_to_dict(r) for r in rows], "unread": unread}
+
+
+@app.post("/api/admin/orientation-requests/{request_id}/acknowledge")
+async def acknowledge_orientation_request(request_id: int, request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT id FROM orientation_request WHERE id=?", (request_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute(
+            "UPDATE orientation_request SET status='acknowledged' WHERE id=?", (request_id,)
         )
     return {"ok": True}
 

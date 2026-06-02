@@ -1,0 +1,266 @@
+/* arrival/arrival.css
+ *
+ * Arrival chamber — the first page INSIDE cOMpass, shown once after the
+ * threshold completes and before the working cOMpass view. It is a
+ * bolt-on module that borrows the threshold's field + chamber aesthetic
+ * (via /threshold/threshold.css) and adds only the arrival-specific
+ * layout: orientation prose, the two non-exclusive begin paths, and the
+ * solo-session instructions.
+ *
+ * Visual language stays consistent with the threshold: deep blue-black
+ * field, held-space chamber surface, cipher-palette accents inherited
+ * from the OM Cipher contract.
+ */
+
+.arrival-root {
+  /* The arrival chamber is a reading page, not a single centred card.
+     Let it scroll naturally and breathe at the top on tall content. */
+  align-items: flex-start;
+  padding-top: clamp(2.5rem, 6vh, 5rem);
+  padding-bottom: clamp(3rem, 8vh, 6rem);
+}
+
+.arrival-card {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(2.25rem, 4vw, 3.25rem) clamp(1.5rem, 3.5vw, 2.75rem);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--chamber-surface) 100%, transparent) 0%,
+      color-mix(in srgb, var(--chamber-surface) 92%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--chamber-border) 60%, var(--cipher-primary) 40%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 40px 80px -30px rgba(0, 0, 0, 0.55),
+    0 0 80px -10px color-mix(in srgb, var(--cipher-primary) 18%, transparent);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+}
+
+.arrival-mark-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.4rem;
+}
+
+.arrival-title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(2rem, 4.4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: var(--threshold-text);
+}
+
+.arrival-lede {
+  margin: 0.85rem auto 0;
+  max-width: 32ch;
+  text-align: center;
+  font-size: clamp(1rem, 2vw, 1.18rem);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--cipher-accent) 60%, var(--threshold-text-muted) 40%);
+}
+
+.arrival-divider {
+  height: 1px;
+  margin: clamp(1.6rem, 3.5vw, 2.4rem) auto;
+  max-width: 120px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--cipher-primary) 55%, transparent),
+    transparent);
+}
+
+/* ── Orientation prose ──────────────────────────────────────────────── */
+
+.arrival-orientation p {
+  margin: 0 0 1.05rem 0;
+  font-size: clamp(0.98rem, 1.9vw, 1.06rem);
+  line-height: 1.78;
+  color: var(--threshold-text-muted);
+}
+
+.arrival-orientation p:last-child {
+  margin-bottom: 0;
+}
+
+.arrival-orientation em {
+  color: color-mix(in srgb, var(--threshold-text) 80%, var(--cipher-accent) 20%);
+  font-style: italic;
+}
+
+/* ── Section headings ───────────────────────────────────────────────── */
+
+.arrival-section-label {
+  margin: clamp(1.8rem, 4vw, 2.6rem) 0 0.4rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cipher-accent);
+  text-align: center;
+}
+
+.arrival-section-title {
+  margin: 0 0 0.6rem;
+  text-align: center;
+  font-size: clamp(1.3rem, 2.6vw, 1.6rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--threshold-text);
+}
+
+.arrival-section-intro {
+  margin: 0 auto 1.4rem;
+  max-width: 52ch;
+  text-align: center;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--threshold-text-muted);
+}
+
+/* ── The two begin paths (NOT either/or) ────────────────────────────── */
+
+.arrival-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.arrival-path-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.4rem 1.4rem 1.5rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--field-base-2) 70%, transparent);
+  border: 1px solid var(--threshold-border);
+  transition: border-color 240ms ease, box-shadow 240ms ease, transform 120ms ease;
+}
+
+.arrival-path-card:hover {
+  border-color: color-mix(in srgb, var(--threshold-border) 50%, var(--cipher-primary) 50%);
+  box-shadow: 0 0 50px -18px color-mix(in srgb, var(--cipher-primary) 60%, transparent);
+}
+
+.arrival-path-card h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--threshold-text);
+}
+
+.arrival-path-card p {
+  margin: 0 0 1.2rem;
+  font-size: 0.92rem;
+  line-height: 1.62;
+  color: var(--threshold-text-muted);
+  flex: 1;
+}
+
+/* The arrival module reuses .threshold-btn / -primary / -ghost from
+   threshold.css so accents track the inherited cipher palette. We only
+   override flex so a single button fills its card. */
+.arrival-path-card .threshold-btn {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* Confirmation state for the one-on-one request. */
+.arrival-request-state {
+  display: none;
+  margin: 0.4rem 0 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cipher-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cipher-primary) 35%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--threshold-text);
+}
+
+.arrival-request-state.is-visible { display: block; }
+.arrival-request-error {
+  color: #f87171;
+  font-size: 0.86rem;
+  margin-top: 0.5rem;
+  min-height: 1.1rem;
+}
+
+/* ── Solo session instructions ──────────────────────────────────────── */
+
+.arrival-instructions {
+  margin: 1.2rem auto 0;
+  max-width: 56ch;
+  padding: 0;
+  list-style: none;
+  counter-reset: arrival-step;
+}
+
+.arrival-instructions li {
+  position: relative;
+  padding: 0.45rem 0 0.45rem 2.2rem;
+  font-size: 0.96rem;
+  line-height: 1.66;
+  color: var(--threshold-text-muted);
+}
+
+.arrival-instructions li::before {
+  counter-increment: arrival-step;
+  content: counter(arrival-step);
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 50%;
+  color: var(--cipher-accent);
+  background: color-mix(in srgb, var(--cipher-primary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cipher-primary) 30%, transparent);
+}
+
+.arrival-instructions.is-collapsed { display: none; }
+
+.arrival-instructions strong {
+  color: color-mix(in srgb, var(--threshold-text) 86%, var(--cipher-accent) 14%);
+  font-weight: 600;
+}
+
+/* The solo-begin footer holds the primary route into the working view. */
+.arrival-solo-footer {
+  margin-top: 1.6rem;
+  display: flex;
+  justify-content: center;
+}
+
+.arrival-solo-footer .threshold-btn {
+  flex: 0 0 auto;
+  min-width: 220px;
+}
+
+/* Quiet skip-for-now link so the chamber is never a dead end. */
+.arrival-skip {
+  display: block;
+  margin: 1.4rem auto 0;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--threshold-text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.arrival-skip:hover { color: var(--threshold-text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-path-card { transition: none; }
+}

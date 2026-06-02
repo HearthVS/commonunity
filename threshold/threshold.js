@@ -871,13 +871,15 @@
   }
 
   // The threshold collects the companion's (subject's) identity, not the
-  // guide's. The legacy setup page is the guide/facilitator entry surface
-  // (transcript import, manual session setup). The companion has nothing
-  // further to fill in, so hand off directly into the companion cOMpass
-  // view via enter=compass — index.html's contract hydration + auto-open
-  // consumes the flag.
+  // guide's. On first completion we hand off to the cOMpass ARRIVAL chamber
+  // (/compass/arrival) — the first page inside cOMpass that orients the
+  // companion and offers the two non-exclusive begin paths (request a
+  // one-on-one with Markus / begin a solo session). The arrival chamber
+  // then routes into the working cOMpass view via
+  // /compass?threshold=done&enter=compass. Returning/completed users skip
+  // the arrival chamber (see boot(): they go straight to cOMpass).
   function handoffToCompass() {
-    setTimeout(() => { window.location.href = '/compass?threshold=done&enter=compass'; }, 250);
+    setTimeout(() => { window.location.href = '/compass/arrival'; }, 250);
   }
 
   // ---- Persistence --------------------------------------------------------

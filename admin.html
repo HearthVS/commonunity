@@ -1084,6 +1084,15 @@
           <button class="filter-btn" data-filter="new">New</button>
           <button class="filter-btn" data-filter="acknowledged">Acknowledged</button>
         </div>
+        <div class="pane-header" style="margin:8px 0 12px;">
+          <h2 style="font-size:1rem;">One-on-one orientation requests</h2>
+          <p>Companions who asked Markus to personally guide their first cOMpass session.</p>
+        </div>
+        <div id="orientation-list"></div>
+        <div id="orientation-empty" class="hidden" style="padding:24px 0;color:var(--faint);">
+          No one-on-one requests yet.
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
         <div id="feedback-loading" class="muted" style="padding:24px 0;">Loading feedback…</div>
         <div id="feedback-list"></div>
         <div id="feedback-empty" class="hidden" style="padding:48px 0;text-align:center;color:var(--faint);">
@@ -1228,15 +1237,30 @@
       feedback: [],
       feedbackUnread: 0,
       feedbackFilter: 'all',
+      orientationRequests: [],
       activeTab: 'field',
     };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const magicLink = (token) => `${location.origin}/invite/${encodeURIComponent(token)}`;
+    // The admin panel is the center of truth for entry links. User-facing
+    // URLs (magic links, public quick-links) must prefer the server-computed
+    // public base URL (commonunity.io in production) over location.origin —
+    // otherwise links opened from the Railway origin leak the raw
+    // *.up.railway.app host to invitees. The server resolves this via
+    // _public_base_url() and exposes it as configured.invite_base_url; we
+    // fall back to location.origin only before that status has loaded.
+    const publicBase = () => (state.configured && state.configured.invite_base_url) || location.origin;
+    const magicLink = (token) => `${publicBase().replace(/\/$/, '')}/invite/${encodeURIComponent(token)}`;
+    // IMPORTANT (center of truth): when the entry-flow routes change, update
+    // these links to match. After PR #56 the first-time post-threshold
+    // handoff lands users on /compass/arrival (the orientation chamber);
+    // /compass is the direct workspace entry used by returning users and for
+    // debugging. The Railway origin link below is explicitly labeled debug.
     const liveLinks = [
       ['Homepage', '/', 'Public landing page'],
       ['Beta gate', '/beta', 'Shared code access'],
-      ['Threshold', '/threshold', 'Onboarding journey'],
-      ['cOMpass', '/compass', 'Main companion space'],
+      ['Threshold', '/threshold', 'First-time onboarding journey'],
+      ['cOMpass arrival', '/compass/arrival', 'Post-threshold orientation chamber (first-time landing)'],
+      ['cOMpass workspace', '/compass', 'Direct companion space — returning users / debug'],
       ['Studio', '/studio', 'Creation rooms'],
       ['Tuner', '/tuner', 'Sound and tuning'],
       ['cOMmons', '/commons', 'Community field'],
@@ -1368,8 +1392,12 @@
 
     // ── Ops dashboard (System tab) ──
     function renderOpsDashboard() {
+      // Public quick-links resolve against the configured public base URL
+      // (commonunity.io in production) so links shared/opened from the admin
+      // panel match what invitees receive — never the raw Railway origin.
+      const base = publicBase().replace(/\/$/, '');
       $('admin-live-links').innerHTML = liveLinks.map(([label, path, detail]) => {
-        const href = new URL(path, location.origin).toString();
+        const href = new URL(path, base + '/').toString();
         return `
           <a class="quick-link" href="${href}" target="_blank" rel="noopener">
             <strong>${escapeHtml(label)}</strong>
@@ -1685,6 +1713,48 @@
       $('feedback-loading').style.display = 'none';
       renderFeedback();
       updateFeedbackBadge();
+      loadOrientationRequests();
+    }
+
+    async function loadOrientationRequests() {
+      const data = await optionalApi('/api/admin/orientation-requests');
+      state.orientationRequests = data.entries || [];
+      renderOrientationRequests();
+    }
+
+    function renderOrientationRequests() {
+      const entries = state.orientationRequests;
+      const list = $('orientation-list');
+      const empty = $('orientation-empty');
+      if (!list || !empty) return;
+      if (entries.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      list.innerHTML = entries.map(r => {
+        const isNew = r.status === 'new';
+        const who = r.name || 'Anonymous companion';
+        const meta = [r.birth_date, r.invite_token].filter(Boolean).join(' · ');
+        return `<div class="feedback-card${isNew ? ' is-new' : ''}">
+          <div class="feedback-header">
+            <span class="feedback-type-tag feature">one-on-one</span>
+            <span class="feedback-status-pill ${r.status || 'new'}">${escapeHtml(r.status || 'new')}</span>
+          </div>
+          <div class="feedback-message">${escapeHtml(who)} requested a personal orientation with Markus.</div>
+          <div class="feedback-meta">
+            <span>${escapeHtml(meta || '—')}</span>
+            <span>${date(r.timestamp)}</span>
+          </div>
+          ${isNew ? `<div class="feedback-actions"><button class="btn btn-sm" data-ack-orientation="${escapeHtml(r.id)}">Acknowledge</button></div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function acknowledgeOrientationRequest(id) {
+      await api(`/api/admin/orientation-requests/${id}/acknowledge`, { method: 'POST', body: '{}' });
+      await loadOrientationRequests();
     }
 
     function updateFeedbackBadge() {
@@ -1868,6 +1938,7 @@
       const brandActivate = event.target?.dataset?.brandActivate;
       const brandArchive = event.target?.dataset?.brandArchive;
       const ackId = event.target?.dataset?.acknowledge;
+      const ackOrientationId = event.target?.dataset?.ackOrientation;
       const inviteFromName = event.target?.dataset?.inviteFromName;
 
       if (copyToken) {
@@ -1909,6 +1980,9 @@
       }
       if (ackId) {
         await acknowledgeFeedback(ackId);
+      }
+      if (ackOrientationId) {
+        await acknowledgeOrientationRequest(ackOrientationId);
       }
       if (inviteFromName !== undefined) {
         const email = event.target?.dataset?.inviteFromEmail || '';
