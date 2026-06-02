@@ -1774,6 +1774,17 @@ def _valid_beta_code(code: str | None) -> bool:
     return any(hmac.compare_digest(code.strip(), allowed) for allowed in _csv_env(_BETA_CODE_ENV))
 
 
+def _has_member_access(request: Request) -> bool:
+    """True if the caller is an admin, has the beta cookie, or carries a valid
+    invite token (cookie or ?invite=). Used to gate member data egress so that
+    Nexus/Golden Thread endpoints are never world-readable."""
+    if _has_admin_access(request) or _has_beta_access(request):
+        return True
+    if _valid_invite_token(_invite_token_from_cookie(request)):
+        return True
+    return _valid_invite_token(request.query_params.get("invite"))
+
+
 def _set_beta_cookie(response: RedirectResponse, request: Request) -> None:
     sig = _beta_signature()
     if not sig:
@@ -2690,8 +2701,14 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
 
 
 @app.post("/rose-mirror")
-async def rose_mirror(request: RoseMirrorRequest):
+async def rose_mirror(request: RoseMirrorRequest, req: Request):
     """Nexus ongoing conversation within a Studio room."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    # TODO(trust-architecture): `request.companion` is currently a first name
+    # (minimized client-side). The real fix is a pseudonymous OM Cipher node so
+    # Nexus never receives any real-name fragment — see the trust-guardrails PR.
 
     # Build full Gene Keys profile
     gk_profile = ""
@@ -3714,6 +3731,8 @@ class GoldenThreadSaveRequest(BaseModel):
 @app.post("/api/golden-thread")
 async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
     """Save a Nexus response to the member's Golden Thread."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
     if not request.content.strip():
         raise HTTPException(status_code=400, detail="content required")
     now = _now_iso()
@@ -3736,8 +3755,10 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
 
 
 @app.get("/api/golden-thread")
-async def get_golden_thread(companion: str = "", limit: int = 20):
+async def get_golden_thread(req: Request, companion: str = "", limit: int = 20):
     """Fetch a member's Golden Thread entries (most recent first)."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
     with _admin_db() as conn:
         if companion:
             rows = conn.execute(

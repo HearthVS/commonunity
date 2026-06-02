@@ -128,10 +128,35 @@ ok(/check your magic-link email for the reader passcode/.test(js),
    'instruction: passcode comes from the magic-link email (not front-and-center)');
 ok(/Chat with Nexus if you want reflective support/.test(js),
    'instruction: Nexus support');
+// First mention of Nexus must define what it is — the user does not yet
+// know the term at this stage.
+ok(/Nexus is the CommonUnity reflection companion/.test(js),
+   'Nexus is defined at first mention (reflection companion)');
+ok(/without replacing your own inner authority/.test(js),
+   "Nexus definition preserves the user's inner authority framing");
 ok(/You can return later and continue/.test(js),
    'instruction: sessions can be resumed');
 ok(!/buythebook/.test(js),
    'the passcode itself is NOT printed on the arrival page');
+
+console.log('\n6b. local-first trust note (accurate + aligned with the consent flow)');
+const proseJs = js.replace(/'\s*\+\s*'/g, '').replace(/\s+/g, ' ');
+ok(/arrival-trust-note/.test(js) && /arrival-trust-note/.test(css),
+   'a dedicated trust-note element + style exist');
+ok(/your cOMpass contemplations and notes stay on your own computer/.test(proseJs),
+   'trust note states cOMpass contemplations + notes stay on the user’s computer');
+ok(/local-first trust architecture/.test(proseJs),
+   'trust note names the local-first trust architecture');
+// The note must NOT over-claim — it acknowledges Nexus sends data to Claude.
+ok(/sends your message and the relevant cOMpass context to Claude/.test(proseJs),
+   'trust note accurately acknowledges Nexus sends data to Claude');
+ok(/cOMpass will tell you this before your first Nexus message/.test(proseJs),
+   'trust note points to the in-cOMpass first-use consent step');
+// The note is placed before the final CTA (between the steps and the footer).
+const trustIdx = js.indexOf('arrival-trust-note');
+const footerRenderIdx = js.indexOf("el('div', { class: 'arrival-solo-footer' })");
+ok(trustIdx > 0 && footerRenderIdx > 0 && trustIdx < footerRenderIdx,
+   'trust note renders before the final solo CTA');
 
 console.log('\n7. solo handoff routes into the working cOMpass view');
 ok(/\/compass\?threshold=done&enter=compass/.test(js),

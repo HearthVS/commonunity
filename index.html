@@ -3256,6 +3256,34 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 .compass-nexus-send.loading { opacity: 0.5; cursor: wait; }
 
+.compass-nexus-consent {
+  margin: 8px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--btn-primary, #6366f1) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btn-primary, #6366f1) 35%, transparent);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted, #c8c8d4);
+}
+.compass-nexus-consent p { margin: 0 0 8px; }
+.compass-nexus-consent p:last-of-type { margin-bottom: 12px; }
+.compass-nexus-consent-title {
+  font-weight: 600;
+  color: var(--text, #ececf1);
+  letter-spacing: 0.02em;
+}
+.compass-nexus-consent-btn {
+  background: var(--btn-primary, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
 .inspire-l2-accept, .inspire-l2-dismiss {
   font-size: 11px;
   padding: 3px 10px;
@@ -9668,8 +9696,30 @@ const compassNexusState = {
   goldenThread: []   // loaded from server at session open
 };
 
+// First-use Nexus consent: the user must acknowledge once (per browser) that
+// chatting with Nexus sends their message + cOMpass context to Claude before
+// the first message leaves the browser.
+const COMPASS_NEXUS_CONSENT_KEY = 'commonunity_nexus_consent_v1';
+
+function compassNexusHasConsent() {
+  try { return localStorage.getItem(COMPASS_NEXUS_CONSENT_KEY) === '1'; }
+  catch (_) { return false; }
+}
+
+function compassNexusGrantConsent() {
+  try { localStorage.setItem(COMPASS_NEXUS_CONSENT_KEY, '1'); } catch (_) {}
+}
+
+// Identity minimization (interim): Nexus/Claude and the Golden Thread store
+// only the user's FIRST name, never the full legal name. The full name stays
+// local in the OM Cipher contract. TODO(trust-architecture): replace with a
+// pseudonymous OM Cipher node so no real-name fragment reaches the AI at all.
+function compassNexusIdentity() {
+  return (state.companion || '').trim().split(/\s+/)[0] || '';
+}
+
 async function compassLoadGoldenThread() {
-  const companion = (state.companion || '').trim();
+  const companion = compassNexusIdentity();
   if (!companion) return;
   try {
     const res = await fetch(`${API_BASE}/api/golden-thread?companion=${encodeURIComponent(companion)}&limit=10`);
@@ -9683,7 +9733,7 @@ async function compassLoadGoldenThread() {
 }
 
 async function compassSaveGoldenThread(content) {
-  const companion = (state.companion || '').trim();
+  const companion = compassNexusIdentity();
   try {
     await fetch(`${API_BASE}/api/golden-thread`, {
       method: 'POST',
@@ -9846,12 +9896,47 @@ function doCloseCompassNexus(modal) {
   compassNexusState.history = [];
 }
 
+// Render the one-time consent disclosure inside the conversation and resolve
+// once the user acknowledges. Returns false if they decline / it can't render.
+function compassNexusRequestConsent() {
+  return new Promise(function (resolve) {
+    const conv = document.getElementById('compass-nexus-convo');
+    if (!conv) { resolve(false); return; }
+    const box = document.createElement('div');
+    box.className = 'compass-nexus-consent';
+    box.innerHTML =
+      '<p class="compass-nexus-consent-title">Before you chat with Nexus</p>' +
+      '<p>When you send a message, Nexus sends that message and relevant cOMpass ' +
+      'context — your hexagram, the room you are in, and your notes — to Claude ' +
+      '(Anthropic) to generate a reflection.</p>' +
+      '<p>Nexus is a reflection companion. It is not a private diary, and it is ' +
+      'not a replacement for your own inner authority.</p>';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'compass-nexus-consent-btn';
+    btn.textContent = 'I understand — continue';
+    btn.addEventListener('click', function () {
+      compassNexusGrantConsent();
+      box.remove();
+      resolve(true);
+    }, { once: true });
+    box.appendChild(btn);
+    conv.appendChild(box);
+    conv.scrollTop = conv.scrollHeight;
+  });
+}
+
 async function sendCompassNexusMessage() {
   const input = document.getElementById('compass-nexus-input');
   const sendBtn = document.getElementById('compass-nexus-send');
   if (!input || !sendBtn) return;
   const msg = input.value.trim();
   if (!msg) return;
+
+  if (!compassNexusHasConsent()) {
+    const granted = await compassNexusRequestConsent();
+    if (!granted) return;
+  }
 
   input.value = '';
   appendCompassNexusMsg('user', msg);
@@ -9910,7 +9995,7 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         session_notes: seed,
         workbench_entries: '',
         history: compassNexusState.history.slice(-8),
-        companion: state.companion || '',
+        companion: compassNexusIdentity(),
         golden_thread: compassNexusState.goldenThread.join('\n---\n')
       })
     });
