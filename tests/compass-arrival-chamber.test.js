@@ -28,6 +28,7 @@ const css = fs.readFileSync(path.join(ROOT, 'arrival/arrival.css'), 'utf8');
 const js = fs.readFileSync(path.join(ROOT, 'arrival/arrival.js'), 'utf8');
 const thresholdJs = fs.readFileSync(path.join(ROOT, 'threshold/threshold.js'), 'utf8');
 const serverPy = fs.readFileSync(path.join(ROOT, 'server.py'), 'utf8');
+const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
 
 let pass = 0, fail = 0;
 function ok(cond, label) {
@@ -128,6 +129,24 @@ ok(/_ORIENTATION_NOTIFY_DEFAULT\s*=\s*"markus@jointidea\.com"/.test(serverPy),
    'notification recipient defaults to markus@jointidea.com');
 ok(/os\.getenv\(_ORIENTATION_NOTIFY_ENV, ""\)\.strip\(\)\s*or\s*_ORIENTATION_NOTIFY_DEFAULT/.test(serverPy),
    'ORIENTATION_NOTIFY_EMAIL overrides the default when set');
+
+console.log('\n12. admin panel is the center of truth for entry links (PR #56 audit)');
+// Markus enters via the admin panel and treats it as the source of truth.
+// User-facing links must resolve against the server-computed public base
+// (commonunity.io in prod) — never the raw Railway origin — and the
+// quick-links must reflect the post-threshold arrival chamber.
+ok(/center of truth/i.test(adminHtml),
+   'admin.html documents that it is the center of truth for entry links');
+ok(/const publicBase\s*=\s*\(\)\s*=>\s*\(state\.configured && state\.configured\.invite_base_url\)\s*\|\|\s*location\.origin/.test(adminHtml),
+   'publicBase() prefers configured.invite_base_url over location.origin');
+ok(/const magicLink\s*=\s*\(token\)\s*=>\s*`\$\{publicBase\(\)/.test(adminHtml),
+   'magic links are built from publicBase() (not bare location.origin)');
+ok(/\['cOMpass arrival',\s*'\/compass\/arrival'/.test(adminHtml),
+   'quick-links include the /compass/arrival orientation chamber');
+ok(/\['cOMpass workspace',\s*'\/compass',[^\]]*returning users \/ debug/.test(adminHtml),
+   '/compass workspace link is labeled as returning-user / debug entry');
+ok(/const base\s*=\s*publicBase\(\)\.replace\(\/\\\/\$\/, ''\);[\s\S]{0,200}new URL\(path, base \+ '\/'\)/.test(adminHtml),
+   'live-links render against publicBase() rather than location.origin');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

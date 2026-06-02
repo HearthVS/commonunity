@@ -1241,12 +1241,26 @@
       activeTab: 'field',
     };
     const date = (value) => value ? new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const magicLink = (token) => `${location.origin}/invite/${encodeURIComponent(token)}`;
+    // The admin panel is the center of truth for entry links. User-facing
+    // URLs (magic links, public quick-links) must prefer the server-computed
+    // public base URL (commonunity.io in production) over location.origin —
+    // otherwise links opened from the Railway origin leak the raw
+    // *.up.railway.app host to invitees. The server resolves this via
+    // _public_base_url() and exposes it as configured.invite_base_url; we
+    // fall back to location.origin only before that status has loaded.
+    const publicBase = () => (state.configured && state.configured.invite_base_url) || location.origin;
+    const magicLink = (token) => `${publicBase().replace(/\/$/, '')}/invite/${encodeURIComponent(token)}`;
+    // IMPORTANT (center of truth): when the entry-flow routes change, update
+    // these links to match. After PR #56 the first-time post-threshold
+    // handoff lands users on /compass/arrival (the orientation chamber);
+    // /compass is the direct workspace entry used by returning users and for
+    // debugging. The Railway origin link below is explicitly labeled debug.
     const liveLinks = [
       ['Homepage', '/', 'Public landing page'],
       ['Beta gate', '/beta', 'Shared code access'],
-      ['Threshold', '/threshold', 'Onboarding journey'],
-      ['cOMpass', '/compass', 'Main companion space'],
+      ['Threshold', '/threshold', 'First-time onboarding journey'],
+      ['cOMpass arrival', '/compass/arrival', 'Post-threshold orientation chamber (first-time landing)'],
+      ['cOMpass workspace', '/compass', 'Direct companion space — returning users / debug'],
       ['Studio', '/studio', 'Creation rooms'],
       ['Tuner', '/tuner', 'Sound and tuning'],
       ['cOMmons', '/commons', 'Community field'],
@@ -1378,8 +1392,12 @@
 
     // ── Ops dashboard (System tab) ──
     function renderOpsDashboard() {
+      // Public quick-links resolve against the configured public base URL
+      // (commonunity.io in production) so links shared/opened from the admin
+      // panel match what invitees receive — never the raw Railway origin.
+      const base = publicBase().replace(/\/$/, '');
       $('admin-live-links').innerHTML = liveLinks.map(([label, path, detail]) => {
-        const href = new URL(path, location.origin).toString();
+        const href = new URL(path, base + '/').toString();
         return `
           <a class="quick-link" href="${href}" target="_blank" rel="noopener">
             <strong>${escapeHtml(label)}</strong>
