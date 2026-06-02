@@ -46,6 +46,19 @@ ok(/\/compass\/arrival\/arrival\.(css|js)/.test(html),
 ok(/arrival-card/.test(css) && /arrival-paths/.test(css),
    'arrival.css defines the chamber card + two-path layout');
 
+console.log('\n1b. uses the canonical cOMpass faceted-diamond logo (not a bespoke mark)');
+// The four directional facets keyed to --brand-logo-* are the signature of
+// the canonical logo used by index.html + threshold.js. The old bespoke
+// mark used plain cipher-palette rings instead.
+ok(/polygon points="50,5 95,50 5,50 50,43" fill="var\(--brand-logo-north/.test(js),
+   'arrival renders the canonical north facet (var(--brand-logo-north))');
+ok(/var\(--brand-logo-east/.test(js) && /var\(--brand-logo-south/.test(js) && /var\(--brand-logo-west/.test(js),
+   'arrival renders all four directional facets (east/south/west)');
+ok(/class:\s*'compass-mark'/.test(js) && /compass-mark-svg/.test(js),
+   'arrival reuses the shared .compass-mark wrapper + .compass-mark-svg styling');
+ok(!/r="34" fill="none" stroke="var\(--cipher-primary\)/.test(js),
+   'the old bespoke gold-ring mark is gone');
+
 console.log('\n2. required title + lede');
 ok(/Welcome to cOMpass/.test(js),
    "carries the 'Welcome to cOMpass' title");
@@ -69,20 +82,44 @@ ok(/These are not separate paths/.test(js),
    'copy states the paths are not separate');
 ok(/still begin on your own while you wait/.test(js),
    'copy states solo start is possible while waiting for a one-on-one');
-ok(/Request one-on-one orientation/.test(js) && /Begin your first solo session/.test(js),
-   'both path cards are present');
+ok(/Request guided orientation/.test(js) && /Begin your first solo session/.test(js),
+   'both path cards are present (guided + solo)');
 
-console.log('\n5. one-on-one request wiring (does NOT block solo)');
+console.log('\n5. guided request wiring (does NOT block solo)');
 ok(/\/api\/orientation-request/.test(js),
-   'one-on-one button posts to /api/orientation-request');
-ok(/One-on-one requested\. Markus will reach out personally\./.test(js),
+   'guided button posts to /api/orientation-request');
+ok(/Guided orientation requested\. Markus will reach out personally\./.test(js),
    'post-request state confirms Markus will reach out');
-// The solo handoff must be reachable regardless of the request state:
-// the solo card + footer button both call handoffToCompass unconditionally.
 ok(/function handoffToCompass/.test(js),
    'handoffToCompass is defined');
-ok((js.match(/handoffToCompass/g) || []).length >= 3,
-   'handoffToCompass is wired to multiple solo-begin affordances');
+// SINGLE pass-through: handoffToCompass must be wired EXACTLY ONCE — the
+// footer button after the steps. The solo card no longer navigates, so the
+// only references are the definition + one listener wiring (== 2 total).
+ok((js.match(/handoffToCompass/g) || []).length === 2,
+   'handoffToCompass appears exactly twice (definition + the single footer CTA)');
+ok(!/buildSoloCard\(handoffToCompass\)/.test(js),
+   'the solo path card is NOT wired to handoffToCompass (no duplicate pass-through)');
+ok(/addEventListener\('click', handoffToCompass\)/.test(js),
+   'exactly the footer button is wired to the solo handoff');
+
+console.log('\n5b. guided card carries the four-laws + gentle paid framing');
+// Copy is authored as concatenated string segments, so normalise the
+// source (strip JS string joins + whitespace) before matching prose.
+const prose = js.replace(/'\s*\+\s*'/g, '').replace(/\s+/g, ' ');
+ok(/four sessions/.test(prose),
+   'guided copy mentions the path can unfold over four sessions');
+ok(/laws of awareness, clarity, balance, and creation/.test(prose),
+   'guided copy names the four laws (awareness, clarity, balance, creation)');
+ok(/integrating other practices and traditions/.test(prose),
+   'guided copy mentions integrating other practices and traditions');
+ok(/normally offered as paid facilitation; first beta requests are arranged personally/.test(prose),
+   'guided card carries the gentle paid-facilitation note (not a sales pitch)');
+
+console.log('\n5c. solo card is preparation-only (points down, does not navigate)');
+ok(/Your solo path is outlined below/.test(js),
+   'solo card points the user to the steps below');
+ok(/Review the solo steps below/.test(js),
+   'solo card carries a non-navigating cue toward the steps');
 
 console.log('\n6. solo session instructions are present');
 ok(/Read your first Gene Key hexagram/.test(js),
@@ -99,6 +136,13 @@ ok(!/buythebook/.test(js),
 console.log('\n7. solo handoff routes into the working cOMpass view');
 ok(/\/compass\?threshold=done&enter=compass/.test(js),
    'solo begin routes to /compass?threshold=done&enter=compass');
+// The single CTA lives in the footer AFTER the numbered instructions.
+// Check ordering inside render(), where both are appended to the card.
+const renderBody = js.slice(js.indexOf('function render()'));
+const stepsAppendIdx = renderBody.indexOf('card.appendChild(buildInstructions())');
+const footerAppendIdx = renderBody.indexOf("el('div', { class: 'arrival-solo-footer' })");
+ok(stepsAppendIdx > 0 && footerAppendIdx > 0 && footerAppendIdx > stepsAppendIdx,
+   "the 'Begin solo session' footer CTA is rendered after the instructions");
 
 console.log('\n8. threshold hands off to the arrival chamber on first completion');
 ok(/window\.location\.href\s*=\s*'\/compass\/arrival'/.test(thresholdJs),
