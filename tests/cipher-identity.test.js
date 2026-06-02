@@ -1,13 +1,18 @@
 /* cipher-identity · regression test
  *
  * Trust architecture, layer 2: the pseudonymous OM Cipher operational identity
- * and its binding to the generated Cipher/sigil. The contract under test:
+ * and the versioned, decoupled visual Cipher. The contract under test:
  *   • threshold/contract.js exposes deriveCipherIdentity + ensureCipherIdentity
- *   • backfill produces a stable cipher_id + sigil_id; unity_code/unity_point
- *     take the form UC-<g>.<l> / "Unity Point <g>.<l>" once a gate is known
- *   • cipher_id is stable across re-derive; sigil_id derives from the identity
- *     seed (full_name+birth_date), NOT email/legal-name alone
- *   • cOMpass + Studio send the Unity Point (not the full/first name) to the AI
+ *   • the STABLE identity is cipher_id + unity_code + unity_point, plus an
+ *     active_cipher_version_id pointer; unity_code/unity_point take the form
+ *     UC-<g>.<l> / "Unity Point <g>.<l>" once a gate is known
+ *   • the visual Cipher is versioned in cipher_visual.versions[]; the first
+ *     entry is a Beta Cipher (stage:'beta', method:'legacy_generator',
+ *     status:'active') and is decoupled from the stable identity
+ *   • cipher_id is stable across re-derive; the active version derives from the
+ *     identity seed (full_name+birth_date), NOT email/legal-name alone
+ *   • cOMpass + Studio send the Unity Point (not the full/first name) to the AI,
+ *     and the AI payloads carry NO visual-version field (decoupled)
  *   • server carries the cipher fields, prompt references the operational
  *     identity, and golden_thread gains the cipher columns (idempotent ALTER)
  *
@@ -39,7 +44,7 @@ ok(typeof Contract.deriveCipherIdentity === 'function', 'deriveCipherIdentity is
 ok(typeof Contract.ensureCipherIdentity === 'function', 'ensureCipherIdentity is exported');
 ok(typeof Contract.cipherIdHex === 'function', 'cipherIdHex is exported');
 
-console.log('\n2. backfill produces cipher_id + sigil_id (no gate yet)');
+console.log('\n2. backfill produces a stable identity + a beta visual Cipher (no gate yet)');
 const base = {
   contract_version: 1,
   identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' },
@@ -50,9 +55,24 @@ const e1 = Contract.ensureCipherIdentity(base);
 ok(e1.changed === true, 'ensureCipherIdentity reports a change when no identity exists');
 const id1 = e1.contract.om_cipher.cipher_identity;
 ok(/^cipher_[0-9a-f]{24}$/.test(id1.cipher_id), 'cipher_id is cipher_<24 hex>');
-ok(/^sigil_[0-9a-f]{16}$/.test(id1.sigil_id), 'sigil_id is sigil_<16 hex>');
+ok(id1.sigil_id === undefined, 'sigil_id is no longer a core identity field');
+ok(/^cv_[0-9a-f]{16}$/.test(id1.active_cipher_version_id),
+   'active_cipher_version_id points at a visual version (cv_<16 hex>)');
 ok(id1.unity_code === '' && id1.unity_point === '', 'unity_code/unity_point blank until a gate is known');
 ok(id1.version === 'v1' && id1.source === 'om_cipher_identity_v1', 'version + source stamped');
+
+console.log('\n2b. the visual Cipher is versioned and the first entry is a Beta Cipher');
+const visual1 = e1.contract.om_cipher.cipher_visual;
+ok(visual1 && Array.isArray(visual1.versions) && visual1.versions.length === 1,
+   'cipher_visual.versions[] holds exactly one version on first backfill');
+const v1 = visual1.versions[0];
+ok(v1.version_id === id1.active_cipher_version_id,
+   'active_cipher_version_id resolves to the version in the array');
+ok(v1.stage === 'beta', "first version stage is 'beta'");
+ok(v1.method === 'legacy_generator', "first version method is 'legacy_generator'");
+ok(v1.status === 'active', "first version status is 'active'");
+ok(/^sigil_[0-9a-f]{16}$/.test(v1.seed_ref),
+   'seed_ref keeps the internal generator linkage (legacy term, implementation detail)');
 
 console.log('\n3. unity_code / unity_point format from the primary gate');
 const e2 = Contract.ensureCipherIdentity(e1.contract, { gate: 22, line: 5 });
@@ -60,27 +80,53 @@ const id2 = e2.contract.om_cipher.cipher_identity;
 ok(id2.unity_code === 'UC-22.5', 'unity_code is UC-22.5');
 ok(id2.unity_point === 'Unity Point 22.5', 'unity_point is "Unity Point 22.5"');
 
-console.log('\n4. cipher_id + sigil_id are stable across re-derive');
+console.log('\n4. the stable identity + active version pointer are stable across re-derive');
 ok(id2.cipher_id === id1.cipher_id, 'cipher_id is preserved when a gate arrives');
-ok(id2.sigil_id === id1.sigil_id, 'sigil_id is preserved when a gate arrives');
+ok(id2.active_cipher_version_id === id1.active_cipher_version_id,
+   'active_cipher_version_id is preserved when a gate arrives');
+ok(e2.contract.om_cipher.cipher_visual.versions.length === 1,
+   'no new visual version is spawned by a gate change (identity vs visual are decoupled)');
 
-console.log('\n5. sigil_id derives from the identity seed, not email/legal-name alone');
-const samePerson = Contract.deriveCipherIdentity({
-  identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' }
-});
-const refPerson = Contract.deriveCipherIdentity({
-  identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' }
-});
-ok(samePerson.sigil_id === refPerson.sigil_id,
-   'identical identity seeds produce the same sigil_id (deterministic seal)');
-const otherDob = Contract.deriveCipherIdentity({
-  identity: { full_name: 'Ada Lovelace', birth_date: '1900-01-01' }
-});
-ok(otherDob.sigil_id !== samePerson.sigil_id,
-   'a different birth_date yields a different sigil_id (seed uses identity, not name alone)');
+console.log('\n5. the active version derives from the identity seed, not email/legal-name alone');
+function activeVersion(contract) {
+  const ensured = Contract.ensureCipherIdentity(contract).contract;
+  return ensured.om_cipher.cipher_visual.versions[0];
+}
+const samePerson = activeVersion({ identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' } });
+const refPerson  = activeVersion({ identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' } });
+ok(samePerson.version_id === refPerson.version_id,
+   'identical identity seeds produce the same visual version_id (deterministic)');
+ok(samePerson.seed_ref === refPerson.seed_ref,
+   'identical identity seeds produce the same internal seed_ref');
+const otherDob = activeVersion({ identity: { full_name: 'Ada Lovelace', birth_date: '1900-01-01' } });
+ok(otherDob.version_id !== samePerson.version_id,
+   'a different birth_date yields a different version_id (seed uses identity, not name alone)');
 // cipher_id is random per derive when none is supplied (not identity-derived).
-ok(samePerson.cipher_id !== refPerson.cipher_id,
+const c1 = Contract.deriveCipherIdentity({ identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' } });
+const c2 = Contract.deriveCipherIdentity({ identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' } });
+ok(c1.cipher_id !== c2.cipher_id,
    'cipher_id is random per fresh derive (not derived from identity)');
+
+console.log('\n5b. legacy sigil_id migrates into active_cipher_version_id (no data loss)');
+const legacyShape = {
+  contract_version: 1,
+  identity: { full_name: 'Ada Lovelace', birth_date: '1815-12-10' },
+  om_cipher: {
+    palette: { primary: 'x', secondary: 'y', seasonal_accent: 'z', schema_version: 2, source: 'om_cipher_palette_v2' },
+    cipher_identity: {
+      cipher_id: 'cipher_aaaaaaaaaaaaaaaaaaaaaaaa',
+      unity_code: '', unity_point: '',
+      sigil_id: 'sigil_0123456789abcdef',
+      version: 'v1', source: 'om_cipher_identity_v1'
+    }
+  },
+  threshold: { completed: true }
+};
+const migratedLegacy = Contract.ensureCipherIdentity(legacyShape).contract.om_cipher.cipher_identity;
+ok(migratedLegacy.active_cipher_version_id === 'sigil_0123456789abcdef',
+   'a pre-existing sigil_id becomes the active_cipher_version_id (stable handle preserved)');
+ok(migratedLegacy.cipher_id === 'cipher_aaaaaaaaaaaaaaaaaaaaaaaa',
+   'the stable cipher_id is preserved through the migration');
 
 console.log('\n6. migrateContract backfills the cipher identity for existing contracts');
 const legacy = {
@@ -104,6 +150,8 @@ const roseSend = (index.match(/fetch\(`\$\{API_BASE\}\/rose-mirror`[\s\S]*?golde
 ok(/companion: compassNexusAddress\(\)/.test(roseSend), '/rose-mirror sends compassNexusAddress()');
 ok(/unity_code:/.test(roseSend) && /cipher_id:/.test(roseSend), '/rose-mirror carries unity_code + cipher_id');
 ok(!/companion: state\.companion/.test(roseSend), 'no raw full name in the /rose-mirror payload');
+ok(!/active_cipher_version|cipher_visual/.test(roseSend),
+   '/rose-mirror is NOT coupled to the visual Cipher version (stable identity only)');
 // Golden Thread save carries the cipher fields.
 const gtSave = (index.match(/async function compassSaveGoldenThread[\s\S]*?\}\);/) || [''])[0];
 ok(/cipher_id:/.test(gtSave) && /unity_point:/.test(gtSave),

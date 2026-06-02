@@ -7999,11 +7999,15 @@ function studioNexusIdentity() {
 }
 
 // ---- Pseudonymous OM Cipher identity (inline mirror of contract.js) ------
-// Studio reads the same commonunity_om_cipher_v1 contract directly. The
+// Studio reads the same commonunity_om_cipher_v1 contract directly. The STABLE
 // operational identity (cipher_id / unity_code / unity_point) is what
 // Nexus/Claude receive instead of a real-world name. unity_code/unity_point
 // derive from the primary gate (Life Work / work); we re-derive lazily so the
-// gate computed inside Studio is reflected, persisting the upgrade.
+// gate computed inside Studio is reflected, persisting the upgrade. The visual
+// Cipher is versioned (cipher_visual.versions[]) and decoupled from the stable
+// identity; active_cipher_version_id points at the active beta entry.
+const STUDIO_CIPHER_VISUAL_SCHEMA_VERSION = 1;
+const STUDIO_BETA_CIPHER_METHOD = 'legacy_generator';
 function _studioCipherHashHex(str, len) {
   str = String(str == null ? '' : str);
   let h = 0x811c9dc5;
@@ -8047,19 +8051,47 @@ function studioReadCipherContract() {
     return c;
   } catch (_) { return null; }
 }
+function _studioActiveCipherVersion(contract) {
+  const visual = contract && contract.om_cipher && contract.om_cipher.cipher_visual;
+  const versions = (visual && Array.isArray(visual.versions)) ? visual.versions : [];
+  if (!versions.length) return null;
+  const id = contract.om_cipher.cipher_identity &&
+    contract.om_cipher.cipher_identity.active_cipher_version_id;
+  if (id) {
+    const match = versions.filter(function (v) { return v && v.version_id === id; })[0];
+    if (match) return match;
+  }
+  return versions.filter(function (v) { return v && v.status === 'active'; })[0] || versions[0];
+}
+function _studioDeriveCipherVisualVersion(contract, existingVersion) {
+  const identity = (contract && contract.identity) || {};
+  const seed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+  const prev = existingVersion || {};
+  const version_id = prev.version_id || ('cv_' + _studioCipherHashHex(seed || 'cipher', 16));
+  return {
+    version_id,
+    stage: prev.stage || 'beta',
+    method: prev.method || STUDIO_BETA_CIPHER_METHOD,
+    status: prev.status || 'active',
+    seed_ref: prev.seed_ref || ('sigil_' + _studioCipherHashHex(seed || version_id, 16)),
+    schema_version: STUDIO_CIPHER_VISUAL_SCHEMA_VERSION,
+    created_via: prev.created_via || 'om_cipher_identity_v1'
+  };
+}
 function studioCipherIdentity() {
   const contract = studioReadCipherContract();
   if (!contract) return null;
   const existing = (contract.om_cipher && contract.om_cipher.cipher_identity) || {};
-  const identity = contract.identity || {};
   const work = state.compassData?.points?.work || {};
   const gNum = parseInt(work.gk_num, 10);
   const lNum = parseInt(work.gk_line, 10);
   const hasGate = Number.isFinite(gNum) && gNum > 0;
 
   const cipher_id = existing.cipher_id || ('cipher_' + _studioCipherIdHex(24));
-  const sigilSeed = (identity.full_name || '') + '|' + (identity.birth_date || '');
-  const sigil_id = existing.sigil_id || ('sigil_' + _studioCipherHashHex(sigilSeed || cipher_id, 16));
+  const prevActive = _studioActiveCipherVersion(contract);
+  const nextVersion = _studioDeriveCipherVisualVersion(contract, prevActive);
+  const active_cipher_version_id =
+    existing.active_cipher_version_id || existing.sigil_id || nextVersion.version_id;
 
   let unity_code = existing.unity_code || '';
   let unity_point = existing.unity_point || '';
@@ -8070,15 +8102,30 @@ function studioCipherIdentity() {
   }
 
   const next = {
-    cipher_id, unity_code, unity_point, sigil_id,
+    cipher_id, unity_code, unity_point, active_cipher_version_id,
     version: 'v1', source: 'om_cipher_identity_v1'
   };
-  const changed = !contract.om_cipher || !contract.om_cipher.cipher_identity ||
+
+  const prevVisual = (contract.om_cipher && contract.om_cipher.cipher_visual) || null;
+  const visualChanged = !prevVisual || !Array.isArray(prevVisual.versions) ||
+    !prevActive || JSON.stringify(prevActive) !== JSON.stringify(nextVersion);
+  const identityChanged = !contract.om_cipher || !contract.om_cipher.cipher_identity ||
     JSON.stringify(existing) !== JSON.stringify(next);
-  if (changed) {
+
+  if (identityChanged || visualChanged) {
     try {
       contract.om_cipher = contract.om_cipher || {};
       contract.om_cipher.cipher_identity = next;
+      const versions = (prevVisual && Array.isArray(prevVisual.versions))
+        ? prevVisual.versions.slice() : [];
+      const idx = versions.findIndex(function (v) {
+        return v && v.version_id === nextVersion.version_id;
+      });
+      if (idx >= 0) versions[idx] = nextVersion;
+      else versions.push(nextVersion);
+      contract.om_cipher.cipher_visual = Object.assign({}, prevVisual || {}, {
+        versions, schema_version: STUDIO_CIPHER_VISUAL_SCHEMA_VERSION
+      });
       window.localStorage.setItem('commonunity_om_cipher_v1', JSON.stringify(contract));
     } catch (_) {}
   }
@@ -11840,9 +11887,9 @@ window.saveState = saveState;
       <button class="studio-info-popup-close" data-close="info-om-cipher-overlay">✕</button>
     </div>
     <div class="studio-info-popup-body">
-      <p>The Compass-sealed pattern your sigil, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>
+      <p>The Compass-sealed pattern your Cipher, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>
       <p>OM Cipher is the <strong>objective</strong> layer (a deterministic source pattern derived from your sealed inputs). Living Profile, above, is the <strong>subjective</strong> layer — your lived qualia, framed for the people you meet.</p>
-      <p>Open the section to view your sigil, gematria source-pattern, Bhramari resonance, and the locked Cipher Foundation inputs. To correct source data, re-seal in Compass.</p>
+      <p>Open the section to view your Cipher, gematria source-pattern, Bhramari resonance, and the locked Cipher Foundation inputs. To correct source data, re-seal in Compass.</p>
     </div>
   </div>
 </div>

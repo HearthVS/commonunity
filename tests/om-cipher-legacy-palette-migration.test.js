@@ -328,10 +328,11 @@ test('read() leaves a fully-current contract untouched', () => {
   const p = C.computePaletteFromIdentity(current.identity);
   current.om_cipher.palette = p;
   current.threshold.completed = true;
-  // A fully-current contract also carries the cipher identity now; pre-seed it
-  // so read() has nothing to backfill (palette OR cipher identity).
-  current.om_cipher.cipher_identity = C.deriveCipherIdentity(current);
-  storage.setItem('commonunity_om_cipher_v1', JSON.stringify(current));
+  // A fully-current contract also carries the cipher identity + versioned
+  // visual Cipher now; pre-seed both via ensureCipherIdentity so read() has
+  // nothing to backfill (palette OR cipher identity OR visual version).
+  const seeded = C.ensureCipherIdentity(current).contract;
+  storage.setItem('commonunity_om_cipher_v1', JSON.stringify(seeded));
   const beforeRaw = storage.getItem('commonunity_om_cipher_v1');
   const got = C.read();
   assert.equal(C.isLegacyPalette(got), false);

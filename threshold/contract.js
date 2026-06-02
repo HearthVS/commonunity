@@ -150,7 +150,7 @@
   // The OM Cipher operational identity is deliberately separate from the
   // real-world contact identity (identity.full_name / birth_date). It is what
   // CommonUnity apps and AI companions (Nexus/Claude) reference instead of a
-  // legal or familiar name. Three layers:
+  // legal or familiar name. The STABLE identity is three fields:
   //
   //   cipher_id   — random, stable, non-identifying technical key. Generated
   //                 once and persisted; NEVER derived from email/legal name.
@@ -159,17 +159,26 @@
   //                 from contact identity. Empty until a gate is known.
   //   unity_point — human-readable operating label ("Unity Point 22.5").
   //
-  // The generated Cipher/sigil is bound to this identity via sigil_id, a hash
-  // over the SAME identity material the sigil seed uses (full_name + birth_date)
-  // so the visual seal references the same person WITHOUT storing raw birth data
-  // in the operational identity. It is the seal of the OM Cipher identity, not a
-  // disconnected afterthought.
+  // The VISUAL Cipher is intentionally decoupled from the stable identity. The
+  // currently generated Cipher is only the first, beta expression — not the
+  // final identity. So the contract carries a versioned visual Cipher block
+  // (cipher_visual.versions[]) and the stable identity points at the active one
+  // via active_cipher_version_id. A user can later gain a Full / Living Cipher
+  // version without losing any cOMpass / Nexus / Golden Thread data, because all
+  // of that attaches to the stable identity (cipher_id / unity_point), never to
+  // a specific visual version.
+  //
+  // Each visual version records how it was produced (stage/method/status) and
+  // may carry an internal seed/hash reference linking it to the generator
+  // output. Product/user-facing language calls this the "Cipher"; the legacy
+  // generator term ("sigil") survives only as an internal implementation
+  // reference inside a version's `seed_ref`.
 
   const CIPHER_IDENTITY_SOURCE = 'om_cipher_identity_v1';
   const CIPHER_IDENTITY_VERSION = 'v1';
 
-  // Stable, non-cryptographic hex hash (FNV-1a-ish). Used for sigil_id so the
-  // seal can be linked to the identity seed deterministically and offline.
+  // Stable, non-cryptographic hex hash (FNV-1a-ish). Used to derive stable IDs
+  // (version id, internal seed ref) deterministically and offline.
   function _hashHex(str, len) {
     str = String(str == null ? '' : str);
     let h = 0x811c9dc5;
@@ -212,21 +221,52 @@
     return hex.slice(0, n);
   }
 
+  // The current visual Cipher is produced by the legacy generator (sdk/om_cipher.js).
+  // We treat it as the first, BETA expression of the identity — versioned, never
+  // final. Naming the method accurately keeps room for a future Full / Living
+  // Cipher method without renaming or breaking this one.
+  const CIPHER_VISUAL_SCHEMA_VERSION = 1;
+  const BETA_CIPHER_METHOD = 'legacy_generator';
+
+  // Pure: derive the active visual Cipher version (the first, beta expression).
+  // The version id is stable for a given identity seed, so re-derives converge.
+  // `seed_ref` is an INTERNAL implementation pointer to the generator output
+  // (the legacy "sigil" seed) — it is not the stable identity and not used by
+  // Nexus / Golden Thread.
+  function deriveCipherVisualVersion(contract, existingVersion) {
+    const identity = (contract && contract.identity) || {};
+    const seed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+    const prev = existingVersion || {};
+    const version_id = prev.version_id || ('cv_' + _hashHex(seed || 'cipher', 16));
+    return {
+      version_id: version_id,
+      stage: prev.stage || 'beta',
+      method: prev.method || BETA_CIPHER_METHOD,
+      status: prev.status || 'active',
+      // Internal generator linkage. Legacy term retained here on purpose so the
+      // beta version can be matched to the existing generator output; product
+      // copy never surfaces this field.
+      seed_ref: prev.seed_ref || ('sigil_' + _hashHex(seed || version_id, 16)),
+      schema_version: CIPHER_VISUAL_SCHEMA_VERSION,
+      created_via: prev.created_via || CIPHER_IDENTITY_SOURCE
+    };
+  }
+
   // Pure: derive a cipher_identity object from a contract + optional gate/line.
   // Preserves an existing cipher_id (stability is the whole point). Recomputes
   // unity_code / unity_point whenever a gate is supplied; leaves them blank
-  // otherwise. sigil_id is always derived from the identity seed.
+  // otherwise. active_cipher_version_id points at the active visual version.
   function deriveCipherIdentity(contract, opts) {
     opts = opts || {};
     const existing = (contract && contract.om_cipher && contract.om_cipher.cipher_identity) || {};
-    const identity = (contract && contract.identity) || {};
 
     const cipher_id = existing.cipher_id || ('cipher_' + cipherIdHex(24));
 
-    // Sigil seed material mirrors the palette/sigil seed inputs (identity),
-    // never email/legal-name alone. Stable across re-derive for the same person.
-    const sigilSeed = (identity.full_name || '') + '|' + (identity.birth_date || '');
-    const sigil_id = existing.sigil_id || ('sigil_' + _hashHex(sigilSeed || cipher_id, 16));
+    const activeVersion = deriveCipherVisualVersion(contract, _activeCipherVersion(contract));
+    // Migrate the legacy sigil_id (if any) into the active version pointer so
+    // existing contracts keep a stable handle without exposing sigil as core.
+    const active_cipher_version_id =
+      existing.active_cipher_version_id || existing.sigil_id || activeVersion.version_id;
 
     let gate = opts.gate;
     let line = opts.line;
@@ -254,36 +294,82 @@
       cipher_id: cipher_id,
       unity_code: unity_code,
       unity_point: unity_point,
-      sigil_id: sigil_id,
+      active_cipher_version_id: active_cipher_version_id,
       version: CIPHER_IDENTITY_VERSION,
       source: CIPHER_IDENTITY_SOURCE
     };
   }
 
-  // Backfill / upgrade the cipher_identity block on a contract. Returns
-  // { contract, changed }. Never overwrites the real-world identity block.
-  // `changed` is true when the block was created or a field actually changed
+  // Read the current active visual version from a contract, if any.
+  function _activeCipherVersion(contract) {
+    const visual = contract && contract.om_cipher && contract.om_cipher.cipher_visual;
+    const versions = (visual && Array.isArray(visual.versions)) ? visual.versions : [];
+    if (!versions.length) return null;
+    const id = contract.om_cipher.cipher_identity &&
+      contract.om_cipher.cipher_identity.active_cipher_version_id;
+    if (id) {
+      const match = versions.filter(function (v) { return v && v.version_id === id; })[0];
+      if (match) return match;
+    }
+    return versions.filter(function (v) { return v && v.status === 'active'; })[0] || versions[0];
+  }
+
+  // Backfill / upgrade the cipher identity AND the versioned visual Cipher on a
+  // contract. Returns { contract, changed }. Never overwrites the real-world
+  // identity block. `changed` is true when anything was created or changed
   // (e.g. a gate became available), so callers can persist conditionally.
   function ensureCipherIdentity(contract, opts) {
     if (!contract || typeof contract !== 'object') {
       return { contract: contract, changed: false };
     }
-    const prev = (contract.om_cipher && contract.om_cipher.cipher_identity) || null;
-    const next = deriveCipherIdentity(contract, opts);
+    const prevIdentity = (contract.om_cipher && contract.om_cipher.cipher_identity) || null;
+    const prevVisual = (contract.om_cipher && contract.om_cipher.cipher_visual) || null;
 
-    const changed = !prev ||
-      prev.cipher_id !== next.cipher_id ||
-      prev.unity_code !== next.unity_code ||
-      prev.unity_point !== next.unity_point ||
-      prev.sigil_id !== next.sigil_id ||
-      prev.version !== next.version ||
-      prev.source !== next.source;
+    const nextVersion = deriveCipherVisualVersion(contract, _activeCipherVersion(contract));
+    const nextIdentity = deriveCipherIdentity(contract, opts);
 
-    if (!changed) return { contract: contract, changed: false };
+    const prevActive = _activeCipherVersion(contract);
+    const visualChanged = !prevVisual ||
+      !Array.isArray(prevVisual.versions) ||
+      !prevActive ||
+      prevActive.version_id !== nextVersion.version_id ||
+      prevActive.stage !== nextVersion.stage ||
+      prevActive.method !== nextVersion.method ||
+      prevActive.status !== nextVersion.status ||
+      prevActive.seed_ref !== nextVersion.seed_ref ||
+      prevActive.schema_version !== nextVersion.schema_version;
+
+    const identityChanged = !prevIdentity ||
+      prevIdentity.cipher_id !== nextIdentity.cipher_id ||
+      prevIdentity.unity_code !== nextIdentity.unity_code ||
+      prevIdentity.unity_point !== nextIdentity.unity_point ||
+      prevIdentity.active_cipher_version_id !== nextIdentity.active_cipher_version_id ||
+      prevIdentity.version !== nextIdentity.version ||
+      prevIdentity.source !== nextIdentity.source;
+
+    if (!identityChanged && !visualChanged) {
+      return { contract: contract, changed: false };
+    }
 
     const out = Object.assign({}, contract);
     out.om_cipher = Object.assign({}, contract.om_cipher || {});
-    out.om_cipher.cipher_identity = next;
+    out.om_cipher.cipher_identity = nextIdentity;
+
+    // Rebuild the versions array: replace the active version in place, keep any
+    // other (e.g. future Full / Living) versions untouched.
+    const existingVersions = (prevVisual && Array.isArray(prevVisual.versions))
+      ? prevVisual.versions.slice() : [];
+    const idx = existingVersions.findIndex(function (v) {
+      return v && v.version_id === nextVersion.version_id;
+    });
+    if (idx >= 0) existingVersions[idx] = nextVersion;
+    else existingVersions.push(nextVersion);
+
+    out.om_cipher.cipher_visual = Object.assign({}, prevVisual || {}, {
+      versions: existingVersions,
+      schema_version: CIPHER_VISUAL_SCHEMA_VERSION
+    });
+
     return { contract: out, changed: true };
   }
 
@@ -410,6 +496,7 @@
     migrateContract,
     cipherIdHex,
     deriveCipherIdentity,
+    deriveCipherVisualVersion,
     ensureCipherIdentity
   };
 });
