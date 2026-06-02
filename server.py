@@ -1290,6 +1290,46 @@ def log_tokens(
         pass  # never let logging break the main request
 
 
+# ── Anthropic rate-limit retry ────────────────────────────────────────────
+import asyncio as _asyncio
+
+async def _stream_with_retry(client, *, model, max_tokens, system, messages, max_retries=3):
+    """
+    Wraps client.messages.stream with exponential backoff on 429 rate-limit errors.
+    Yields (chunk_text) strings, then finally yields None as sentinel for done.
+    Returns the final message object via a list so callers can capture usage.
+    """
+    import anthropic as _anthropic
+    delay = 2
+    for attempt in range(max_retries + 1):
+        try:
+            result_holder = []
+            with client.messages.stream(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=messages,
+            ) as s:
+                for text in s.text_stream:
+                    yield ("chunk", text)
+                try:
+                    result_holder.append(s.get_final_message())
+                except Exception:
+                    result_holder.append(None)
+            yield ("final", result_holder[0] if result_holder else None)
+            return
+        except _anthropic.RateLimitError:
+            if attempt == max_retries:
+                yield ("rate_limit", None)
+                return
+            yield ("retry", delay)
+            await _asyncio.sleep(delay)
+            delay = min(delay * 2, 30)
+        except Exception as e:
+            yield ("error", str(e))
+            return
+
+
 def _brand_row_to_dict(row: sqlite3.Row | None) -> dict:
     if row is None:
         now = _now_iso()
@@ -2557,30 +2597,35 @@ async def rose_room_opening(request: RoseRoomOpeningRequest):
 Offer a single opening question or observation (1-2 sentences) that invites genuine reflection. Draw from what you know of this person — their Gene Keys, their history, what is present in their material. Be specific. Do not explain the room. Do not be generic. If you notice a recurring theme or unresolved question from previous sessions, name it precisely."""
 
     async def stream():
-        try:
-            with client.messages.stream(
-                model="claude-sonnet-4-5",
-                max_tokens=120,
-                system=ROSE_SYSTEM,
-                messages=[{"role": "user", "content": user_msg}]
-            ) as s:
-                for text in s.text_stream:
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
-                try:
-                    final = s.get_final_message()
-                    log_tokens(
-                        companion=request.companion or "",
-                        endpoint="rose-room-opening",
-                        room=request.room or "",
-                        model="claude-sonnet-4-5",
-                        input_tokens=final.usage.input_tokens,
-                        output_tokens=final.usage.output_tokens,
-                    )
-                except Exception:
-                    pass
-            yield f"data: {json.dumps({'done': True})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        async for event, payload in _stream_with_retry(
+            client,
+            model="claude-sonnet-4-5",
+            max_tokens=120,
+            system=ROSE_SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+        ):
+            if event == "chunk":
+                yield f"data: {json.dumps({'chunk': payload})}\n\n"
+            elif event == "retry":
+                yield f"data: {json.dumps({'status': 'Rate limit — retrying…'})}\n\n"
+            elif event == "final":
+                if payload:
+                    try:
+                        log_tokens(
+                            companion=request.companion or "",
+                            endpoint="rose-room-opening",
+                            room=request.room or "",
+                            model="claude-sonnet-4-5",
+                            input_tokens=payload.usage.input_tokens,
+                            output_tokens=payload.usage.output_tokens,
+                        )
+                    except Exception:
+                        pass
+                yield f"data: {json.dumps({'done': True})}\n\n"
+            elif event == "rate_limit":
+                yield f"data: {json.dumps({'error': 'Rate limit reached — please try again in a moment.'})}\n\n"
+            elif event == "error":
+                yield f"data: {json.dumps({'error': payload})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -2665,32 +2710,36 @@ Respond with precision and care. Ask the next question that genuinely matters. O
     messages.append({"role": "user", "content": request.message})
 
     async def stream():
-        try:
-            with client.messages.stream(
-                model="claude-sonnet-4-5",
-                max_tokens=600 if is_studio else 200,  # studio gets more room for output
-                system=system,
-                messages=messages
-            ) as s:
-                for text in s.text_stream:
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
-                # Capture usage after stream completes
-                try:
-                    final = s.get_final_message()
-                    log_tokens(
-                        companion=request.companion or "",
-                        endpoint="rose-mirror",
-                        room=request.room or "",
-                        model="claude-sonnet-4-5",
-                        input_tokens=final.usage.input_tokens,
-                        output_tokens=final.usage.output_tokens,
-                        invite_token=getattr(request, "invite_token", "") or "",
-                    )
-                except Exception:
-                    pass
-            yield f"data: {json.dumps({'done': True})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        async for event, payload in _stream_with_retry(
+            client,
+            model="claude-sonnet-4-5",
+            max_tokens=600 if is_studio else 200,
+            system=system,
+            messages=messages,
+        ):
+            if event == "chunk":
+                yield f"data: {json.dumps({'chunk': payload})}\n\n"
+            elif event == "retry":
+                yield f"data: {json.dumps({'status': 'Rate limit — retrying…'})}\n\n"
+            elif event == "final":
+                if payload:
+                    try:
+                        log_tokens(
+                            companion=request.companion or "",
+                            endpoint="rose-mirror",
+                            room=request.room or "",
+                            model="claude-sonnet-4-5",
+                            input_tokens=payload.usage.input_tokens,
+                            output_tokens=payload.usage.output_tokens,
+                            invite_token=getattr(request, "invite_token", "") or "",
+                        )
+                    except Exception:
+                        pass
+                yield f"data: {json.dumps({'done': True})}\n\n"
+            elif event == "rate_limit":
+                yield f"data: {json.dumps({'error': 'Rate limit reached — please try again in a moment.'})}\n\n"
+            elif event == "error":
+                yield f"data: {json.dumps({'error': payload})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
