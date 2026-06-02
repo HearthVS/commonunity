@@ -7990,12 +7990,106 @@ let state = {
   livingProfile: { auto: {} }
 };
 
-// Identity minimization (interim): Nexus/Claude receives only the user's FIRST
-// name, never the full legal name. TODO(trust-architecture): replace with a
-// pseudonymous OM Cipher node so no real-name fragment reaches the AI at all.
+// Golden-thread / first-name fallback. Kept as the minimized first name only
+// (never the full legal name). The Unity Point label below is preferred for
+// addressing the user in AI payloads.
 function studioNexusIdentity() {
   const full = state.compassData?.companion || state.person || '';
   return String(full).trim().split(/\s+/)[0] || '';
+}
+
+// ---- Pseudonymous OM Cipher identity (inline mirror of contract.js) ------
+// Studio reads the same commonunity_om_cipher_v1 contract directly. The
+// operational identity (cipher_id / unity_code / unity_point) is what
+// Nexus/Claude receive instead of a real-world name. unity_code/unity_point
+// derive from the primary gate (Life Work / work); we re-derive lazily so the
+// gate computed inside Studio is reflected, persisting the upgrade.
+function _studioCipherHashHex(str, len) {
+  str = String(str == null ? '' : str);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  let out = (h >>> 0).toString(16).padStart(8, '0');
+  let salt = 1;
+  while (out.length < len) {
+    let g = (h ^ (salt * 0x9e3779b9)) >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      g ^= str.charCodeAt(i);
+      g = (g + ((g << 1) + (g << 4) + (g << 7) + (g << 8) + (g << 24))) >>> 0;
+    }
+    out += (g >>> 0).toString(16).padStart(8, '0');
+    salt++;
+  }
+  return out.slice(0, len);
+}
+function _studioCipherIdHex(n) {
+  n = n || 24;
+  let hex = '';
+  try {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint8Array(Math.ceil(n / 2));
+      window.crypto.getRandomValues(arr);
+      for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+      return hex.slice(0, n);
+    }
+  } catch (_) {}
+  while (hex.length < n) hex += Math.floor(Math.random() * 16).toString(16);
+  return hex.slice(0, n);
+}
+function studioReadCipherContract() {
+  try {
+    const raw = window.localStorage.getItem('commonunity_om_cipher_v1');
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (!c || typeof c !== 'object') return null;
+    return c;
+  } catch (_) { return null; }
+}
+function studioCipherIdentity() {
+  const contract = studioReadCipherContract();
+  if (!contract) return null;
+  const existing = (contract.om_cipher && contract.om_cipher.cipher_identity) || {};
+  const identity = contract.identity || {};
+  const work = state.compassData?.points?.work || {};
+  const gNum = parseInt(work.gk_num, 10);
+  const lNum = parseInt(work.gk_line, 10);
+  const hasGate = Number.isFinite(gNum) && gNum > 0;
+
+  const cipher_id = existing.cipher_id || ('cipher_' + _studioCipherIdHex(24));
+  const sigilSeed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+  const sigil_id = existing.sigil_id || ('sigil_' + _studioCipherHashHex(sigilSeed || cipher_id, 16));
+
+  let unity_code = existing.unity_code || '';
+  let unity_point = existing.unity_point || '';
+  if (hasGate) {
+    const lineStr = Number.isFinite(lNum) && lNum > 0 ? ('.' + lNum) : '';
+    unity_code = 'UC-' + gNum + lineStr;
+    unity_point = 'Unity Point ' + gNum + lineStr;
+  }
+
+  const next = {
+    cipher_id, unity_code, unity_point, sigil_id,
+    version: 'v1', source: 'om_cipher_identity_v1'
+  };
+  const changed = !contract.om_cipher || !contract.om_cipher.cipher_identity ||
+    JSON.stringify(existing) !== JSON.stringify(next);
+  if (changed) {
+    try {
+      contract.om_cipher = contract.om_cipher || {};
+      contract.om_cipher.cipher_identity = next;
+      window.localStorage.setItem('commonunity_om_cipher_v1', JSON.stringify(contract));
+    } catch (_) {}
+  }
+  return next;
+}
+// Label Studio's AI payloads should address the user by: Unity Point when a
+// gate is known, else the minimized first name.
+function studioNexusAddress() {
+  const ci = studioCipherIdentity();
+  if (ci && ci.unity_point) return ci.unity_point;
+  return studioNexusIdentity();
 }
 
 // ── Studio Window ────────────────────────────────────────────
@@ -9287,8 +9381,10 @@ async function initRoomRose(roomKey) {
           gk_gift: gkData.gift,
           gk_siddhi: gkData.siddhi,
           session_notes: ((pt?.raw || '') + (buildTranscriptContext(roomKey, 1200) ? '\n\n' + buildTranscriptContext(roomKey, 1200) : '')).slice(0, 2000),
-          // Identity minimization (interim): send only the first name to the AI.
-          companion: studioNexusIdentity(),
+          // Pseudonymous OM Cipher identity — the Unity Point (not the name).
+          companion: studioNexusAddress(),
+          unity_code: (studioCipherIdentity() || {}).unity_code || '',
+          cipher_id: (studioCipherIdentity() || {}).cipher_id || '',
           all_rooms_summary: buildCrossRoomSummary(roomKey),
           session_history: buildSessionHistorySummary(),
           nexus_memory: state.nexusMemory || '',
@@ -9406,8 +9502,10 @@ async function sendMirrorMessage() {
         session_notes: sessionContext.slice(0, 2000),
         workbench_entries: workbenchContext.slice(0, 600),
         history: history,
-        // Identity minimization (interim): send only the first name to the AI.
-        companion: studioNexusIdentity(),
+        // Pseudonymous OM Cipher identity — the Unity Point (not the name).
+        companion: studioNexusAddress(),
+        unity_code: (studioCipherIdentity() || {}).unity_code || '',
+        cipher_id: (studioCipherIdentity() || {}).cipher_id || '',
         all_rooms_summary: allRoomsSummary,
         session_history: sessionHistory,
         nexus_memory: state.nexusMemory || '',

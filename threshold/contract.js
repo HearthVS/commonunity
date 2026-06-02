@@ -53,6 +53,9 @@
           schema_version: PALETTE_SCHEMA_VERSION,
           source: PALETTE_SOURCE_CURRENT
         }
+        // cipher_identity is added lazily by ensureCipherIdentity (below) once
+        // a contract exists — it is not part of the empty shape so that older
+        // contracts and the empty contract converge on the same backfill path.
       },
       threshold: {
         completed: false,
@@ -142,6 +145,148 @@
     return false;
   }
 
+  // ---- Pseudonymous OM Cipher identity ------------------------------------
+  //
+  // The OM Cipher operational identity is deliberately separate from the
+  // real-world contact identity (identity.full_name / birth_date). It is what
+  // CommonUnity apps and AI companions (Nexus/Claude) reference instead of a
+  // legal or familiar name. Three layers:
+  //
+  //   cipher_id   — random, stable, non-identifying technical key. Generated
+  //                 once and persisted; NEVER derived from email/legal name.
+  //   unity_code  — functional pattern code from the primary gate/line
+  //                 (e.g. "UC-22.5"). Derived from OM Cipher structure, never
+  //                 from contact identity. Empty until a gate is known.
+  //   unity_point — human-readable operating label ("Unity Point 22.5").
+  //
+  // The generated Cipher/sigil is bound to this identity via sigil_id, a hash
+  // over the SAME identity material the sigil seed uses (full_name + birth_date)
+  // so the visual seal references the same person WITHOUT storing raw birth data
+  // in the operational identity. It is the seal of the OM Cipher identity, not a
+  // disconnected afterthought.
+
+  const CIPHER_IDENTITY_SOURCE = 'om_cipher_identity_v1';
+  const CIPHER_IDENTITY_VERSION = 'v1';
+
+  // Stable, non-cryptographic hex hash (FNV-1a-ish). Used for sigil_id so the
+  // seal can be linked to the identity seed deterministically and offline.
+  function _hashHex(str, len) {
+    str = String(str == null ? '' : str);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    // Expand to the requested length by re-hashing with a salt counter.
+    let out = (h >>> 0).toString(16).padStart(8, '0');
+    let salt = 1;
+    while (out.length < len) {
+      let g = (h ^ (salt * 0x9e3779b9)) >>> 0;
+      for (let i = 0; i < str.length; i++) {
+        g ^= str.charCodeAt(i);
+        g = (g + ((g << 1) + (g << 4) + (g << 7) + (g << 8) + (g << 24))) >>> 0;
+      }
+      out += (g >>> 0).toString(16).padStart(8, '0');
+      salt++;
+    }
+    return out.slice(0, len);
+  }
+
+  // Random hex of n chars. Prefers crypto.getRandomValues; falls back to
+  // Math.random so the helper stays usable in Node test contexts.
+  function cipherIdHex(n) {
+    n = n || 24;
+    const bytes = Math.ceil(n / 2);
+    let hex = '';
+    try {
+      const g = (typeof window !== 'undefined' && window.crypto) ||
+                (typeof globalThis !== 'undefined' && globalThis.crypto) || null;
+      if (g && g.getRandomValues) {
+        const arr = new Uint8Array(bytes);
+        g.getRandomValues(arr);
+        for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+        return hex.slice(0, n);
+      }
+    } catch (_) { /* fall through */ }
+    while (hex.length < n) hex += Math.floor(Math.random() * 16).toString(16);
+    return hex.slice(0, n);
+  }
+
+  // Pure: derive a cipher_identity object from a contract + optional gate/line.
+  // Preserves an existing cipher_id (stability is the whole point). Recomputes
+  // unity_code / unity_point whenever a gate is supplied; leaves them blank
+  // otherwise. sigil_id is always derived from the identity seed.
+  function deriveCipherIdentity(contract, opts) {
+    opts = opts || {};
+    const existing = (contract && contract.om_cipher && contract.om_cipher.cipher_identity) || {};
+    const identity = (contract && contract.identity) || {};
+
+    const cipher_id = existing.cipher_id || ('cipher_' + cipherIdHex(24));
+
+    // Sigil seed material mirrors the palette/sigil seed inputs (identity),
+    // never email/legal-name alone. Stable across re-derive for the same person.
+    const sigilSeed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+    const sigil_id = existing.sigil_id || ('sigil_' + _hashHex(sigilSeed || cipher_id, 16));
+
+    let gate = opts.gate;
+    let line = opts.line;
+    // Allow re-deriving from a previously stored gate/line if none supplied.
+    if ((gate == null || gate === '') && existing.unity_code) {
+      const m = /^UC-(\d+)\.(\d+)$/.exec(existing.unity_code);
+      if (m) { gate = m[1]; line = m[2]; }
+    }
+    const gNum = parseInt(gate, 10);
+    const lNum = parseInt(line, 10);
+    const hasGate = Number.isFinite(gNum) && gNum > 0;
+
+    let unity_code = '';
+    let unity_point = '';
+    if (hasGate) {
+      const lineStr = Number.isFinite(lNum) && lNum > 0 ? ('.' + lNum) : '';
+      unity_code = 'UC-' + gNum + lineStr;
+      unity_point = 'Unity Point ' + gNum + lineStr;
+    } else if (existing.unity_code) {
+      unity_code = existing.unity_code;
+      unity_point = existing.unity_point || '';
+    }
+
+    return {
+      cipher_id: cipher_id,
+      unity_code: unity_code,
+      unity_point: unity_point,
+      sigil_id: sigil_id,
+      version: CIPHER_IDENTITY_VERSION,
+      source: CIPHER_IDENTITY_SOURCE
+    };
+  }
+
+  // Backfill / upgrade the cipher_identity block on a contract. Returns
+  // { contract, changed }. Never overwrites the real-world identity block.
+  // `changed` is true when the block was created or a field actually changed
+  // (e.g. a gate became available), so callers can persist conditionally.
+  function ensureCipherIdentity(contract, opts) {
+    if (!contract || typeof contract !== 'object') {
+      return { contract: contract, changed: false };
+    }
+    const prev = (contract.om_cipher && contract.om_cipher.cipher_identity) || null;
+    const next = deriveCipherIdentity(contract, opts);
+
+    const changed = !prev ||
+      prev.cipher_id !== next.cipher_id ||
+      prev.unity_code !== next.unity_code ||
+      prev.unity_point !== next.unity_point ||
+      prev.sigil_id !== next.sigil_id ||
+      prev.version !== next.version ||
+      prev.source !== next.source;
+
+    if (!changed) return { contract: contract, changed: false };
+
+    const out = Object.assign({}, contract);
+    out.om_cipher = Object.assign({}, contract.om_cipher || {});
+    out.om_cipher.cipher_identity = next;
+    return { contract: out, changed: true };
+  }
+
   // ---- Contract migration -------------------------------------------------
   //
   // Returns { contract, migrated }. When `migrated` is true, the caller
@@ -176,9 +321,19 @@
     if (!contract || typeof contract !== 'object') {
       return { contract, migrated: false };
     }
+
+    // Backfill the pseudonymous cipher_identity for existing contracts. No
+    // gate is available here, so cipher_id + sigil_id are created and
+    // unity_code/unity_point are filled in later by cOMpass once the primary
+    // gate is known. This runs independently of the palette migration so a
+    // contract with a current palette still gets its identity backfilled.
     if (!isLegacyPalette(contract)) {
-      return { contract, migrated: false };
+      const ensured = ensureCipherIdentity(contract);
+      return { contract: ensured.contract, migrated: ensured.changed };
     }
+    // Legacy palette path also backfills the cipher identity; this branch
+    // always persists (migrated: true) so the backfill rides along.
+    contract = ensureCipherIdentity(contract).contract;
 
     const identity = contract.identity || {};
     const hasIdentity = !!(identity.full_name || identity.birth_date);
@@ -252,6 +407,9 @@
     isThresholdCompleted,
     computePaletteFromIdentity,
     isLegacyPalette,
-    migrateContract
+    migrateContract,
+    cipherIdHex,
+    deriveCipherIdentity,
+    ensureCipherIdentity
   };
 });
