@@ -2862,13 +2862,39 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 /* ── Hexagram Reader (Compass per-room panel) ─────────────────
    Locked behind activation code (HEXAGRAM_READER_CODE). Visual
-   language matches existing Compass cards — no new design system. */
+   language matches existing Compass cards — no new design system.
+   The reader now sits beside the Session Notes (.notes-with-reader)
+   so the Gene Key can be read while notes are taken. */
+.notes-with-reader {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.notes-with-reader > .notes-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.notes-with-reader > .hex-reader {
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch;
+}
 .hex-reader {
-  margin-top: var(--space-5);
   padding: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, 12px);
   background: color-mix(in srgb, var(--accent-color, #6366f1) 4%, var(--card));
+}
+/* Stack on narrow screens, keeping the reader discoverable ABOVE the notes. */
+@media (max-width: 860px) {
+  .notes-with-reader {
+    flex-direction: column;
+  }
+  .notes-with-reader > .hex-reader,
+  .notes-with-reader > .notes-col {
+    flex: 1 1 auto;
+    width: 100%;
+  }
 }
 .hex-reader-locked {
   display: flex;
@@ -3600,6 +3626,15 @@ body.companion-mode .companion-mode-banner { display: block; }
 
       <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
 
+      <!-- Read Gene Key — top-level, discoverable entry point to the
+           Hexagram Reader. Opens the active room's Layer 1 (Session
+           Notes), where the reader now sits beside the notes, and
+           focuses it. Does NOT bypass the activation-code gate. -->
+      <button type="button" class="btn-ghost" id="btn-read-gene-key"
+              title="Open the Hexagram Reader beside your session notes">
+        <span aria-hidden="true" style="margin-right:5px;">🜂</span>Read Gene Key
+      </button>
+
       <!-- Search box -->
       <div class="search-box" id="search-box">
         <span class="search-icon">
@@ -3791,9 +3826,24 @@ body.companion-mode .companion-mode-banner { display: block; }
 
     <!-- Layer 1: Raw Input -->
     <div class="layer-panel active" data-layer="raw">
-      <div>
-        <p class="layer-section-label">Session Notes <span class="qa-who" id="work-notes-who"></span></p>
-        <textarea class="layer-textarea" data-key="work.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+      <div class="notes-with-reader">
+        <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
+        <div class="hex-reader" data-hex-reader="work">
+          <div class="hex-reader-locked">
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
+          </div>
+          <div class="hex-reader-code-row">
+            <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+            <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+            <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+          </div>
+          <div class="hex-reader-body"></div>
+        </div>
+        <div class="notes-col">
+          <p class="layer-section-label">Session Notes <span class="qa-who" id="work-notes-who"></span></p>
+          <textarea class="layer-textarea" data-key="work.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+        </div>
       </div>
       <div class="qa-section">
         <p class="qa-section-label">Facilitation Questions <span class="qa-who" id="work-qa-who"></span></p>
@@ -3988,19 +4038,6 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
-    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
-    <div class="hex-reader" data-hex-reader="work">
-      <div class="hex-reader-locked">
-        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
-        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
-      </div>
-      <div class="hex-reader-code-row">
-        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
-        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
-        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
-      </div>
-      <div class="hex-reader-body"></div>
-    </div>
   </div><!-- /card work -->
 
   <!-- ===================== CARD: THE LENS ===================== -->
@@ -4066,9 +4103,24 @@ body.companion-mode .companion-mode-banner { display: block; }
     </div>
 
     <div class="layer-panel active" data-layer="raw">
-      <div>
-        <p class="layer-section-label">Session Notes</p>
-        <textarea class="layer-textarea" data-key="lens.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+      <div class="notes-with-reader">
+        <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
+        <div class="hex-reader" data-hex-reader="lens">
+          <div class="hex-reader-locked">
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
+          </div>
+          <div class="hex-reader-code-row">
+            <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+            <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+            <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+          </div>
+          <div class="hex-reader-body"></div>
+        </div>
+        <div class="notes-col">
+          <p class="layer-section-label">Session Notes</p>
+          <textarea class="layer-textarea" data-key="lens.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+        </div>
       </div>
       <div class="qa-section">
         <p class="qa-section-label">Facilitation Questions <span class="qa-who" id="lens-qa-who"></span></p>
@@ -4259,19 +4311,6 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
-    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
-    <div class="hex-reader" data-hex-reader="lens">
-      <div class="hex-reader-locked">
-        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
-        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
-      </div>
-      <div class="hex-reader-code-row">
-        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
-        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
-        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
-      </div>
-      <div class="hex-reader-body"></div>
-    </div>
   </div><!-- /card lens -->
 
   <!-- ===================== CARD: THE FIELD ===================== -->
@@ -4337,9 +4376,24 @@ body.companion-mode .companion-mode-banner { display: block; }
     </div>
 
     <div class="layer-panel active" data-layer="raw">
-      <div>
-        <p class="layer-section-label">Session Notes</p>
-        <textarea class="layer-textarea" data-key="field.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+      <div class="notes-with-reader">
+        <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
+        <div class="hex-reader" data-hex-reader="field">
+          <div class="hex-reader-locked">
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
+          </div>
+          <div class="hex-reader-code-row">
+            <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+            <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+            <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+          </div>
+          <div class="hex-reader-body"></div>
+        </div>
+        <div class="notes-col">
+          <p class="layer-section-label">Session Notes</p>
+          <textarea class="layer-textarea" data-key="field.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+        </div>
       </div>
       <div class="qa-section">
         <p class="qa-section-label">Facilitation Questions <span class="qa-who" id="field-qa-who"></span></p>
@@ -4530,19 +4584,6 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
       </div>
     </div>
-    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
-    <div class="hex-reader" data-hex-reader="field">
-      <div class="hex-reader-locked">
-        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
-        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
-      </div>
-      <div class="hex-reader-code-row">
-        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
-        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
-        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
-      </div>
-      <div class="hex-reader-body"></div>
-    </div>
   </div><!-- /card field -->
 
   <!-- ===================== CARD: THE CALL ===================== -->
@@ -4608,9 +4649,24 @@ body.companion-mode .companion-mode-banner { display: block; }
     </div>
 
     <div class="layer-panel active" data-layer="raw">
-      <div>
-        <p class="layer-section-label">Session Notes</p>
-        <textarea class="layer-textarea" data-key="call.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+      <div class="notes-with-reader">
+        <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
+        <div class="hex-reader" data-hex-reader="call">
+          <div class="hex-reader-locked">
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
+          </div>
+          <div class="hex-reader-code-row">
+            <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
+            <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
+            <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
+          </div>
+          <div class="hex-reader-body"></div>
+        </div>
+        <div class="notes-col">
+          <p class="layer-section-label">Session Notes</p>
+          <textarea class="layer-textarea" data-key="call.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+        </div>
       </div>
       <div class="qa-section">
         <p class="qa-section-label">Facilitation Questions <span class="qa-who" id="call-qa-who"></span></p>
@@ -4800,19 +4856,6 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
         </div>
       </div>
-    </div>
-    <!-- Hexagram Reader — locked by HEXAGRAM_READER_CODE -->
-    <div class="hex-reader" data-hex-reader="call">
-      <div class="hex-reader-locked">
-        <div class="hex-reader-locked-label"><span>🔒</span><span>Hexagram Reader</span></div>
-        <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Unlock</button>
-      </div>
-      <div class="hex-reader-code-row">
-        <input type="password" class="hex-reader-code-input" data-hex-action="code-input" placeholder="Activation code" autocomplete="off">
-        <button type="button" class="hex-reader-code-submit" data-hex-action="code-submit">Enter</button>
-        <div class="hex-reader-code-msg" data-hex-action="code-msg"></div>
-      </div>
-      <div class="hex-reader-body"></div>
     </div>
   </div><!-- /card call -->
 
@@ -9798,7 +9841,47 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Top-level entry point: bring the Hexagram Reader into view for the
+// active room (or The Work if none is active). Switches that card to
+// Layer 1 (where the reader sits beside the Session Notes), reveals
+// the reader's code row if it's still locked, and scrolls it into
+// view. It never bypasses the activation-code gate — an unauthenticated
+// user still has to enter the code.
+function openHexReader() {
+  const activeTab = document.querySelector('.compass-tab-btn.active');
+  const point = (activeTab && activeTab.dataset.point) || 'work';
+
+  // Activate the target room.
+  document.querySelectorAll('.compass-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.point === point));
+  document.querySelectorAll('.compass-card').forEach(c => c.classList.toggle('active', c.dataset.card === point));
+
+  // Switch that card to Layer 1 (Raw Input), where the reader lives.
+  const card = document.querySelector(`.compass-card[data-card="${point}"]`);
+  if (card) {
+    card.querySelectorAll('.layer-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.layer === 'raw'));
+    card.querySelectorAll('.layer-panel').forEach(p => p.classList.toggle('active', p.dataset.layer === 'raw'));
+  }
+
+  const reader = card && card.querySelector(`.hex-reader[data-hex-reader="${point}"]`);
+  if (!reader) return;
+
+  // If still locked, reveal the code row + focus it (same path as the
+  // in-panel "Open Reader" button — the gate is untouched).
+  if (!HEX_UNLOCKED) {
+    const codeRow = reader.querySelector('.hex-reader-code-row');
+    if (codeRow) codeRow.classList.add('is-visible');
+    const input = reader.querySelector('[data-hex-action="code-input"]');
+    if (input) { input.value = ''; input.focus(); }
+  }
+
+  reader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function initHexReaders() {
+  // Top-level "Read Gene Key" toolbar action.
+  const readBtn = document.getElementById('btn-read-gene-key');
+  if (readBtn) readBtn.addEventListener('click', openHexReader);
+
   // Delegate clicks for unlock + submit
   document.addEventListener('click', (e) => {
     const showBtn = e.target.closest('[data-hex-action="unlock-show"]');
