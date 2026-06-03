@@ -48,10 +48,23 @@ ok(/_has_admin_access\(request\)/.test(helperBody) &&
 
 console.log('\n2. GET /api/golden-thread is no longer world-readable');
 const getGt = (server.match(/@app\.get\("\/api\/golden-thread"\)[\s\S]*?\n\n\n/) || [''])[0];
-ok(/async def get_golden_thread\(req: Request/.test(getGt),
+ok(/async def get_golden_thread\(\s*req: Request/.test(getGt),
    'get_golden_thread takes req: Request');
 ok(/if not _has_member_access\(req\):/.test(getGt) && /status_code=403/.test(getGt),
    'get_golden_thread 403s without member access');
+// Privacy isolation (Stage 1 hotfix): reads are keyed per-user by cipher_id,
+// with an invite-token-cookie fallback, and the old unfiltered all-rows branch
+// is gone. A first-name `companion` must never be the read filter.
+ok(/cipher_id/.test(getGt) && /WHERE cipher_id=\?/.test(getGt),
+   'get_golden_thread keys reads by cipher_id');
+ok(/_invite_token_from_cookie\(req\)/.test(getGt) && /WHERE invite_token=\?/.test(getGt),
+   'get_golden_thread falls back to the caller\'s own invite-token cookie');
+ok(/rows = \[\]/.test(getGt),
+   'get_golden_thread returns NO rows when no per-user key resolves (no table dump)');
+ok(!/SELECT \* FROM golden_thread ORDER BY timestamp DESC LIMIT \?/.test(getGt),
+   'the unfiltered all-rows SELECT is removed from the member GET');
+ok(!/WHERE companion=\?/.test(getGt),
+   'companion (first name) is never used as the read filter');
 
 console.log('\n3. POST /api/golden-thread is gated');
 const postGt = (server.match(/@app\.post\("\/api\/golden-thread"\)[\s\S]*?return \{"ok": True/) || [''])[0];

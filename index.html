@@ -10007,10 +10007,14 @@ function compassNexusAddress() {
 }
 
 async function compassLoadGoldenThread() {
-  const companion = compassNexusIdentity();
-  if (!companion) return;
+  const ci = compassCipherIdentity();
+  const cipherId = (ci && ci.cipher_id) || '';
+  // Reads are isolated per-user by cipher_id (server falls back to the
+  // caller's invite-token cookie). Without a cipher_id there is nothing to
+  // resolve against, so skip rather than send a first-name key.
+  if (!cipherId) return;
   try {
-    const res = await fetch(`${API_BASE}/api/golden-thread?companion=${encodeURIComponent(companion)}&limit=10`);
+    const res = await fetch(`${API_BASE}/api/golden-thread?cipher_id=${encodeURIComponent(cipherId)}&limit=10`);
     if (!res.ok) return;
     const data = await res.json();
     compassNexusState.goldenThread = (data.threads || []).map(t => {

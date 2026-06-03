@@ -3773,6 +3773,10 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
     if not request.content.strip():
         raise HTTPException(status_code=400, detail="content required")
     now = _now_iso()
+    # Bind the row to the caller's own invite token (from the signed cookie)
+    # when the client doesn't supply one, so cookie-based reads can isolate
+    # rows that lack a cipher_id.
+    invite_token = request.invite_token.strip() or _invite_token_from_cookie(req).strip()
     with _admin_db() as conn:
         conn.execute(
             """
@@ -3785,7 +3789,7 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
                 request.source_app.strip() or "compass",
                 request.content.strip(),
                 request.note.strip(),
-                request.invite_token.strip(),
+                invite_token,
                 request.cipher_id.strip(),
                 request.unity_point.strip(),
             ),
@@ -3794,21 +3798,46 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
 
 
 @app.get("/api/golden-thread")
-async def get_golden_thread(req: Request, companion: str = "", limit: int = 20):
-    """Fetch a member's Golden Thread entries (most recent first)."""
+async def get_golden_thread(
+    req: Request, cipher_id: str = "", companion: str = "", limit: int = 20
+):
+    """Fetch the caller's own Golden Thread entries (most recent first).
+
+    Privacy: reads are isolated per-user. The `companion` (first-name) column is
+    NOT a safe key — distinct members share first names, so it was previously a
+    cross-user egress vector. Resolution order:
+
+      1. `cipher_id` query param (the member's own pseudonymous OM Cipher key,
+         sent by cOMpass/Studio after PR #60) → rows WHERE cipher_id matches.
+      2. else the caller's signed invite-token cookie → rows WHERE invite_token
+         matches (covers legacy rows written before cipher_id existed, but only
+         those bound to *this* caller's token).
+
+    There is NO unfiltered branch: a member request that resolves to no per-user
+    key returns an empty list rather than the whole table. `companion` is accepted
+    only for backward-compatible request shapes and never widens the result set on
+    its own."""
     if not _has_member_access(req):
         raise HTTPException(status_code=403, detail="forbidden")
+    cipher_id = (cipher_id or "").strip()
+    caller_invite = _invite_token_from_cookie(req).strip()
     with _admin_db() as conn:
-        if companion:
+        if cipher_id:
             rows = conn.execute(
-                "SELECT * FROM golden_thread WHERE companion=? ORDER BY timestamp DESC LIMIT ?",
-                (companion, limit),
+                "SELECT * FROM golden_thread WHERE cipher_id=? AND cipher_id!='' "
+                "ORDER BY timestamp DESC LIMIT ?",
+                (cipher_id, limit),
+            ).fetchall()
+        elif caller_invite:
+            # Legacy rows (no cipher_id) are exposed only on an unambiguous
+            # invite-token match bound to this caller's cookie.
+            rows = conn.execute(
+                "SELECT * FROM golden_thread WHERE invite_token=? AND invite_token!='' "
+                "ORDER BY timestamp DESC LIMIT ?",
+                (caller_invite, limit),
             ).fetchall()
         else:
-            rows = conn.execute(
-                "SELECT * FROM golden_thread ORDER BY timestamp DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
+            rows = []
     return {"threads": [_row_to_dict(r) for r in rows]}
 
 
