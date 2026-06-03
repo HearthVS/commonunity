@@ -10412,10 +10412,14 @@ try { initOmCipherPalette(); } catch (_) { /* defensive */ }
 // ── Golden Thread — Studio ──────────────────────────────────────────────────
 
 async function studioLoadGoldenThread() {
-  const companion = (state.compassData?.companion || state.person || '').trim();
-  if (!companion) return;
+  const ci = (typeof studioCipherIdentity === 'function') ? studioCipherIdentity() : null;
+  const cipherId = (ci && ci.cipher_id) || '';
+  // Reads are isolated per-user by cipher_id (server falls back to the
+  // caller's invite-token cookie). Without a cipher_id there is nothing to
+  // resolve against, so skip rather than send a first-name key.
+  if (!cipherId) return;
   try {
-    const res = await fetch(`${API_BASE}/api/golden-thread?companion=${encodeURIComponent(companion)}&limit=10`);
+    const res = await fetch(`${API_BASE}/api/golden-thread?cipher_id=${encodeURIComponent(cipherId)}&limit=10`);
     if (!res.ok) return;
     const data = await res.json();
     state.goldenThread = (data.threads || []).map(t => {
@@ -10427,11 +10431,16 @@ async function studioLoadGoldenThread() {
 
 async function studioSaveGoldenThread(content) {
   const companion = (state.compassData?.companion || state.person || '').trim();
+  const ci = (typeof studioCipherIdentity === 'function') ? studioCipherIdentity() : null;
   try {
     await fetch(`${API_BASE}/api/golden-thread`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, companion, source_app: 'studio' })
+      body: JSON.stringify({
+        content, companion, source_app: 'studio',
+        cipher_id: (ci && ci.cipher_id) || '',
+        unity_point: (ci && ci.unity_point) || ''
+      })
     });
     const date = new Date().toISOString().slice(0, 10);
     if (!state.goldenThread) state.goldenThread = [];
