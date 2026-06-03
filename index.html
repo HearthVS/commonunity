@@ -1809,9 +1809,25 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 
 .freq-prompt {
-  font-size: var(--text-xs);
-  color: var(--text-faint);
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted);
   line-height: 1.5;
+  margin: var(--space-1) 0 0;
+  width: 100%;
+  flex-basis: 100%;
+}
+/* Note inside the prompt that Nexus reads this frequency — slightly emphasised
+   so the link between the slider and Nexus's reflection is clear. */
+.freq-prompt .freq-nexus-note {
+  color: color-mix(in srgb, var(--lens, #c4b5fd) 70%, var(--text));
+  font-weight: 600;
+}
+/* Brief cue that slider changes take effect on the NEXT Nexus message. */
+.freq-nexus-cue {
+  display: block;
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--lens, #c4b5fd) 55%, var(--text-muted));
+  line-height: 1.4;
   margin: var(--space-1) 0 0;
   width: 100%;
   flex-basis: 100%;
@@ -2893,34 +2909,61 @@ body.companion-mode .companion-mode-banner { display: block; }
   align-self: stretch;
   cursor: col-resize;
   touch-action: none;
+  user-select: none;
+  z-index: 5;
 }
+/* Visible centred grip — three short vertical bars, mirroring Studio's
+   .room-splitter so the handle is obviously draggable. The grid track stays
+   0-width; the grip is painted on top via ::before so layout math is intact. */
 .notes-splitter::before {
   content: "";
   position: absolute;
-  top: 0; bottom: 0;
+  top: 50%;
   left: 50%;
   width: 2px;
-  transform: translateX(-50%);
-  background: var(--border);
-  border-radius: 2px;
-  transition: background var(--transition, 0.15s ease);
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--border));
+  box-shadow:
+    -4px 0 0 color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--border)),
+     4px 0 0 color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--border));
+  opacity: 0.7;
+  transition: opacity var(--transition, 0.15s ease), background var(--transition, 0.15s ease);
 }
 .notes-splitter::after {
-  /* Invisible wide hit pad so the 0-width gutter is easy to grab. */
+  /* Wider hit pad + faint backing band so the gutter is easy to see AND grab.
+     Width stays 18px to match the GUTTER reserved in the resize clamp math. */
   content: "";
   position: absolute;
   top: 0; bottom: 0;
   left: 50%;
   width: 18px;
   transform: translateX(-50%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 14%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 14%, transparent);
+  transition: background var(--transition, 0.15s ease), border-color var(--transition, 0.15s ease);
+}
+.notes-splitter:hover::after,
+.notes-splitter:focus-visible::after,
+.notes-splitter.is-dragging::after {
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent);
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 45%, transparent);
 }
 .notes-splitter:hover::before,
 .notes-splitter:focus-visible::before,
 .notes-splitter.is-dragging::before {
-  background: var(--accent-color, #6366f1);
+  opacity: 1;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, transparent);
+  box-shadow:
+    -4px 0 0 color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, transparent),
+     4px 0 0 color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, transparent);
 }
 .notes-splitter:focus-visible {
-  outline: none;
+  outline: 2px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, transparent);
+  outline-offset: -2px;
 }
 .hex-reader {
   padding: var(--space-4);
@@ -2954,6 +2997,13 @@ body.companion-mode .companion-mode-banner { display: block; }
   color: var(--text-muted);
   font-size: var(--text-sm, 13px);
   letter-spacing: 0.04em;
+}
+/* I-Ching hexagram glyph beside the reader title (replaces the old fire
+   triangle), sized a touch larger than the label text. */
+.hex-reader-glyph {
+  font-size: 1.15em;
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent-color, #6366f1) 70%, var(--text-muted));
 }
 .hex-reader-unlock-btn {
   background: none;
@@ -3161,12 +3211,29 @@ body.companion-mode .companion-mode-banner { display: block; }
   height: 56px;
   flex: none;
 }
+.compass-nexus-orb-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
 .compass-nexus-orb-label {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--lens, #c4b5fd) 78%, var(--text, #f8f2e8));
+  white-space: nowrap;
+}
+/* Small interaction hint so users know the pill responds to a press-and-hold,
+   not a click. */
+.compass-nexus-orb-hint {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--lens, #c4b5fd) 60%, var(--text, #f8f2e8));
+  opacity: 0.8;
   white-space: nowrap;
 }
 .compass-nexus-orb svg {
@@ -3368,6 +3435,29 @@ body.companion-mode .companion-mode-banner { display: block; }
   letter-spacing: 0.06em;
 }
 .compass-nexus-send.loading { opacity: 0.5; cursor: wait; }
+
+/* Three-dot "thinking" indicator shown in the Nexus bubble while waiting for
+   the first streamed chunk. */
+.compass-nexus-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.compass-nexus-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, transparent);
+  opacity: 0.4;
+  animation: compass-nexus-typing-bounce 1.2s infinite ease-in-out;
+}
+.compass-nexus-typing span:nth-child(2) { animation-delay: 0.2s; }
+.compass-nexus-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes compass-nexus-typing-bounce {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40%           { opacity: 1;   transform: translateY(-3px); }
+}
 
 .compass-nexus-consent {
   margin: 8px 0;
@@ -3882,7 +3972,8 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="freq-bar">
       <div class="freq-header">
         <span class="freq-label">Frequency — The Work</span>
-        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi</p>
+        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi. <span class="freq-nexus-note">Nexus considers your current frequency when reflecting with you.</span></p>
+        <span class="freq-nexus-cue">Adjusting the slider shapes Nexus’s <em>next</em> message — it doesn’t change replies you’ve already received.</span>
         <span class="freq-value-display" id="freq-label-work">Not set</span>
       </div>
       <div class="freq-track" id="freq-track-work">
@@ -3908,7 +3999,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="work">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
+            <div class="hex-reader-locked-label"><span class="hex-reader-glyph" aria-hidden="true">䷀</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4163,7 +4254,8 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="freq-bar">
       <div class="freq-header">
         <span class="freq-label">Frequency — The Lens</span>
-        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi</p>
+        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi. <span class="freq-nexus-note">Nexus considers your current frequency when reflecting with you.</span></p>
+        <span class="freq-nexus-cue">Adjusting the slider shapes Nexus’s <em>next</em> message — it doesn’t change replies you’ve already received.</span>
         <span class="freq-value-display" id="freq-label-lens">Not set</span>
       </div>
       <div class="freq-track" id="freq-track-lens">
@@ -4188,7 +4280,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="lens">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
+            <div class="hex-reader-locked-label"><span class="hex-reader-glyph" aria-hidden="true">䷀</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4439,7 +4531,8 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="freq-bar">
       <div class="freq-header">
         <span class="freq-label">Frequency — The Field</span>
-        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi</p>
+        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi. <span class="freq-nexus-note">Nexus considers your current frequency when reflecting with you.</span></p>
+        <span class="freq-nexus-cue">Adjusting the slider shapes Nexus’s <em>next</em> message — it doesn’t change replies you’ve already received.</span>
         <span class="freq-value-display" id="freq-label-field">Not set</span>
       </div>
       <div class="freq-track" id="freq-track-field">
@@ -4464,7 +4557,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="field">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
+            <div class="hex-reader-locked-label"><span class="hex-reader-glyph" aria-hidden="true">䷀</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4715,7 +4808,8 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="freq-bar">
       <div class="freq-header">
         <span class="freq-label">Frequency — The Call</span>
-        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi</p>
+        <p class="freq-prompt">Where are you currently operating from in relation to this direction? 0 = totally in the shadow · 1–4 = shadow frequency · 5–9 = gift frequency · 10 = siddhi. <span class="freq-nexus-note">Nexus considers your current frequency when reflecting with you.</span></p>
+        <span class="freq-nexus-cue">Adjusting the slider shapes Nexus’s <em>next</em> message — it doesn’t change replies you’ve already received.</span>
         <span class="freq-value-display" id="freq-label-call">Not set</span>
       </div>
       <div class="freq-track" id="freq-track-call">
@@ -4740,7 +4834,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="call">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
+            <div class="hex-reader-locked-label"><span class="hex-reader-glyph" aria-hidden="true">䷀</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4956,7 +5050,7 @@ body.companion-mode .companion-mode-banner { display: block; }
   <!-- Nexus floating activator — press-and-hold 700ms to open.
        Reuses the Studio Nexus 12-point vector equilibrium + hexagram SVG
        and the rotate/glow animation (adapted as compass-nexus-* keyframes). -->
-  <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to open the Nexus" aria-label="Nexus — hold to open">
+  <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to activate the Nexus" aria-label="Nexus — hold to activate">
     <span class="compass-nexus-orb-glyph">
     <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="32" cy="32" r="29" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent)" stroke-width="0.75"/>
@@ -4988,7 +5082,10 @@ body.companion-mode .companion-mode-banner { display: block; }
       <circle cx="32" cy="32" r="5" fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 25%, transparent)"/>
     </svg>
     </span>
-    <span class="compass-nexus-orb-label">Nexus</span>
+    <span class="compass-nexus-orb-text">
+      <span class="compass-nexus-orb-label">Nexus</span>
+      <span class="compass-nexus-orb-hint">Hold to activate</span>
+    </span>
   </div>
 
   <!-- Nexus chat modal — seeded with room name, full hexagram JSON, user notes -->
@@ -6144,8 +6241,17 @@ function openCompass() {
 // BACK TO SETUP
 // ============================================================
 function backToSetup() {
-  document.getElementById('screen-setup').style.display    = 'flex';
-  document.getElementById('screen-compass').style.display  = 'none';
+  // The threshold handoff hides #screen-setup with `!important` — both via a
+  // `html[data-compass-handoff="1"]` style rule and via forceCompassScreen()'s
+  // inline important display:none. A plain `style.display='flex'` here loses to
+  // those, leaving Setup unresponsive. Clear the handoff state and set the
+  // displays with `important` priority so this is authoritative.
+  document.documentElement.removeAttribute('data-compass-handoff');
+  if (document.body) document.body.classList.remove('on-compass-screen');
+  const setupScreen   = document.getElementById('screen-setup');
+  const compassScreen = document.getElementById('screen-compass');
+  if (setupScreen)   setupScreen.style.setProperty('display', 'flex', 'important');
+  if (compassScreen) compassScreen.style.setProperty('display', 'none', 'important');
   // Restore setup fields
   document.getElementById('guide-name').value    = state.guide || '';
   document.getElementById('companion-name').value = state.companion || '';
@@ -10483,35 +10589,15 @@ function doCloseCompassNexus(modal) {
   compassNexusState.history = [];
 }
 
-// Render the one-time consent disclosure inside the conversation and resolve
-// once the user acknowledges. Returns false if they decline / it can't render.
+// Consent acquisition. The user-facing disclosure copy is deferred for now
+// (Markus will re-add it correctly later); we silently grant the consent flag
+// so the /rose-mirror send gate keeps working. The flag + helpers
+// (compassNexusHasConsent / compassNexusGrantConsent / COMPASS_NEXUS_CONSENT_KEY)
+// are intentionally preserved so the disclosure UI can be reinstated here
+// without touching the trust mechanism.
 function compassNexusRequestConsent() {
-  return new Promise(function (resolve) {
-    const conv = document.getElementById('compass-nexus-convo');
-    if (!conv) { resolve(false); return; }
-    const box = document.createElement('div');
-    box.className = 'compass-nexus-consent';
-    box.innerHTML =
-      '<p class="compass-nexus-consent-title">Before you chat with Nexus</p>' +
-      '<p>When you send a message, Nexus sends that message and relevant cOMpass ' +
-      'context — your hexagram, the room you are in, and your notes — to Claude ' +
-      '(Anthropic) to generate a reflection. It reflects with your pseudonymous ' +
-      'Unity Point, not your real-world name.</p>' +
-      '<p>Nexus is a reflection companion. It is not a private diary, and it is ' +
-      'not a replacement for your own inner authority.</p>';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'compass-nexus-consent-btn';
-    btn.textContent = 'I understand — continue';
-    btn.addEventListener('click', function () {
-      compassNexusGrantConsent();
-      box.remove();
-      resolve(true);
-    }, { once: true });
-    box.appendChild(btn);
-    conv.appendChild(box);
-    conv.scrollTop = conv.scrollHeight;
-  });
+  compassNexusGrantConsent();
+  return Promise.resolve(true);
 }
 
 async function sendCompassNexusMessage() {
@@ -10601,16 +10687,22 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
 
     const div = document.createElement('div');
     div.className = 'compass-nexus-msg is-nexus';
-    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"></div>`;
+    // Seed the bubble with an animated three-dot "thinking" indicator so the
+    // user sees Nexus is working before the first streamed chunk arrives. The
+    // indicator is cleared as soon as the first chunk lands (see read()).
+    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"><span class="compass-nexus-typing" aria-label="Nexus is thinking"><span></span><span></span><span></span></span></div>`;
     document.getElementById('compass-nexus-convo').appendChild(div);
     const bubble = div.querySelector('.compass-nexus-bubble');
     const conv = document.getElementById('compass-nexus-convo');
+    conv.scrollTop = conv.scrollHeight;
 
     let text = '';
     function read() {
       reader.read().then(({ done, value }) => {
         if (done) {
           sendBtn.classList.remove('loading');
+          // Clear the thinking indicator if the stream ended with no content.
+          if (!text) bubble.textContent = '';
           compassNexusState.history.push({ role: 'user', text: msg });
           compassNexusState.history.push({ role: 'rose', text });
           // Persist conversation to localStorage
