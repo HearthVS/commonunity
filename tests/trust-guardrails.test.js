@@ -4,8 +4,9 @@
  * against server.py + the cOMpass/Studio frontends. The contract under test:
  *   • member data egress endpoints are gated (no world-readable Golden Thread,
  *     no ungated Nexus / Golden-Thread writes)
- *   • cOMpass shows a one-time Nexus consent/disclosure before the first
- *     message leaves the browser
+ *   • cOMpass keeps the Nexus consent MECHANISM (flag + helpers + send gate)
+ *     before the first message leaves the browser — the user-facing disclosure
+ *     copy is deferred for now and re-added through the same seam later
  *   • only a first name (never the full legal name) is sent to Nexus/Claude
  *
  *   Run: node tests/trust-guardrails.test.js
@@ -83,24 +84,32 @@ const adminGt = (server.match(/@app\.get\("\/api\/admin\/golden-thread"\)[\s\S]*
 ok(/_require_admin\(request\)/.test(adminGt),
    'admin_golden_thread still requires admin');
 
-console.log('\n6. cOMpass first-use Nexus consent disclosure');
+console.log('\n6. cOMpass Nexus consent mechanism (disclosure copy deferred)');
+// The user-facing disclosure copy was intentionally removed for now (Markus
+// will re-add it correctly later). The trust MECHANISM stays intact: the
+// versioned consent flag, its read/grant helpers, and the send gate that
+// routes through them. compassNexusRequestConsent() now grants silently and
+// is the single seam where the disclosure UI gets reinstated.
 ok(/commonunity_nexus_consent_v1/.test(index),
-   'a versioned consent localStorage key exists');
+   'a versioned consent localStorage key exists (preserved)');
 ok(/function compassNexusHasConsent\(/.test(index) &&
    /function compassNexusGrantConsent\(/.test(index),
-   'consent read + grant helpers exist');
+   'consent read + grant helpers exist (preserved)');
 ok(/function compassNexusRequestConsent\(/.test(index),
-   'the disclosure renderer exists');
-// The send path must check consent before posting to the AI.
+   'the consent acquisition seam exists (now grants silently)');
+// The send path must still route through the consent helpers before posting.
 const sendFn = (index.match(/async function sendCompassNexusMessage[\s\S]*?\n  sendBtn\.classList\.add\('loading'\);/) || [''])[0];
 ok(/if \(!compassNexusHasConsent\(\)\)/.test(sendFn) &&
    /await compassNexusRequestConsent\(\)/.test(sendFn),
-   'sendCompassNexusMessage gates the first send behind consent');
-// Disclosure copy must name the recipient + the reflection-companion framing.
-ok(/sends that message and relevant cOMpass[\s\S]*?context[\s\S]*?to Claude/.test(index),
-   'disclosure states the message + context is sent to Claude');
-ok(/not a private diary[\s\S]*?not a[\s\S]*?replacement for your own inner authority/.test(index),
-   'disclosure frames Nexus as a reflection companion, not a diary/authority');
+   'sendCompassNexusMessage still gates the first send through the consent helpers');
+// The acquisition seam grants the flag (so sends are not stranded) and the
+// old disclosure copy is gone (deferred, not regressed-away silently).
+const consentFn = (index.match(/function compassNexusRequestConsent\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/compassNexusGrantConsent\(\)/.test(consentFn),
+   'the consent seam grants the flag so sends are not blocked');
+ok(!/Before you chat with Nexus/.test(index) &&
+   !/sends that message and relevant cOMpass[\s\S]*?to Claude/.test(index),
+   'the deferred disclosure copy is removed (to be re-added correctly later)');
 
 console.log('\n7. identity minimization: pseudonymous Unity Point to Nexus/Claude');
 // The first-name helper survives as the Golden Thread back-compat lookup key.
