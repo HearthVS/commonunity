@@ -9018,34 +9018,42 @@ function inspireQuestion(qaKey) {
     if (!res.body) throw new Error('No stream');
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
+    // Persistent buffer + streaming decode so SSE lines / multi-byte chars that
+    // straddle read() boundaries are reassembled rather than silently dropped.
+    let buffer = '';
+    function handleLine(line) {
+      if (!line.startsWith('data: ')) return;
+      try {
+        const data = JSON.parse(line.slice(6));
+        if (data.error) {
+          textSpan.textContent = 'Could not generate a suggestion right now.';
+          sugg.classList.add('visible');
+          if (btn) btn.classList.remove('loading');
+          return;
+        }
+        if (data.chunk) {
+          accumulated += data.chunk;
+          textSpan.textContent = accumulated;
+          sugg.classList.add('visible');
+        }
+        if (data.done) {
+          if (btn) btn.classList.remove('loading');
+        }
+      } catch(e) {}
+    }
 
     function read() {
       reader.read().then(({ done, value }) => {
         if (done) {
+          buffer += decoder.decode();
+          if (buffer) { handleLine(buffer); buffer = ''; }
           if (btn) btn.classList.remove('loading');
           return;
         }
-        const lines = decoder.decode(value).split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.error) {
-              textSpan.textContent = 'Could not generate a suggestion right now.';
-              sugg.classList.add('visible');
-              if (btn) btn.classList.remove('loading');
-              return;
-            }
-            if (data.chunk) {
-              accumulated += data.chunk;
-              textSpan.textContent = accumulated;
-              sugg.classList.add('visible');
-            }
-            if (data.done) {
-              if (btn) btn.classList.remove('loading');
-            }
-          } catch(e) {}
-        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) handleLine(line);
         read();
       });
     }
@@ -9129,27 +9137,38 @@ function inspireLayer2(point, field) {
     if (!res.ok) throw new Error('Server error');
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
+    // Persistent buffer + streaming decode so SSE lines / multi-byte chars that
+    // straddle read() boundaries are reassembled rather than silently dropped.
+    let buffer = '';
+    function handleLine(line) {
+      if (!line.startsWith('data: ')) return;
+      try {
+        const data = JSON.parse(line.slice(6));
+        if (data.chunk) {
+          accumulated += data.chunk;
+          sugg.innerHTML = `
+            <div class="inspire-l2-text">${accumulated}</div>
+            <div class="inspire-l2-actions">
+              <button class="inspire-l2-accept" data-accept-l2="${point}.${field}">Use this</button>
+              <button class="inspire-l2-dismiss" data-dismiss-l2="${point}.${field}">Dismiss</button>
+            </div>`;
+          sugg.classList.add('visible');
+        }
+        if (data.done) btn.classList.remove('loading');
+      } catch(e) {}
+    }
     function read() {
       reader.read().then(({ done, value }) => {
-        if (done) { btn.classList.remove('loading'); return; }
-        const lines = decoder.decode(value).split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.chunk) {
-              accumulated += data.chunk;
-              sugg.innerHTML = `
-                <div class="inspire-l2-text">${accumulated}</div>
-                <div class="inspire-l2-actions">
-                  <button class="inspire-l2-accept" data-accept-l2="${point}.${field}">Use this</button>
-                  <button class="inspire-l2-dismiss" data-dismiss-l2="${point}.${field}">Dismiss</button>
-                </div>`;
-              sugg.classList.add('visible');
-            }
-            if (data.done) btn.classList.remove('loading');
-          } catch(e) {}
+        if (done) {
+          buffer += decoder.decode();
+          if (buffer) { handleLine(buffer); buffer = ''; }
+          btn.classList.remove('loading');
+          return;
         }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) handleLine(line);
         read();
       });
     }
@@ -10697,9 +10716,27 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
     conv.scrollTop = conv.scrollHeight;
 
     let text = '';
+    // Persistent decode buffer: network read() boundaries are NOT aligned to
+    // SSE `data:` line boundaries, so a `data:` line (or a multi-byte UTF-8
+    // char like an em-dash / curly quote) can straddle two reads. We keep a
+    // streaming decoder + a buffer and only consume complete lines, retaining
+    // the trailing partial line for the next read. Without this, straddled
+    // lines fail JSON.parse and get silently dropped (the "itiden" glitch).
+    let buffer = '';
+    function handleLine(line) {
+      if (!line.startsWith('data: ')) return;
+      try {
+        const d = JSON.parse(line.slice(6));
+        if (d.chunk) { text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
+      } catch (_) {}
+    }
     function read() {
       reader.read().then(({ done, value }) => {
         if (done) {
+          // Flush any bytes the streaming decoder was still holding, then
+          // process whatever complete-or-final line remains in the buffer.
+          buffer += decoder.decode();
+          if (buffer) { handleLine(buffer); buffer = ''; }
           sendBtn.classList.remove('loading');
           // Clear the thinking indicator if the stream ended with no content.
           if (!text) bubble.textContent = '';
@@ -10721,13 +10758,10 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
           conv.scrollTop = conv.scrollHeight;
           return;
         }
-        decoder.decode(value).split('\n').forEach(line => {
-          if (!line.startsWith('data: ')) return;
-          try {
-            const d = JSON.parse(line.slice(6));
-            if (d.chunk) { text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
-          } catch (_) {}
-        });
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep the incomplete trailing line for the next read
+        for (const line of lines) handleLine(line);
         read();
       });
     }
