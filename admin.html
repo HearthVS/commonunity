@@ -1249,7 +1249,6 @@
     // _public_base_url() and exposes it as configured.invite_base_url; we
     // fall back to location.origin only before that status has loaded.
     const publicBase = () => (state.configured && state.configured.invite_base_url) || location.origin;
-    const magicLink = (token) => `${publicBase().replace(/\/$/, '')}/invite/${encodeURIComponent(token)}`;
     // IMPORTANT (center of truth): when the entry-flow routes change, update
     // these links to match. After PR #56 the first-time post-threshold
     // handoff lands users on /compass/arrival (the orientation chamber);
@@ -1372,7 +1371,7 @@
           <td>${date(inv.compass_entered_at)}</td>
           <td>
             <div class="actions" style="margin:0">
-              <button class="btn" data-copy="${escapeHtml(inv.token)}">Copy link</button>
+              ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
               ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
             </div>
@@ -1778,13 +1777,21 @@
             <span>${escapeHtml(authorName)}</span>
             <span>${date(f.created_at)}</span>
           </div>
-          ${isNew ? `<div class="feedback-actions"><button class="btn btn-sm" data-acknowledge="${escapeHtml(f.id)}">Acknowledge</button></div>` : ''}
+          <div class="feedback-actions">
+            ${isNew ? `<button class="btn btn-sm" data-acknowledge="${escapeHtml(f.id)}">Acknowledge</button>` : ''}
+            <button class="btn btn-sm btn-danger" data-delete-feedback="${escapeHtml(f.id)}">Delete</button>
+          </div>
         </div>`;
       }).join('');
     }
 
     async function acknowledgeFeedback(id) {
       await api(`/api/admin/feedback/${id}/acknowledge`, { method: 'POST', body: '{}' });
+      await loadFeedback();
+    }
+
+    async function deleteFeedback(id) {
+      await api(`/api/admin/feedback/${id}`, { method: 'DELETE' });
       await loadFeedback();
     }
 
@@ -1931,22 +1938,38 @@
 
     // ── Global click handler ──
     document.addEventListener('click', async (event) => {
-      const copyToken = event.target?.dataset?.copy;
+      const copyLinkId = event.target?.dataset?.copyLink;
       const sendId = event.target?.dataset?.send;
       const revokeId = event.target?.dataset?.revoke;
       const brandLoad = event.target?.dataset?.brandLoad;
       const brandActivate = event.target?.dataset?.brandActivate;
       const brandArchive = event.target?.dataset?.brandArchive;
       const ackId = event.target?.dataset?.acknowledge;
+      const deleteFeedbackId = event.target?.dataset?.deleteFeedback;
       const ackOrientationId = event.target?.dataset?.ackOrientation;
       const inviteFromName = event.target?.dataset?.inviteFromName;
 
-      if (copyToken) {
-        await navigator.clipboard?.writeText(magicLink(copyToken));
-        event.target.textContent = 'Copied';
-        setTimeout(() => { event.target.textContent = 'Copy link'; }, 1200);
+      if (copyLinkId) {
+        // The raw token is never in the list payload (masked for privacy); ask
+        // the server to reveal the live magic link for this invite on demand.
+        const original = event.target.textContent;
+        event.target.textContent = 'Fetching…';
+        try {
+          const res = await api(`/api/admin/invites/${copyLinkId}/link`);
+          if (!res.active) {
+            event.target.textContent = 'Link inactive';
+            setTimeout(() => { event.target.textContent = original; }, 1600);
+          } else {
+            await navigator.clipboard?.writeText(res.magic_link);
+            event.target.textContent = 'Copied';
+            setTimeout(() => { event.target.textContent = original; }, 1200);
+          }
+        } catch (err) {
+          event.target.textContent = original;
+          $('invite-message').textContent = err.message;
+        }
       }
-      if (revokeId && confirm('Revoke this invitation?')) {
+      if (revokeId && confirm('Revoke this invitation?\n\nThe magic link already sent for it will stop working immediately. This is deliberate and cannot be undone — you would need to create a new invite to restore access.')) {
         await api(`/api/admin/invites/${revokeId}/revoke`, { method: 'POST', body: '{}' });
         await loadDashboard();
       }
@@ -1980,6 +2003,9 @@
       }
       if (ackId) {
         await acknowledgeFeedback(ackId);
+      }
+      if (deleteFeedbackId && confirm('Delete this comment from the register?\n\nThis permanently removes the single record and cannot be undone. Other feedback is unaffected.')) {
+        await deleteFeedback(deleteFeedbackId);
       }
       if (ackOrientationId) {
         await acknowledgeOrientationRequest(ackOrientationId);
@@ -2016,8 +2042,8 @@
             notes: $('invite-notes').value,
           })
         });
-        const link = magicLink(created.invite.token);
-        await navigator.clipboard?.writeText(link).catch(() => {});
+        const link = created.magic_link || '';
+        if (link) await navigator.clipboard?.writeText(link).catch(() => {});
         $('invite-form').reset();
         $('invite-message').textContent = `Magic link created${navigator.clipboard ? ' and copied' : ''}: ${link}`;
         await loadDashboard();
