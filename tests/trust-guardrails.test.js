@@ -89,31 +89,42 @@ ok(/sends that message and relevant cOMpass[\s\S]*?context[\s\S]*?to Claude/.tes
 ok(/not a private diary[\s\S]*?not a[\s\S]*?replacement for your own inner authority/.test(index),
    'disclosure frames Nexus as a reflection companion, not a diary/authority');
 
-console.log('\n7. identity minimization: first name only to Nexus/Claude');
+console.log('\n7. identity minimization: pseudonymous Unity Point to Nexus/Claude');
+// The first-name helper survives as the Golden Thread back-compat lookup key.
 ok(/function compassNexusIdentity\(\)/.test(index),
-   'cOMpass exposes a first-name-only identity helper');
+   'cOMpass keeps the first-name helper (Golden Thread lookup key)');
 ok(/\(state\.companion \|\| ''\)\.trim\(\)\.split\(\/\\s\+\/\)\[0\]/.test(index),
-   'cOMpass identity helper takes only the first whitespace-delimited token');
+   'cOMpass first-name helper takes only the first whitespace-delimited token');
+// The AI address is now the pseudonymous Unity Point, derived from the cipher
+// identity, falling back to the first name only when no gate is known yet.
+ok(/function compassNexusAddress\(\)/.test(index) &&
+   /function compassCipherIdentity\(\)/.test(index),
+   'cOMpass exposes the Unity Point address + cipher identity helpers');
 // Scope the check to the /rose-mirror send so unrelated endpoints (e.g.
 // /search) that legitimately carry the full companion are not flagged.
 const roseSend = (index.match(/fetch\(`\$\{API_BASE\}\/rose-mirror`[\s\S]*?golden_thread:/) || [''])[0];
-ok(/companion: compassNexusIdentity\(\)/.test(roseSend),
-   'the /rose-mirror payload sends the minimized identity');
+ok(/companion: compassNexusAddress\(\)/.test(roseSend),
+   'the /rose-mirror payload sends the pseudonymous Unity Point address');
 ok(!/companion: state\.companion/.test(roseSend),
    'the /rose-mirror payload no longer sends the full name raw to the AI');
+ok(!/companion: compassNexusIdentity\(\)/.test(roseSend),
+   'the /rose-mirror payload no longer sends the raw first name to the AI');
 
-ok(/function studioNexusIdentity\(\)/.test(studio),
-   'Studio exposes a first-name-only identity helper');
-ok(/companion: studioNexusIdentity\(\)/.test(studio),
-   'Studio AI payloads send the minimized identity');
-// Both Studio AI payloads (rose-room-opening + rose-mirror) must be minimized.
-ok((studio.match(/companion: studioNexusIdentity\(\)/g) || []).length >= 2,
-   'both Studio AI payloads send the minimized identity');
+ok(/function studioNexusAddress\(\)/.test(studio) &&
+   /function studioCipherIdentity\(\)/.test(studio),
+   'Studio exposes the Unity Point address + cipher identity helpers');
+ok(/companion: studioNexusAddress\(\)/.test(studio),
+   'Studio AI payloads send the pseudonymous Unity Point address');
+// Both Studio AI payloads (rose-room-opening + rose-mirror) must be pseudonymous.
+ok((studio.match(/companion: studioNexusAddress\(\)/g) || []).length >= 2,
+   'both Studio AI payloads send the pseudonymous Unity Point address');
 
-console.log('\n8. interim choice is documented for the real fix');
-ok(/TODO\(trust-architecture\)/.test(server),
-   'server flags the pseudonymous-node follow-up');
-ok(/TODO\(trust-architecture\)/.test(index) || /TODO\(trust-architecture\)/.test(studio),
-   'frontend flags the pseudonymous-node follow-up');
+console.log('\n8. the pseudonymous OM Cipher identity has superseded the interim');
+// The interim first-name TODO is gone; the server now documents the
+// pseudonymous identity directly in the prompt path.
+ok(!/TODO\(trust-architecture\)/.test(server),
+   'server no longer carries the interim first-name TODO (superseded)');
+ok(/pseudonymous OM Cipher operating identity|pseudonymous OM Cipher/.test(server),
+   'server prompt names the pseudonymous OM Cipher identity');
 
 console.log(`\n${pass} passed`);

@@ -1247,10 +1247,21 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
             source_app TEXT NOT NULL DEFAULT '',
             content TEXT NOT NULL DEFAULT '',
             note TEXT NOT NULL DEFAULT '',
-            invite_token TEXT NOT NULL DEFAULT ''
+            invite_token TEXT NOT NULL DEFAULT '',
+            cipher_id TEXT NOT NULL DEFAULT '',
+            unity_point TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    # Trust architecture: existing DBs predate the pseudonymous cipher columns.
+    # CREATE TABLE IF NOT EXISTS won't add columns to an existing table, so
+    # backfill them idempotently. The `companion` (first-name) column stays the
+    # read/write lookup key for back-compat; these columns travel alongside.
+    _gt_cols = {r[1] for r in conn.execute("PRAGMA table_info(golden_thread)").fetchall()}
+    if "cipher_id" not in _gt_cols:
+        conn.execute("ALTER TABLE golden_thread ADD COLUMN cipher_id TEXT NOT NULL DEFAULT ''")
+    if "unity_point" not in _gt_cols:
+        conn.execute("ALTER TABLE golden_thread ADD COLUMN unity_point TEXT NOT NULL DEFAULT ''")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS token_log (
@@ -2563,7 +2574,9 @@ class RoseRoomOpeningRequest(BaseModel):
     gk_gift: str = ""
     gk_siddhi: str = ""
     session_notes: str = ""
-    companion: str = ""
+    companion: str = ""            # pseudonymous OM Cipher operating label (Unity Point)
+    unity_code: str = ""           # functional pattern code, e.g. "UC-22.5"
+    cipher_id: str = ""            # random, stable, non-identifying technical key
     # New: cross-room context
     all_rooms_summary: str = ""   # brief summary of all four rooms' recent entries
     session_history: str = ""      # recent session log summary
@@ -2592,7 +2605,9 @@ class RoseMirrorRequest(BaseModel):
     session_notes: str = ""
     workbench_entries: str = ""
     history: list = []
-    companion: str = ""
+    companion: str = ""            # pseudonymous OM Cipher operating label (Unity Point)
+    unity_code: str = ""           # functional pattern code, e.g. "UC-22.5"
+    cipher_id: str = ""            # random, stable, non-identifying technical key
     # New: cross-room context
     all_rooms_summary: str = ""   # all four rooms' recent material
     session_history: str = ""      # session log summary
@@ -2657,7 +2672,15 @@ async def rose_room_opening(request: RoseRoomOpeningRequest):
     if request.all_rooms_summary:
         memory_section += f"\n\nMaterial across all rooms this session:\n{request.all_rooms_summary[:800]}"
 
+    identity_note = ""
+    if request.companion:
+        identity_note = (
+            f"(\"{request.companion}\" is this person's pseudonymous OM Cipher "
+            "operating identity — their Unity Point — not their real-world name.)"
+        )
+
     user_msg = f"""You are opening a conversation with {request.companion or 'this person'} in {request.room_title} — "{request.room_subtitle}".
+{identity_note}
 
 {gk_profile}
 {memory_section}
@@ -2706,9 +2729,19 @@ async def rose_mirror(request: RoseMirrorRequest, req: Request):
     if not _has_member_access(req):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    # TODO(trust-architecture): `request.companion` is currently a first name
-    # (minimized client-side). The real fix is a pseudonymous OM Cipher node so
-    # Nexus never receives any real-name fragment — see the trust-guardrails PR.
+    # Trust architecture: `request.companion` is the user's PSEUDONYMOUS OM
+    # Cipher operating label (their "Unity Point", e.g. "Unity Point 22.5"),
+    # not their real-world name. The legal/contact name stays local in the
+    # browser contract and never reaches this endpoint. `unity_code` /
+    # `cipher_id` carry the functional + technical layers of that identity.
+    identity_note = ""
+    if request.companion:
+        identity_note = (
+            f"\n\nNote on identity: \"{request.companion}\" is this person's "
+            "pseudonymous OM Cipher operating identity (their Unity Point), not "
+            "their real-world name. Address them by it naturally; do not ask for "
+            "or assume a legal name."
+        )
 
     # Build full Gene Keys profile
     gk_profile = ""
@@ -2753,6 +2786,7 @@ async def rose_mirror(request: RoseMirrorRequest, req: Request):
         system = base_prompt + f"""
 
 You are working with {request.companion or 'this person'} in {request.room_title} ({room_label}).
+{identity_note}
 
 {gk_profile}
 {extended_context}
@@ -2766,6 +2800,7 @@ You are here to help the work move forward. When you have enough context, act on
         system = base_prompt + f"""
 
 You are currently in {request.room_title} — "{request.room_subtitle}" with {request.companion or 'this person'}.
+{identity_note}
 
 {gk_profile}
 {extended_context}
@@ -3722,10 +3757,12 @@ async def acknowledge_orientation_request(request_id: int, request: Request):
 
 class GoldenThreadSaveRequest(BaseModel):
     content: str
-    companion: str = ""
+    companion: str = ""           # back-compat lookup key (first name)
     source_app: str = "compass"  # "compass" | "studio"
     note: str = ""
     invite_token: str = ""
+    cipher_id: str = ""           # pseudonymous OM Cipher technical key
+    unity_point: str = ""         # pseudonymous operating label (Unity Point)
 
 
 @app.post("/api/golden-thread")
@@ -3739,8 +3776,8 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
     with _admin_db() as conn:
         conn.execute(
             """
-            INSERT INTO golden_thread (timestamp, companion, source_app, content, note, invite_token)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO golden_thread (timestamp, companion, source_app, content, note, invite_token, cipher_id, unity_point)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 now,
@@ -3749,6 +3786,8 @@ async def save_golden_thread(request: GoldenThreadSaveRequest, req: Request):
                 request.content.strip(),
                 request.note.strip(),
                 request.invite_token.strip(),
+                request.cipher_id.strip(),
+                request.unity_point.strip(),
             ),
         )
     return {"ok": True, "timestamp": now}
