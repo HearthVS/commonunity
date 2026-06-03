@@ -6698,6 +6698,28 @@ function loadJSON(file) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      // Loading a session JSON adopts that person's identity wholesale.
+      // Clear the derived identity-bearing fields first so a previous
+      // occupant's calculated values (astrology / Vedic / Gene Key
+      // activations / cached tissue salts / coordinates) can never survive
+      // into the imported person via the conservative fill-blanks-only
+      // hydration below. Birth coordinates are re-resolved from the
+      // imported POB. Free-text profile content is replaced by the
+      // incoming profile in the merge that follows.
+      if (state.profile && typeof state.profile === 'object') {
+        ['astrology_sun','astrology_moon','astrology_rising',
+         'astrology_longitudes','astrology_precision',
+         'vedic_sun','vedic_moon','vedic_ascendant',
+         'gene_keys_life_work','gene_keys_evolution',
+         'gene_keys_radiance','gene_keys_purpose',
+         'birth_latitude','birth_longitude','birth_tz_offset_minutes',
+         'astrology','vedic','birth_coordinates','salts']
+          .forEach(function (k) { delete state.profile[k]; });
+      }
+      POINTS.forEach(p => {
+        if (state.points[p]) { state.points[p].gk_num = ''; state.points[p].gk_line = ''; }
+      });
+      state.gk_profile = { cs: null, us: null, ce: null, ue: null };
       // Merge loaded data into state
       if (data.theme)    state.theme    = data.theme;
       if (data.guide)    state.guide    = data.guide;
@@ -6707,6 +6729,29 @@ function loadJSON(file) {
         POINTS.forEach(p => {
           if (data.points[p]) {
             Object.assign(state.points[p], data.points[p]);
+          }
+        });
+      }
+      // Legacy fallback: older exports carried the Gene Keys gates only in
+      // gk_profile (engine slots cs/ce/us/ue) without per-room gk_num on
+      // points[]. Promote them into the room slots so the visible Gene Key
+      // inputs hydrate. Fill-blanks-only — an explicit per-room gate wins.
+      if (state.gk_profile) {
+        const gkSlotMap = { work: ['cs','csLine'], lens: ['ce','ceLine'],
+                            field: ['us','usLine'], call: ['ue','ueLine'] };
+        const gp = state.gk_profile;
+        POINTS.forEach(p => {
+          const pair = gkSlotMap[p];
+          if (!pair) return;
+          const numV  = gp[pair[0]];
+          const lineV = gp[pair[1]];
+          if (numV != null && String(numV) !== '' &&
+              (state.points[p].gk_num == null || String(state.points[p].gk_num) === '')) {
+            state.points[p].gk_num = String(numV);
+          }
+          if (lineV != null && String(lineV) !== '' &&
+              (state.points[p].gk_line == null || String(state.points[p].gk_line) === '')) {
+            state.points[p].gk_line = String(lineV);
           }
         });
       }
@@ -6796,18 +6841,55 @@ function loadJSON(file) {
         else if (composed) state.companion = composed;
         else if (state.profile.full_name) state.companion = String(state.profile.full_name).trim();
       }
-      // Birth/location top-level fallbacks.
-      if (!state.dob) state.dob = data.dob || data.date_of_birth || state.profile.birthdate || state.profile.date_of_birth || '';
-      if (!state.tob) state.tob = data.tob || data.birth_time     || state.profile.birth_time || '';
-      if (!state.pob) state.pob = data.pob || data.place_of_birth || state.profile.birthplace || state.profile.place_of_birth || '';
+      // Birth/location — the imported session is authoritative for birth
+      // data. When the file carries explicit dob/tob/pob (top-level or via
+      // the profile), adopt them so a previous occupant's birth data (and
+      // everything derived from it: coordinates, astrology, Gene Keys)
+      // cannot bleed into the imported person. Fall back to any existing
+      // value only when the file omits the field entirely.
+      const inDob = data.dob || data.date_of_birth || state.profile.birthdate || state.profile.date_of_birth || '';
+      const inTob = data.tob || data.birth_time     || state.profile.birth_time || '';
+      const inPob = data.pob || data.place_of_birth || state.profile.birthplace || state.profile.place_of_birth || '';
+      if (inDob) state.dob = inDob; else if (!state.dob) state.dob = '';
+      if (inTob) state.tob = inTob; else if (!state.tob) state.tob = '';
+      if (inPob) state.pob = inPob; else if (!state.pob) state.pob = '';
 
       // Re-apply
       applyTheme(state.theme);
       if (data.tradition) { currentTradition = data.tradition; state.tradition = data.tradition; }
+      // Mirror imported birth data into the visible setup inputs so the
+      // setup→profile bridge and the identity-chart calculator (both of
+      // which read #dob/#tob/#pob) see the loaded values. The init-time
+      // restore only runs on page load, so an in-session import would
+      // otherwise leave these inputs — and everything derived from them —
+      // stale.
+      ['dob','tob','pob'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.value = state[id] || '';
+      });
       restoreAllFields();
       restoreQA();
       POINTS.forEach(p => restoreL3Output(p));
       updateAllLineThemes();
+      // Hydrate derived source data for older exports. Tissue salts always
+      // recomputed from a name|dob seed, so they populated even on legacy
+      // JSON; Gene Keys, tropical astrology, and Vedic astrology had no
+      // recompute-on-import path in the Compass and stayed blank when the
+      // file lacked the structured profile.astrology / profile.vedic blocks
+      // or the gene-key activation strings. Run the same conservative
+      // (fill-blanks-only) chain the Reveal/modal flows use so all four
+      // sections populate from the just-imported birth data. None of these
+      // helpers reach outside state.profile, so an import cannot pull in a
+      // previous occupant's data, and existing imported values always win.
+      try {
+        if (typeof syncSetupIntoProfile === 'function') syncSetupIntoProfile();
+        if (state && state.dob && typeof autoPopulateGeneKeysFromState === 'function') {
+          autoPopulateGeneKeysFromState();
+        }
+        if (typeof calcIdentityChartFromState === 'function') calcIdentityChartFromState();
+        if (typeof cuRenderCompassTissueSalts === 'function') cuRenderCompassTissueSalts();
+      } catch (_) { /* never block a load on derived-data refresh */ }
+      saveToStorage();
       showToast('Session loaded');
     } catch(err) {
       showToast('Error loading file');
