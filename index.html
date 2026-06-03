@@ -3132,19 +3132,42 @@ body.companion-mode .companion-mode-banner { display: block; }
   bottom: 24px;
   right: 24px;
   z-index: 100;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--lens, #c4b5fd) 22%, transparent) 0%, transparent 70%);
-  display: flex;
+  /* Pill that pairs the rotating glyph with a visible "Nexus" label, so
+     the activator reads clearly against any room colour. Sizes to its
+     content rather than a fixed circle. */
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  padding: 4px 14px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--lens, #c4b5fd) 30%, transparent);
+  background:
+    radial-gradient(circle at 30px 50%, color-mix(in srgb, var(--lens, #c4b5fd) 22%, transparent) 0%, transparent 60%),
+    color-mix(in srgb, var(--bg, #0a0810) 78%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.18s ease, filter 0.18s ease;
+  transition: transform 0.18s ease, filter 0.18s ease, border-color 0.18s ease;
   touch-action: none;
+}
+.compass-nexus-orb-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+.compass-nexus-orb-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--lens, #c4b5fd) 78%, var(--text, #f8f2e8));
+  white-space: nowrap;
 }
 .compass-nexus-orb svg {
   width: 56px;
@@ -3153,11 +3176,14 @@ body.companion-mode .companion-mode-banner { display: block; }
   --rose-color: var(--lens, #c4b5fd);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--lens, #c4b5fd) 35%, transparent));
 }
+.compass-nexus-orb:hover {
+  border-color: color-mix(in srgb, var(--lens, #c4b5fd) 55%, transparent);
+}
 .compass-nexus-orb.is-holding {
-  transform: scale(1.12);
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--lens, #c4b5fd) 70%, transparent));
+  transform: scale(1.08);
 }
 .compass-nexus-orb.is-holding svg {
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--lens, #c4b5fd) 70%, transparent));
   animation: compass-nexus-rotate-active 9s linear infinite, compass-nexus-glow-active 2.5s ease-in-out infinite;
 }
 @keyframes compass-nexus-rotate {
@@ -3672,15 +3698,6 @@ body.companion-mode .companion-mode-banner { display: block; }
       </button>
 
       <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
-
-      <!-- Hexagram Reader — top-level, discoverable entry point to the
-           Hexagram Reader. Opens the active room's Layer 1 (Session
-           Notes), where the reader now sits beside the notes, and
-           focuses it. Does NOT bypass the activation-code gate. -->
-      <button type="button" class="btn-ghost" id="btn-read-gene-key"
-              title="Open the Hexagram Reader beside your session notes">
-        <span aria-hidden="true" style="margin-right:5px;">🜂</span>Hexagram Reader
-      </button>
 
       <!-- Search box -->
       <div class="search-box" id="search-box">
@@ -4926,6 +4943,7 @@ body.companion-mode .companion-mode-banner { display: block; }
        Reuses the Studio Nexus 12-point vector equilibrium + hexagram SVG
        and the rotate/glow animation (adapted as compass-nexus-* keyframes). -->
   <div class="compass-nexus-orb" id="compass-nexus-orb" title="Hold to open the Nexus" aria-label="Nexus — hold to open">
+    <span class="compass-nexus-orb-glyph">
     <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="32" cy="32" r="29" stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent)" stroke-width="0.75"/>
       <g stroke="color-mix(in srgb, var(--rose-color, #c4b5fd) 35%, transparent)" stroke-width="0.6">
@@ -4955,6 +4973,8 @@ body.companion-mode .companion-mode-banner { display: block; }
       <circle cx="32" cy="32" r="2.5" fill="var(--rose-color, #c4b5fd)" fill-opacity="0.9"/>
       <circle cx="32" cy="32" r="5" fill="color-mix(in srgb, var(--rose-color, #c4b5fd) 25%, transparent)"/>
     </svg>
+    </span>
+    <span class="compass-nexus-orb-label">Nexus</span>
   </div>
 
   <!-- Nexus chat modal — seeded with room name, full hexagram JSON, user notes -->
@@ -9912,46 +9932,10 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Top-level entry point: bring the Hexagram Reader into view for the
-// active room (or The Work if none is active). Switches that card to
-// Layer 1 (where the reader sits beside the Session Notes), reveals
-// the reader's code row if it's still locked, and scrolls it into
-// view. It never bypasses the activation-code gate — an unauthenticated
-// user still has to enter the code.
-function openHexReader() {
-  const activeTab = document.querySelector('.compass-tab-btn.active');
-  const point = (activeTab && activeTab.dataset.point) || 'work';
-
-  // Activate the target room.
-  document.querySelectorAll('.compass-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.point === point));
-  document.querySelectorAll('.compass-card').forEach(c => c.classList.toggle('active', c.dataset.card === point));
-
-  // Switch that card to Layer 1 (Raw Input), where the reader lives.
-  const card = document.querySelector(`.compass-card[data-card="${point}"]`);
-  if (card) {
-    card.querySelectorAll('.layer-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.layer === 'raw'));
-    card.querySelectorAll('.layer-panel').forEach(p => p.classList.toggle('active', p.dataset.layer === 'raw'));
-  }
-
-  const reader = card && card.querySelector(`.hex-reader[data-hex-reader="${point}"]`);
-  if (!reader) return;
-
-  // If still locked, reveal the code row + focus it (same path as the
-  // in-panel "Open Reader" button — the gate is untouched).
-  if (!HEX_UNLOCKED) {
-    const codeRow = reader.querySelector('.hex-reader-code-row');
-    if (codeRow) codeRow.classList.add('is-visible');
-    const input = reader.querySelector('[data-hex-action="code-input"]');
-    if (input) { input.value = ''; input.focus(); }
-  }
-
-  reader.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
 function initHexReaders() {
-  // Top-level "Hexagram Reader" toolbar action.
-  const readBtn = document.getElementById('btn-read-gene-key');
-  if (readBtn) readBtn.addEventListener('click', openHexReader);
+  // The Hexagram Reader is embedded beside the Session Notes in each
+  // room's Layer 1, so the top toolbar no longer carries a separate
+  // entry-point button.
 
   // Delegate clicks for unlock + submit
   document.addEventListener('click', (e) => {
@@ -11060,7 +11044,7 @@ function initCompassNexus() {
 <style>
 #cu-fb-tooltip {
   position: absolute;
-  right: 54px;
+  left: 54px;
   top: 50%;
   transform: translateY(-50%);
   background: rgba(8,8,13,0.92);
@@ -11083,7 +11067,8 @@ function initCompassNexus() {
 #cu-feedback-widget {
   position: fixed;
   bottom: 100px;
-  right: 24px;
+  /* Left side so it no longer competes with the Nexus orb on the right. */
+  left: 24px;
   z-index: 9000;
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
@@ -11102,7 +11087,7 @@ function initCompassNexus() {
 #cu-fb-trigger:hover { color: #d5ad64; border-color: rgba(213,173,100,0.6); transform: scale(1.06); }
 #cu-fb-panel {
   position: absolute;
-  bottom: 58px; right: 0;
+  bottom: 58px; left: 0;
   width: 320px;
   background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(8,8,13,0.96);
   border: 1px solid rgba(248,242,232,0.16);

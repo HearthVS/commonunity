@@ -3,18 +3,16 @@
  * cOMpass usability fix: the Hexagram Reader used to sit at the very
  * bottom of each room's card, below the "Guide Only" facilitator panel,
  * so first-time users never found it. It now opens BESIDE the Session
- * Notes inside Layer 1 (.notes-with-reader), and a top-level
- * "Hexagram Reader" toolbar action brings it into view.
+ * Notes inside Layer 1 (.notes-with-reader). The embedded panels are the
+ * discoverable entry point — the redundant top-toolbar button was removed.
  *
  * This is a static-assertion test over index.html (no DOM boot). It
  * guards:
  *   • exactly four readers (one per room), each inside a
  *     .notes-with-reader block in the Layer 1 raw panel
  *   • no reader is left stranded at the bottom of a card
- *   • a discoverable top-level #btn-read-gene-key action exists, is
- *     labelled "Hexagram Reader", and is wired to openHexReader()
- *   • openHexReader switches to Layer 1, reveals the code row, scrolls
- *     into view, and NEVER bypasses the activation-code gate
+ *   • the redundant top-toolbar entry point (#btn-read-gene-key +
+ *     openHexReader()) is removed — embedded panels are the entry point
  *   • the passcode input stays type="password" and is not pre-filled
  *   • the reader markup precedes the notes column in DOM order, so the
  *     mobile stacked layout shows the reader first (discoverable)
@@ -76,42 +74,23 @@ for (const p of POINTS) {
   ok(!stranded.test(index), `${p}: reader is not left just above the card close`);
 }
 
-console.log('\n4. a discoverable top-level "Hexagram Reader" action exists');
-ok(/id="btn-read-gene-key"/.test(index), '#btn-read-gene-key toolbar button exists');
-ok(/>\s*Hexagram Reader\s*</.test(index), 'the action is labelled "Hexagram Reader"');
-ok(!/Read Gene Key/.test(index), 'the old "Read Gene Key" label is gone (no misleading duplicate)');
-// It sits in the compass toolbar (compass-actions), not buried in a card.
+console.log('\n4. the redundant top-toolbar entry point is removed');
+// The Hexagram Reader is now clear in the workflow (embedded beside the
+// Session Notes in every room), so the separate top-toolbar button was
+// removed. The embedded readers (asserted above) are the entry point.
+ok(!/id="btn-read-gene-key"/.test(index),
+   'no #btn-read-gene-key toolbar button remains');
+ok(!/function openHexReader\b/.test(index),
+   'the now-unused openHexReader() handler is removed');
 const actionsStart = index.indexOf('class="compass-actions"');
 const actionsEnd = index.indexOf('class="compass-tabs"', actionsStart);
 const actionsSlice = index.slice(actionsStart, actionsEnd);
-ok(actionsSlice.includes('id="btn-read-gene-key"'),
-   'the Hexagram Reader action lives in the top compass toolbar');
-
-console.log('\n5. the action is wired to openHexReader and respects the gate');
-ok(/function openHexReader\(\)/.test(index), 'openHexReader() is defined');
-ok(/getElementById\('btn-read-gene-key'\)[\s\S]{0,80}addEventListener\('click', openHexReader\)/.test(index),
-   '#btn-read-gene-key is wired to openHexReader');
-
-function extractFn(src, sig) {
-  const start = src.indexOf(sig);
-  if (start < 0) return '';
-  let depth = 0, i = src.indexOf('{', start);
-  for (; i < src.length; i++) {
-    if (src[i] === '{') depth++;
-    else if (src[i] === '}') { depth--; if (depth === 0) { i++; break; } }
-  }
-  return src.slice(start, i);
-}
-const openFn = extractFn(index, 'function openHexReader()');
-ok(openFn.length > 0, 'openHexReader body extracted');
-ok(/dataset\.layer === 'raw'/.test(openFn), 'openHexReader switches the card to Layer 1 (raw)');
-ok(/scrollIntoView/.test(openFn), 'openHexReader scrolls the reader into view');
-ok(/if \(!HEX_UNLOCKED\)/.test(openFn),
-   'openHexReader only reveals the code row when still locked');
-ok(!/HEX_UNLOCKED\s*=\s*true/.test(openFn),
-   'openHexReader NEVER sets HEX_UNLOCKED (does not bypass the activation gate)');
-ok(!/verifyHexCode/.test(openFn) || /code-input/.test(openFn),
-   'openHexReader does not auto-verify a code');
+ok(!actionsSlice.includes('btn-read-gene-key'),
+   'the compass toolbar no longer carries a Hexagram Reader button');
+// Guard against a stray duplicate label leaking back into the toolbar
+// region (the embedded panels keep their own "Hexagram Reader" labels).
+ok(!actionsSlice.includes('Hexagram Reader'),
+   'no "Hexagram Reader" label in the top toolbar (embedded panels keep theirs)');
 
 console.log('\n6. the passcode flow is unchanged (no exposure)');
 const codeInputs = index.match(/class="hex-reader-code-input" data-hex-action="code-input"/g) || [];
