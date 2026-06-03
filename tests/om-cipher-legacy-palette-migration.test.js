@@ -319,7 +319,7 @@ test('read() upgrades stored legacy contract and persists it', () => {
   assert.equal(reread.om_cipher.palette.accent, reread.om_cipher.palette.seasonal_accent);
 });
 
-test('read() leaves current contract untouched', () => {
+test('read() leaves a fully-current contract untouched', () => {
   const storage = makeStorage();
   const C = loadContractWithWindow(storage);
   const current = C.emptyContract();
@@ -328,13 +328,36 @@ test('read() leaves current contract untouched', () => {
   const p = C.computePaletteFromIdentity(current.identity);
   current.om_cipher.palette = p;
   current.threshold.completed = true;
-  storage.setItem('commonunity_om_cipher_v1', JSON.stringify(current));
+  // A fully-current contract also carries the cipher identity + versioned
+  // visual Cipher now; pre-seed both via ensureCipherIdentity so read() has
+  // nothing to backfill (palette OR cipher identity OR visual version).
+  const seeded = C.ensureCipherIdentity(current).contract;
+  storage.setItem('commonunity_om_cipher_v1', JSON.stringify(seeded));
   const beforeRaw = storage.getItem('commonunity_om_cipher_v1');
   const got = C.read();
   assert.equal(C.isLegacyPalette(got), false);
   // No spurious rewrite for already-current contracts.
   const afterRaw = storage.getItem('commonunity_om_cipher_v1');
   assert.equal(afterRaw, beforeRaw);
+});
+
+test('read() backfills the cipher identity once for a current-palette contract', () => {
+  const storage = makeStorage();
+  const C = loadContractWithWindow(storage);
+  const current = C.emptyContract();
+  current.identity.full_name = 'Ada Lovelace';
+  current.identity.birth_date = '1815-12-10';
+  current.om_cipher.palette = C.computePaletteFromIdentity(current.identity);
+  current.threshold.completed = true;
+  // No cipher_identity yet — an existing pre-layer-2 user.
+  storage.setItem('commonunity_om_cipher_v1', JSON.stringify(current));
+  const got = C.read();
+  assert.ok(got.om_cipher.cipher_identity, 'cipher identity is backfilled on read');
+  assert.ok(/^cipher_/.test(got.om_cipher.cipher_identity.cipher_id), 'cipher_id stamped');
+  // Idempotent: a second read does not rewrite storage again.
+  const afterFirst = storage.getItem('commonunity_om_cipher_v1');
+  C.read();
+  assert.equal(storage.getItem('commonunity_om_cipher_v1'), afterFirst);
 });
 
 // ---- Tear down ----------------------------------------------------------

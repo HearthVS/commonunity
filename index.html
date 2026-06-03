@@ -7646,6 +7646,167 @@ function migrateContractPalette(contract) {
   return { contract: next, migrated: true };
 }
 
+// ---- Pseudonymous OM Cipher identity (inline mirror of contract.js) ------
+// cOMpass does not load /threshold/contract.js, so the cipher-identity
+// derivation is mirrored here exactly as in that module. The STABLE operational
+// identity (cipher_id / unity_code / unity_point) is what Nexus/Claude see —
+// never the real-world name. The visual Cipher is versioned and decoupled from
+// the stable identity: the current generated Cipher is only the first, beta
+// expression. cipher_identity.active_cipher_version_id points at the active
+// entry in cipher_visual.versions[] so a future Full / Living Cipher can be
+// added without losing any data attached to the stable identity.
+const CIPHER_IDENTITY_SOURCE = 'om_cipher_identity_v1';
+const CIPHER_IDENTITY_VERSION = 'v1';
+const CIPHER_VISUAL_SCHEMA_VERSION = 1;
+const BETA_CIPHER_METHOD = 'legacy_generator';
+
+function _cipherHashHex(str, len) {
+  str = String(str == null ? '' : str);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  let out = (h >>> 0).toString(16).padStart(8, '0');
+  let salt = 1;
+  while (out.length < len) {
+    let g = (h ^ (salt * 0x9e3779b9)) >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      g ^= str.charCodeAt(i);
+      g = (g + ((g << 1) + (g << 4) + (g << 7) + (g << 8) + (g << 24))) >>> 0;
+    }
+    out += (g >>> 0).toString(16).padStart(8, '0');
+    salt++;
+  }
+  return out.slice(0, len);
+}
+
+function cipherIdHex(n) {
+  n = n || 24;
+  let hex = '';
+  try {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint8Array(Math.ceil(n / 2));
+      window.crypto.getRandomValues(arr);
+      for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+      return hex.slice(0, n);
+    }
+  } catch (_) {}
+  while (hex.length < n) hex += Math.floor(Math.random() * 16).toString(16);
+  return hex.slice(0, n);
+}
+
+function _activeCipherVersion(contract) {
+  const visual = contract && contract.om_cipher && contract.om_cipher.cipher_visual;
+  const versions = (visual && Array.isArray(visual.versions)) ? visual.versions : [];
+  if (!versions.length) return null;
+  const id = contract.om_cipher.cipher_identity &&
+    contract.om_cipher.cipher_identity.active_cipher_version_id;
+  if (id) {
+    const match = versions.filter(function (v) { return v && v.version_id === id; })[0];
+    if (match) return match;
+  }
+  return versions.filter(function (v) { return v && v.status === 'active'; })[0] || versions[0];
+}
+
+function deriveCipherVisualVersion(contract, existingVersion) {
+  const identity = (contract && contract.identity) || {};
+  const seed = (identity.full_name || '') + '|' + (identity.birth_date || '');
+  const prev = existingVersion || {};
+  const version_id = prev.version_id || ('cv_' + _cipherHashHex(seed || 'cipher', 16));
+  return {
+    version_id,
+    stage: prev.stage || 'beta',
+    method: prev.method || BETA_CIPHER_METHOD,
+    status: prev.status || 'active',
+    seed_ref: prev.seed_ref || ('sigil_' + _cipherHashHex(seed || version_id, 16)),
+    schema_version: CIPHER_VISUAL_SCHEMA_VERSION,
+    created_via: prev.created_via || CIPHER_IDENTITY_SOURCE
+  };
+}
+
+function deriveCipherIdentity(contract, opts) {
+  opts = opts || {};
+  const existing = (contract && contract.om_cipher && contract.om_cipher.cipher_identity) || {};
+  const cipher_id = existing.cipher_id || ('cipher_' + cipherIdHex(24));
+  const activeVersion = deriveCipherVisualVersion(contract, _activeCipherVersion(contract));
+  const active_cipher_version_id =
+    existing.active_cipher_version_id || existing.sigil_id || activeVersion.version_id;
+
+  let gate = opts.gate, line = opts.line;
+  if ((gate == null || gate === '') && existing.unity_code) {
+    const m = /^UC-(\d+)\.(\d+)$/.exec(existing.unity_code);
+    if (m) { gate = m[1]; line = m[2]; }
+  }
+  const gNum = parseInt(gate, 10);
+  const lNum = parseInt(line, 10);
+  const hasGate = Number.isFinite(gNum) && gNum > 0;
+
+  let unity_code = '', unity_point = '';
+  if (hasGate) {
+    const lineStr = Number.isFinite(lNum) && lNum > 0 ? ('.' + lNum) : '';
+    unity_code = 'UC-' + gNum + lineStr;
+    unity_point = 'Unity Point ' + gNum + lineStr;
+  } else if (existing.unity_code) {
+    unity_code = existing.unity_code;
+    unity_point = existing.unity_point || '';
+  }
+
+  return {
+    cipher_id, unity_code, unity_point, active_cipher_version_id,
+    version: CIPHER_IDENTITY_VERSION,
+    source: CIPHER_IDENTITY_SOURCE
+  };
+}
+
+function ensureCipherIdentity(contract, opts) {
+  if (!contract || typeof contract !== 'object') return { contract, changed: false };
+  const prevIdentity = (contract.om_cipher && contract.om_cipher.cipher_identity) || null;
+  const prevVisual = (contract.om_cipher && contract.om_cipher.cipher_visual) || null;
+  const nextVersion = deriveCipherVisualVersion(contract, _activeCipherVersion(contract));
+  const nextIdentity = deriveCipherIdentity(contract, opts);
+  const prevActive = _activeCipherVersion(contract);
+
+  const visualChanged = !prevVisual ||
+    !Array.isArray(prevVisual.versions) ||
+    !prevActive ||
+    prevActive.version_id !== nextVersion.version_id ||
+    prevActive.stage !== nextVersion.stage ||
+    prevActive.method !== nextVersion.method ||
+    prevActive.status !== nextVersion.status ||
+    prevActive.seed_ref !== nextVersion.seed_ref ||
+    prevActive.schema_version !== nextVersion.schema_version;
+
+  const identityChanged = !prevIdentity ||
+    prevIdentity.cipher_id !== nextIdentity.cipher_id ||
+    prevIdentity.unity_code !== nextIdentity.unity_code ||
+    prevIdentity.unity_point !== nextIdentity.unity_point ||
+    prevIdentity.active_cipher_version_id !== nextIdentity.active_cipher_version_id ||
+    prevIdentity.version !== nextIdentity.version ||
+    prevIdentity.source !== nextIdentity.source;
+
+  if (!identityChanged && !visualChanged) return { contract, changed: false };
+
+  const out = Object.assign({}, contract);
+  out.om_cipher = Object.assign({}, contract.om_cipher || {});
+  out.om_cipher.cipher_identity = nextIdentity;
+
+  const existingVersions = (prevVisual && Array.isArray(prevVisual.versions))
+    ? prevVisual.versions.slice() : [];
+  const idx = existingVersions.findIndex(function (v) {
+    return v && v.version_id === nextVersion.version_id;
+  });
+  if (idx >= 0) existingVersions[idx] = nextVersion;
+  else existingVersions.push(nextVersion);
+
+  out.om_cipher.cipher_visual = Object.assign({}, prevVisual || {}, {
+    versions: existingVersions,
+    schema_version: CIPHER_VISUAL_SCHEMA_VERSION
+  });
+
+  return { contract: out, changed: true };
+}
+
 window.ThresholdGate = {
   isCompleted() {
     try {
@@ -7784,6 +7945,19 @@ function initThresholdContract() {
   if (palette.primary || palette.secondary || accentValue) {
     rootEl.dataset.cipherPalette = 'active';
   }
+
+  // 2b. Backfill the pseudonymous OM Cipher identity + the versioned beta
+  // visual Cipher. The primary gate may not be hydrated yet at init, so we
+  // create/keep cipher_id + the active beta Cipher version now and let
+  // compassCipherIdentity() fill unity_code/unity_point lazily once
+  // state.points.work is known. Persist only if something changed.
+  try {
+    const ensured = ensureCipherIdentity(contract);
+    if (ensured.changed) {
+      window.localStorage.setItem(THRESHOLD_CONTRACT_KEY, JSON.stringify(ensured.contract));
+    }
+    state.cipherIdentity = (ensured.contract.om_cipher || {}).cipher_identity || null;
+  } catch (_) { /* identity backfill is best-effort */ }
 
   // 3. Hide manual atmosphere chooser; replace with a compact palette
   // explainer that names the inherited Cipher palette.
@@ -9710,12 +9884,43 @@ function compassNexusGrantConsent() {
   try { localStorage.setItem(COMPASS_NEXUS_CONSENT_KEY, '1'); } catch (_) {}
 }
 
-// Identity minimization (interim): Nexus/Claude and the Golden Thread store
-// only the user's FIRST name, never the full legal name. The full name stays
-// local in the OM Cipher contract. TODO(trust-architecture): replace with a
-// pseudonymous OM Cipher node so no real-name fragment reaches the AI at all.
+// Golden Thread lookup key (back-compat): first name only. The Golden Thread
+// rows are keyed on this; new writes ALSO carry the pseudonymous cipher fields
+// (see compassSaveGoldenThread). A future migration can cut the key over to
+// cipher_id once existing rows are backfilled.
 function compassNexusIdentity() {
   return (state.companion || '').trim().split(/\s+/)[0] || '';
+}
+
+// Pseudonymous OM Cipher operational identity. This is what Nexus/Claude
+// receive instead of any real-world name. unity_point/unity_code are derived
+// from the primary gate (Life Work / state.points.work); we re-derive lazily
+// here so the gate captured after init is reflected, persisting the upgrade.
+function compassCipherIdentity() {
+  let stored = state.cipherIdentity || null;
+  let work = (state.points && state.points.work) || {};
+  let gate = work.gk_num, line = work.gk_line;
+  try {
+    const contract = window.ThresholdGate.read();
+    if (contract) {
+      const ensured = ensureCipherIdentity(contract, { gate, line });
+      if (ensured.changed) {
+        window.localStorage.setItem(THRESHOLD_CONTRACT_KEY, JSON.stringify(ensured.contract));
+      }
+      stored = (ensured.contract.om_cipher || {}).cipher_identity || stored;
+      state.cipherIdentity = stored;
+    }
+  } catch (_) {}
+  return stored || null;
+}
+
+// The label Nexus/Claude should address the user by: the Unity Point when a
+// gate is known, otherwise fall back to the minimized first name (never the
+// full legal name).
+function compassNexusAddress() {
+  const ci = compassCipherIdentity();
+  if (ci && ci.unity_point) return ci.unity_point;
+  return compassNexusIdentity();
 }
 
 async function compassLoadGoldenThread() {
@@ -9734,11 +9939,16 @@ async function compassLoadGoldenThread() {
 
 async function compassSaveGoldenThread(content) {
   const companion = compassNexusIdentity();
+  const ci = compassCipherIdentity();
   try {
     await fetch(`${API_BASE}/api/golden-thread`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, companion, source_app: 'compass' })
+      body: JSON.stringify({
+        content, companion, source_app: 'compass',
+        cipher_id: (ci && ci.cipher_id) || '',
+        unity_point: (ci && ci.unity_point) || ''
+      })
     });
     // prepend locally so it's available this session
     const date = new Date().toISOString().slice(0, 10);
@@ -9908,7 +10118,8 @@ function compassNexusRequestConsent() {
       '<p class="compass-nexus-consent-title">Before you chat with Nexus</p>' +
       '<p>When you send a message, Nexus sends that message and relevant cOMpass ' +
       'context — your hexagram, the room you are in, and your notes — to Claude ' +
-      '(Anthropic) to generate a reflection.</p>' +
+      '(Anthropic) to generate a reflection. It reflects with your pseudonymous ' +
+      'Unity Point, not your real-world name.</p>' +
       '<p>Nexus is a reflection companion. It is not a private diary, and it is ' +
       'not a replacement for your own inner authority.</p>';
     const btn = document.createElement('button');
@@ -9995,7 +10206,9 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         session_notes: seed,
         workbench_entries: '',
         history: compassNexusState.history.slice(-8),
-        companion: compassNexusIdentity(),
+        companion: compassNexusAddress(),
+        unity_code: (compassCipherIdentity() || {}).unity_code || '',
+        cipher_id: (compassCipherIdentity() || {}).cipher_id || '',
         golden_thread: compassNexusState.goldenThread.join('\n---\n')
       })
     });
@@ -10137,7 +10350,7 @@ function initCompassNexus() {
       <button class="profile-modal-close" id="profile-modal-close" aria-label="Close OM Cipher">✕</button>
     </div>
     <div class="info-disclosure" id="om-cipher-info-disclosure" role="region" aria-label="OM Cipher overview">
-      Identity-engine source data — the structured inputs that Compass, OM Cipher, Studio, sigils, and future resonance layers build from. Your birth date, time, and place populate the astrological and contemplative fields behind the scenes, including Sun, Moon, Rising/Lagna, Gene Keys, Human Design, and the tissue-salt profile where available. This panel lets you review the source pattern behind your Compass Cipher so every downstream extension speaks from the same record. Tissue salts are symbolic/somatic reflections, not medical advice. Fields can be reviewed and adjusted here — calculated values fill blanks automatically and never overwrite something you've set.
+      Identity-engine source data — the structured inputs that Compass, OM Cipher, Studio, your Cipher, and future resonance layers build from. Your birth date, time, and place populate the astrological and contemplative fields behind the scenes, including Sun, Moon, Rising/Lagna, Gene Keys, Human Design, and the tissue-salt profile where available. This panel lets you review the source pattern behind your Compass Cipher so every downstream extension speaks from the same record. Tissue salts are symbolic/somatic reflections, not medical advice. Fields can be reviewed and adjusted here — calculated values fill blanks automatically and never overwrite something you've set. Your generated Cipher is a Beta expression of this OM Cipher identity — a first visual seal, not the final form; it can evolve into a fuller Living Cipher later without losing anything tied to your stable identity. When you reflect with Nexus, it works with your pseudonymous Unity Point, never your real-world name.
     </div>
 
     <!-- ============================================================
@@ -10364,7 +10577,7 @@ function initCompassNexus() {
         <button class="info-button" type="button" id="tissue-salts-info-btn" aria-label="About tissue salts" aria-expanded="false" aria-controls="tissue-salts-info-disclosure">i</button>
       </div>
       <div class="info-disclosure" id="tissue-salts-info-disclosure" role="region" aria-label="Tissue salts explanation">
-        Twelve Schuessler tissue salts mapped to your astrological signature — primary from your Sun (or first available signal), secondaries from Moon and Rising/Lagna. These are symbolic and somatic reflections used by the Sigil engine as an inner crystal-geometry layer. Not medical advice or diagnosis.
+        Twelve Schuessler tissue salts mapped to your astrological signature — primary from your Sun (or first available signal), secondaries from Moon and Rising/Lagna. These are symbolic and somatic reflections used by the Cipher engine as an inner crystal-geometry layer. Not medical advice or diagnosis.
       </div>
       <p class="om-cipher-card-hint"
          data-cu-om-cipher-tissue-salts-primary-line="1"

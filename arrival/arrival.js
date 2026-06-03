@@ -313,8 +313,9 @@
       'computer, in this browser — this is part of CommonUnity’s local-first ' +
       'trust architecture. The one time anything leaves is when you choose to ' +
       'chat with Nexus, which sends your message and the relevant cOMpass ' +
-      'context to Claude to compose a reflection. cOMpass will tell you this ' +
-      'before your first Nexus message.'
+      'context to Claude to compose a reflection — and it reflects with your ' +
+      'pseudonymous Unity Point, not your real-world name. cOMpass will tell ' +
+      'you this before your first Nexus message.'
     ]));
 
     var soloFooter = el('div', { class: 'arrival-solo-footer' });
