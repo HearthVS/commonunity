@@ -1,0 +1,31 @@
+{
+  "_fixture_note": "Represents an OLDER CommonUnity cOMpass export (Eda's beta flow). Birth data is present, Gene Keys live ONLY in the legacy gk_profile block (no per-room points[].gk_num), there is NO structured profile.astrology or profile.vedic block, and a legacy profile.salts array is present. This is the shape where tissue salts populated on import but Gene Keys / tropical / Vedic did not. dob/tob/pob: 1988-04-12, 09:45, London England.",
+  "theme": "B",
+  "guide": "Maren",
+  "companion": "Eda Solberg",
+  "dob": "1988-04-12",
+  "tob": "09:45",
+  "pob": "London England",
+  "gk_profile": {
+    "cs": 25, "csLine": 3,
+    "ce": 46, "ceLine": 3,
+    "us": 17, "usLine": 5,
+    "ue": 18, "ueLine": 5
+  },
+  "points": {
+    "work":  { "raw": "Holds the room.", "theme": "Presence", "summary": "", "insights": [], "highlights": [], "gk_num": "", "gk_line": "" },
+    "lens":  { "raw": "Sees the pattern.", "theme": "Pattern", "summary": "", "insights": [], "highlights": [], "gk_num": "", "gk_line": "" },
+    "field": { "raw": "Restored by water.", "theme": "Water", "summary": "", "insights": [], "highlights": [], "gk_num": "", "gk_line": "" },
+    "call":  { "raw": "Builds the commons.", "theme": "Commons", "summary": "", "insights": [], "highlights": [], "gk_num": "", "gk_line": "" }
+  },
+  "profile": {
+    "first_name": "Eda",
+    "last_name": "Solberg",
+    "legal_name": "Eda Solberg",
+    "salts": [
+      { "saltId": "kali_phos",  "weight": 1.0, "kind": "primary" },
+      { "saltId": "nat_mur",    "weight": 0.6, "kind": "secondary" },
+      { "saltId": "calc_fluor", "weight": 0.4, "kind": "secondary" }
+    ]
+  }
+}
