@@ -81,11 +81,18 @@ ok('details defaults to collapsed (no `open` attribute in the rendered template)
 ok('disclosure chevron rendered for affordance',
    /class="oc-disclosure-chevron"/.test(src));
 
-console.log('\nEdit source click does not toggle the details accidentally');
-ok('Edit source handler stops propagation',
-   /omCipherEdit\.addEventListener\('click'[\s\S]*?stopPropagation/.test(src));
-ok('Edit source opens the details so the edit row is visible',
-   /data-cu-om-cipher-details[\s\S]*?\.open\s*=\s*true/.test(src));
+console.log('\nOM Cipher source data is read-only; header links to cOMpass Setup');
+// Source-of-truth cleanup: cOMpass Setup is the sole authoritative editor for
+// birth date / time / place. The header carries a link to it (not an in-page
+// "Edit source" editor), and the in-page foundation grid is no longer editable.
+ok('header carries a cOMpass Setup link (not an in-page editor)',
+   /class="lp-edit-btn lp-om-cipher-edit"[^>]*href="\/compass\?setup=1"/.test(src));
+ok('the old "Edit source" in-page editor affordance is gone',
+   !/data-lp-om-cipher-edit/.test(src) && !/>Edit source</.test(src));
+ok('the Cipher Foundation grid no longer exposes data-lp-edit (read-only)',
+   !/data-lp-edit="foundation"/.test(src));
+ok('the cOMpass Setup link click stops propagation (does not toggle the details)',
+   /omCipherEditLink\.addEventListener\('click'[\s\S]*?stopPropagation/.test(src));
 
 console.log('\nlabel consistency — OM Cipher eyebrow softened (Living Profile has none)');
 ok('OM Cipher eyebrow uses oc-eye-soft modifier class',

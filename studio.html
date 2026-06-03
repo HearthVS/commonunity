@@ -6128,17 +6128,6 @@ input, textarea { font: inherit; color: inherit; }
   border-color: color-mix(in srgb, var(--call, #f6a3b6) 70%, var(--border));
 }
 
-.lp-foundation-item[data-lp-edit] {
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-}
-.lp-foundation-item[data-lp-edit]:hover,
-.lp-foundation-item[data-lp-edit]:focus-visible {
-  outline: none;
-  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--border));
-  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, var(--input-bg));
-}
-
 /* OM Cipher (formerly Field Imprints) — sigil on the left,
    source-data grid on the right. */
 .lp-field-imprints-body {
@@ -6173,10 +6162,6 @@ input, textarea { font: inherit; color: inherit; }
 }
 .lp-om-cipher .lp-foundation-head .lp-foundation-eye { flex-basis: 100%; }
 .lp-om-cipher-edit { margin-left: auto; }
-.lp-om-cipher.is-editing {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--call, #f6a3b6) 45%, transparent);
-  transition: box-shadow 280ms ease-out;
-}
 @media (max-width: 720px) {
   .lp-field-imprints-body { grid-template-columns: 1fr; justify-items: center; }
 }
@@ -6439,6 +6424,12 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--text-faint);
   font-style: italic;
 }
+.oc-foundation-setup-link {
+  color: var(--rose-color, #c4b5fd);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.oc-foundation-setup-link:hover { color: var(--text); }
 
 /* ── OM Cipher · Source Data (auxiliary captured fields) ───────────
    Tropical / Vedic / Gene Keys activation sequence / birth coords.
@@ -6520,6 +6511,8 @@ input, textarea { font: inherit; color: inherit; }
   border-radius: 999px;
   padding: 3px 10px;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
   transition: color var(--transition), border-color var(--transition);
 }
 .lp-edit-btn:hover, .lp-edit-btn:focus-visible {
@@ -14447,7 +14440,7 @@ if (document.readyState === 'loading') {
       var placeholderBhramari    = 'Recorded in your Living Profile — hum the seed-syllable to capture a baseline, or enter it manually.';
       // OM Cipher renders inside <details> so the source-pattern layer
       // does not interrupt the Living Profile narrative below. Header
-      // (eyebrow + title + glowing info-button + Edit source) lives in
+      // (eyebrow + title + glowing info-button + cOMpass Setup link) lives in
       // <summary>; the body collapses by default. The long explanatory
       // lede is no longer painted on the page — it lives behind the
       // glowing info-button (id="info-om-cipher-overlay") so the surface
@@ -14460,7 +14453,7 @@ if (document.readyState === 'loading') {
           '<span class="lp-foundation-eye oc-eye-soft">Foundation · Source pattern</span>' +
           '<h3 class="lp-foundation-title">OM <em>Cipher</em></h3>' +
           '<button type="button" class="studio-info-btn lp-om-cipher-info" data-info="info-om-cipher-overlay" aria-label="About OM Cipher" title="About OM Cipher"><i>i</i></button>' +
-          '<button type="button" class="lp-edit-btn lp-om-cipher-edit" data-lp-om-cipher-edit="1" aria-label="Edit OM Cipher source data">Edit source</button>' +
+          '<a class="lp-edit-btn lp-om-cipher-edit" href="/compass?setup=1" aria-label="Edit OM Cipher details in cOMpass Setup">Edit in cOMpass Setup</a>' +
           '<span class="oc-disclosure-chevron" aria-hidden="true">⌄</span>' +
           // Hidden lede — preserved so existing regression tests can find
           // the "distinct from Living Profile" phrase, but kept out of
@@ -14614,15 +14607,15 @@ if (document.readyState === 'loading') {
         // ── Foundation data grid (birth date / time / place / etc.) ──
         '<div class="oc-source-block oc-foundation-block">' +
           '<h4 class="oc-source-title">Cipher Foundation <span class="oc-source-sub">· locked source data</span></h4>' +
-          '<p class="oc-foundation-helper">These fields are sealed inputs. To correct source data, re-enter it in Compass — direct edits here are display-only and flag a discrepancy until Compass is re-sealed.</p>' +
+          '<p class="oc-foundation-helper">These fields are sealed inputs, shown read-only. To correct your birth date, time, or place, edit them in <a class="oc-foundation-setup-link" href="/compass?setup=1">cOMpass Setup</a> — the single authoritative place for OM Cipher source data.</p>' +
           (foundationItems.length
             ? '<dl class="lp-foundation-grid oc-foundation-grid">' +
                 foundationItems.map(function (it) {
                   var has = !!it.val;
-                  var fkey = it.field || '';
-                  return '<div class="lp-foundation-item' + (has ? '' : ' is-empty') + '"' +
-                    (fkey ? ' data-lp-edit="foundation" data-lp-field="' + lpEscape(fkey) + '"' : '') +
-                    (fkey ? ' tabindex="0" role="button" title="Click to edit"' : '') + '>' +
+                  // Read-only. cOMpass Setup is the sole authoritative editor
+                  // for birth date / time / place and OM Cipher source data;
+                  // these rows display the sealed values only.
+                  return '<div class="lp-foundation-item' + (has ? '' : ' is-empty') + '">' +
                     '<dt class="lp-foundation-key">' + lpEscape(it.key) + '</dt>' +
                     '<dd class="lp-foundation-val">' + lpEscape(has ? it.val : 'Not set yet') + '</dd>' +
                   '</div>';
@@ -15001,39 +14994,15 @@ if (document.readyState === 'loading') {
       });
 
       // ── Wire inline edit affordances ────────────────────────
-      // Foundation items and hero essence can be clicked to open
-      // a small popover. Saves persist via saveState() into
-      // window.state.compassData.profile.foundation.*.
-      lpBody.querySelectorAll('[data-lp-edit="foundation"]').forEach(function (item) {
-        function open() { openLpEditPopover('foundation', item.getAttribute('data-lp-field'), item); }
-        item.addEventListener('click', open);
-        item.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-        });
-      });
-      // OM Cipher "Edit source" button — small reveal that pulses
-      // the section so the click-to-edit rows are obvious, then
-      // opens the editor on the Birthday row (most common mistake).
-      var omCipherEdit = lpBody.querySelector('[data-lp-om-cipher-edit]');
-      if (omCipherEdit) {
-        omCipherEdit.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var section = omCipherEdit.closest('.lp-om-cipher');
-          if (section) {
-            section.classList.add('is-editing');
-            setTimeout(function () { section.classList.remove('is-editing'); }, 1600);
-          }
-          // Open the OM Cipher details so the user can see the edit row
-          // they are about to touch (the Edit source button lives in the
-          // collapsed summary; opening here keeps the action discoverable).
-          var det = omCipherEdit.closest('[data-cu-om-cipher-details]');
-          if (det && !det.open) det.open = true;
-          var firstRow = lpBody.querySelector('.lp-om-cipher [data-lp-edit="foundation"]');
-          if (firstRow) {
-            openLpEditPopover('foundation', firstRow.getAttribute('data-lp-field'), firstRow);
-          }
-        });
+      // Hero essence / name / statement and contact rows remain editable
+      // through the popover. OM Cipher source data (birth date / time /
+      // place) is NOT editable here — cOMpass Setup is the sole authoritative
+      // editor — so the Cipher Foundation grid carries no data-lp-edit.
+      // The OM Cipher header carries a link to cOMpass Setup; it sits inside
+      // the <summary>, so stop its click from also toggling the <details>.
+      var omCipherEditLink = lpBody.querySelector('.lp-om-cipher-edit');
+      if (omCipherEditLink) {
+        omCipherEditLink.addEventListener('click', function (e) { e.stopPropagation(); });
       }
       // Glowing info button inside the OM Cipher summary opens the
       // overlay through the existing data-info delegate. We just need to

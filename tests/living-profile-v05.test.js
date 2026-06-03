@@ -2,8 +2,9 @@
  *   1. Hero composition: name + essence + roles + statement on the LEFT,
  *      profile image slot on the RIGHT (sigil no longer in the hero).
  *   2. Field Imprints section: replaces the prior "Cosmic identity"
- *      framing, contains the sigil PLUS the foundation grid, and each
- *      foundation item is editable via data-lp-edit="foundation".
+ *      framing, contains the sigil PLUS the foundation grid. The
+ *      foundation grid is read-only (cOMpass Setup is the sole
+ *      authoritative editor for birth date / time / place).
  *   3. Fourfold cards are clickable and open a detail popup; the duplicate
  *      large lp-editorial summary block is no longer rendered inline.
  *   4. Studio toolbar exposes a direct "Living Profile" entry point.
@@ -47,9 +48,10 @@ assert(!/Field <em>Imprints<\/em>/.test(src), 'old "Field Imprints" title remove
 assert(/lp-field-imprints-sigil/.test(src), 'sigil placeholder still lives inside the section');
 assert(/Cosmic <em>identity<\/em>/.test(src) === false,
   'old "Cosmic identity" heading replaced');
-assert(/data-lp-edit="foundation"/.test(src), 'foundation items expose data-lp-edit for click-to-edit');
-assert(/data-lp-field="birthdate"/.test(src) || /data-lp-field="' \+ lpEscape\(fkey\)/.test(src),
-  'foundation items carry a data-lp-field key (birthdate, birthplace, etc.)');
+assert(!/data-lp-edit="foundation"/.test(src),
+  'foundation items are read-only (no data-lp-edit click-to-edit; cOMpass Setup is the editor)');
+assert(/class="lp-edit-btn lp-om-cipher-edit"[^>]*href="\/compass\?setup=1"/.test(src),
+  'OM Cipher header links to cOMpass Setup for source-data edits');
 
 console.log('\nfourfold popup');
 assert(/data-lp-fourfold="' \+ f\.sec/.test(src) || /data-lp-fourfold=/.test(src),
