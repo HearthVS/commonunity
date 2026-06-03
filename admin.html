@@ -1106,7 +1106,7 @@
           <div class="ops-head">
             <div>
               <h2>Golden Thread</h2>
-              <p class="hint">Moments members chose to carry forward from their Nexus conversations. Each entry shows companion, source app, and date.</p>
+              <p class="hint">Operational metadata only. The saved thread text is private to each member and is never shown here — admin sees the pseudonymous key, source app, size, token estimate, and date for data-use accounting.</p>
             </div>
             <button class="btn-secondary" onclick="loadGoldenThreadAdmin()">Reload</button>
           </div>
@@ -1904,24 +1904,40 @@
       try {
         const data = await optionalApi('/api/admin/golden-thread?limit=100');
         const threads = data.threads || [];
+        const summary = data.summary || {};
         if (threads.length === 0) {
           list.innerHTML = '<p style="color:var(--text-faint);font-size:13px">No threads yet.</p>';
           return;
         }
-        list.innerHTML = threads.map(t => {
+        const summaryChips = [
+          { label: 'Entries', value: (summary.total_entries || 0).toLocaleString() },
+          { label: 'Members', value: (summary.distinct_members || 0).toLocaleString() },
+          { label: 'Total size', value: ((summary.total_byte_size || 0) / 1024).toFixed(1) + ' KB' },
+          { label: 'Est. tokens', value: (summary.total_token_estimate || 0).toLocaleString() },
+        ];
+        const summaryHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;">${summaryChips.map(c => `
+          <div style="flex:1;min-width:110px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+            <div style="font-size:10px;color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;">${c.label}</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">${c.value}</div>
+          </div>`).join('')}</div>`;
+        list.innerHTML = summaryHtml + threads.map(t => {
           const d = (t.timestamp || '').slice(0, 10);
           const app = t.source_app || '';
-          const companion = t.companion || 'Unknown';
-          const content = t.content || '';
-          const note = t.note || '';
+          const key = t.unity_point || t.cipher_id || '—';
+          const tokens = (t.token_estimate || 0).toLocaleString();
+          const bytes = ((t.byte_size || 0) / 1024).toFixed(1);
           return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--card);">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:700;color:var(--text);">${escapeHtml(companion)}</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:11px;font-weight:700;color:var(--text);font-family:monospace;">${escapeHtml(key)}</span>
               ${app ? `<span style="font-size:10px;background:color-mix(in srgb,#c8a96e 15%,transparent);color:#c8a96e;border-radius:10px;padding:1px 7px;">${escapeHtml(app)}</span>` : ''}
               <span style="font-size:10px;color:var(--text-faint);margin-left:auto;">${escapeHtml(d)}</span>
             </div>
-            <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">${escapeHtml(content)}</div>
-            ${note ? `<div style="font-size:11px;color:var(--text-faint);margin-top:6px;font-style:italic;">Note: ${escapeHtml(note)}</div>` : ''}
+            <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--text-muted);">
+              <span>${(t.char_count || 0).toLocaleString()} chars</span>
+              <span>${bytes} KB</span>
+              <span>~${tokens} tokens</span>
+              ${t.has_note ? '<span style="color:var(--text-faint);">+ note</span>' : ''}
+            </div>
           </div>`;
         }).join('');
       } catch (e) {

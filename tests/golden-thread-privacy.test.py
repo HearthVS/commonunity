@@ -139,11 +139,40 @@ ok("orphan" not in contents(rLegacy),
 ok("B-note" not in contents(rLegacy),
    "invite-token fallback never returns another member's rows")
 
-print("\n5. admin endpoint still returns everything behind admin auth")
+print("\n5. admin endpoint exposes metadata only — never thread content")
 rAdminNo = fresh_client().get("/api/admin/golden-thread")
 ok(rAdminNo.status_code in (401, 403), "admin endpoint rejects non-admin")
 rAdminYes = fresh_client().get("/api/admin/golden-thread", cookies=admin_cookie())
 ok(rAdminYes.status_code == 200, "admin authorized with admin cookie")
-ok(len(rAdminYes.json()["threads"]) >= 4, "admin sees all rows across members")
+admin_body = rAdminYes.json()
+admin_threads = admin_body["threads"]
+ok(len(admin_threads) >= 4, "admin sees a metadata record for every row across members")
+
+# Content fields must NOT appear anywhere in the admin response.
+_CONTENT_FIELDS = ("content", "note", "companion")
+for entry in admin_threads:
+    for field in _CONTENT_FIELDS:
+        ok(field not in entry, f"admin entry omits content field '{field}'")
+# The known secret/personal strings must not leak via any field or serialized form.
+admin_raw = rAdminYes.text
+for secret in ("A-secret", "B-note", "legacy-A", "orphan", "Markus"):
+    ok(secret not in admin_raw, f"admin response body never contains '{secret}'")
+
+# Metadata that admin IS allowed to see is present and sane.
+sample = admin_threads[0]
+for field in ("id", "timestamp", "source_app", "cipher_id", "unity_point",
+              "char_count", "byte_size", "token_estimate"):
+    ok(field in sample, f"admin entry exposes metadata field '{field}'")
+ok(all(isinstance(e["char_count"], int) and e["char_count"] >= 0 for e in admin_threads),
+   "char_count is a non-negative integer for every entry")
+ok(all(e["token_estimate"] >= 0 for e in admin_threads),
+   "token_estimate is non-negative for every entry")
+
+# Aggregate summary is present and content-free.
+summary = admin_body["summary"]
+for field in ("total_entries", "returned", "distinct_members",
+              "total_byte_size", "total_char_count", "total_token_estimate"):
+    ok(field in summary, f"summary exposes metadata field '{field}'")
+ok(summary["total_entries"] >= 4, "summary counts all stored entries")
 
 print(f"\n{passed} passed")

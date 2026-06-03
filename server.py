@@ -3884,15 +3884,67 @@ async def delete_golden_thread(thread_id: int, req: Request):
     return {"ok": True}
 
 
+# Fields the admin surface is permitted to see. Golden Thread `content` and
+# `note` are the member's personal reflections (they embed Gene Keys / personal
+# material) and are NEVER exposed to admin. `companion` is a first-name and is
+# also withheld in favour of the pseudonymous cipher_id / unity_point. Admin
+# gets only operational metadata: pseudonymous key, sizes, token estimate,
+# timestamps, source app, and (already-permitted) invite linkage.
+_GT_CONTENT_FIELDS = ("content", "note", "companion")
+
+# Rough token estimate for data-use accounting. ~4 chars per token is the
+# standard heuristic; this never reconstructs content, only its scale.
+_GT_CHARS_PER_TOKEN = 4
+
+
+def _gt_admin_metadata(row: sqlite3.Row) -> dict:
+    """Project a golden_thread row to admin-visible metadata only.
+
+    Deliberately omits `content`/`note`/`companion`. Derives size/token figures
+    from the text length without exposing the text itself."""
+    content = row["content"] or ""
+    note = row["note"] or ""
+    char_count = len(content) + len(note)
+    byte_size = len(content.encode("utf-8")) + len(note.encode("utf-8"))
+    return {
+        "id": row["id"],
+        "timestamp": row["timestamp"],
+        "source_app": row["source_app"],
+        "cipher_id": row["cipher_id"],
+        "unity_point": row["unity_point"],
+        "invite_token": row["invite_token"],
+        "char_count": char_count,
+        "byte_size": byte_size,
+        "token_estimate": (char_count + _GT_CHARS_PER_TOKEN - 1) // _GT_CHARS_PER_TOKEN,
+        "has_note": bool(note.strip()),
+    }
+
+
 @app.get("/api/admin/golden-thread")
 async def admin_golden_thread(request: Request, limit: int = 100):
-    """Admin: view all Golden Thread entries across all members."""
+    """Admin: operational metadata for Golden Thread entries across members.
+
+    Privacy: admin sees ONLY non-content metadata — pseudonymous key, record
+    counts, byte size / char count / token estimate, timestamps, source app, and
+    invite linkage. The saved thread text (`content`/`note`) and the member's
+    first name (`companion`) are never included. Members read their own content
+    via GET /api/golden-thread; export/local functionality is unchanged."""
     _require_admin(request)
     with _admin_db() as conn:
         rows = conn.execute(
             "SELECT * FROM golden_thread ORDER BY timestamp DESC LIMIT ?", (limit,)
         ).fetchall()
-    return {"threads": [_row_to_dict(r) for r in rows]}
+        total = conn.execute("SELECT COUNT(*) AS n FROM golden_thread").fetchone()["n"]
+    entries = [_gt_admin_metadata(r) for r in rows]
+    summary = {
+        "total_entries": total,
+        "returned": len(entries),
+        "distinct_members": len({e["cipher_id"] for e in entries if e["cipher_id"]}),
+        "total_byte_size": sum(e["byte_size"] for e in entries),
+        "total_char_count": sum(e["char_count"] for e in entries),
+        "total_token_estimate": sum(e["token_estimate"] for e in entries),
+    }
+    return {"threads": entries, "summary": summary}
 
 
 # ── Token log admin endpoints ─────────────────────────────────────────────
