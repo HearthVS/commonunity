@@ -2149,12 +2149,17 @@ async def admin_create_invite(request: Request, payload: InviteCreateRequest):
             (token, name, email, notes, cohort, tag, now, expires_at),
         )
         invite_id = cur.lastrowid
+        # `detail` is rendered verbatim in the shared admin metrics events feed
+        # (GET /api/admin/metrics), so it must stay free of contact identity.
+        # The event links to the invite via invite_id/token; admin resolves the
+        # invitee name from the invites table (behind admin auth) rather than
+        # having it broadcast into the generic activity stream.
         conn.execute(
             """
             INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
-            VALUES (?, 'invite_created', ?, ?, '/admin', 'admin', ?, ?)
+            VALUES (?, 'invite_created', ?, ?, '/admin', 'admin', ?, '')
             """,
-            (now, invite_id, token, request.headers.get("user-agent", "")[:320], name),
+            (now, invite_id, token, request.headers.get("user-agent", "")[:320]),
         )
         row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
     return {"invite": _row_to_dict(row)}
@@ -2170,12 +2175,14 @@ async def admin_revoke_invite(invite_id: int, request: Request):
             raise HTTPException(status_code=404, detail="invite not found")
         invite = _row_to_dict(row)
         conn.execute("UPDATE invites SET status = 'revoked' WHERE id = ?", (invite_id,))
+        # No contact name in `detail` (surfaced verbatim in the metrics feed);
+        # the invite_id/token linkage is sufficient for admin to resolve it.
         conn.execute(
             """
             INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
-            VALUES (?, 'invite_revoked', ?, ?, '/admin', 'admin', ?, ?)
+            VALUES (?, 'invite_revoked', ?, ?, '/admin', 'admin', ?, '')
             """,
-            (now, invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320], invite.get("name", "")),
+            (now, invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
         )
     return {"ok": True}
 
@@ -2342,17 +2349,20 @@ async def admin_send_invite(invite_id: int, request: Request):
     _send_invite_email(email, invite.get("name", ""), magic_link)
     now = _now_iso()
     with _admin_db() as conn:
+        # Do not persist the recipient email into `detail`: that column is
+        # surfaced verbatim in the shared metrics events feed. The send is
+        # already linked to the invite via invite_id/token, from which admin
+        # can resolve the address behind admin auth.
         conn.execute(
             """
             INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
-            VALUES (?, 'invite_email_sent', ?, ?, '/admin', 'admin', ?, ?)
+            VALUES (?, 'invite_email_sent', ?, ?, '/admin', 'admin', ?, '')
             """,
             (
                 now,
                 invite_id,
                 invite.get("token", ""),
                 request.headers.get("user-agent", "")[:320],
-                email,
             ),
         )
     return {"ok": True, "sent_to": email, "magic_link": magic_link}
@@ -3803,8 +3813,31 @@ async def submit_orientation_request(body: OrientationRequest, request: Request)
     return {"ok": True}
 
 
+# Admin one-on-one surface: the operational fields needed to act on a request
+# (who asked, the birth_date the companion volunteered for the session, the
+# invite linkage, status, and timing). The network identifiers `ip` and
+# `user_agent` are deliberately withheld — they are request-forensics noise, not
+# part of the beta one-on-one workflow, and the admin UI never renders them. No
+# OM Cipher / Golden Thread / reflection fields are joined here.
+def _orientation_admin_metadata(row: dict) -> dict:
+    return {
+        "id": row.get("id"),
+        "timestamp": row.get("timestamp") or "",
+        "name": row.get("name") or "",
+        "birth_date": row.get("birth_date") or "",
+        "invite_token": row.get("invite_token") or "",
+        "status": row.get("status") or "new",
+    }
+
+
 @app.get("/api/admin/orientation-requests")
 async def admin_orientation_requests(request: Request, status: str = ""):
+    """Admin: one-on-one orientation requests.
+
+    Privacy: returns only the operational fields the workflow needs (name,
+    volunteered birth_date, invite linkage, status, timestamp). Network
+    identifiers (ip, user_agent) are withheld, and no OM Cipher profile,
+    numerology, Gene Keys, or Golden Thread/reflection content is joined in."""
     _require_admin(request)
     with _admin_db() as conn:
         if status:
@@ -3818,7 +3851,8 @@ async def admin_orientation_requests(request: Request, status: str = ""):
         unread = conn.execute(
             "SELECT COUNT(*) as n FROM orientation_request WHERE status='new'"
         ).fetchone()["n"]
-    return {"entries": [_row_to_dict(r) for r in rows], "unread": unread}
+    entries = [_orientation_admin_metadata(_row_to_dict(r)) for r in rows]
+    return {"entries": entries, "unread": unread}
 
 
 @app.post("/api/admin/orientation-requests/{request_id}/acknowledge")
