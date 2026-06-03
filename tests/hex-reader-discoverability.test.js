@@ -4,15 +4,15 @@
  * bottom of each room's card, below the "Guide Only" facilitator panel,
  * so first-time users never found it. It now opens BESIDE the Session
  * Notes inside Layer 1 (.notes-with-reader), and a top-level
- * "Read Gene Key" toolbar action brings it into view.
+ * "Hexagram Reader" toolbar action brings it into view.
  *
  * This is a static-assertion test over index.html (no DOM boot). It
  * guards:
  *   • exactly four readers (one per room), each inside a
  *     .notes-with-reader block in the Layer 1 raw panel
  *   • no reader is left stranded at the bottom of a card
- *   • a discoverable top-level #btn-read-gene-key action exists and is
- *     wired to openHexReader()
+ *   • a discoverable top-level #btn-read-gene-key action exists, is
+ *     labelled "Hexagram Reader", and is wired to openHexReader()
  *   • openHexReader switches to Layer 1, reveals the code row, scrolls
  *     into view, and NEVER bypasses the activation-code gate
  *   • the passcode input stays type="password" and is not pre-filled
@@ -76,15 +76,16 @@ for (const p of POINTS) {
   ok(!stranded.test(index), `${p}: reader is not left just above the card close`);
 }
 
-console.log('\n4. a discoverable top-level "Read Gene Key" action exists');
+console.log('\n4. a discoverable top-level "Hexagram Reader" action exists');
 ok(/id="btn-read-gene-key"/.test(index), '#btn-read-gene-key toolbar button exists');
-ok(/Read Gene Key/.test(index), 'the action is labelled "Read Gene Key"');
+ok(/>\s*Hexagram Reader\s*</.test(index), 'the action is labelled "Hexagram Reader"');
+ok(!/Read Gene Key/.test(index), 'the old "Read Gene Key" label is gone (no misleading duplicate)');
 // It sits in the compass toolbar (compass-actions), not buried in a card.
 const actionsStart = index.indexOf('class="compass-actions"');
 const actionsEnd = index.indexOf('class="compass-tabs"', actionsStart);
 const actionsSlice = index.slice(actionsStart, actionsEnd);
 ok(actionsSlice.includes('id="btn-read-gene-key"'),
-   'the Read Gene Key action lives in the top compass toolbar');
+   'the Hexagram Reader action lives in the top compass toolbar');
 
 console.log('\n5. the action is wired to openHexReader and respects the gate');
 ok(/function openHexReader\(\)/.test(index), 'openHexReader() is defined');
@@ -124,9 +125,9 @@ ok(/data-hex-action="unlock-show"/.test(index),
    'the unlock-show gate path is preserved');
 
 console.log('\n7. responsive layout: side-by-side desktop, stacked on small screens');
-ok(/\.notes-with-reader\s*\{[\s\S]*?display:\s*flex/.test(index),
-   '.notes-with-reader is a flex row on desktop');
-ok(/@media \(max-width: 860px\)[\s\S]*?\.notes-with-reader\s*\{[\s\S]*?flex-direction:\s*column/.test(index),
-   '.notes-with-reader stacks to a column on small screens');
+ok(/\.notes-with-reader\s*\{[\s\S]*?display:\s*grid/.test(index),
+   '.notes-with-reader is a resizable grid row on desktop');
+ok(/@media \(max-width: 860px\)[\s\S]*?\.notes-with-reader\s*\{[\s\S]*?grid-template-columns:\s*1fr/.test(index),
+   '.notes-with-reader collapses to a single column on small screens');
 
 console.log(`\n${pass} passed`);

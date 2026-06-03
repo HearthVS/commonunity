@@ -2866,18 +2866,61 @@ body.companion-mode .companion-mode-banner { display: block; }
    The reader now sits beside the Session Notes (.notes-with-reader)
    so the Gene Key can be read while notes are taken. */
 .notes-with-reader {
-  display: flex;
+  /* Reader (left) | draggable gutter | notes (right). The reader track
+     is user-resizable via the gutter; --hex-reader-width holds its px
+     width and the notes column takes the remaining space. Drag the
+     gutter narrower to give the Session Notes more room. */
+  --hex-reader-width: 380px;
+  display: grid;
+  grid-template-columns: var(--hex-reader-width) 0 minmax(0, 1fr);
   gap: var(--space-4);
   align-items: flex-start;
 }
 .notes-with-reader > .notes-col {
-  flex: 1 1 0;
   min-width: 0;
 }
 .notes-with-reader > .hex-reader {
-  flex: 1 1 0;
   min-width: 0;
   align-self: stretch;
+}
+/* Draggable gutter between the reader and the notes. The 0-width grid
+   track keeps layout math simple; the visible handle + hit pad are
+   painted via ::before / ::after so the gutter is easy to grab without
+   widening the column. */
+.notes-splitter {
+  position: relative;
+  width: 0;
+  align-self: stretch;
+  cursor: col-resize;
+  touch-action: none;
+}
+.notes-splitter::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--border);
+  border-radius: 2px;
+  transition: background var(--transition, 0.15s ease);
+}
+.notes-splitter::after {
+  /* Invisible wide hit pad so the 0-width gutter is easy to grab. */
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 18px;
+  transform: translateX(-50%);
+}
+.notes-splitter:hover::before,
+.notes-splitter:focus-visible::before,
+.notes-splitter.is-dragging::before {
+  background: var(--accent-color, #6366f1);
+}
+.notes-splitter:focus-visible {
+  outline: none;
 }
 .hex-reader {
   padding: var(--space-4);
@@ -2885,15 +2928,19 @@ body.companion-mode .companion-mode-banner { display: block; }
   border-radius: var(--radius-lg, 12px);
   background: color-mix(in srgb, var(--accent-color, #6366f1) 4%, var(--card));
 }
-/* Stack on narrow screens, keeping the reader discoverable ABOVE the notes. */
+/* Stack on narrow screens, keeping the reader discoverable ABOVE the notes.
+   The grid collapses to a single column and the draggable gutter is
+   hidden — resizing only makes sense in the side-by-side desktop layout. */
 @media (max-width: 860px) {
   .notes-with-reader {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
   .notes-with-reader > .hex-reader,
   .notes-with-reader > .notes-col {
-    flex: 1 1 auto;
     width: 100%;
+  }
+  .notes-splitter {
+    display: none;
   }
 }
 .hex-reader-locked {
@@ -3626,13 +3673,13 @@ body.companion-mode .companion-mode-banner { display: block; }
 
       <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
 
-      <!-- Read Gene Key — top-level, discoverable entry point to the
+      <!-- Hexagram Reader — top-level, discoverable entry point to the
            Hexagram Reader. Opens the active room's Layer 1 (Session
            Notes), where the reader now sits beside the notes, and
            focuses it. Does NOT bypass the activation-code gate. -->
       <button type="button" class="btn-ghost" id="btn-read-gene-key"
               title="Open the Hexagram Reader beside your session notes">
-        <span aria-hidden="true" style="margin-right:5px;">🜂</span>Read Gene Key
+        <span aria-hidden="true" style="margin-right:5px;">🜂</span>Hexagram Reader
       </button>
 
       <!-- Search box -->
@@ -3830,7 +3877,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="work">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -3840,6 +3887,9 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
           <div class="hex-reader-body"></div>
         </div>
+        <div class="notes-splitter" role="separator" aria-orientation="vertical"
+             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
           <p class="layer-section-label">Session Notes <span class="qa-who" id="work-notes-who"></span></p>
           <textarea class="layer-textarea" data-key="work.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
@@ -4107,7 +4157,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="lens">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4117,6 +4167,9 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
           <div class="hex-reader-body"></div>
         </div>
+        <div class="notes-splitter" role="separator" aria-orientation="vertical"
+             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
           <p class="layer-section-label">Session Notes</p>
           <textarea class="layer-textarea" data-key="lens.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
@@ -4380,7 +4433,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="field">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4390,6 +4443,9 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
           <div class="hex-reader-body"></div>
         </div>
+        <div class="notes-splitter" role="separator" aria-orientation="vertical"
+             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
           <p class="layer-section-label">Session Notes</p>
           <textarea class="layer-textarea" data-key="field.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
@@ -4653,7 +4709,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <!-- Hexagram Reader — opens beside the notes so the Gene Key can be read while taking notes. Locked by HEXAGRAM_READER_CODE. -->
         <div class="hex-reader" data-hex-reader="call">
           <div class="hex-reader-locked">
-            <div class="hex-reader-locked-label"><span>🜂</span><span>Read Gene Key</span></div>
+            <div class="hex-reader-locked-label"><span>🜂</span><span>Hexagram Reader</span></div>
             <button type="button" class="hex-reader-unlock-btn" data-hex-action="unlock-show">Open Reader</button>
           </div>
           <div class="hex-reader-code-row">
@@ -4663,6 +4719,9 @@ body.companion-mode .companion-mode-banner { display: block; }
           </div>
           <div class="hex-reader-body"></div>
         </div>
+        <div class="notes-splitter" role="separator" aria-orientation="vertical"
+             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
           <p class="layer-section-label">Session Notes</p>
           <textarea class="layer-textarea" data-key="call.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
@@ -9890,7 +9949,7 @@ function openHexReader() {
 }
 
 function initHexReaders() {
-  // Top-level "Read Gene Key" toolbar action.
+  // Top-level "Hexagram Reader" toolbar action.
   const readBtn = document.getElementById('btn-read-gene-key');
   if (readBtn) readBtn.addEventListener('click', openHexReader);
 
@@ -9948,6 +10007,159 @@ function initHexReaders() {
 
   // Initial paint — always render once so the lock UI is visible
   refreshAllHexReaders();
+
+  // Wire the draggable gutter between each room's Hexagram Reader and
+  // its Session Notes.
+  initNotesSplitters();
+}
+
+// ============================================================
+// NOTES SPLITTER — horizontal resize between the Hexagram Reader
+// and the Session Notes (cOMpass Layer 1).
+// ============================================================
+// Mirrors the Studio room splitter: drag the gutter (or focus +
+// arrow keys) to set the reader's width. The gutter writes a px
+// value into --hex-reader-width on the .notes-with-reader grid —
+// the grid template already reads that variable, so the Session
+// Notes column takes whatever space is left. Narrowing the reader
+// hands more room to the notes. Width persists across reloads via
+// localStorage and is shared by all four rooms (one reading habit).
+// The gutter is hidden under the 860px breakpoint (layout stacks).
+function initNotesSplitters() {
+  'use strict';
+  var STORAGE_KEY = 'cu.compass.hexReaderWidth';
+  var MIN_READER = 240;   // px — reader never collapses below this
+  var MIN_NOTES  = 280;   // px — Session Notes never falls under this
+  var DEFAULT    = 380;   // px — matches the CSS default
+  var GUTTER     = 18;    // px — hit-pad width reserved in the clamp
+  var KEY_STEP   = 16;
+  var KEY_STEP_BIG = 64;
+
+  function isStacked() {
+    try { return window.matchMedia('(max-width: 860px)').matches; }
+    catch (_) { return window.innerWidth <= 860; }
+  }
+  function readStored() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var n = parseFloat(raw);
+      return isFinite(n) ? n : null;
+    } catch (_) { return null; }
+  }
+  function writeStored(px) {
+    try { window.localStorage.setItem(STORAGE_KEY, String(Math.round(px))); }
+    catch (_) {}
+  }
+  function clampWidth(px, container) {
+    if (!container) return px;
+    var rect = container.getBoundingClientRect();
+    // Reader max leaves the notes column at least MIN_NOTES plus the gutter.
+    var maxFromViewport = rect.width - MIN_NOTES - GUTTER;
+    var hardMax = Math.max(MIN_READER, maxFromViewport);
+    if (!isFinite(hardMax) || hardMax < MIN_READER) hardMax = MIN_READER;
+    return Math.max(MIN_READER, Math.min(hardMax, px));
+  }
+  function applyWidth(px, container, opts) {
+    opts = opts || {};
+    if (!container) return null;
+    var clamped = clampWidth(px, container);
+    container.style.setProperty('--hex-reader-width', clamped + 'px');
+    var splitter = container.querySelector('.notes-splitter');
+    if (splitter) splitter.setAttribute('aria-valuenow', String(Math.round(clamped)));
+    if (opts.persist) writeStored(clamped);
+    return clamped;
+  }
+  function currentReaderPx(container) {
+    var reader = container && container.querySelector('.hex-reader');
+    if (reader) {
+      var w = reader.getBoundingClientRect().width;
+      if (w > 0) return w;
+    }
+    return readStored() || DEFAULT;
+  }
+
+  function bindOne(container) {
+    var splitter = container.querySelector('.notes-splitter');
+    if (!splitter) return;
+
+    var dragState = null;
+    splitter.addEventListener('pointerdown', function (e) {
+      if (isStacked()) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      var rect = container.getBoundingClientRect();
+      // New reader width = pointer X - container left edge.
+      dragState = { pointerId: e.pointerId, leftEdge: rect.left };
+      splitter.classList.add('is-dragging');
+      document.body.style.cursor = 'col-resize';
+      try { splitter.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    });
+    splitter.addEventListener('pointermove', function (e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      applyWidth(e.clientX - dragState.leftEdge, container, { persist: false });
+    });
+    function endDrag(e) {
+      if (!dragState) return;
+      if (e && e.pointerId !== dragState.pointerId) return;
+      splitter.classList.remove('is-dragging');
+      document.body.style.cursor = '';
+      try { splitter.releasePointerCapture(dragState.pointerId); } catch (_) {}
+      dragState = null;
+      writeStored(currentReaderPx(container));
+    }
+    splitter.addEventListener('pointerup',     endDrag);
+    splitter.addEventListener('pointercancel', endDrag);
+
+    splitter.addEventListener('keydown', function (e) {
+      if (isStacked()) return;
+      var step = e.shiftKey ? KEY_STEP_BIG : KEY_STEP;
+      var current = currentReaderPx(container);
+      var next = null;
+      if (e.key === 'ArrowRight') next = current + step;   // grow reader
+      if (e.key === 'ArrowLeft')  next = current - step;   // shrink reader (more notes)
+      if (e.key === 'Home')       next = MIN_READER;
+      if (e.key === 'End')        next = clampWidth(99999, container);
+      if (e.key === 'Enter' || e.key === ' ') next = DEFAULT;
+      if (next == null) return;
+      e.preventDefault();
+      applyWidth(next, container, { persist: true });
+    });
+  }
+
+  var containers = document.querySelectorAll('.notes-with-reader');
+  if (!containers.length) return;
+
+  var stored = readStored();
+  containers.forEach(function (container) {
+    if (stored != null) applyWidth(stored, container, { persist: false });
+    bindOne(container);
+  });
+
+  // Re-clamp every container on resize so a stored width can't overlap
+  // after the viewport shrinks.
+  var resizeRaf = 0;
+  window.addEventListener('resize', function () {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(function () {
+      resizeRaf = 0;
+      if (isStacked()) return;
+      containers.forEach(function (container) {
+        applyWidth(currentReaderPx(container), container, { persist: false });
+      });
+    });
+  });
+
+  // Minimal hooks for tests / console QA.
+  window.CommonUnity = window.CommonUnity || {};
+  window.CommonUnity.notesSplitter = {
+    STORAGE_KEY: STORAGE_KEY,
+    MIN_READER:  MIN_READER,
+    MIN_NOTES:   MIN_NOTES,
+    apply:       function (px, el) { return applyWidth(px, el || document.querySelector('.notes-with-reader'), { persist: true }); },
+    current:     currentReaderPx,
+    clamp:       clampWidth
+  };
 }
 
 // ============================================================
