@@ -48,7 +48,9 @@ ok('OM Cipher title (italic Cipher) preserved',        /OM <em>Cipher<\/em>/.tes
 ok('eyebrow uses "Foundation · Source pattern"',       /Foundation · Source pattern/.test(src));
 ok('section lede explains distinction from Living Profile',
    /distinct from Living Profile/i.test(src));
-ok('"Edit source" affordance still present',           /data-lp-om-cipher-edit="1"/.test(src));
+ok('header links to cOMpass Setup (read-only source; no in-page editor)',
+   /class="lp-edit-btn lp-om-cipher-edit"[^>]*href="\/compass\?setup=1"/.test(src) &&
+   !/data-lp-om-cipher-edit/.test(src));
 
 console.log('\nreserved hero surfaces (cipher name, mantra, field pattern)');
 ok('cipher name surface present',                      /data-cu-om-cipher-name\b/.test(src));
@@ -110,13 +112,16 @@ ok('cipher seal hash surface present',                 /data-cu-om-cipher-seed\b
 ok('renderer paints seed (first 8 + last 4) into seal',
    /rec\.seed[\s\S]*\.slice\(0,\s*8\)/.test(src));
 
-console.log('\nsealed inputs (foundation) grid preserved');
+console.log('\nsealed inputs (foundation) grid preserved — read-only');
 ok('"Cipher Foundation" block label present (Rev 5: renamed from "Sealed inputs · editable")',
    /Cipher Foundation/.test(src));
 ok('lp-foundation-grid still rendered for source data',
    /lp-foundation-grid oc-foundation-grid/.test(src));
-ok('foundation items keep data-lp-edit click-to-edit',
-   /data-lp-edit="foundation"/.test(src));
+// Source-of-truth cleanup: cOMpass Setup is the sole authoritative editor
+// for birth date / time / place, so the Cipher Foundation grid is read-only
+// (no click-to-edit) and the header links to cOMpass Setup instead.
+ok('foundation items are read-only (no data-lp-edit click-to-edit)',
+   !/data-lp-edit="foundation"/.test(src));
 
 console.log('\nLayer 6 — deterministic mantra mirror');
 ok('renderer reads Layer-6 om_cipher_mantra from engine metadata',

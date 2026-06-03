@@ -9,7 +9,9 @@
 //      shapes: legal_name / preferred_name (name), birth_date,
 //      birth_time, birth_place. Older JSON aliases (birthdate, dob,
 //      birthplace, pob) still work.
-//   5. The minimal "Edit source" affordance is present and wired.
+//   5. The OM Cipher source data is read-only; the header carries a
+//      link to cOMpass Setup (the sole authoritative editor) rather
+//      than an in-page "Edit source" editor.
 //   6. The OM Cipher section carries a distinct background treatment
 //      (the .lp-om-cipher rule) so it reads as adjacent-but-distinct
 //      from the Living Profile foundation card.
@@ -55,15 +57,15 @@ console.log('\nbackward-compatible fallbacks still in place');
   ok('still reads ' + n, src.indexOf(n) !== -1);
 });
 
-console.log('\nedit affordance + birth_time label');
-ok('Edit source button present in OM Cipher header',
-  /data-lp-om-cipher-edit="1"/.test(src) && />Edit source</.test(src));
-ok('button wire-up exists',                             /data-lp-om-cipher-edit\]/.test(src));
+console.log('\ncOMpass Setup link (read-only source) + birth_time label');
+ok('header carries cOMpass Setup link (not an in-page editor)',
+  /class="lp-edit-btn lp-om-cipher-edit"[^>]*href="\/compass\?setup=1"/.test(src));
+ok('old "Edit source" in-page editor affordance is gone',
+  !/data-lp-om-cipher-edit/.test(src) && !/>Edit source</.test(src));
 ok('labelMap has birth_time entry',                     /birth_time:\s*'Birth time'/.test(src));
 
 console.log('\nvisual differentiation (subtle, not a redesign)');
 ok('.lp-om-cipher CSS rule present',                    /\.lp-om-cipher\s*\{/.test(src));
-ok('is-editing pulse class hooked up',                  /\.lp-om-cipher\.is-editing/.test(src));
 
 console.log('\nterminology / Pythagorean numerology');
 ok('gematria function name preserved',                  /function gematria\(/.test(src));
