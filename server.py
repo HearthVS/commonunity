@@ -1279,6 +1279,25 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Historical privacy scrub (idempotent). Before PR #73, invite lifecycle
+    # events wrote the invitee name/email into events.detail; that column is
+    # rendered verbatim in the shared admin metrics feed. New rows are written
+    # with detail='' (see admin_create_invite / admin_send_invite /
+    # admin_revoke_invite), but old rows persist. Blank the detail on the
+    # invite-related event types so no legacy contact identity survives in the
+    # events stream. Type / timestamp / invite_id / token live in their own
+    # columns and are left intact — admin resolves identity from the invites
+    # table behind admin auth, by id/token linkage. Runs on every connection
+    # but only touches rows that still carry a non-empty detail, so it is a
+    # cheap no-op once the backlog is clean.
+    conn.execute(
+        """
+        UPDATE events
+        SET detail = ''
+        WHERE detail <> ''
+          AND type IN ('invite_created', 'invite_email_sent', 'invite_revoked')
+        """
+    )
     conn.commit()
 
 
@@ -1286,6 +1305,36 @@ def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None
     return {key: row[key] for key in row.keys()}
+
+
+def _mask_token(token: str | None) -> str:
+    """Render a non-reversible reference to an invite/magic-link token for admin
+    display. Shows a short prefix + suffix so a human can distinguish/verify a
+    row against the raw token (held server-side) without the full secret being
+    exposed in the admin payload, panel DOM, or browser history. Short tokens
+    collapse to a fully-masked form so a tiny value can't be reconstructed."""
+    t = (token or "").strip()
+    if not t:
+        return ""
+    if len(t) <= 10:
+        return "•" * len(t)
+    return f"{t[:4]}…{t[-4:]}"
+
+
+def _invite_admin_row(row: sqlite3.Row | None) -> dict | None:
+    """Admin-facing invite projection. Carries the operational contact metadata
+    the admin needs (name/email/notes/status/timeline) but never the raw
+    `token`: the full token stays server-side for verification + revocation,
+    while the admin surface gets a masked reference plus a `token_present` flag.
+    The live magic link is fetched on explicit action via
+    GET /api/admin/invites/{id}/link, not bundled into the list payload."""
+    d = _row_to_dict(row)
+    if d is None:
+        return None
+    raw = d.pop("token", "") or ""
+    d["token_masked"] = _mask_token(raw)
+    d["token_present"] = bool(raw.strip())
+    return d
 
 
 # ── Token logging ─────────────────────────────────────────────────────────
@@ -2124,7 +2173,7 @@ async def admin_list_invites(request: Request):
             LIMIT 500
             """
         ).fetchall()
-    return {"invites": [_row_to_dict(row) for row in rows]}
+    return {"invites": [_invite_admin_row(row) for row in rows]}
 
 
 @app.post("/api/admin/invites")
@@ -2162,7 +2211,11 @@ async def admin_create_invite(request: Request, payload: InviteCreateRequest):
             (now, invite_id, token, request.headers.get("user-agent", "")[:320]),
         )
         row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
-    return {"invite": _row_to_dict(row)}
+    # Return the masked invite row (no raw token in the persisted-list shape)
+    # plus the freshly-minted magic link, built server-side, so the admin can
+    # copy it at creation time without the panel having to reconstruct it from
+    # a raw token field.
+    return {"invite": _invite_admin_row(row), "magic_link": _invite_magic_link(request, token)}
 
 
 @app.post("/api/admin/invites/{invite_id}/revoke")
@@ -2185,6 +2238,36 @@ async def admin_revoke_invite(invite_id: int, request: Request):
             (now, invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
         )
     return {"ok": True}
+
+
+@app.get("/api/admin/invites/{invite_id}/link")
+async def admin_invite_link(invite_id: int, request: Request):
+    """Reveal the full magic link for an invite on explicit admin action.
+
+    Token masking keeps the raw token out of the invite list payload; this
+    endpoint is the deliberate, per-invite path the admin uses to copy/open
+    the working link (e.g. for the "Copy link" button). The full token lives
+    server-side, so the link is reconstructed here rather than shipped in the
+    list. Revoked/expired invites have a dead link and are reported as such
+    instead of handing back a non-working URL."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="invite not found")
+    invite = _row_to_dict(row)
+    token = (invite.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=404, detail="invite has no token")
+    active = invite.get("status") == "active"
+    expires = (invite.get("expires_at") or "").strip()
+    if active and expires and expires < _now_iso():
+        active = False
+    return {
+        "magic_link": _invite_magic_link(request, token),
+        "status": invite.get("status") or "",
+        "active": active,
+    }
 
 
 @app.get("/api/admin/metrics")
@@ -3726,6 +3809,23 @@ async def acknowledge_feedback(feedback_id: int, request: Request):
         conn.execute(
             "UPDATE feedback SET status='acknowledged' WHERE id=?", (feedback_id,)
         )
+    return {"ok": True}
+
+
+@app.delete("/api/admin/feedback/{feedback_id}")
+async def delete_feedback(feedback_id: int, request: Request):
+    """Admin-only hard delete of a received feedback/comment record.
+
+    The feedback register is an operational inbox meant to be cleaned (e.g.
+    removing a stray test comment), and the table carries no soft-delete
+    column, so this removes the row outright. Scoped to a single id so it can
+    never affect unrelated records."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT id FROM feedback WHERE id=?", (feedback_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute("DELETE FROM feedback WHERE id=?", (feedback_id,))
     return {"ok": True}
 
 
