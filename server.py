@@ -1711,11 +1711,21 @@ def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None
     )
     msg.add_alternative(_invite_email_html(person_name, magic_link), subtype="html")
 
-    with smtplib.SMTP(host, port, timeout=20) as smtp:
-        if use_tls:
-            smtp.starttls()
-        smtp.login(user, password)
-        smtp.send_message(msg)
+    # Surface SMTP failures as a clean, admin-actionable error instead of an
+    # opaque 500. Critically, this function only returns normally when the mail
+    # server has accepted the message — any login/connection/recipient failure
+    # raises here, so the caller never records an `invite_email_sent` event or
+    # reports success for a delivery that did not happen.
+    try:
+        with smtplib.SMTP(host, port, timeout=20) as smtp:
+            if use_tls:
+                smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+    except smtplib.SMTPException as exc:
+        raise HTTPException(status_code=502, detail=f"Email could not be sent: {exc}")
+    except OSError as exc:
+        raise HTTPException(status_code=502, detail=f"Email server unreachable: {exc}")
 
 
 def _lookup_active_invite(token: str | None) -> dict | None:

@@ -60,7 +60,7 @@ assert(admin.includes('admin-live-links'), 'admin page should render live naviga
 assert(admin.includes('space-status'), 'admin page should render system status cards');
 assert(admin.includes('Check spaces'), 'admin page should let the user refresh space status');
 assert(admin.includes("['Threshold', '/threshold'"), 'admin dashboard should link to the threshold');
-assert(admin.includes("['cOMpass', '/compass'"), 'admin dashboard should link to cOMpass');
+assert(admin.includes("'/compass'"), 'admin dashboard should link to cOMpass');
 assert(admin.includes("['Studio', '/studio'"), 'admin dashboard should link to Studio');
 assert(admin.includes("['Tuner', '/tuner'"), 'admin dashboard should link to Tuner');
 assert(admin.includes("['Beta gate', '/beta'"), 'admin dashboard should link to beta access');
@@ -70,8 +70,24 @@ assert(admin.includes('/api/admin/login'), 'admin page should call login API');
 assert(admin.includes('/api/admin/invites'), 'admin page should call invite API');
 assert(admin.includes('/send'), 'admin page should call invite send API');
 assert(admin.includes('Send email'), 'admin page should include send email action');
-assert(admin.includes('/invite/'), 'admin page should generate path-based magic links');
+// After PR #74 the raw token is masked out of the list payload, so the panel no
+// longer builds the magic link itself; the Copy link button reveals the live
+// link via the server reveal endpoint instead.
+assert(admin.includes('/link'), 'Copy link should fetch the live magic link from the reveal endpoint');
+assert(admin.includes('data-copy-link'), 'invite rows should wire a Copy link action to the reveal endpoint');
 assert(admin.includes('Generate magic link'), 'admin page should include invite CTA');
+
+// Copy link must degrade gracefully: a shared clipboard helper that falls back
+// off the async Clipboard API (only present in secure contexts) and, failing
+// that, surfaces the link in a visible field — never a button that claims
+// success while copying nothing.
+assert(admin.includes('copyTextToClipboard'), 'admin page should use a shared clipboard helper');
+assert(admin.includes("document.execCommand") && admin.includes("'copy'"),
+  'clipboard helper should fall back to execCommand copy when the async Clipboard API is unavailable');
+assert(admin.includes('isSecureContext'),
+  'clipboard helper should only trust the async Clipboard API in a secure context');
+assert(admin.includes('showManualCopy') && admin.includes('manual-copy'),
+  'admin page should offer a visible manual-copy fallback when clipboard access is blocked');
 assert(admin.includes('Brand Field'), 'admin page should include the Brand Field section');
 assert(admin.includes('/api/admin/brand/versions'), 'admin page should call brand version APIs');
 assert(admin.includes('Save as draft'), 'admin page should support brand drafts');

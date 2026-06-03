@@ -934,6 +934,7 @@
               <button class="btn btn-primary" type="submit">Generate magic link</button>
             </form>
             <div class="message" id="invite-message"></div>
+            <div class="message hidden" id="manual-copy"></div>
           </div>
 
           <div class="panel card">
@@ -1292,6 +1293,61 @@
       } catch (err) {
         return { error: err.message || 'Unavailable' };
       }
+    }
+
+    // Copy text to the clipboard with graceful degradation. The async
+    // Clipboard API only exists in secure contexts (HTTPS/localhost) and can
+    // still reject (no document focus, permission denied). When it is missing
+    // or fails we fall back to a hidden <textarea> + execCommand('copy'), and
+    // if even that fails we surface the value in a visible, pre-selected field
+    // so the admin can copy it by hand instead of getting a button that lies
+    // about having copied. Returns true only when text actually reached the
+    // clipboard.
+    async function copyTextToClipboard(text) {
+      const value = String(text ?? '');
+      if (!value) return false;
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(value);
+          return true;
+        } catch (_) { /* fall through to execCommand */ }
+      }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) return true;
+      } catch (_) { /* fall through to manual reveal */ }
+      return false;
+    }
+
+    // Visible fallback: show the link in a read-only, pre-selected field so the
+    // admin can copy it manually when programmatic copy is unavailable.
+    function showManualCopy(label, text) {
+      const box = $('manual-copy');
+      if (!box) return;
+      box.innerHTML = '';
+      const heading = document.createElement('div');
+      heading.className = 'muted';
+      heading.textContent = `${label} — copy could not reach the clipboard automatically. Select and copy this link:`;
+      const field = document.createElement('textarea');
+      field.readOnly = true;
+      field.value = String(text ?? '');
+      field.rows = 2;
+      field.style.width = '100%';
+      box.appendChild(heading);
+      box.appendChild(field);
+      box.classList.remove('hidden');
+      field.focus();
+      field.select();
     }
 
     // ── Tab switching ──
@@ -1958,11 +2014,19 @@
           const res = await api(`/api/admin/invites/${copyLinkId}/link`);
           if (!res.active) {
             event.target.textContent = 'Link inactive';
+            $('invite-message').textContent = 'This invite is revoked or expired; its link no longer works.';
             setTimeout(() => { event.target.textContent = original; }, 1600);
-          } else {
-            await navigator.clipboard?.writeText(res.magic_link);
+          } else if (await copyTextToClipboard(res.magic_link)) {
+            $('manual-copy').classList.add('hidden');
             event.target.textContent = 'Copied';
+            $('invite-message').textContent = 'Magic link copied to clipboard.';
             setTimeout(() => { event.target.textContent = original; }, 1200);
+          } else {
+            // Clipboard blocked (e.g. non-secure context): hand the admin the
+            // link in a selectable field instead of falsely claiming success.
+            event.target.textContent = original;
+            $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
+            showManualCopy('Magic link', res.magic_link);
           }
         } catch (err) {
           event.target.textContent = original;
@@ -2043,9 +2107,14 @@
           })
         });
         const link = created.magic_link || '';
-        if (link) await navigator.clipboard?.writeText(link).catch(() => {});
+        const copied = link ? await copyTextToClipboard(link) : false;
         $('invite-form').reset();
-        $('invite-message').textContent = `Magic link created${navigator.clipboard ? ' and copied' : ''}: ${link}`;
+        $('invite-message').textContent = `Magic link created${copied ? ' and copied' : ''}: ${link}`;
+        if (link && !copied) {
+          showManualCopy('Magic link', link);
+        } else {
+          $('manual-copy').classList.add('hidden');
+        }
         await loadDashboard();
       } catch (err) {
         $('invite-message').textContent = err.message;
