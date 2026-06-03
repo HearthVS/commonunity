@@ -3096,6 +3096,32 @@ input, textarea { font: inherit; color: inherit; }
 }
 .studio-calc-results.visible { display: grid; }
 
+.studio-cipher-readonly-head {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.8;
+  margin-bottom: var(--space-2);
+}
+.studio-cipher-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  opacity: 0.85;
+  padding: var(--space-2) 0;
+}
+.studio-cipher-edit-link {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rose-color, #c4b5fd);
+  text-decoration: none;
+  opacity: 0.9;
+}
+.studio-cipher-edit-link:hover { opacity: 1; text-decoration: underline; }
+
 .studio-calc-result-item {
   background: color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, var(--card));
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 15%, var(--border));
@@ -6973,7 +6999,7 @@ input, textarea { font: inherit; color: inherit; }
       </button>
     </div>
 
-    <!-- Seed prompt — tap to expand name + calculator -->
+    <!-- Seed prompt — tap to expand name + read-only OM Cipher -->
     <button class="entrance-seed-btn" id="entrance-seed-btn">
       <span id="entrance-seed-label">Studio Setup ↓</span>
     </button>
@@ -6986,52 +7012,41 @@ input, textarea { font: inherit; color: inherit; }
         placeholder="What shall I call you?"
         autocomplete="off">
 
-      <!-- Gene Keys Calculator -->
+      <!-- OM Cipher (read-only consumer). cOMpass Setup is the authoritative
+           place to enter/correct birth data; Studio only displays the result. -->
       <div class="studio-calc-section">
-        <div class="studio-calc-toggle" id="studio-calc-toggle">
-          <span class="studio-calc-toggle-label">When did you take your first breath?</span>
-          <span class="studio-calc-toggle-hint" id="studio-calc-hint">↓</span>
-        </div>
-      <div class="studio-calc-body" id="studio-calc-body">
-        <div class="studio-calc-row">
-          <div class="studio-calc-field">
-            <label class="studio-calc-label">Date of birth</label>
-            <input class="studio-calc-input" id="studio-dob" type="date">
+        <div class="studio-cipher-readonly" id="studio-cipher-readonly">
+          <div class="studio-cipher-readonly-head">Your OM Cipher</div>
+          <div class="studio-calc-results" id="studio-calc-results">
+            <div class="studio-calc-result-item" id="s-gk-cs">
+              <span class="studio-calc-result-label">Life's Work</span>
+              <span class="studio-calc-result-point">The Work</span>
+              <span class="studio-calc-result-val">—</span>
+            </div>
+            <div class="studio-calc-result-item" id="s-gk-ce">
+              <span class="studio-calc-result-label">Evolution</span>
+              <span class="studio-calc-result-point">The Lens</span>
+              <span class="studio-calc-result-val">—</span>
+            </div>
+            <div class="studio-calc-result-item" id="s-gk-us">
+              <span class="studio-calc-result-label">Radiance</span>
+              <span class="studio-calc-result-point">The Field</span>
+              <span class="studio-calc-result-val">—</span>
+            </div>
+            <div class="studio-calc-result-item" id="s-gk-ue">
+              <span class="studio-calc-result-label">Purpose</span>
+              <span class="studio-calc-result-point">The Call</span>
+              <span class="studio-calc-result-val">—</span>
+            </div>
           </div>
-          <div class="studio-calc-field">
-            <label class="studio-calc-label">Time of birth</label>
-            <input class="studio-calc-input" id="studio-tob" type="time">
+          <div class="studio-cipher-empty" id="studio-cipher-empty">
+            Your OM Cipher hasn't been calculated yet.
           </div>
-        </div>
-        <div class="studio-calc-field">
-          <label class="studio-calc-label">Place of birth</label>
-          <input class="studio-calc-input" id="studio-pob" type="text" placeholder="City, Country…">
-        </div>
-        <button class="studio-calc-btn" id="studio-calc-btn">Activate my profile</button>
-        <div class="studio-calc-results" id="studio-calc-results" style="display:none !important;">
-          <div class="studio-calc-result-item" id="s-gk-cs">
-            <span class="studio-calc-result-label">Life's Work</span>
-            <span class="studio-calc-result-point">The Work</span>
-            <span class="studio-calc-result-val">—</span>
-          </div>
-          <div class="studio-calc-result-item" id="s-gk-ce">
-            <span class="studio-calc-result-label">Evolution</span>
-            <span class="studio-calc-result-point">The Lens</span>
-            <span class="studio-calc-result-val">—</span>
-          </div>
-          <div class="studio-calc-result-item" id="s-gk-us">
-            <span class="studio-calc-result-label">Radiance</span>
-            <span class="studio-calc-result-point">The Field</span>
-            <span class="studio-calc-result-val">—</span>
-          </div>
-          <div class="studio-calc-result-item" id="s-gk-ue">
-            <span class="studio-calc-result-label">Purpose</span>
-            <span class="studio-calc-result-point">The Call</span>
-            <span class="studio-calc-result-val">—</span>
-          </div>
+          <a class="studio-cipher-edit-link" id="studio-cipher-edit-link" href="/compass?setup=1">
+            Edit OM Cipher details in cOMpass Setup →
+          </a>
         </div>
       </div>
-    </div>
 
     </div><!-- /entrance-seed-panel -->
 
@@ -8498,20 +8513,7 @@ function showToast(msg, duration = 2500) {
 // (Reuses HD_GATE_WHEEL, dateToJD, jdToSolarLongitude, longitudeToGateLine from below)
 
 function initStudioCalculator() {
-  const toggle = document.getElementById('studio-calc-toggle');
-  const body   = document.getElementById('studio-calc-body');
-  const btn    = document.getElementById('studio-calc-btn');
   const nameEl = document.getElementById('studio-person-name');
-
-  if (toggle && body) {
-    toggle.addEventListener('click', () => {
-      body.classList.toggle('open');
-      toggle.querySelector('.studio-calc-toggle-hint').textContent =
-        body.classList.contains('open') ? 'Close ↑' : 'Calculate ↓';
-    });
-  }
-
-  if (btn) btn.addEventListener('click', studioCalcGeneKeys);
 
   // Restore saved name
   if (nameEl) {
@@ -8532,16 +8534,10 @@ function initStudioCalculator() {
     });
   }
 
-  // Restore calc fields if saved
-  if (state.birthData) {
-    const d = state.birthData;
-    if (d.dob && document.getElementById('studio-dob')) document.getElementById('studio-dob').value = d.dob;
-    if (d.tob && document.getElementById('studio-tob')) document.getElementById('studio-tob').value = d.tob;
-    if (d.pob && document.getElementById('studio-pob')) document.getElementById('studio-pob').value = d.pob;
-    if (d.calculated) {
-      restoreStudioCalcResults(d);
-    }
-  }
+  // Studio is a read-only consumer of the OM Cipher. cOMpass Setup is the
+  // authoritative editor; here we only display whatever GK profile the shared
+  // compass data already carries.
+  studioRenderCipherReadonly();
 }
 
 // Jean Meeus "Astronomical Algorithms" solar longitude method
@@ -8642,89 +8638,70 @@ function longitudeToGateLine(lon) {
   return { gate: 25, line: 1 };
 }
 
-function studioCalcGeneKeys() {
-  const dobVal = document.getElementById('studio-dob').value;
-  const tobVal = document.getElementById('studio-tob').value;
-  if (!dobVal) { showToast('Please enter a date of birth'); return; }
-
-  const timeStr = tobVal || '12:00';
-  const [yr, mo, dy] = dobVal.split('-').map(Number);
-  const [hr, mn]     = timeStr.split(':').map(Number);
-  const birthUTC = new Date(Date.UTC(yr, mo - 1, dy, hr, mn, 0));
-  if (isNaN(birthUTC.getTime())) { showToast('Invalid date/time'); return; }
-
-  const jdBirth  = dateToJD(birthUTC);
-  const csLon    = jdToSolarLongitude(jdBirth);
-  const csResult = longitudeToGateLine(csLon);
-  const ceLon    = (csLon + 180) % 360;
-  const ceResult = longitudeToGateLine(ceLon);
-  const usSunLon = ((csLon - 88) + 360) % 360;
-  const usResult = longitudeToGateLine(usSunLon);
-  const ueLon    = (usSunLon + 180) % 360;
-  const ueResult = longitudeToGateLine(ueLon);
-
-  // Save to state
-  state.birthData = {
-    dob: dobVal, tob: tobVal,
-    pob: document.getElementById('studio-pob')?.value || '',
-    calculated: true,
-    cs: csResult, ce: ceResult, us: usResult, ue: ueResult
-  };
-
-  // Also seed compassData with GK profile for rooms to use
-  if (!state.compassData) state.compassData = { points: { work:{}, lens:{}, field:{}, call:{} } };
-  if (!state.compassData.points) state.compassData.points = { work:{}, lens:{}, field:{}, call:{} };
-
-  // work=CS, lens=CE, field=US, call=UE
-  state.compassData.points.work.gk_num  = String(csResult.gate);
-  state.compassData.points.work.gk_line = String(csResult.line);
-  state.compassData.points.lens.gk_num  = String(ceResult.gate);
-  state.compassData.points.lens.gk_line = String(ceResult.line);
-  state.compassData.points.field.gk_num = String(usResult.gate);
-  state.compassData.points.field.gk_line= String(usResult.line);
-  state.compassData.points.call.gk_num  = String(ueResult.gate);
-  state.compassData.points.call.gk_line = String(ueResult.line);
-
-  if (state.person) state.compassData.companion = state.person;
-  saveState();
-
-  // Animate button
-  const btn = document.getElementById('studio-calc-btn');
-  if (btn) {
-    btn.classList.add('activating');
-    setTimeout(() => btn.classList.remove('activating'), 1000);
+// Read-only render of the OM Cipher in the Studio entrance. Studio does NOT
+// compute or edit birth data — cOMpass Setup is the authoritative editor and
+// writes the shared compass profile. Here we only display whatever GK profile
+// already exists in state.compassData.points (preferred) or, as a fallback,
+// a compass JSON import's state.birthData. When nothing is known yet we show
+// an empty state plus the link to cOMpass Setup.
+function studioCipherReadonlyPoints() {
+  const pts = state.compassData && state.compassData.points;
+  const out = {};
+  let any = false;
+  ['work', 'lens', 'field', 'call'].forEach((room) => {
+    const p = (pts && pts[room]) || {};
+    const gate = parseInt(p.gk_num, 10);
+    const line = parseInt(p.gk_line, 10);
+    if (Number.isFinite(gate) && gate > 0) {
+      out[room] = { gate, line: Number.isFinite(line) && line > 0 ? line : null };
+      any = true;
+    } else {
+      out[room] = null;
+    }
+  });
+  // Fallback to an imported birthData payload if compassData has no points.
+  if (!any && state.birthData && state.birthData.calculated) {
+    const bd = state.birthData;
+    const map = { work: bd.cs, lens: bd.ce, field: bd.us, call: bd.ue };
+    ['work', 'lens', 'field', 'call'].forEach((room) => {
+      const r = map[room];
+      if (r && Number.isFinite(r.gate)) {
+        out[room] = { gate: r.gate, line: r.line || null };
+        any = true;
+      }
+    });
   }
-
-  restoreStudioCalcResults(state.birthData);
-  showToast('Profile ready — your rooms are seeded');
-
-  // Close the seed panel — no results to show, rooms are populated
-  const panel = document.getElementById('entrance-seed-panel');
-  const label = document.getElementById('entrance-seed-label');
-  const seedBtn = document.getElementById('entrance-seed-btn');
-  if (panel) panel.classList.remove('open');
-  if (label) label.textContent = 'Studio Setup ↓';
-  if (seedBtn) { seedBtn.classList.add('seeded'); }
-
-  // Update Rose prompt with new context
-  // showRosePrompt() — removed, Nexus prompt not shown on entrance
+  return any ? out : null;
 }
 
-function restoreStudioCalcResults(d) {
-  if (!d || !d.cs) return;
+function studioRenderCipherReadonly() {
+  const points = studioCipherReadonlyPoints();
+  const results = document.getElementById('studio-calc-results');
+  const empty   = document.getElementById('studio-cipher-empty');
+
   function fmt(r) {
     const gk = GENE_KEYS[r.gate];
-    return 'GK ' + r.gate + ' · ' + (gk ? gk.gift : '?') + ' (Line ' + r.line + ')';
+    const lineStr = r.line ? ' (Line ' + r.line + ')' : '';
+    return 'GK ' + r.gate + ' · ' + (gk ? gk.gift : '?') + lineStr;
   }
-  const results = document.getElementById('studio-calc-results');
+
+  if (!points) {
+    if (results) results.classList.remove('visible');
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const idMap = [
+    ['s-gk-cs', 'work'],
+    ['s-gk-ce', 'lens'],
+    ['s-gk-us', 'field'],
+    ['s-gk-ue', 'call'],
+  ];
   if (results) {
     results.classList.add('visible');
-    [
-      ['s-gk-cs', d.cs],
-      ['s-gk-ce', d.ce],
-      ['s-gk-us', d.us],
-      ['s-gk-ue', d.ue],
-    ].forEach(([id, r], i) => {
+    idMap.forEach(([id, room], i) => {
+      const r = points[room];
       const el = document.getElementById(id);
       if (el && r) {
         el.querySelector('.studio-calc-result-val').textContent = fmt(r);
@@ -8733,22 +8710,14 @@ function restoreStudioCalcResults(d) {
     });
   }
 
-  // Update room tile GK numbers and badges with the calculated values
-  const tileMap = [
-    { room: 'work',  data: d.cs },
-    { room: 'lens',  data: d.ce },
-    { room: 'field', data: d.us },
-    { room: 'call',  data: d.ue },
-  ];
-  tileMap.forEach(({ room, data }) => {
-    if (!data) return;
-    const gate = data.gate;
-    // Badge circle
+  // Reflect the same gate numbers onto the room-chooser tiles (display only).
+  ['work', 'lens', 'field', 'call'].forEach((room) => {
+    const r = points[room];
+    if (!r) return;
     const badge = document.getElementById('rc-gk-' + room);
-    if (badge) badge.textContent = gate;
-    // Tag span
+    if (badge) badge.textContent = r.gate;
     const numSpan = document.querySelector('.rc-gk-num-' + room);
-    if (numSpan) numSpan.textContent = gate;
+    if (numSpan) numSpan.textContent = r.gate;
   });
 }
 
@@ -10098,8 +10067,8 @@ function studioLoadJSON(file) {
         // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
 
-      // Restore calc results if birth data present
-      if (state.birthData?.calculated) restoreStudioCalcResults(state.birthData);
+      // Re-render the read-only OM Cipher display from the imported profile.
+      studioRenderCipherReadonly();
 
       showToast('Studio session loaded — welcome back, ' + (state.person || 'explorer'));
 
