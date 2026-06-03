@@ -28,8 +28,9 @@ function ok(msg, cond) {
 }
 
 console.log('1. label rename — "Read Gene Key" → "Hexagram Reader"');
-ok('toolbar button labelled "Hexagram Reader"',
-   /id="btn-read-gene-key"[\s\S]{0,200}>\s*Hexagram Reader\s*</.test(src));
+// The redundant top-toolbar button was later removed (see
+// compass-ui-cleanup.test.js); the embedded locked-panel labels are the
+// surviving "Hexagram Reader" labels.
 ok('each reader\'s locked label reads "Hexagram Reader"',
    (src.match(/hex-reader-locked-label[\s\S]{0,80}Hexagram Reader/g) || []).length === 4);
 ok('no stale "Read Gene Key" label remains anywhere',
