@@ -3580,11 +3580,60 @@ async def om_cipher_visibility(member_id: str, body: OmCipherVisibilityInput):
 
 # ── Admin: OM Cipher members ──────────────────────────────────────────────────
 
+# An om_cipher_members row is the member's private OM Cipher identity. Almost
+# every column is personal: real/preferred name and legal_name, birth_date /
+# birth_time, the derived numerology (life_path, expression, soul_urge,
+# personality), Gene Keys (gk_gate/gk_line), Human Design (hd_type/authority/
+# profile), temporal placements (lunar_phase/solar_quarter), the om_cipher_seed,
+# the rendered sigil_svg, and full_record_json (the entire source record). None
+# of that is operationally required by the admin surface, so the admin
+# projection withholds all of it.
+#
+# Admin keeps only operational, non-identifying fields: the pseudonymous
+# member_id (a random UUID — the stable technical key, the members-table analog
+# of golden_thread's cipher_id), the operational visibility_tier flag, and
+# timestamps. The internal autoincrement row id is also surfaced for admin
+# reference. No email / invite_token columns exist on this table, so there is
+# no contact field to mask here.
+_OM_MEMBER_ADMIN_FIELDS = ("member_id", "visibility_tier", "created_at", "updated_at")
+
+
+def _om_admin_metadata(row: dict) -> dict:
+    """Project an om_cipher_members row to admin-visible operational metadata.
+
+    Deliberately omits every personal identity / OM Cipher profile field
+    (name, legal_name, birth_date, birth_time, numerology, Gene Keys, Human
+    Design, temporal placements, om_cipher_seed, sigil_svg, full_record_json).
+    Returns only the pseudonymous member_id, the visibility_tier operational
+    flag, and timestamps."""
+    return {
+        "id": row.get("id"),
+        "member_id": row.get("member_id") or "",
+        "visibility_tier": row.get("visibility_tier") or "",
+        "created_at": row.get("created_at") or "",
+        "updated_at": row.get("updated_at") or "",
+    }
+
+
 @app.get("/api/admin/members")
 async def admin_members(request: Request):
+    """Admin: operational metadata for OM Cipher members.
+
+    Privacy: admin sees ONLY non-identifying operational metadata — the
+    pseudonymous member_id, the visibility_tier flag, and timestamps. Personal
+    identity and OM Cipher profile fields (real/legal name, birth date/time,
+    numerology, Gene Keys, Human Design, om_cipher_seed, sigil, and the full
+    source record) are never included. Members read their own full record via
+    GET /api/om-cipher/{member_id}; that path is unchanged."""
     _require_admin(request)
-    members = _om_all()
-    return {"members": members, "total": len(members)}
+    rows = _om_all()
+    members = [_om_admin_metadata(r) for r in rows]
+    by_tier: dict[str, int] = {}
+    for m in members:
+        tier = m["visibility_tier"] or "unspecified"
+        by_tier[tier] = by_tier.get(tier, 0) + 1
+    summary = {"total": len(members), "by_visibility_tier": by_tier}
+    return {"members": members, "total": len(members), "summary": summary}
 
 
 # ── Admin: Waitlist ───────────────────────────────────────────────────────────

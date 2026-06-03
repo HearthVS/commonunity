@@ -1595,21 +1595,14 @@
       }
       $('members-empty').classList.add('hidden');
       $('member-grid').innerHTML = state.members.map((m, idx) => {
-        const name = m.name || 'Unnamed';
-        const tags = [];
-        if (m.hd_type) tags.push(m.hd_type);
-        if (m.visibility_tier) tags.push(m.visibility_tier);
-        const metaParts = [];
-        if (m.life_path) metaParts.push(`Life Path ${m.life_path}`);
-        if (m.expression) metaParts.push(`Expression ${m.expression}`);
-        if (m.gk_gate && m.gk_line) metaParts.push(`GK ${m.gk_gate}/${m.gk_line}`);
-        const sigil = m.sigil_svg
-          ? `<div class="member-sigil">${m.sigil_svg}</div>`
-          : `<div class="member-sigil" style="font-size:1.6rem;color:var(--faint);">◎</div>`;
+        // Privacy: admin sees only pseudonymous, operational metadata — no
+        // name, birth data, numerology, Gene Keys, Human Design, or sigil.
+        const ref = m.member_id || `#${m.id ?? '—'}`;
+        const shortRef = ref.length > 12 ? ref.slice(0, 12) + '…' : ref;
+        const tags = m.visibility_tier ? [m.visibility_tier] : [];
         return `<div class="member-card" data-member-idx="${idx}">
-          ${sigil}
-          <div class="member-name">${escapeHtml(name)}</div>
-          ${metaParts.length ? `<div class="member-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+          <div class="member-sigil" style="font-size:1.6rem;color:var(--faint);">◎</div>
+          <div class="member-name" style="font-family:monospace;font-size:0.86rem;">${escapeHtml(shortRef)}</div>
           ${tags.length ? `<div class="member-tags">${tags.map(t => `<span class="member-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
           <div style="font-size:0.76rem;color:var(--faint);">${date(m.created_at)}</div>
         </div>`;
@@ -1619,28 +1612,19 @@
     function openMemberModal(idx) {
       const m = state.members[idx];
       if (!m) return;
+      // Privacy: this modal shows only operational metadata. Personal identity
+      // and OM Cipher profile fields are not present in the admin response.
+      const ref = m.member_id || '—';
       const fields = [
-        ['Name', m.name || 'Unnamed'],
-        ['Birth date', m.birth_date || '—'],
-        ['Birth time', m.birth_time || '—'],
-        ['Life Path', m.life_path ? `${m.life_path}${m.life_path_label ? ' — ' + m.life_path_label : ''}` : '—'],
-        ['Expression', m.expression ?? '—'],
-        ['Soul Urge', m.soul_urge ?? '—'],
-        ['Personality', m.personality ?? '—'],
-        ['Gene Key', (m.gk_gate && m.gk_line) ? `Gate ${m.gk_gate} / Line ${m.gk_line}` : '—'],
-        ['HD type', m.hd_type || '—'],
-        ['HD authority', m.hd_authority || '—'],
-        ['HD profile', m.hd_profile || '—'],
-        ['Lunar phase', m.lunar_phase || '—'],
-        ['Solar quarter', m.solar_quarter || '—'],
+        ['Member ID', ref],
         ['Visibility tier', m.visibility_tier || '—'],
-        ['OM Cipher seed', m.om_cipher_seed ? m.om_cipher_seed.slice(0, 16) + '…' : '—'],
-        ['Member ID', m.id || '—'],
         ['Joined', date(m.created_at)],
+        ['Updated', date(m.updated_at)],
+        ['Row', m.id ?? '—'],
       ];
       $('modal-content').innerHTML = `
-        <h3 style="margin:0 0 4px;font-size:1.2rem;font-weight:520;">${escapeHtml(m.name || 'Unnamed')}</h3>
-        <p style="margin:0 0 4px;color:var(--faint);font-size:0.82rem;">Member record</p>
+        <h3 style="margin:0 0 4px;font-size:1.05rem;font-weight:520;font-family:monospace;">${escapeHtml(ref)}</h3>
+        <p style="margin:0 0 4px;color:var(--faint);font-size:0.82rem;">Operational metadata only — personal profile fields are not exposed to admin.</p>
         <dl class="modal-dl">
           ${fields.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v ?? '—'))}</dd>`).join('')}
         </dl>
