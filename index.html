@@ -5713,21 +5713,33 @@ function calcGeneKeys() {
   // Update SGS triads after auto-population
   setTimeout(updateAllSGSTriads, 300);
 
-  // Pre-fill GK numbers into facilitator panels (only if not already set)
+  // Explicit Calculate is authoritative for the room Gene Keys. The setup
+  // table above already updates unconditionally; the rooms used to be
+  // fill-only-if-blank, so correcting birth data and recalculating left the
+  // rooms (and the Hexagram Readers that read them) showing stale gates.
+  // On an explicit recalc we overwrite the room gk_num/gk_line from the fresh
+  // gates for every point. (Passive hydration paths stay blank-only — see
+  // hydrateHexReaderGatesFromProfile / autoPopulateGeneKeysFromState — so a
+  // recalc is the only thing that overwrites. For beta this also overwrites a
+  // manual room edit; a per-room "manual override" flag is a later enhancement.)
   const assignments = [
-    { point: 'work',  val: csResult.gate },
-    { point: 'lens',  val: ceResult.gate },
-    { point: 'field', val: usResult.gate },
-    { point: 'call',  val: ueResult.gate },
+    { point: 'work',  res: csResult },
+    { point: 'lens',  res: ceResult },
+    { point: 'field', res: usResult },
+    { point: 'call',  res: ueResult },
   ];
-  assignments.forEach(({ point, val }) => {
-    const numEl = document.getElementById(`${point}-gk-num`);
-    if (numEl && !state.points[point].gk_num) {
-      numEl.value = val;
-      state.points[point].gk_num = String(val);
-      lookupGK(point);
-    }
+  assignments.forEach(({ point, res }) => {
+    state.points[point].gk_num  = String(res.gate);
+    state.points[point].gk_line = String(res.line);
+    const numEl  = document.getElementById(`${point}-gk-num`);
+    const lineEl = document.getElementById(`${point}-gk-line`);
+    if (numEl)  numEl.value  = String(res.gate);
+    if (lineEl) lineEl.value = String(res.line);
+    lookupGK(point);
   });
+  // Push the fresh gates into the Hexagram Readers so they immediately show
+  // the recalculated Gene Keys instead of the previously loaded hexagram.
+  if (typeof refreshAllHexReaders === 'function') refreshAllHexReaders();
 
   // Setup screen → state.profile bridge. Guide name, place of birth,
   // and birth coordinates (resolved from POB via the vendored
