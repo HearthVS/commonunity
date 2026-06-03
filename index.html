@@ -3242,11 +3242,25 @@ body.companion-mode .companion-mode-banner { display: block; }
   padding: var(--space-4);
   border-bottom: 1px solid var(--border);
 }
+.compass-nexus-header-titlewrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .compass-nexus-header-title {
   font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+.compass-nexus-freq-cue {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.compass-nexus-freq-cue[hidden] {
+  display: none;
 }
 .compass-nexus-close {
   background: none;
@@ -4981,7 +4995,10 @@ body.companion-mode .companion-mode-banner { display: block; }
   <div class="compass-nexus-modal" id="compass-nexus-modal" role="dialog" aria-modal="true" aria-labelledby="compass-nexus-title">
     <div class="compass-nexus-panel">
       <div class="compass-nexus-header">
-        <span class="compass-nexus-header-title" id="compass-nexus-title">Nexus</span>
+        <span class="compass-nexus-header-titlewrap">
+          <span class="compass-nexus-header-title" id="compass-nexus-title">Nexus</span>
+          <span class="compass-nexus-freq-cue" id="compass-nexus-freq-cue" hidden></span>
+        </span>
         <button type="button" class="compass-nexus-close" id="compass-nexus-close" aria-label="Close Nexus">✕</button>
       </div>
       <div class="compass-nexus-convo" id="compass-nexus-convo">
@@ -7397,6 +7414,55 @@ function updateFreqUI(point, val) {
   thumb.style.background = color;
   label.textContent = FREQ_LABELS[val];
   label.style.color = color;
+}
+
+// Derive a frequency band + the next realistic attunement step from the
+// per-room slider (0-10). Returns null when the slider is unset (< 0) so
+// callers can omit frequency context entirely. The "next step" is always
+// ONE coherent move up the spectrum — never a leap to Siddhi from shadow —
+// so Nexus can meet the person where they are rather than always pushing
+// from shadow language.
+function compassFrequencyContext(point) {
+  const pt = state.points[point] || {};
+  const val = parseInt(pt.frequency, 10);
+  if (!(val >= 0) || val > 10) return null;
+
+  let band, band_label, next_target, guidance;
+  if (val <= 4) {
+    // Shadow range (0-4): toward the first Gift coherence, one notch up.
+    band = 'shadow';
+    band_label = 'Shadow';
+    const step = Math.min(val + 1, 5);
+    next_target = `Toward ${step}/10 — the first reachable step toward the Gift. Not the Siddhi yet.`;
+    guidance = 'Meet the contraction honestly without dwelling in it. Name the single nearest step toward the Gift (about one notch up). Do not leap to the Siddhi or imply they should already be there.';
+  } else if (val <= 7) {
+    // Gift, stabilising (5-7): help it become reliable and lived.
+    band = 'gift';
+    band_label = 'Gift';
+    next_target = `Toward ${val + 1}/10 — stabilise and deepen the Gift so it becomes reliable.`;
+    guidance = 'Help the Gift become steady and lived rather than occasional. Point to one concrete way to deepen it by about a notch. Do not pull them back into shadow language.';
+  } else if (val <= 9) {
+    // Gift, upper (8-9): refine toward Siddhi without inflation.
+    band = 'gift';
+    band_label = 'Gift';
+    next_target = `Toward ${val + 1}/10 — refine the Gift toward its Siddhi, without inflation.`;
+    guidance = 'Help refine the Gift toward the Siddhi. Watch for and gently name the risk of self-inflation or spiritual bypass. Do not flatter; keep it grounded.';
+  } else {
+    // Siddhi (10): ground it in ordinary action and service.
+    band = 'siddhi';
+    band_label = 'Siddhi';
+    next_target = 'Ground the Siddhi in ordinary action and service — no grandiosity.';
+    guidance = 'Help bring the Siddhi into ordinary, embodied action and service. Keep it humble and concrete; avoid grandiosity or abstraction.';
+  }
+
+  return {
+    value: val,
+    label: FREQ_LABELS[val] || String(val),
+    band,
+    band_label,
+    next_target,
+    guidance
+  };
 }
 
 function initFreqSliders() {
@@ -10305,11 +10371,27 @@ function compassNexusClearSession() {
   try { localStorage.removeItem(COMPASS_NEXUS_STORAGE_KEY); } catch(_) {}
 }
 
+// Light cue in the Nexus header showing the frequency it will reflect from,
+// e.g. "Nexus will reflect from: Gift — 8". Hidden when the slider is unset.
+function updateCompassNexusFreqCue() {
+  const cue = document.getElementById('compass-nexus-freq-cue');
+  if (!cue) return;
+  const fc = compassFrequencyContext(compassCurrentPoint());
+  if (fc) {
+    cue.textContent = `Nexus will reflect from: ${fc.label}`;
+    cue.hidden = false;
+  } else {
+    cue.textContent = '';
+    cue.hidden = true;
+  }
+}
+
 async function openCompassNexus() {
   const modal = document.getElementById('compass-nexus-modal');
   if (!modal) return;
   compassNexusState.isOpen = true;
   modal.classList.add('is-open');
+  updateCompassNexusFreqCue();
   // Load Golden Thread silently in the background
   compassLoadGoldenThread();
   const conv = document.getElementById('compass-nexus-convo');
@@ -10450,6 +10532,7 @@ async function sendCompassNexusMessage() {
 
   const ctx = compassNexusSeedContext();
   const hex = ctx.hexagram || {};
+  const fc = compassFrequencyContext(ctx.point);
   const hexJsonString = ctx.hexagram ? JSON.stringify(ctx.hexagram, null, 2).slice(0, 6000) : '';
 
   // Seed the system context with the full hexagram JSON, room name and
@@ -10504,6 +10587,11 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         companion: compassNexusAddress(),
         unity_code: (compassCipherIdentity() || {}).unity_code || '',
         cipher_id: (compassCipherIdentity() || {}).cipher_id || '',
+        frequency_value: fc ? fc.value : -1,
+        frequency_label: fc ? fc.label : '',
+        frequency_band: fc ? fc.band : '',
+        frequency_next: fc ? fc.next_target : '',
+        frequency_guidance: fc ? fc.guidance : '',
         golden_thread: compassNexusState.goldenThread.join('\n---\n')
       })
     });

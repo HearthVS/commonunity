@@ -2608,6 +2608,14 @@ class RoseMirrorRequest(BaseModel):
     companion: str = ""            # pseudonymous OM Cipher operating label (Unity Point)
     unity_code: str = ""           # functional pattern code, e.g. "UC-22.5"
     cipher_id: str = ""            # random, stable, non-identifying technical key
+    # Frequency state: where the person reports operating on this room's
+    # Gene Key spectrum (0-10). -1 = unset (omit). Used so Nexus meets them
+    # where they are and guides ONE coherent step up, not always from shadow.
+    frequency_value: int = -1      # raw slider 0..10 (-1 = unset)
+    frequency_label: str = ""      # e.g. "Gift — 8"
+    frequency_band: str = ""       # "shadow" | "gift" | "siddhi"
+    frequency_next: str = ""       # the next realistic attunement target
+    frequency_guidance: str = ""   # one-line instruction for meeting + nudging
     # New: cross-room context
     all_rooms_summary: str = ""   # all four rooms' recent material
     session_history: str = ""      # session log summary
@@ -2776,6 +2784,28 @@ async def rose_mirror(request: RoseMirrorRequest, req: Request):
     if request.all_rooms_summary:
         extended_context += f"\n\nMaterial across all rooms this session:\n{request.all_rooms_summary[:800]}"
 
+    # Frequency attunement: where this person reports operating on this room's
+    # Gene Key spectrum right now. Meet them there and guide ONE coherent step
+    # up — do not keep pushing from shadow if they are in the Gift, and do not
+    # leap to the Siddhi from the shadow range. -1 means unset (omit entirely).
+    frequency_section = ""
+    if request.frequency_value is not None and request.frequency_value >= 0:
+        band_label = (request.frequency_band or "").capitalize() or "their current"
+        freq_label = request.frequency_label or str(request.frequency_value)
+        frequency_section = (
+            f"\n\nFrequency attunement — this person reports operating at "
+            f"{freq_label} (band: {band_label}) on this Gene Key right now."
+        )
+        if request.frequency_next:
+            frequency_section += f"\nNext realistic step: {request.frequency_next}"
+        if request.frequency_guidance:
+            frequency_section += f"\n{request.frequency_guidance}"
+        frequency_section += (
+            "\nMeet them at this frequency and help them take ONE coherent step "
+            "upward toward greater coherence. Do not default to shadow language "
+            "if they are in the Gift, and do not jump straight to the Siddhi."
+        )
+
     # Choose base system prompt and assemble final system string
     is_studio = request.mode == "studio"
     base_prompt = STUDIO_SYSTEM if is_studio else NEXUS_SYSTEM
@@ -2789,6 +2819,7 @@ You are working with {request.companion or 'this person'} in {request.room_title
 {identity_note}
 
 {gk_profile}
+{frequency_section}
 {extended_context}
 {"Current project notes:" + chr(10) + request.session_notes[:800] if request.session_notes else ""}
 {"Workbench entries:" + chr(10) + request.workbench_entries[:600] if request.workbench_entries else ""}
@@ -2803,6 +2834,7 @@ You are currently in {request.room_title} — "{request.room_subtitle}" with {re
 {identity_note}
 
 {gk_profile}
+{frequency_section}
 {extended_context}
 {"Compass session material for this room:" + chr(10) + request.session_notes[:600] if request.session_notes else ""}
 {"Recent notepad entries in this room:" + chr(10) + request.workbench_entries[:500] if request.workbench_entries else ""}
