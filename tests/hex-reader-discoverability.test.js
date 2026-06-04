@@ -76,7 +76,7 @@ for (const p of POINTS) {
 
 console.log('\n4. the redundant top-toolbar entry point is removed');
 // The Hexagram Reader is now clear in the workflow (embedded beside the
-// Session Notes in every room), so the separate top-toolbar button was
+// Field Notes in every room), so the separate top-toolbar button was
 // removed. The embedded readers (asserted above) are the entry point.
 ok(!/id="btn-read-gene-key"/.test(index),
    'no #btn-read-gene-key toolbar button remains');

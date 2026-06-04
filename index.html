@@ -2879,13 +2879,13 @@ body.companion-mode .companion-mode-banner { display: block; }
 /* ── Hexagram Reader (Compass per-room panel) ─────────────────
    Locked behind activation code (HEXAGRAM_READER_CODE). Visual
    language matches existing Compass cards — no new design system.
-   The reader now sits beside the Session Notes (.notes-with-reader)
+   The reader now sits beside the Field Notes (.notes-with-reader)
    so the Gene Key can be read while notes are taken. */
 .notes-with-reader {
   /* Reader (left) | draggable gutter | notes (right). The reader track
      is user-resizable via the gutter; --hex-reader-width holds its px
      width and the notes column takes the remaining space. Drag the
-     gutter narrower to give the Session Notes more room. */
+     gutter narrower to give the Field Notes more room. */
   --hex-reader-width: 380px;
   display: grid;
   grid-template-columns: var(--hex-reader-width) 0 minmax(0, 1fr);
@@ -3506,7 +3506,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 
 /* ============================================================
-   SACRED MODE — shared chamber treatment (cOMpass Session Notes)
+   SACRED MODE — shared chamber treatment (cOMpass Field Notes)
    ------------------------------------------------------------
    Entering Sacred Mode should feel inward and aspirational — a
    contemplative chamber, not a warning. The writing surface stays
@@ -3571,7 +3571,7 @@ body.companion-mode .companion-mode-banner { display: block; }
   background: color-mix(in srgb, var(--sacred-accent) 12%, transparent);
 }
 /* Chamber: the card recedes; its inner content dims behind a soft veil
-   while the Session Notes textarea + sacred controls stay sharp/centred. */
+   while the Field Notes textarea + sacred controls stay sharp/centred. */
 .sacred-chamber-active {
   position: relative;
   isolation: isolate;
@@ -4116,11 +4116,11 @@ body.companion-mode .companion-mode-banner { display: block; }
           <div class="hex-reader-body"></div>
         </div>
         <div class="notes-splitter" role="separator" aria-orientation="vertical"
-             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             tabindex="0" aria-label="Resize Hexagram Reader and Field Notes"
              aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
-          <p class="layer-section-label">Session Notes <span class="qa-who" id="work-notes-who"></span></p>
-          <textarea class="layer-textarea" data-key="work.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+          <p class="layer-section-label">Field Notes <span class="qa-who" id="work-notes-who"></span></p>
+          <textarea class="layer-textarea" data-key="work.raw" placeholder="Live field notes, keywords, recurring themes…" rows="8"></textarea>
         </div>
       </div>
       <div class="qa-section">
@@ -4211,7 +4211,7 @@ body.companion-mode .companion-mode-banner { display: block; }
       <div class="l3-generate-bar">
         <div class="l3-generate-bar-text">
           <span class="l3-generate-label">Generate Website Copy</span>
-          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Session Notes or a completed Synthesis.</span>
+          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Field Notes or a completed Synthesis.</span>
         </div>
         <button class="btn-generate" id="l3-generate-work">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -4397,11 +4397,11 @@ body.companion-mode .companion-mode-banner { display: block; }
           <div class="hex-reader-body"></div>
         </div>
         <div class="notes-splitter" role="separator" aria-orientation="vertical"
-             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             tabindex="0" aria-label="Resize Hexagram Reader and Field Notes"
              aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
-          <p class="layer-section-label">Session Notes</p>
-          <textarea class="layer-textarea" data-key="lens.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+          <p class="layer-section-label">Field Notes</p>
+          <textarea class="layer-textarea" data-key="lens.raw" placeholder="Live field notes, keywords, recurring themes…" rows="8"></textarea>
         </div>
       </div>
       <div class="qa-section">
@@ -4490,7 +4490,7 @@ body.companion-mode .companion-mode-banner { display: block; }
       <div class="l3-generate-bar">
         <div class="l3-generate-bar-text">
           <span class="l3-generate-label">Generate Website Copy</span>
-          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Session Notes or a completed Synthesis.</span>
+          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Field Notes or a completed Synthesis.</span>
         </div>
         <button class="btn-generate" id="l3-generate-lens">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -4674,11 +4674,11 @@ body.companion-mode .companion-mode-banner { display: block; }
           <div class="hex-reader-body"></div>
         </div>
         <div class="notes-splitter" role="separator" aria-orientation="vertical"
-             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             tabindex="0" aria-label="Resize Hexagram Reader and Field Notes"
              aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
-          <p class="layer-section-label">Session Notes</p>
-          <textarea class="layer-textarea" data-key="field.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+          <p class="layer-section-label">Field Notes</p>
+          <textarea class="layer-textarea" data-key="field.raw" placeholder="Live field notes, keywords, recurring themes…" rows="8"></textarea>
         </div>
       </div>
       <div class="qa-section">
@@ -4767,7 +4767,7 @@ body.companion-mode .companion-mode-banner { display: block; }
       <div class="l3-generate-bar">
         <div class="l3-generate-bar-text">
           <span class="l3-generate-label">Generate Website Copy</span>
-          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Session Notes or a completed Synthesis.</span>
+          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Field Notes or a completed Synthesis.</span>
         </div>
         <button class="btn-generate" id="l3-generate-field">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -4951,11 +4951,11 @@ body.companion-mode .companion-mode-banner { display: block; }
           <div class="hex-reader-body"></div>
         </div>
         <div class="notes-splitter" role="separator" aria-orientation="vertical"
-             tabindex="0" aria-label="Resize Hexagram Reader and Session Notes"
+             tabindex="0" aria-label="Resize Hexagram Reader and Field Notes"
              aria-valuemin="240" aria-valuemax="720" aria-valuenow="380"></div>
         <div class="notes-col">
-          <p class="layer-section-label">Session Notes</p>
-          <textarea class="layer-textarea" data-key="call.raw" placeholder="Live session notes, keywords, recurring themes…" rows="8"></textarea>
+          <p class="layer-section-label">Field Notes</p>
+          <textarea class="layer-textarea" data-key="call.raw" placeholder="Live field notes, keywords, recurring themes…" rows="8"></textarea>
         </div>
       </div>
       <div class="qa-section">
@@ -5044,7 +5044,7 @@ body.companion-mode .companion-mode-banner { display: block; }
       <div class="l3-generate-bar">
         <div class="l3-generate-bar-text">
           <span class="l3-generate-label">Generate Website Copy</span>
-          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Session Notes or a completed Synthesis.</span>
+          <span class="l3-generate-hint">AI reads Layers 1 &amp; 2 and writes the baseline for this section. Requires at least 50 words in Field Notes or a completed Synthesis.</span>
         </div>
         <button class="btn-generate" id="l3-generate-call">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -5282,7 +5282,7 @@ body.companion-mode .companion-mode-banner { display: block; }
   ">
     <div>
       <p style="font-size:var(--text-base);font-weight:700;color:var(--text);margin-bottom:var(--space-2);">Reset this session?</p>
-      <p style="font-size:var(--text-sm);color:var(--text-muted);line-height:1.6;">This will permanently clear all session notes, synthesis, Layer 3 content, and imported transcripts for this companion. This cannot be undone.</p>
+      <p style="font-size:var(--text-sm);color:var(--text-muted);line-height:1.6;">This will permanently clear all field notes, synthesis, Layer 3 content, and imported transcripts for this companion. This cannot be undone.</p>
     </div>
     <div style="display:flex;gap:var(--space-3);justify-content:flex-end;">
       <button id="reset-cancel" class="btn-ghost">Cancel</button>
@@ -5723,7 +5723,7 @@ function bindDataKeys() {
     }
 
     el.addEventListener('input', () => {
-      // Sacred Mode guard: while the Session Notes surface for this point
+      // Sacred Mode guard: while the Field Notes surface for this point
       // is in Sacred Mode, the textarea holds the in-memory sacred buffer.
       // It must NOT be written into state.points[*].raw (and therefore must
       // never reach localStorage, JSON export, Nexus payloads, or Golden
@@ -5770,10 +5770,10 @@ function bindDataKeys() {
 }
 
 // ============================================================
-// SACRED MODE — cOMpass Session Notes
+// SACRED MODE — cOMpass Field Notes
 // ============================================================
 // Wires the shared Sacred Mode controller (sdk/sacred-mode.js) onto each
-// room's Session Notes textarea. The toggle + controls are injected so the
+// room's Field Notes textarea. The toggle + controls are injected so the
 // HTML stays identical across the four rooms and matches stUdio verbatim.
 //
 // Privacy contract (enforced together with the bindDataKeys input guard):
@@ -7400,7 +7400,7 @@ function init() {
   bindDataKeys();
 
   // Sacred Mode — wire the toggle/chamber/actions onto each room's
-  // Session Notes surface (must run after bindDataKeys so the textareas
+  // Field Notes surface (must run after bindDataKeys so the textareas
   // exist and their normal input listener is already attached).
   initSacredMode();
 
@@ -7657,11 +7657,11 @@ async function generateL3(point) {
   const hasL1 = (pt2.raw?.trim().split(/\s+/).filter(Boolean).length >= 50) ||
                 (pt2.qa_answers && Object.values(pt2.qa_answers).some(a => a?.trim().length > 10));
   if (!hasL1 && !hasL2) {
-    showToast('Add session notes or use the ✨ Inspire buttons in Layer 2 first — the output will be generic without them.', 5000);
+    showToast('Add field notes or use the ✨ Inspire buttons in Layer 2 first — the output will be generic without them.', 5000);
     return;
   }
   if (!hasL2) {
-    showToast('Layer 2 is empty — generating from session notes only. Use ✨ Inspire in Layer 2 for a richer result.', 4000);
+    showToast('Layer 2 is empty — generating from field notes only. Use ✨ Inspire in Layer 2 for a richer result.', 4000);
   }
 
   // UI: enter generating state
@@ -8793,7 +8793,7 @@ function updateNameLabels() {
   const guide     = state.guide     || 'Guide';
   const companion = state.companion || 'Companion';
 
-  // Session notes label on Work (others use default)
+  // Field notes label on Work (others use default)
   const workNotes = document.getElementById('work-notes-who');
   if (workNotes) workNotes.textContent = `— ${guide} & ${companion}`;
 
@@ -10407,7 +10407,7 @@ function escapeHtml(s) {
 }
 
 function initHexReaders() {
-  // The Hexagram Reader is embedded beside the Session Notes in each
+  // The Hexagram Reader is embedded beside the Field Notes in each
   // room's Layer 1, so the top toolbar no longer carries a separate
   // entry-point button.
 
@@ -10467,13 +10467,13 @@ function initHexReaders() {
   refreshAllHexReaders();
 
   // Wire the draggable gutter between each room's Hexagram Reader and
-  // its Session Notes.
+  // its Field Notes.
   initNotesSplitters();
 }
 
 // ============================================================
 // NOTES SPLITTER — horizontal resize between the Hexagram Reader
-// and the Session Notes (cOMpass Layer 1).
+// and the Field Notes (cOMpass Layer 1).
 // ============================================================
 // Mirrors the Studio room splitter: drag the gutter (or focus +
 // arrow keys) to set the reader's width. The gutter writes a px
@@ -10487,7 +10487,7 @@ function initNotesSplitters() {
   'use strict';
   var STORAGE_KEY = 'cu.compass.hexReaderWidth';
   var MIN_READER = 240;   // px — reader never collapses below this
-  var MIN_NOTES  = 280;   // px — Session Notes never falls under this
+  var MIN_NOTES  = 280;   // px — Field Notes never falls under this
   var DEFAULT    = 380;   // px — matches the CSS default
   var GUTTER     = 18;    // px — hit-pad width reserved in the clamp
   var KEY_STEP   = 16;

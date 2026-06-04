@@ -7,7 +7,7 @@
  *   2. The Nexus orb was a discreet, easy-to-miss corner glyph. It now carries a
  *      visible "Nexus" text label beside the glyph.
  *   3. The top toolbar no longer needs a "Hexagram Reader" entry point (it is
- *      clear in the workflow, embedded beside the Session Notes). The toolbar
+ *      clear in the workflow, embedded beside the Field Notes). The toolbar
  *      button + its now-unused openHexReader() handler are removed — but the
  *      embedded reader panels are untouched.
  *
@@ -68,7 +68,7 @@ const actionsSlice = src.slice(actionsStart, actionsEnd);
 ok('the compass toolbar carries no "Hexagram Reader" label',
    actionsStart > 0 && actionsEnd > actionsStart && !actionsSlice.includes('Hexagram Reader'));
 
-console.log('\n4. embedded Hexagram Reader panels are untouched (still beside Session Notes)');
+console.log('\n4. embedded Hexagram Reader panels are untouched (still beside Field Notes)');
 const readers = (src.match(/class="hex-reader" data-hex-reader="/g) || []).length;
 ok('four embedded .hex-reader blocks remain (one per room)', readers === 4);
 const wrappers = (src.match(/class="notes-with-reader"/g) || []).length;
