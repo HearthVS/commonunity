@@ -79,8 +79,8 @@ ok('frequency fields read from the per-room fc result',
    /frequency_band: fc \? fc\.band : ''/.test(roseSend));
 
 console.log('\n4. no pseudonymous-identity regression in the /rose-mirror payload');
-ok('payload still sends the pseudonymous Unity Point address',
-   /companion: compassNexusAddress\(\)/.test(roseSend));
+ok('payload routes identity through the centralized Nexus-safe builder',
+   /\.\.\.buildNexusSafeCipherContext\(\)/.test(roseSend));
 ok('payload does not send the full name raw',
    !/companion: state\.companion/.test(roseSend));
 ok('payload does not send the raw first name',
