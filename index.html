@@ -3504,6 +3504,112 @@ body.companion-mode .companion-mode-banner { display: block; }
   border-color: color-mix(in srgb, var(--text-muted,#888) 40%, transparent);
   color: var(--text-muted,#888);
 }
+
+/* ============================================================
+   SACRED MODE — shared chamber treatment (cOMpass Session Notes)
+   ------------------------------------------------------------
+   Entering Sacred Mode should feel inward and aspirational — a
+   contemplative chamber, not a warning. The writing surface stays
+   sharp and primary; the surrounding card softly recedes. Colour
+   harmonises with the user's OM Cipher palette (--cipher-primary /
+   --accent), never a warning hue.
+   ============================================================ */
+:root {
+  /* CommonUnity default sacred palette — used when no custom palette. */
+  --sacred-accent: var(--cipher-primary, var(--accent, #b9a4e8));
+  --sacred-veil:   color-mix(in srgb, var(--sacred-accent) 10%, rgba(13, 14, 28, 0.55));
+}
+.sacred-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: var(--text-xs, 0.78rem);
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.02em;
+}
+.sacred-toggle-input { accent-color: var(--sacred-accent); cursor: pointer; }
+.sacred-controls {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 7%, transparent);
+}
+.sacred-tagline {
+  margin: 0 0 4px;
+  font-size: var(--text-sm, 0.9rem);
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--sacred-accent) 70%, var(--text, #f1f5f9));
+}
+.sacred-subcopy {
+  margin: 0 0 4px;
+  font-size: var(--text-xs, 0.78rem);
+  line-height: 1.5;
+  color: var(--text-muted, #94a3b8);
+}
+.sacred-subcopy-hint { opacity: 0.85; }
+.sacred-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sacred-action {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 40%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--sacred-accent) 80%, var(--text, #f1f5f9));
+  font-size: var(--text-xs, 0.78rem);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.sacred-action:hover {
+  background: color-mix(in srgb, var(--sacred-accent) 16%, transparent);
+  border-color: var(--sacred-accent);
+}
+.sacred-action-offer {
+  border-color: color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 12%, transparent);
+}
+/* Chamber: the card recedes; its inner content dims behind a soft veil
+   while the Session Notes textarea + sacred controls stay sharp/centred. */
+.sacred-chamber-active {
+  position: relative;
+  isolation: isolate;
+  transition: background 0.4s ease;
+}
+.sacred-chamber-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, var(--sacred-accent) 14%, transparent) 0%,
+      var(--sacred-veil) 70%);
+  backdrop-filter: blur(7px) saturate(1.04);
+  -webkit-backdrop-filter: blur(7px) saturate(1.04);
+  pointer-events: none;
+  animation: sacred-veil-in 0.5s ease-out;
+}
+@keyframes sacred-veil-in { from { opacity: 0; } to { opacity: 1; } }
+/* Lift the notes column (textarea + controls) above the veil and keep it
+   crisp; everything else in the card recedes beneath the blur. */
+.sacred-chamber-active .notes-col {
+  position: relative;
+  z-index: 2;
+}
+.sacred-textarea-active {
+  position: relative;
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--sacred-accent) 45%, transparent) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sacred-accent) 22%, transparent),
+              0 0 44px -8px color-mix(in srgb, var(--sacred-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 5%, var(--bg, #0b1120)) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sacred-chamber-active::before { animation: none; }
+}
 </style>
 </head>
 
@@ -5200,6 +5306,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 <script>window.CU_OM_CIPHER_ENABLED = true;</script>
 <script src="/sdk/om_cipher_layer6_data.js"></script>
 <script src="/sdk/om_cipher.js"></script>
+<script src="/sdk/sacred-mode.js"></script>
 <script>
   // Preload the vendored city / timezone dataset so the OM Cipher
   // modal can resolve free-form birth-place strings (e.g. "Sudbury
@@ -5616,6 +5723,16 @@ function bindDataKeys() {
     }
 
     el.addEventListener('input', () => {
+      // Sacred Mode guard: while the Session Notes surface for this point
+      // is in Sacred Mode, the textarea holds the in-memory sacred buffer.
+      // It must NOT be written into state.points[*].raw (and therefore must
+      // never reach localStorage, JSON export, Nexus payloads, or Golden
+      // Thread). The sacred buffer lives only in sacred-mode.js until the
+      // user deliberately Saves as TXT or Offers it.
+      if (field === 'raw' && window.CommonUnitySacred &&
+          window.CommonUnitySacred.isActive('compass:' + point)) {
+        return;
+      }
       state.points[point][field] = el.value;
 
       // If GK num or line changed, update lookups
@@ -5649,6 +5766,85 @@ function bindDataKeys() {
     }
     // Initial lookup
     lookupGK(p);
+  });
+}
+
+// ============================================================
+// SACRED MODE — cOMpass Session Notes
+// ============================================================
+// Wires the shared Sacred Mode controller (sdk/sacred-mode.js) onto each
+// room's Session Notes textarea. The toggle + controls are injected so the
+// HTML stays identical across the four rooms and matches stUdio verbatim.
+//
+// Privacy contract (enforced together with the bindDataKeys input guard):
+//   - While ON, the textarea holds an in-memory sacred buffer that is never
+//     written to state.points[*].raw — so it cannot reach localStorage, the
+//     JSON export, the /inspire or /rose-mirror payloads, Golden Thread, or
+//     any admin endpoint.
+//   - "Offer to Nexus" sends ONLY the offered text (selection if any, else
+//     the whole field) as a deliberate, confirmed boundary crossing.
+function initSacredMode() {
+  if (!window.CommonUnitySacred) return;
+  POINTS.forEach(point => {
+    const textarea = document.querySelector(`.layer-textarea[data-key="${point}.raw"]`);
+    if (!textarea) return;
+    const notesCol = textarea.closest('.notes-col') || textarea.parentElement;
+    const card = textarea.closest('.compass-card') || notesCol;
+
+    // Build the toggle (a labelled checkbox) into the section label row.
+    const labelEl = notesCol.querySelector('.layer-section-label');
+    const toggleWrap = document.createElement('label');
+    toggleWrap.className = 'sacred-toggle';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'sacred-toggle-input';
+    toggle.id = `sacred-toggle-${point}`;
+    const toggleText = document.createElement('span');
+    toggleText.className = 'sacred-toggle-text';
+    toggleText.textContent = window.CommonUnitySacred.COPY.TOGGLE_LABEL;
+    toggleWrap.appendChild(toggle);
+    toggleWrap.appendChild(toggleText);
+    if (labelEl) labelEl.appendChild(toggleWrap);
+    else notesCol.insertBefore(toggleWrap, textarea);
+
+    // Controls container, rendered by the shared module, hidden until ON.
+    const controls = document.createElement('div');
+    controls.className = 'sacred-controls';
+    controls.id = `sacred-controls-${point}`;
+    notesCol.appendChild(controls);
+
+    window.CommonUnitySacred.attach({
+      surfaceId: 'compass:' + point,
+      textarea: textarea,
+      chamberEl: card,
+      toggleEl: toggle,
+      controlsEl: controls,
+      toast: (typeof showToast === 'function') ? (m => showToast(m)) : undefined,
+      onEnter: () => {
+        // Drop the room's normal note out of state while sacred is active so
+        // nothing already typed lingers in a payload path. The bindDataKeys
+        // guard prevents new sacred keystrokes from writing back.
+        if (state.points[point]) {
+          // Keep the normal note in state untouched (it is restored on exit);
+          // we simply stop persisting sacred keystrokes. No state mutation
+          // needed here — the guard handles writes — but we save to flush.
+        }
+      },
+      offerToNexus: (offered) => {
+        // Deliberate boundary crossing. Open Nexus and send ONLY the offered
+        // text as the user message. The seed's user_notes stays empty/normal
+        // (sacred text is not in pt.raw), so Nexus responds only to what was
+        // offered. We do NOT save the sacred text anywhere after offering.
+        try {
+          if (typeof openCompassNexus === 'function') openCompassNexus();
+          const input = document.getElementById('compass-nexus-input');
+          if (input) {
+            input.value = offered;
+            if (typeof sendCompassNexusMessage === 'function') sendCompassNexusMessage();
+          }
+        } catch (_) {}
+      }
+    });
   });
 }
 
@@ -7202,6 +7398,11 @@ function init() {
 
   // Data binding (must happen after dynamic lists are initialized)
   bindDataKeys();
+
+  // Sacred Mode — wire the toggle/chamber/actions onto each room's
+  // Session Notes surface (must run after bindDataKeys so the textareas
+  // exist and their normal input listener is already attached).
+  initSacredMode();
 
   // Restore setup fields
   document.getElementById('guide-name').value     = state.guide    || '';
