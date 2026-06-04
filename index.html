@@ -10744,12 +10744,32 @@ function compassCipherIdentity() {
 }
 
 // The label Nexus/Claude should address the user by: the Unity Point when a
-// gate is known, otherwise fall back to the minimized first name (never the
-// full legal name).
+// gate is known. NEVER the real-world / first name — when no gate is known yet
+// we fall back to a neutral pseudonym, not compassNexusIdentity() (which
+// derives from state.companion / the legal name). See
+// buildNexusSafeCipherContext below.
+const COMPASS_NEXUS_NEUTRAL_ADDRESS = 'this Cipher';
 function compassNexusAddress() {
   const ci = compassCipherIdentity();
   if (ci && ci.unity_point) return ci.unity_point;
-  return compassNexusIdentity();
+  if (ci && ci.unity_code)  return ci.unity_code;
+  return COMPASS_NEXUS_NEUTRAL_ADDRESS;
+}
+
+// Centralized Nexus-safe identity/context builder (cOMpass). Returns ONLY the
+// derived / pseudonymous fields allowed to leave the browser for Nexus/Claude:
+// the pseudonymous address (Unity Point), the functional unity_code, and the
+// random non-identifying cipher_id. Source identity (name/email/birth/seed/
+// full record) is never read here. compassNexusIdentity() (the real first name)
+// survives ONLY as the local Golden Thread back-compat lookup key — it is never
+// placed in a Nexus payload.
+function buildNexusSafeCipherContext() {
+  const ci = compassCipherIdentity() || {};
+  return {
+    companion: compassNexusAddress(),
+    unity_code: ci.unity_code || '',
+    cipher_id: ci.cipher_id || ''
+  };
 }
 
 async function compassLoadGoldenThread() {
@@ -11036,9 +11056,9 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         session_notes: seed,
         workbench_entries: '',
         history: compassNexusState.history.slice(-8),
-        companion: compassNexusAddress(),
-        unity_code: (compassCipherIdentity() || {}).unity_code || '',
-        cipher_id: (compassCipherIdentity() || {}).cipher_id || '',
+        // Pseudonymous OM Cipher identity only. Source identity
+        // (name/email/birth/seed/full record) never leaves here.
+        ...buildNexusSafeCipherContext(),
         frequency_value: fc ? fc.value : -1,
         frequency_label: fc ? fc.label : '',
         frequency_band: fc ? fc.band : '',

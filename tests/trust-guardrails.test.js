@@ -125,21 +125,33 @@ ok(/function compassNexusAddress\(\)/.test(index) &&
 // Scope the check to the /rose-mirror send so unrelated endpoints (e.g.
 // /search) that legitimately carry the full companion are not flagged.
 const roseSend = (index.match(/fetch\(`\$\{API_BASE\}\/rose-mirror`[\s\S]*?golden_thread:/) || [''])[0];
-ok(/companion: compassNexusAddress\(\)/.test(roseSend),
-   'the /rose-mirror payload sends the pseudonymous Unity Point address');
+// The identity fields are now assembled by the centralized Nexus-safe builder
+// and spread into the payload, so the payload must carry that spread.
+ok(/\.\.\.buildNexusSafeCipherContext\(\)/.test(roseSend),
+   'the /rose-mirror payload spreads the centralized Nexus-safe cipher context');
 ok(!/companion: state\.companion/.test(roseSend),
    'the /rose-mirror payload no longer sends the full name raw to the AI');
 ok(!/companion: compassNexusIdentity\(\)/.test(roseSend),
    'the /rose-mirror payload no longer sends the raw first name to the AI');
+// The builder + address resolve to the pseudonymous Unity Point and NEVER fall
+// back to the real first name (compassNexusIdentity) when no gate is known.
+const compassAddrFn = (index.match(/function compassNexusAddress\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/unity_point/.test(compassAddrFn) && !/compassNexusIdentity\(\)/.test(compassAddrFn),
+   'compassNexusAddress resolves to the Unity Point and never the real first name');
+const compassSafeFn = (index.match(/function buildNexusSafeCipherContext\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/companion: compassNexusAddress\(\)/.test(compassSafeFn),
+   'compass buildNexusSafeCipherContext addresses by the pseudonymous Unity Point');
 
 ok(/function studioNexusAddress\(\)/.test(studio) &&
    /function studioCipherIdentity\(\)/.test(studio),
    'Studio exposes the Unity Point address + cipher identity helpers');
-ok(/companion: studioNexusAddress\(\)/.test(studio),
-   'Studio AI payloads send the pseudonymous Unity Point address');
-// Both Studio AI payloads (rose-room-opening + rose-mirror) must be pseudonymous.
-ok((studio.match(/companion: studioNexusAddress\(\)/g) || []).length >= 2,
-   'both Studio AI payloads send the pseudonymous Unity Point address');
+// Both Studio AI payloads (rose-room-opening + rose-mirror) route identity
+// through the centralized builder.
+ok((studio.match(/\.\.\.buildNexusSafeCipherContext\(\)/g) || []).length >= 2,
+   'both Studio AI payloads spread the centralized Nexus-safe cipher context');
+const studioAddrFn = (studio.match(/function studioNexusAddress\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/unity_point/.test(studioAddrFn) && !/studioNexusIdentity\(\)/.test(studioAddrFn),
+   'studioNexusAddress resolves to the Unity Point and never the real first name');
 
 console.log('\n8. the pseudonymous OM Cipher identity has superseded the interim');
 // The interim first-name TODO is gone; the server now documents the

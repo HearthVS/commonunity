@@ -147,8 +147,14 @@ console.log('\n7. cOMpass sends the Unity Point (not name) to the AI');
 ok(/function compassCipherIdentity\(\)/.test(index), 'compassCipherIdentity helper exists');
 ok(/function compassNexusAddress\(\)/.test(index), 'compassNexusAddress helper exists');
 const roseSend = (index.match(/fetch\(`\$\{API_BASE\}\/rose-mirror`[\s\S]*?golden_thread:/) || [''])[0];
-ok(/companion: compassNexusAddress\(\)/.test(roseSend), '/rose-mirror sends compassNexusAddress()');
-ok(/unity_code:/.test(roseSend) && /cipher_id:/.test(roseSend), '/rose-mirror carries unity_code + cipher_id');
+ok(/\.\.\.buildNexusSafeCipherContext\(\)/.test(roseSend),
+   '/rose-mirror spreads the centralized Nexus-safe cipher context');
+// The safe builder is what now carries companion (Unity Point) + unity_code + cipher_id.
+const safeFn = (index.match(/function buildNexusSafeCipherContext\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/companion: compassNexusAddress\(\)/.test(safeFn),
+   'buildNexusSafeCipherContext addresses by compassNexusAddress() (Unity Point)');
+ok(/unity_code:/.test(safeFn) && /cipher_id:/.test(safeFn),
+   'buildNexusSafeCipherContext carries unity_code + cipher_id');
 ok(!/companion: state\.companion/.test(roseSend), 'no raw full name in the /rose-mirror payload');
 ok(!/active_cipher_version|cipher_visual/.test(roseSend),
    '/rose-mirror is NOT coupled to the visual Cipher version (stable identity only)');
@@ -160,10 +166,16 @@ ok(/cipher_id:/.test(gtSave) && /unity_point:/.test(gtSave),
 console.log('\n8. Studio sends the Unity Point (not name) to the AI');
 ok(/function studioCipherIdentity\(\)/.test(studio), 'studioCipherIdentity helper exists');
 ok(/function studioNexusAddress\(\)/.test(studio), 'studioNexusAddress helper exists');
-ok((studio.match(/companion: studioNexusAddress\(\)/g) || []).length >= 2,
-   'both Studio AI payloads send studioNexusAddress()');
-ok((studio.match(/unity_code: \(studioCipherIdentity\(\) \|\| \{\}\)\.unity_code/g) || []).length >= 2,
-   'both Studio AI payloads carry unity_code');
+// Both Studio AI payloads now route identity through the centralized
+// Nexus-safe builder, which carries companion (Unity Point) + unity_code +
+// cipher_id and is the single seam where identity minimization is enforced.
+ok((studio.match(/\.\.\.buildNexusSafeCipherContext\(\)/g) || []).length >= 2,
+   'both Studio AI payloads spread buildNexusSafeCipherContext()');
+const studioSafeFn = (studio.match(/function buildNexusSafeCipherContext\(\)[\s\S]*?\n\}/) || [''])[0];
+ok(/companion: studioNexusAddress\(\)/.test(studioSafeFn),
+   'studio buildNexusSafeCipherContext addresses by studioNexusAddress() (Unity Point)');
+ok(/unity_code:/.test(studioSafeFn) && /cipher_id:/.test(studioSafeFn),
+   'studio buildNexusSafeCipherContext carries unity_code + cipher_id');
 
 console.log('\n9. server carries the cipher fields + names the operational identity');
 ok(/class RoseMirrorRequest[\s\S]*?unity_code: str = ""[\s\S]*?cipher_id: str = ""/.test(server),
