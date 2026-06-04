@@ -3519,18 +3519,79 @@ body.companion-mode .companion-mode-banner { display: block; }
   --sacred-accent: var(--cipher-primary, var(--accent, #b9a4e8));
   --sacred-veil:   color-mix(in srgb, var(--sacred-accent) 10%, rgba(13, 14, 28, 0.55));
 }
-.sacred-toggle {
+/* Header row: "Field Notes" stays left, the Sacred Mode pill justifies right.
+   Both surfaces normalise to the same label type so the pair feels harmonious. */
+.sacred-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+}
+/* Refined pill toggle — replaces the raw checkbox. The real checkbox is
+   visually hidden (kept for behaviour/focus); the pill + dot carry the state. */
+.sacred-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
+  gap: 7px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 6%, transparent);
   font-size: var(--text-xs, 0.78rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
   color: var(--text-muted, #94a3b8);
   cursor: pointer;
   user-select: none;
-  letter-spacing: 0.02em;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
-.sacred-toggle-input { accent-color: var(--sacred-accent); cursor: pointer; }
+.sacred-pill:hover {
+  border-color: color-mix(in srgb, var(--sacred-accent) 55%, transparent);
+  color: color-mix(in srgb, var(--sacred-accent) 85%, var(--text, #f1f5f9));
+}
+.sacred-pill-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sacred-pill-input:focus-visible + .sacred-pill-dot {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sacred-accent) 55%, transparent);
+}
+.sacred-pill-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  flex: none;
+  border: 1.5px solid color-mix(in srgb, var(--sacred-accent) 50%, transparent);
+  background: transparent;
+  position: relative;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.sacred-pill-text { line-height: 1; }
+/* ON state — filled dot with a soft glow + a check, pill warms to the palette. */
+.sacred-pill-active {
+  border-color: color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--sacred-accent) 90%, var(--text, #f1f5f9));
+}
+.sacred-pill-active .sacred-pill-dot {
+  background: var(--sacred-accent);
+  border-color: var(--sacred-accent);
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+}
+.sacred-pill-active .sacred-pill-dot::after {
+  content: "";
+  position: absolute;
+  left: 4.5px; top: 1.5px;
+  width: 3px; height: 6px;
+  border: solid var(--bg, #0b1120);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
 .sacred-controls {
   margin-top: 10px;
   padding: 12px 14px;
@@ -5791,21 +5852,24 @@ function initSacredMode() {
     const notesCol = textarea.closest('.notes-col') || textarea.parentElement;
     const card = textarea.closest('.compass-card') || notesCol;
 
-    // Build the toggle (a labelled checkbox) into the section label row.
+    // Build the shared Sacred Mode pill and lay out the header so "Field
+    // Notes" stays left and the pill justifies right (consistent with stUdio).
     const labelEl = notesCol.querySelector('.layer-section-label');
-    const toggleWrap = document.createElement('label');
-    toggleWrap.className = 'sacred-toggle';
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.className = 'sacred-toggle-input';
-    toggle.id = `sacred-toggle-${point}`;
-    const toggleText = document.createElement('span');
-    toggleText.className = 'sacred-toggle-text';
-    toggleText.textContent = window.CommonUnitySacred.COPY.TOGGLE_LABEL;
-    toggleWrap.appendChild(toggle);
-    toggleWrap.appendChild(toggleText);
-    if (labelEl) labelEl.appendChild(toggleWrap);
-    else notesCol.insertBefore(toggleWrap, textarea);
+    const built = window.CommonUnitySacred.buildToggle(point);
+    const toggle = built.input;
+    if (labelEl) {
+      // Group the existing label text (+ qa-who marker) so the header has
+      // exactly two flex children: the label on the left, the pill on the
+      // right (space-between keeps them apart cleanly).
+      const labelText = document.createElement('span');
+      labelText.className = 'sacred-notes-label';
+      while (labelEl.firstChild) labelText.appendChild(labelEl.firstChild);
+      labelEl.appendChild(labelText);
+      labelEl.classList.add('sacred-notes-header');
+      labelEl.appendChild(built.wrap);
+    } else {
+      notesCol.insertBefore(built.wrap, textarea);
+    }
 
     // Controls container, rendered by the shared module, hidden until ON.
     const controls = document.createElement('div');

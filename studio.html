@@ -6831,17 +6831,71 @@ input, textarea { font: inherit; color: inherit; }
   --sacred-accent: var(--accent-color, var(--setup-accent, #b9a4e8));
   --sacred-veil:   color-mix(in srgb, var(--sacred-accent) 10%, rgba(13, 14, 28, 0.55));
 }
-.sacred-toggle {
+/* Header row already uses justify-content: space-between (see .notepad-header),
+   so the pill sits to the right of the "Field Notes" label. Normalise the pill
+   type to sit harmoniously with the label. */
+.sacred-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 6%, transparent);
   font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-muted, #94a3b8);
   cursor: pointer;
   user-select: none;
-  letter-spacing: 0.02em;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
-.sacred-toggle-input { accent-color: var(--sacred-accent); cursor: pointer; }
+.sacred-pill:hover {
+  border-color: color-mix(in srgb, var(--sacred-accent) 55%, transparent);
+  color: color-mix(in srgb, var(--sacred-accent) 85%, var(--text, #f1f5f9));
+}
+.sacred-pill-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sacred-pill-input:focus-visible + .sacred-pill-dot {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sacred-accent) 55%, transparent);
+}
+.sacred-pill-dot {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  flex: none;
+  border: 1.5px solid color-mix(in srgb, var(--sacred-accent) 50%, transparent);
+  background: transparent;
+  position: relative;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.sacred-pill-text { line-height: 1; }
+.sacred-pill-active {
+  border-color: color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--sacred-accent) 90%, var(--text, #f1f5f9));
+}
+.sacred-pill-active .sacred-pill-dot {
+  background: var(--sacred-accent);
+  border-color: var(--sacred-accent);
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+}
+.sacred-pill-active .sacred-pill-dot::after {
+  content: "";
+  position: absolute;
+  left: 4px; top: 1px;
+  width: 3px; height: 6px;
+  border: solid var(--bg, #0b1120);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
 .sacred-controls {
   margin-top: 10px;
   padding: 12px 14px;
@@ -6904,8 +6958,12 @@ input, textarea { font: inherit; color: inherit; }
   animation: sacred-veil-in 0.5s ease-out;
 }
 @keyframes sacred-veil-in { from { opacity: 0; } to { opacity: 1; } }
-.sacred-chamber-active .notepad-textarea,
-.sacred-chamber-active .notepad-header { position: relative; z-index: 2; }
+/* Lift the whole notepad surface above the veil so the writing space stays
+   sharp/centred; the room's other columns (Archive, Nexus) recede beneath the
+   blur — mirroring cOMpass, where the card recedes and only .notes-col stays
+   crisp. */
+.sacred-chamber-active .notepad-surface,
+.sacred-chamber-active .room-workbench { position: relative; z-index: 2; }
 .sacred-textarea-active {
   position: relative;
   z-index: 2;
@@ -10591,23 +10649,18 @@ function initStudioSacredMode() {
   if (!textarea) return;
   const surface = textarea.closest('.notepad-surface') || textarea.parentElement;
   const header = surface ? surface.querySelector('.notepad-header') : null;
+  // Chamber: dim/blur the whole room (archive + Nexus + notepad chrome) while
+  // keeping the notepad surface sharp — same recede behaviour as cOMpass,
+  // where the card recedes and only the notes column stays crisp.
+  const chamber = (surface && surface.closest('.room-body')) || surface;
 
-  // Toggle (labelled checkbox) goes into the notepad header actions.
-  const toggleWrap = document.createElement('label');
-  toggleWrap.className = 'sacred-toggle';
-  const toggle = document.createElement('input');
-  toggle.type = 'checkbox';
-  toggle.className = 'sacred-toggle-input';
-  toggle.id = 'sacred-toggle-field-notes';
-  const toggleText = document.createElement('span');
-  toggleText.className = 'sacred-toggle-text';
-  toggleText.textContent = window.CommonUnitySacred.COPY.TOGGLE_LABEL;
-  toggleWrap.appendChild(toggle);
-  toggleWrap.appendChild(toggleText);
+  // Build the shared Sacred Mode pill into the header actions (justifies right).
+  const built = window.CommonUnitySacred.buildToggle('field-notes');
+  const toggle = built.input;
   const actions = header ? header.querySelector('.notepad-actions') : null;
-  if (actions) actions.insertBefore(toggleWrap, actions.firstChild);
-  else if (header) header.appendChild(toggleWrap);
-  else surface.insertBefore(toggleWrap, textarea);
+  if (actions) actions.insertBefore(built.wrap, actions.firstChild);
+  else if (header) header.appendChild(built.wrap);
+  else surface.insertBefore(built.wrap, textarea);
 
   const controls = document.createElement('div');
   controls.className = 'sacred-controls';
@@ -10619,7 +10672,7 @@ function initStudioSacredMode() {
   window.CommonUnitySacred.attach({
     surfaceId: 'studio:field-notes',
     textarea: textarea,
-    chamberEl: surface,
+    chamberEl: chamber,
     toggleEl: toggle,
     controlsEl: controls,
     toast: (typeof showToast === 'function') ? (m => showToast(m)) : undefined,

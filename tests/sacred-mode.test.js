@@ -95,6 +95,20 @@ ok('exposes COPY, isActive, attach, sacredFilename, downloadTxt',
    typeof SACRED.attach === 'function' && typeof SACRED.sacredFilename === 'function' &&
    typeof SACRED.downloadTxt === 'function');
 
+console.log('\n1b. buildToggle — refined pill, not a raw checkbox');
+ok('exposes buildToggle', typeof SACRED.buildToggle === 'function');
+const builtTog = SACRED.buildToggle('demo');
+ok('returns { wrap, input }', builtTog && builtTog.wrap && builtTog.input);
+ok('wrap is the pill label (.sacred-pill)',
+   (builtTog.wrap.className || '').indexOf('sacred-pill') !== -1);
+ok('input is a real checkbox (behaviour/host wiring preserved)',
+   builtTog.input.tagName === 'INPUT' && builtTog.input.className.indexOf('sacred-pill-input') !== -1);
+ok('pill carries an indicator dot + the shared label text',
+   builtTog.wrap.children.some(c => (c.className || '').indexOf('sacred-pill-dot') !== -1) &&
+   builtTog.wrap.children.some(c => (c.className || '').indexOf('sacred-pill-text') !== -1 &&
+     c.textContent === SACRED.COPY.TOGGLE_LABEL));
+ok('input id uses the suffix', builtTog.input.id === 'sacred-toggle-demo');
+
 console.log('\n2. Save as TXT — filename + content');
 const fname = SACRED.sacredFilename();
 ok('filename matches commonunity-sacred-note-YYYY-MM-DD-HHMM.txt',
@@ -106,7 +120,11 @@ ok('filename carries no name / cipher / gene-key tokens',
 function wireSurface(surfaceId, offerSink) {
   const textarea = makeEl('textarea');
   const chamber = makeEl('div');
+  // Mirror the real DOM: the checkbox lives inside the pill wrap so the
+  // module can toggle .sacred-pill-active on the parent.
+  const pill = makeEl('label'); pill.classList.add('sacred-pill');
   const toggle = makeEl('input'); toggle.checked = false;
+  pill.appendChild(toggle);
   const controls = makeEl('div');
   const confirmCalls = [];
   let confirmReturn = true;
@@ -118,7 +136,7 @@ function wireSurface(surfaceId, offerSink) {
     toast: () => {}
   });
   return {
-    textarea, chamber, toggle, controls, ctrl, confirmCalls,
+    textarea, chamber, toggle, pill, controls, ctrl, confirmCalls,
     setConfirm: (v) => { confirmReturn = v; }
   };
 }
@@ -134,6 +152,7 @@ ok('chamber gets .sacred-chamber-active', s.chamber.classList.contains('sacred-c
 ok('textarea gets .sacred-textarea-active', s.textarea.classList.contains('sacred-textarea-active'));
 ok('controls revealed', s.controls.hidden === false);
 ok('toggle aria-pressed true', s.toggle.getAttribute('aria-pressed') === 'true');
+ok('pill reflects ON via .sacred-pill-active', s.pill.classList.contains('sacred-pill-active'));
 
 console.log('\n4. sacred text stays in the chamber buffer, normal value restored on exit');
 s.textarea.value = 'a held prayer';
@@ -144,6 +163,7 @@ ok('not active after toggle off', SACRED.isActive('test:surface') === false);
 ok('normal value restored (sacred text not bled into normal field)',
    s.textarea.value === '');
 ok('chamber class removed', !s.chamber.classList.contains('sacred-chamber-active'));
+ok('pill .sacred-pill-active cleared on exit', !s.pill.classList.contains('sacred-pill-active'));
 // Re-entering restores the in-memory sacred buffer within the same page life.
 s.toggle.checked = true;
 s.toggle.dispatch('change');
@@ -216,11 +236,17 @@ ok('saveWorkbenchEntry refuses to write entries while sacred',
    /function saveWorkbenchEntry/.test(studioSrc));
 
 console.log('\n12. label / control parity — both surfaces use the SAME module copy');
-// Neither host hardcodes the toggle label; both pull it from the module.
-ok('cOMpass toggle text comes from CommonUnitySacred.COPY.TOGGLE_LABEL',
-   /CommonUnitySacred\.COPY\.TOGGLE_LABEL/.test(indexSrc));
-ok('stUdio toggle text comes from CommonUnitySacred.COPY.TOGGLE_LABEL',
-   /CommonUnitySacred\.COPY\.TOGGLE_LABEL/.test(studioSrc));
+// Neither host hardcodes the toggle label or builds its own control; both call
+// the shared buildToggle(), which sets the label from COPY.TOGGLE_LABEL. This
+// guarantees the pill is structurally identical in cOMpass and stUdio.
+ok('module buildToggle sets label from COPY.TOGGLE_LABEL',
+   /text\.textContent\s*=\s*COPY\.TOGGLE_LABEL/.test(moduleSrc));
+ok('cOMpass builds its toggle via the shared buildToggle()',
+   /CommonUnitySacred\.buildToggle\(/.test(indexSrc));
+ok('stUdio builds its toggle via the shared buildToggle()',
+   /CommonUnitySacred\.buildToggle\(/.test(studioSrc));
+ok('neither host hand-rolls a raw .sacred-toggle-input checkbox anymore',
+   !/sacred-toggle-input/.test(indexSrc) && !/sacred-toggle-input/.test(studioSrc));
 ok('module copy is the agreed aspirational, non-warning language',
    SACRED.COPY.HELD_TAGLINE === 'Sacred Mode · held, not offered' &&
    /Local-only\. Not sent to Nexus/.test(SACRED.COPY.LOCAL_ONLY) &&
@@ -239,6 +265,43 @@ ok('module never calls localStorage.setItem', !/localStorage\s*\.\s*setItem/.tes
 ok('module never calls sessionStorage.setItem', !/sessionStorage\s*\.\s*setItem/.test(moduleCode));
 ok('module never touches any *Storage API in code', !/\b(local|session)Storage\b/.test(moduleCode));
 ok('module documents in-memory-only buffer', /in-memory/.test(moduleSrc));
+
+console.log('\n14. UI polish — elegant pill, header right-align, type harmony');
+// Both apps style the shared pill control (refined, not a raw checkbox).
+ok('cOMpass defines the .sacred-pill control', /\.sacred-pill\s*\{/.test(indexSrc));
+ok('stUdio defines the .sacred-pill control', /\.sacred-pill\s*\{/.test(studioSrc));
+ok('cOMpass pill has an indicator dot with an ON state',
+   /\.sacred-pill-dot\s*\{/.test(indexSrc) && /\.sacred-pill-active\s+\.sacred-pill-dot/.test(indexSrc));
+ok('stUdio pill has an indicator dot with an ON state',
+   /\.sacred-pill-dot\s*\{/.test(studioSrc) && /\.sacred-pill-active\s+\.sacred-pill-dot/.test(studioSrc));
+ok('cOMpass visually hides the real checkbox (pill, not raw checkbox)',
+   /\.sacred-pill-input\s*\{[\s\S]*?clip-path:\s*inset\(50%\)/.test(indexSrc));
+ok('stUdio visually hides the real checkbox (pill, not raw checkbox)',
+   /\.sacred-pill-input\s*\{[\s\S]*?clip-path:\s*inset\(50%\)/.test(studioSrc));
+
+// Header layout: Field Notes left, Sacred Mode pill justified right.
+ok('cOMpass header row justifies the pill to the right',
+   /\.sacred-notes-header\s*\{[\s\S]*?justify-content:\s*space-between/.test(indexSrc));
+ok('cOMpass wires the pill into the .sacred-notes-header row',
+   /classList\.add\('sacred-notes-header'\)/.test(indexSrc));
+ok('stUdio notepad header justifies its row (label left / actions right)',
+   /\.notepad-header\s*\{[\s\S]*?justify-content:\s*space-between/.test(studioSrc));
+
+console.log('\n15. blur parity — both recede surroundings, keep the writing surface sharp');
+// cOMpass: card is the chamber; only the notes column stays lifted/crisp.
+ok('cOMpass chamber lifts the notes column above the veil',
+   /\.sacred-chamber-active\s+\.notes-col\s*\{[\s\S]*?z-index:\s*2/.test(indexSrc));
+// stUdio: the whole room is the chamber; the notepad surface stays lifted/crisp
+// so Archive + Nexus recede — matching cOMpass.
+ok('stUdio chamber is the room body (so surrounding columns recede)',
+   /closest\('\.room-body'\)/.test(studioSrc));
+ok('stUdio lifts the notepad surface above the veil',
+   /\.sacred-chamber-active\s+\.notepad-surface[\s\S]*?z-index:\s*2/.test(studioSrc));
+// Both surfaces share the same veil treatment (blur + non-warning radial veil).
+ok('cOMpass veil uses backdrop blur (recede, not warn)',
+   /\.sacred-chamber-active::before\s*\{[\s\S]*?backdrop-filter:\s*blur/.test(indexSrc));
+ok('stUdio veil uses backdrop blur (recede, not warn)',
+   /\.sacred-chamber-active::before\s*\{[\s\S]*?backdrop-filter:\s*blur/.test(studioSrc));
 
 if (failed) { console.error(`\n${failed} assertion(s) FAILED`); process.exit(1); }
 console.log('\nAll Sacred Mode assertions passed.');

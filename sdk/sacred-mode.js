@@ -100,6 +100,42 @@
   }
 
   /**
+   * Build the shared Sacred Mode pill toggle.
+   *
+   * Returns a refined pill control (not a raw checkbox): a <label> styled as a
+   * rounded pill, wrapping a visually-hidden real checkbox (so behaviour,
+   * focus, and the host's existing `'checked' in toggleEl` wiring all keep
+   * working), an indicator dot, and the shared "Sacred Mode" label text. The
+   * same builder is used by cOMpass and stUdio so the control is identical in
+   * both apps.
+   *
+   * Returns { wrap, input } — pass `input` as attach()'s toggleEl, and place
+   * `wrap` in the header.
+   */
+  function buildToggle(idSuffix) {
+    var wrap = document.createElement('label');
+    wrap.className = 'sacred-pill';
+
+    var input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'sacred-pill-input';
+    if (idSuffix) input.id = 'sacred-toggle-' + idSuffix;
+
+    var dot = document.createElement('span');
+    dot.className = 'sacred-pill-dot';
+    dot.setAttribute('aria-hidden', 'true');
+
+    var text = document.createElement('span');
+    text.className = 'sacred-pill-text';
+    text.textContent = COPY.TOGGLE_LABEL;
+
+    wrap.appendChild(input);
+    wrap.appendChild(dot);
+    wrap.appendChild(text);
+    return { wrap: wrap, input: input };
+  }
+
+  /**
    * Attach Sacred Mode to one writing surface.
    *
    * opts:
@@ -225,6 +261,8 @@
       toggleEl.setAttribute('aria-label', COPY.TOGGLE_ON_ARIA);
       toggleEl.setAttribute('aria-pressed', 'true');
       if ('checked' in toggleEl) toggleEl.checked = true;
+      if (toggleEl.parentElement && toggleEl.parentElement.classList)
+        toggleEl.parentElement.classList.add('sacred-pill-active');
       textarea.focus();
     }
 
@@ -242,6 +280,8 @@
       toggleEl.setAttribute('aria-label', COPY.TOGGLE_OFF_ARIA);
       toggleEl.setAttribute('aria-pressed', 'false');
       if ('checked' in toggleEl) toggleEl.checked = false;
+      if (toggleEl.parentElement && toggleEl.parentElement.classList)
+        toggleEl.parentElement.classList.remove('sacred-pill-active');
       if (typeof opts.onExit === 'function') opts.onExit(normalSnapshot);
     }
 
@@ -274,6 +314,7 @@
     COPY: COPY,
     isActive: isActive,
     attach: attach,
+    buildToggle: buildToggle,
     sacredFilename: sacredFilename,
     downloadTxt: downloadTxt
   };
