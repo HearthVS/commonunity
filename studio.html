@@ -6819,6 +6819,104 @@ input, textarea { font: inherit; color: inherit; }
   }
 }
 
+/* ============================================================
+   SACRED MODE — shared chamber treatment (stUdio Field Notes)
+   ------------------------------------------------------------
+   Mirrors the cOMpass treatment so entering Sacred Mode feels the
+   same in both apps: the Field Notes surface stays sharp/primary,
+   the surrounding notepad chrome softly recedes behind a palette-
+   harmonised veil. No warning colours.
+   ============================================================ */
+:root {
+  --sacred-accent: var(--accent-color, var(--setup-accent, #b9a4e8));
+  --sacred-veil:   color-mix(in srgb, var(--sacred-accent) 10%, rgba(13, 14, 28, 0.55));
+}
+.sacred-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.02em;
+}
+.sacred-toggle-input { accent-color: var(--sacred-accent); cursor: pointer; }
+.sacred-controls {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 7%, transparent);
+  position: relative;
+  z-index: 2;
+}
+.sacred-tagline {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--sacred-accent) 70%, var(--text, #f1f5f9));
+}
+.sacred-subcopy {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-muted, #94a3b8);
+}
+.sacred-subcopy-hint { opacity: 0.85; }
+.sacred-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sacred-action {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sacred-accent) 40%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--sacred-accent) 80%, var(--text, #f1f5f9));
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.sacred-action:hover {
+  background: color-mix(in srgb, var(--sacred-accent) 16%, transparent);
+  border-color: var(--sacred-accent);
+}
+.sacred-action-offer {
+  border-color: color-mix(in srgb, var(--sacred-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 12%, transparent);
+}
+.sacred-chamber-active {
+  position: relative;
+  isolation: isolate;
+  transition: background 0.4s ease;
+}
+.sacred-chamber-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, var(--sacred-accent) 14%, transparent) 0%,
+      var(--sacred-veil) 70%);
+  backdrop-filter: blur(7px) saturate(1.04);
+  -webkit-backdrop-filter: blur(7px) saturate(1.04);
+  pointer-events: none;
+  animation: sacred-veil-in 0.5s ease-out;
+}
+@keyframes sacred-veil-in { from { opacity: 0; } to { opacity: 1; } }
+.sacred-chamber-active .notepad-textarea,
+.sacred-chamber-active .notepad-header { position: relative; z-index: 2; }
+.sacred-textarea-active {
+  position: relative;
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--sacred-accent) 45%, transparent) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sacred-accent) 22%, transparent),
+              0 0 44px -8px color-mix(in srgb, var(--sacred-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--sacred-accent) 5%, var(--bg, #0b1120)) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sacred-chamber-active::before { animation: none; }
+}
 </style>
 </head>
 <body>
@@ -7804,6 +7902,7 @@ input, textarea { font: inherit; color: inherit; }
      Loaded eagerly so the Living Profile render can call generate()
      synchronously when the modal opens. Gated by window.CU_OM_CIPHER_ENABLED. -->
 <script src="/sdk/om_cipher.js"></script>
+<script src="/sdk/sacred-mode.js"></script>
 
 <script>
 
@@ -9587,6 +9686,16 @@ async function sendMirrorMessage() {
 function saveWorkbenchEntry() {
   if (!currentRoom) return;
   const input = document.getElementById('workbench-input');
+  // Sacred Mode guard: while Field Notes is in Sacred Mode the textarea holds
+  // the in-memory sacred buffer. It must NOT be written into
+  // state.rooms[*].entries (which feeds Nexus payloads, cross-room summaries,
+  // nexus_memory, the JSON export, and Golden Thread). Sacred text only ever
+  // leaves the chamber via the deliberate Save as TXT / Offer to Nexus
+  // actions rendered by sacred-mode.js.
+  if (window.CommonUnitySacred && window.CommonUnitySacred.isActive('studio:field-notes')) {
+    if (typeof showToast === 'function') showToast(window.CommonUnitySacred.COPY.HELD_TAGLINE);
+    return;
+  }
   const text = input.value.trim();
   if (!text) return;
 
@@ -10459,7 +10568,74 @@ document.addEventListener('DOMContentLoaded', () => {
   initFrequencyEngine();
   initMoodLighting();
   initVoiceNotes();
+  initStudioSacredMode();
 });
+
+// ============================================================
+// SACRED MODE — stUdio Field Notes
+// ============================================================
+// Wires the shared Sacred Mode controller (sdk/sacred-mode.js) onto the
+// Field Notes textarea. Uses the SAME module, labels, and controls as
+// cOMpass so the toggle looks and behaves identically.
+//
+// Privacy contract (with the saveWorkbenchEntry guard above):
+//   - While ON, the Field Notes textarea holds an in-memory sacred buffer
+//     that is never written to state.rooms[*].entries — so it cannot reach
+//     localStorage, the JSON export, /rose-mirror payloads (workbench_entries,
+//     cross-room summary, nexus_memory), Golden Thread, or admin endpoints.
+//   - "Offer to Nexus" sends ONLY the offered text (selection if any, else
+//     the whole field) through the Nexus mirror as a confirmed crossing.
+function initStudioSacredMode() {
+  if (!window.CommonUnitySacred) return;
+  const textarea = document.getElementById('workbench-input');
+  if (!textarea) return;
+  const surface = textarea.closest('.notepad-surface') || textarea.parentElement;
+  const header = surface ? surface.querySelector('.notepad-header') : null;
+
+  // Toggle (labelled checkbox) goes into the notepad header actions.
+  const toggleWrap = document.createElement('label');
+  toggleWrap.className = 'sacred-toggle';
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.className = 'sacred-toggle-input';
+  toggle.id = 'sacred-toggle-field-notes';
+  const toggleText = document.createElement('span');
+  toggleText.className = 'sacred-toggle-text';
+  toggleText.textContent = window.CommonUnitySacred.COPY.TOGGLE_LABEL;
+  toggleWrap.appendChild(toggle);
+  toggleWrap.appendChild(toggleText);
+  const actions = header ? header.querySelector('.notepad-actions') : null;
+  if (actions) actions.insertBefore(toggleWrap, actions.firstChild);
+  else if (header) header.appendChild(toggleWrap);
+  else surface.insertBefore(toggleWrap, textarea);
+
+  const controls = document.createElement('div');
+  controls.className = 'sacred-controls';
+  controls.id = 'sacred-controls-field-notes';
+  // Place controls directly under the textarea.
+  if (textarea.nextSibling) surface.insertBefore(controls, textarea.nextSibling);
+  else surface.appendChild(controls);
+
+  window.CommonUnitySacred.attach({
+    surfaceId: 'studio:field-notes',
+    textarea: textarea,
+    chamberEl: surface,
+    toggleEl: toggle,
+    controlsEl: controls,
+    toast: (typeof showToast === 'function') ? (m => showToast(m)) : undefined,
+    offerToNexus: (offered) => {
+      // Deliberate boundary crossing. Send ONLY the offered text through the
+      // Nexus mirror. We do NOT save the sacred text to Field Notes after.
+      try {
+        const mirrorInput = document.getElementById('mirror-input');
+        if (mirrorInput) {
+          mirrorInput.value = offered;
+          if (typeof sendMirrorMessage === 'function') sendMirrorMessage();
+        }
+      } catch (_) {}
+    }
+  });
+}
 
 // ============================================================
 // FREQUENCY ENGINE

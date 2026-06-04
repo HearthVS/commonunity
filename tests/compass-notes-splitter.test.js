@@ -1,10 +1,10 @@
 /* compass-notes-splitter · regression test
  *
- * cOMpass UX refinement: the Hexagram Reader and Session Notes used to sit
+ * cOMpass UX refinement: the Hexagram Reader and Field Notes used to sit
  * in a fixed flex split, which left the notes cramped when the reader was
  * idle. They now share a resizable grid with a draggable gutter between
  * them (mirroring the Studio room splitter). Dragging the gutter narrower
- * hands the freed space to the Session Notes; the reader unlock/passcode
+ * hands the freed space to the Field Notes; the reader unlock/passcode
  * controls stay intact, and the gutter is hidden on the stacked mobile
  * layout.
  *
@@ -48,7 +48,7 @@ ok('splitter is keyboard-focusable (tabindex)',
 ok('splitter advertises aria-valuemin/max/now',
    /class="notes-splitter"[\s\S]{0,220}aria-valuemin="240"[\s\S]{0,80}aria-valuemax="720"[\s\S]{0,80}aria-valuenow="380"/.test(src));
 ok('splitter carries an accessible label',
-   /class="notes-splitter"[\s\S]{0,160}aria-label="Resize Hexagram Reader and Session Notes"/.test(src));
+   /class="notes-splitter"[\s\S]{0,160}aria-label="Resize Hexagram Reader and Field Notes"/.test(src));
 
 console.log('\n3. structure preserved — reader, gutter, notes in order');
 // In each wrapper, the reader precedes the gutter which precedes the notes.
@@ -87,7 +87,7 @@ ok('ArrowLeft shrinks reader (gives notes room); ArrowRight grows reader',
    /ArrowLeft'\)\s*next = current - step/.test(src));
 ok('reader minimum width is 240px (prevents collapse)',
    /MIN_READER\s*=\s*240/.test(src));
-ok('Session Notes minimum width is 280px (clamp keeps it usable)',
+ok('Field Notes minimum width is 280px (clamp keeps it usable)',
    /MIN_NOTES\s*=\s*280/.test(src));
 ok('window resize re-clamps each container',
    /window\.addEventListener\('resize'[\s\S]{0,400}applyWidth\(currentReaderPx\(container\)/.test(src));
