@@ -5534,6 +5534,12 @@ const state = {
   tradition: 'GK',
   guide: '',
   companion: '',
+  // Local display-identity choice for synthesis/website output. The real name
+  // (state.companion) is never sent to AI synthesis endpoints unless
+  // displayNameMode==='real' AND sendRealNameToAI===true. See compassSynthAddress.
+  displayNameMode: 'first',
+  displayNameCustom: '',
+  sendRealNameToAI: false,
   dob: '', tob: '', pob: '',
   gk_profile: { cs: null, us: null, ce: null, ue: null },
   points: {
@@ -7644,6 +7650,18 @@ function restoreL3Output(point) {
 function populateL3(point, data) {
   if (!data) return;
 
+  // Presentation layer: substitute the chosen local display name for any
+  // {{display_name}} placeholder the synthesis model echoed. The real name was
+  // never sent to the AI (compassSynthAddress); it is inserted here, locally.
+  data = {
+    ...data,
+    heading: compassApplyDisplayName(data.heading),
+    intro:   compassApplyDisplayName(data.intro),
+    closing: compassApplyDisplayName(data.closing),
+    highlights: Array.isArray(data.highlights)
+      ? data.highlights.map(compassApplyDisplayName) : data.highlights
+  };
+
   // Heading
   const headingEl = document.querySelector(`[data-key="${point}.web_heading"]`);
   if (headingEl && data.heading) {
@@ -7738,10 +7756,12 @@ async function generateL3(point) {
   streamEl.textContent = '';
   outputEl.style.display = 'none';
 
-  // Build request body
+  // Build request body. Identity-minimized: send a neutral placeholder, never
+  // the real name/guide, to the website-copy AI. The chosen display name is
+  // substituted locally on render (compassApplyDisplayName).
   const body = {
-    companion: state.companion,
-    guide:     state.guide,
+    companion: compassSynthAddress(),
+    guide:     '',
     point:     point,
     [point]:   state.points[point]
   };
@@ -9346,7 +9366,7 @@ function inspireQuestion(qaKey) {
     room: roomMeta[point] || point,
     user_notes: sessionNotes,
     session_notes: sessionNotes,
-    companion: state.companion || '',
+    companion: compassSynthAddress(),
     gk_num: String(gkNum),
     gk_line: String(gkLine),
     gk_shadow: hexagramFull?.shadow?.content || gkData.shadow || '',
@@ -9384,6 +9404,9 @@ function inspireQuestion(qaKey) {
           sugg.classList.add('visible');
         }
         if (data.done) {
+          // Local display-name insertion: resolve any {{display_name}} the model
+          // echoed back to the user's chosen display name (never sent to AI).
+          textSpan.textContent = compassApplyDisplayName(accumulated);
           if (btn) btn.classList.remove('loading');
         }
       } catch(e) {}
@@ -9464,7 +9487,7 @@ function inspireLayer2(point, field) {
   const payload = {
     point,
     field,
-    companion:     state.companion || '',
+    companion:     compassSynthAddress(),
     session_notes: pt.raw || '',
     qa_answers:    getQAAnswers(point),
     gk_num:    String(gkNum),
@@ -9501,7 +9524,14 @@ function inspireLayer2(point, field) {
             </div>`;
           sugg.classList.add('visible');
         }
-        if (data.done) btn.classList.remove('loading');
+        if (data.done) {
+          // Local display-name insertion before the text can be accepted into
+          // a profile field (the AI received only a placeholder).
+          const resolved = compassApplyDisplayName(accumulated);
+          const textEl = sugg.querySelector('.inspire-l2-text');
+          if (textEl) textEl.textContent = resolved;
+          btn.classList.remove('loading');
+        }
       } catch(e) {}
     }
     function read() {
@@ -10770,6 +10800,55 @@ function buildNexusSafeCipherContext() {
     unity_code: ci.unity_code || '',
     cipher_id: ci.cipher_id || ''
   };
+}
+
+// ── Synthesis / website-generation identity minimization ───────────────────
+// The /generate (Layer-3 website copy), /inspire and /inspire-layer2 endpoints
+// previously received state.companion (the real legal/display name) as the
+// `companion` label. The model never needs the real name to produce first/
+// third-person copy, so by default we send a neutral placeholder and substitute
+// the user's CHOSEN display name locally on render. This mirrors the PR #79
+// Nexus-payload minimization (buildNexusSafeCipherContext) for the synthesis
+// surface.
+const SYNTH_DISPLAY_PLACEHOLDER = '{{display_name}}';
+
+// The display identity the user has chosen to present publicly. Local-only:
+// used for on-page rendering and placeholder substitution, never sent to AI
+// unless the user explicitly opts into the real-name mode (see
+// compassSynthAddress). Modes: 'real' | 'first' | 'cipher' | 'custom' |
+// 'anonymous'. Default 'first'.
+function compassDisplayName() {
+  const mode = state.displayNameMode || 'first';
+  const full = (state.companion || '').trim();
+  switch (mode) {
+    case 'real':      return full;
+    case 'cipher':    return compassNexusAddress();
+    case 'custom':    return (state.displayNameCustom || '').trim();
+    case 'anonymous': return '';
+    case 'first':
+    default:          return full.split(/\s+/)[0] || '';
+  }
+}
+
+// The address synthesis/website AI payloads carry. A neutral placeholder by
+// default — NEVER the real name — unless the user has explicitly chosen the
+// 'real' display mode AND confirmed sending it to AI (state.sendRealNameToAI).
+function compassSynthAddress() {
+  if (state.displayNameMode === 'real' && state.sendRealNameToAI === true) {
+    return (state.companion || '').trim() || SYNTH_DISPLAY_PLACEHOLDER;
+  }
+  return SYNTH_DISPLAY_PLACEHOLDER;
+}
+
+// Presentation/publishing layer: replace placeholder tokens in returned AI text
+// with the chosen local display name. Anonymous (empty name) drops the token
+// and tidies the surrounding whitespace.
+function compassApplyDisplayName(text) {
+  if (typeof text !== 'string') return text;
+  const name = compassDisplayName();
+  let out = text.split(SYNTH_DISPLAY_PLACEHOLDER).join(name);
+  if (!name) out = out.replace(/\s{2,}/g, ' ');
+  return out.trim();
 }
 
 async function compassLoadGoldenThread() {
