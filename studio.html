@@ -7467,6 +7467,11 @@ input, textarea { font: inherit; color: inherit; }
                   style="padding:0;font-size:13px;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚄</button>
                 <span style="font-size:9px;color:var(--text-faint);opacity:0.6;">hold · save &nbsp;/&nbsp; hold 5s · delete</span>
               </div>
+              <button class="freq-preset-btn" id="colour-cipher-default-btn"
+                title="Reset the colour to the default palette generated from your cOMpass / OM Cipher"
+                style="width:100%;margin-bottom:8px;font-size:10px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <span style="font-size:11px;line-height:1;">↺</span> Use cOMpass palette
+              </button>
               <div class="vibe-preset-strip" id="vibe-preset-strip">
                 <button class="vibe-preset-slot" data-slot="0" title="Click to recall · Hold to save · Hold 5s to delete"></button>
                 <button class="vibe-preset-slot" data-slot="1" title="Click to recall · Hold to save · Hold 5s to delete"></button>
@@ -9341,9 +9346,13 @@ function doEnterRoom(roomKey, meta) {
   resetOnAirDisplay();
   startOnAir(roomKey);
 
-  // Restore vibe if saved for this room
+  // Restore vibe if saved for this room. Intentional custom choices are
+  // preserved; when the person has not customised this room, fall back to the
+  // default vibe derived from their cOMpass/OM Cipher palette so the Studio
+  // opens consistent with the palette they chose in cOMpass.
   const savedVibe = state.rooms[roomKey]?.vibe;
   if (savedVibe) applyVibeState(savedVibe);
+  else applyVibeState(cipherDefaultVibe());
 
   // Nexus memory display
   const memDisplay = document.getElementById('nexus-memory-display');
@@ -10584,6 +10593,45 @@ function initOmCipherPalette() {
 // finishes parsing, before DOMContentLoaded fires.
 try { initOmCipherPalette(); } catch (_) { /* defensive */ }
 
+// ── cOMpass palette → Studio default vibe ───────────────────────────────────
+// The Studio mood-lighting "Hue" slider (0–360) is the visual carrier of the
+// person's palette. When a completed OM Cipher contract is present we map its
+// primary palette hue onto the default Hue so the Studio opens already tinted
+// toward the same palette the person chose in cOMpass. Other vibe dimensions
+// (glow/depth/warmth/space/text) keep their neutral defaults — only the hue
+// expresses palette identity. Read-only: this never writes the contract.
+//
+// The palette primary is an OKLCH string ("oklch(0.55 0.227 280)"); the third
+// value is the hue in degrees. We also accept hsl()/hsla() as a fallback.
+function cipherDefaultHue() {
+  const contract = readOmCipherContract();
+  if (!contract) return null;
+  const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
+  const primary = palette.primary || palette.secondary || palette.seasonal_accent || '';
+  if (!primary) return null;
+  const oklch = primary.match(/oklch\(\s*[\d.]+%?\s+[\d.]+%?\s+([\d.]+)/i);
+  if (oklch) { const h = parseFloat(oklch[1]); if (Number.isFinite(h)) return ((h % 360) + 360) % 360; }
+  const hsl = primary.match(/hsla?\(\s*([\d.]+)/i);
+  if (hsl) { const h = parseFloat(hsl[1]); if (Number.isFinite(h)) return ((h % 360) + 360) % 360; }
+  return null;
+}
+
+// Default vibe state for Studio. When a cOMpass/OM Cipher palette exists, its
+// hue replaces the baseline 220; everything else stays at the neutral defaults
+// readVibeState() falls back to, so the Studio feels consistent with cOMpass
+// without overriding the person's other atmosphere choices.
+function cipherDefaultVibe() {
+  const hue = cipherDefaultHue();
+  return {
+    hue:   hue == null ? 220 : Math.round(hue),
+    glow:  50,
+    dark:  50,
+    warm:  0,
+    space: 7,
+    text:  75
+  };
+}
+
 // ── Golden Thread — Studio ──────────────────────────────────────────────────
 
 async function studioLoadGoldenThread() {
@@ -10993,6 +11041,32 @@ function initFrequencyEngine() {
       const spaceEl2 = document.getElementById('mood-space'); if (spaceEl2) { spaceEl2.value = space; spaceEl2.dispatchEvent(new Event('input')); }
       const textEl  = document.getElementById('mood-text');  if (textEl)  { textEl.value  = text;  textEl.dispatchEvent(new Event('input')); }
       document.querySelectorAll('.vibe-preset-slot').forEach(s => s.classList.remove('active-preset'));
+    });
+  }
+
+  // ── Return to the cOMpass / OM Cipher default palette ─────────
+  // Resets the colour controls to the palette derived from cOMpass. This is
+  // the explicit "return to default" action: it overwrites the saved vibe for
+  // the active room with the cipher default, so the choice persists and a
+  // previously customised vibe no longer re-applies. Custom choices in other
+  // rooms are untouched, and nothing is persisted until the normal saveState.
+  const cipherDefaultBtn = document.getElementById('colour-cipher-default-btn');
+  if (cipherDefaultBtn) {
+    cipherDefaultBtn.addEventListener('click', () => {
+      const def = cipherDefaultVibe();
+      applyVibeState(def);
+      const room = (typeof sessionRoomKey === 'string' && sessionRoomKey) ? sessionRoomKey : null;
+      if (room && state.rooms[room]) {
+        state.rooms[room].vibe = def;
+        try { saveState(); } catch (_) {}
+      }
+      document.querySelectorAll('.vibe-preset-slot').forEach(s => s.classList.remove('active-preset'));
+      const colourPill = document.getElementById('colour-toggle');
+      if (colourPill) {
+        const span = colourPill.querySelector('span') || colourPill;
+        span.textContent = 'Colour';
+      }
+      if (typeof showToast === 'function') showToast('Colour reset to your cOMpass palette');
     });
   }
 
