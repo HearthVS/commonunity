@@ -2500,6 +2500,15 @@ async def serve_favicon():
         return FileResponse(fav, media_type="image/svg+xml")
     return {"error": "Not found"}
 
+@app.get("/favicon-studio.svg")
+async def serve_favicon_studio():
+    # Distinct stUdio tab icon (beta) so its browser tab is easy to tell
+    # apart from cOMpass. Capital-U vessel with the Studio accent glow.
+    fav = pathlib.Path(__file__).parent / "favicon-studio.svg"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/svg+xml")
+    return {"error": "Not found"}
+
 # CommonUnity brand assets (mark, mono-mark, primary-logo, brand favicon).
 _brand_dir = pathlib.Path(__file__).parent / "assets" / "brand"
 if _brand_dir.exists():

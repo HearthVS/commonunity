@@ -7,7 +7,7 @@
 <meta name="description" content="A living space for inner exploration and creative expression — four rooms, one for each dimension of your being.">
 <meta property="og:title" content="CommonUnity Studio">
 <meta property="og:description" content="A living space for inner exploration and creative expression.">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="icon" type="image/svg+xml" href="./favicon-studio.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Josefin+Sans:wght@500;600;700&display=swap" rel="stylesheet">
@@ -3843,16 +3843,56 @@ input, textarea { font: inherit; color: inherit; }
   text-transform: uppercase;
 }
 
-/* ── Entrance Studio Path trail — a quiet 3-level preview ── */
+/* ── Entrance Studio Path trail — a discreet, collapsible 3-level
+   preview. Rendered as a <details>: collapsed it is a slim summary
+   row; expanded it reveals the levels and actions. ── */
 .studio-path-trail {
+  margin: var(--space-4) 0 0;
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 3%, transparent);
+}
+.studio-path-trail[open] {
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 24%, var(--border));
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 4%, transparent);
+}
+.studio-path-trail-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 12px;
+  transition: background var(--transition);
+}
+.studio-path-trail-summary::-webkit-details-marker { display: none; }
+.studio-path-trail-summary:hover {
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 6%, transparent);
+}
+.studio-path-trail-summary:focus-visible {
+  outline: 2px solid var(--setup-accent);
+  outline-offset: 2px;
+}
+.studio-path-trail-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, var(--text-faint));
+  border-bottom: 1.5px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, var(--text-faint));
+  transform: rotate(45deg);
+  transition: transform var(--transition);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.studio-path-trail[open] .studio-path-trail-chevron {
+  transform: rotate(-135deg);
+}
+.studio-path-trail-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 24%, var(--border));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 4%, transparent);
+  padding: 0 var(--space-4) var(--space-3);
 }
 .studio-path-trail-eyebrow {
   font-size: 9px;
@@ -7113,40 +7153,47 @@ input, textarea { font: inherit; color: inherit; }
     <p class="entrance-subtitle">Studio is where your <em>Compass</em> becomes form.</p>
     <div class="entrance-name" id="entrance-name"></div>
 
-    <!-- Studio Path — the three levels of authentic digital self -->
-    <div class="studio-path-trail" id="entrance-studio-path">
-      <span class="studio-path-trail-eyebrow">Studio Path · three levels</span>
-      <div class="studio-path-trail-levels">
-        <div class="studio-path-trail-level">
-          <span class="spl-num">L1</span>
-          <span><span class="spl-name">Living Profile</span> — your real-time presence, calling card, and Studio doorway.</span>
+    <!-- Studio Path — the three levels of authentic digital self.
+         Collapsed by default to keep the entrance rail discreet; the
+         levels + actions stay one tap away. -->
+    <details class="studio-path-trail" id="entrance-studio-path">
+      <summary class="studio-path-trail-summary">
+        <span class="studio-path-trail-eyebrow">Studio Path · three levels</span>
+        <span class="studio-path-trail-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="studio-path-trail-body">
+        <div class="studio-path-trail-levels">
+          <div class="studio-path-trail-level">
+            <span class="spl-num">L1</span>
+            <span><span class="spl-name">Living Profile</span> — your real-time presence, calling card, and Studio doorway.</span>
+          </div>
+          <div class="studio-path-trail-level">
+            <span class="spl-num">L2</span>
+            <span><span class="spl-name">Personal Home</span> — your four-room bridge to the wider web (Work · Lens · Field · Call).</span>
+          </div>
+          <div class="studio-path-trail-level">
+            <span class="spl-num">L3</span>
+            <span><span class="spl-name">Personal OS</span> — your inner studio for becoming, creating, and co-emerging with AI.</span>
+          </div>
         </div>
-        <div class="studio-path-trail-level">
-          <span class="spl-num">L2</span>
-          <span><span class="spl-name">Personal Home</span> — your four-room bridge to the wider web (Work · Lens · Field · Call).</span>
-        </div>
-        <div class="studio-path-trail-level">
-          <span class="spl-num">L3</span>
-          <span><span class="spl-name">Personal OS</span> — your inner studio for becoming, creating, and co-emerging with AI.</span>
-        </div>
+        <button type="button" class="studio-path-btn studio-path-trail-cta" id="studio-path-open-entrance">
+          <span class="spb-dot" aria-hidden="true"></span>
+          Open Studio Path
+        </button>
+        <button type="button" class="lp-preview-cta" id="living-profile-open-entrance" style="margin-top:6px;align-self:flex-start;">
+          <span class="spb-dot" aria-hidden="true"></span>
+          Preview Living Profile
+        </button>
+        <button type="button" class="lp-preview-cta" id="website-preview-open-entrance" style="margin-top:6px;align-self:flex-start;">
+          <span class="spb-dot" aria-hidden="true"></span>
+          Preview Personal Home
+        </button>
+        <button type="button" class="lp-preview-cta" id="studio-window-open-entrance" style="margin-top:6px;align-self:flex-start;">
+          <span class="spb-dot" aria-hidden="true"></span>
+          Edit Studio Window
+        </button>
       </div>
-      <button type="button" class="studio-path-btn studio-path-trail-cta" id="studio-path-open-entrance">
-        <span class="spb-dot" aria-hidden="true"></span>
-        Open Studio Path
-      </button>
-      <button type="button" class="lp-preview-cta" id="living-profile-open-entrance" style="margin-top:6px;align-self:flex-start;">
-        <span class="spb-dot" aria-hidden="true"></span>
-        Preview Living Profile
-      </button>
-      <button type="button" class="lp-preview-cta" id="website-preview-open-entrance" style="margin-top:6px;align-self:flex-start;">
-        <span class="spb-dot" aria-hidden="true"></span>
-        Preview Personal Home
-      </button>
-      <button type="button" class="lp-preview-cta" id="studio-window-open-entrance" style="margin-top:6px;align-self:flex-start;">
-        <span class="spb-dot" aria-hidden="true"></span>
-        Edit Studio Window
-      </button>
-    </div>
+    </details>
 
     <!-- Seed prompt — tap to expand name + read-only OM Cipher -->
     <button class="entrance-seed-btn" id="entrance-seed-btn">
