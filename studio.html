@@ -9429,7 +9429,14 @@ function doEnterRoom(roomKey, meta) {
   // opens consistent with the palette they chose in cOMpass.
   const savedVibe = state.rooms[roomKey]?.vibe;
   if (savedVibe) applyVibeState(savedVibe);
-  else applyVibeState(cipherDefaultVibe());
+  else {
+    // No intentional custom vibe for this room — re-sync the cipher palette
+    // tokens from the current contract (so a just-imported palette is honoured)
+    // then apply the neutral default vibe, letting the real --cipher-* colours
+    // show through undistorted.
+    try { initOmCipherPalette(); } catch (_) {}
+    applyVibeState(cipherDefaultVibe());
+  }
 
   // Nexus memory display
   const memDisplay = document.getElementById('nexus-memory-display');
@@ -9968,6 +9975,7 @@ function normalizeImportedStudioOrCompassJson(data) {
       person: data.person || data.compassData.companion || null,
       birthData: data.birthData || null,
       theme: data.theme || data.compassData.theme || null,
+      omCipher: data.om_cipher || data.compassData.om_cipher || null,
     };
   }
   // Raw Compass session — must carry `points`.
@@ -9978,6 +9986,7 @@ function normalizeImportedStudioOrCompassJson(data) {
       person: data.companion || null,
       birthData: null,
       theme: data.theme || null,
+      omCipher: data.om_cipher || null,
     };
   }
   return null;
@@ -10162,6 +10171,42 @@ function initImportModal() {
   });
 }
 
+// Hydrate the OM Cipher contract palette from an imported cOMpass/Studio JSON.
+// The palette an export carries (engine list shape or canonical object shape)
+// is normalised to { primary, secondary, seasonal_accent } and merged into the
+// existing localStorage contract — or, if none exists, a minimal completed
+// contract is synthesised. This mirrors the same client-side key cOMpass itself
+// writes (commonunity_om_cipher_v1): no central storage, no extra identity. It
+// lets Studio's --cipher-* tokens and the "Use cOMpass palette" reset reflect
+// the palette that just arrived. Returns true when the palette was applied.
+function hydrateCipherPaletteFromImport(omCipherBlock) {
+  try {
+    const block = omCipherBlock && typeof omCipherBlock === 'object' ? omCipherBlock : null;
+    // The block may BE an engine om_cipher_block ({ palette:[...] , primary_hue })
+    // or wrap a canonical palette object under .palette. Try the nested palette
+    // first, then fall back to treating the block itself as the palette source.
+    const pal = block ? (paletteObjectFromAny(block.palette) || paletteObjectFromAny(block)) : null;
+    if (!pal || !pal.primary) return false;
+    let contract = null;
+    try {
+      const rawExisting = window.localStorage.getItem(OM_CIPHER_CONTRACT_KEY);
+      if (rawExisting) contract = JSON.parse(rawExisting);
+    } catch (_) { contract = null; }
+    if (!contract || typeof contract !== 'object') contract = {};
+    contract.threshold = Object.assign({}, contract.threshold, { completed: true });
+    contract.om_cipher = Object.assign({}, contract.om_cipher);
+    // Preserve any existing palette metadata (schema_version/source/etc.) while
+    // overwriting the colour slots with the freshly imported ones.
+    contract.om_cipher.palette = Object.assign(
+      {}, contract.om_cipher.palette,
+      { primary: pal.primary, secondary: pal.secondary, seasonal_accent: pal.seasonal_accent }
+    );
+    window.localStorage.setItem(OM_CIPHER_CONTRACT_KEY, JSON.stringify(contract));
+    try { initOmCipherPalette(); } catch (_) {}
+    return true;
+  } catch (_) { return false; }
+}
+
 function processCompassImport(file) {
   const reader = new FileReader();
   reader.onload = e => {
@@ -10171,6 +10216,9 @@ function processCompassImport(file) {
       if (!norm) throw new Error('Not a Compass session file');
       const compass = norm.compassData;
       state.compassData = compass;
+      // Bring the imported palette into the live contract so Studio's
+      // --cipher-* tokens (and "Use cOMpass palette") match this session.
+      try { hydrateCipherPaletteFromImport(norm.omCipher); } catch (_) {}
       // Prefer the wrapper's explicit birthData if present; otherwise
       // the Compass JSON itself is the master key for the foundation
       // (overrides any prior calculator state).
@@ -10319,6 +10367,9 @@ function studioLoadJSON(file) {
       }
       if (data.birthData) state.birthData = data.birthData;
       if (data.compassData) state.compassData = data.compassData;
+      // Bring any palette carried by the Studio export into the live contract
+      // so the --cipher-* tokens and "Use cOMpass palette" match this session.
+      try { hydrateCipherPaletteFromImport(data.om_cipher || (data.compassData && data.compassData.om_cipher)); } catch (_) {}
       if (data.rooms) {
         ['work','lens','field','call'].forEach(room => {
           if (data.rooms[room]) {
@@ -10663,20 +10714,64 @@ function initOmCipherPalette() {
 try { initOmCipherPalette(); } catch (_) { /* defensive */ }
 
 // ── cOMpass palette → Studio default vibe ───────────────────────────────────
-// The Studio mood-lighting "Hue" slider (0–360) is the visual carrier of the
-// person's palette. When a completed OM Cipher contract is present we map its
-// primary palette hue onto the default Hue so the Studio opens already tinted
-// toward the same palette the person chose in cOMpass. Other vibe dimensions
-// (glow/depth/warmth/space/text) keep their neutral defaults — only the hue
-// expresses palette identity. Read-only: this never writes the contract.
+// The person's real palette is the OKLCH colour set cOMpass writes into the OM
+// Cipher contract. Studio already applies that exact palette to the CSS custom
+// properties --cipher-primary / --cipher-secondary / --cipher-accent /
+// --setup-accent / --room-cipher-tint-* (see initOmCipherPalette + the early
+// bootstrap), and the Studio UI draws its accents from those tokens. So when a
+// cOMpass palette is present, the faithful default is simply to let those
+// palette-bound tokens show through *undistorted*.
 //
-// The palette primary is an OKLCH string ("oklch(0.55 0.227 280)"); the third
-// value is the hue in degrees. We also accept hsl()/hsla() as a fallback.
-function cipherDefaultHue() {
+// The mood-lighting "Hue" slider does NOT set an absolute colour — it drives a
+// *relative* `hue-rotate()` body filter computed as (hueVal − 220). Feeding the
+// palette's absolute OKLCH hue into that slider (the PR #81 approach) rotated
+// the whole page away from the real palette by an arbitrary amount and dropped
+// chroma/lightness entirely, so Studio never matched cOMpass. The correct
+// default is therefore hue 220 (zero rotation) so the genuine --cipher-* colours
+// remain intact. Read-only: this never writes the contract.
+
+// Normalise any palette representation to the canonical object shape
+// { primary, secondary, seasonal_accent }. Two shapes exist in the wild:
+//   • Canonical localStorage contract (threshold/contract.js, cOMpass):
+//     { primary, secondary, seasonal_accent } (object).
+//   • Engine om_cipher_block export (sdk/om_cipher.js):
+//     { palette: [primary, secondary, accent], primary_hue, ... } (list).
+function paletteObjectFromAny(p) {
+  if (!p || typeof p !== 'object') return null;
+  if (Array.isArray(p.palette)) {
+    const arr = p.palette;
+    return {
+      primary:         arr[0] || '',
+      secondary:       arr[1] || '',
+      seasonal_accent: arr[2] || p.palette_resonance_accent || ''
+    };
+  }
+  const seasonal = p.seasonal_accent || p.accent || p.accent_color || p.tertiary || '';
+  if (p.primary || p.secondary || seasonal) {
+    return { primary: p.primary || '', secondary: p.secondary || '', seasonal_accent: seasonal };
+  }
+  return null;
+}
+
+// The palette object carried by the currently-stored completed contract.
+function cipherPaletteObject() {
   const contract = readOmCipherContract();
   if (!contract) return null;
-  const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
-  const primary = palette.primary || palette.secondary || palette.seasonal_accent || '';
+  return paletteObjectFromAny((contract.om_cipher && contract.om_cipher.palette) || null);
+}
+
+// True when a completed cOMpass/OM Cipher contract carries at least one palette
+// colour — i.e. the --cipher-* tokens are meaningfully populated.
+function hasCipherPalette() {
+  const pal = cipherPaletteObject();
+  return !!(pal && (pal.primary || pal.secondary || pal.seasonal_accent));
+}
+
+// Retained for back-compat / diagnostics: the absolute hue of the palette
+// primary, in degrees. No longer fed into the hue-rotate slider (see above).
+function cipherDefaultHue() {
+  const pal = cipherPaletteObject();
+  const primary = pal && (pal.primary || pal.secondary || pal.seasonal_accent);
   if (!primary) return null;
   const oklch = primary.match(/oklch\(\s*[\d.]+%?\s+[\d.]+%?\s+([\d.]+)/i);
   if (oklch) { const h = parseFloat(oklch[1]); if (Number.isFinite(h)) return ((h % 360) + 360) % 360; }
@@ -10685,14 +10780,13 @@ function cipherDefaultHue() {
   return null;
 }
 
-// Default vibe state for Studio. When a cOMpass/OM Cipher palette exists, its
-// hue replaces the baseline 220; everything else stays at the neutral defaults
-// readVibeState() falls back to, so the Studio feels consistent with cOMpass
-// without overriding the person's other atmosphere choices.
+// Default vibe state for Studio. The hue is held at the neutral baseline 220
+// (zero hue-rotation) so the real --cipher-* palette tokens — already applied
+// from the contract — carry the colour faithfully, both when a cOMpass palette
+// exists and when it doesn't. Other dimensions keep their neutral defaults.
 function cipherDefaultVibe() {
-  const hue = cipherDefaultHue();
   return {
-    hue:   hue == null ? 220 : Math.round(hue),
+    hue:   220,
     glow:  50,
     dark:  50,
     warm:  0,
@@ -11122,6 +11216,10 @@ function initFrequencyEngine() {
   const cipherDefaultBtn = document.getElementById('colour-cipher-default-btn');
   if (cipherDefaultBtn) {
     cipherDefaultBtn.addEventListener('click', () => {
+      // Re-sync the --cipher-* palette tokens from the currently-loaded
+      // contract first, so the reset always lands on the palette in effect
+      // now (including one just brought in via JSON import).
+      try { initOmCipherPalette(); } catch (_) {}
       const def = cipherDefaultVibe();
       applyVibeState(def);
       const room = (typeof sessionRoomKey === 'string' && sessionRoomKey) ? sessionRoomKey : null;
@@ -11135,7 +11233,11 @@ function initFrequencyEngine() {
         const span = colourPill.querySelector('span') || colourPill;
         span.textContent = 'Colour';
       }
-      if (typeof showToast === 'function') showToast('Colour reset to your cOMpass palette');
+      if (typeof showToast === 'function') {
+        showToast(hasCipherPalette()
+          ? 'Colour reset to your cOMpass palette'
+          : 'Colour reset to the default palette');
+      }
     });
   }
 
