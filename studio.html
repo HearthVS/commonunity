@@ -7240,11 +7240,15 @@ input, textarea { font: inherit; color: inherit; }
       </button>
     </div><!-- /entrance-room-chooser -->
 
-    <!-- Session actions — always visible, minimal -->
+    <!-- Session actions — always visible, minimal.
+         Two distinct restore paths (they look similar but are not the
+         same import): "Import from Compass" reads a cOMpass export and
+         seeds the rooms from it; "Load Studio file" restores a Studio
+         session JSON previously written by "Save session". -->
     <div class="entrance-session-links">
-      <button class="compass-import-link" id="btn-import-compass">Import from Compass →</button>
-      <button class="compass-import-link" id="btn-studio-load-entrance">Load session →</button>
-      <button class="compass-import-link" id="btn-studio-save-entrance" style="opacity:0.3;">Save session →</button>
+      <button class="compass-import-link" id="btn-import-compass" title="Seed your rooms from a cOMpass session export (.json)">Import from Compass →</button>
+      <button class="compass-import-link" id="btn-studio-load-entrance" title="Restore a Studio session you saved earlier (.json)">Load Studio file →</button>
+      <button class="compass-import-link" id="btn-studio-save-entrance" style="opacity:0.3;" title="Save your current Studio session to a .json file">Save session →</button>
       <a class="compass-import-link" href="/tuner" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">CommonUnity Tuner →</a>
       <input type="file" id="studio-load-file-entrance" accept=".json" style="display:none">
     </div>
@@ -8679,6 +8683,32 @@ function updateNexusMemory() {
 
 let currentRoom = null;
 let portalOpened = false;
+
+// Reveal the entrance room chooser and its four room tiles in their
+// fully-open visual state. Used both when the hold-to-open ritual
+// completes and when a session is restored via JSON / Compass import
+// (those paths skip the hold, so the tiles — which start at opacity:0
+// in CSS — must be made visible explicitly, otherwise the chooser is
+// an invisible-but-clickable hit area). Idempotent and safe to call
+// when the chooser markup is absent.
+function revealRoomChooser() {
+  portalOpened = true;
+  const portal = document.getElementById('portal');
+  if (portal) portal.classList.add('doors-open');
+  // Drive the torus to its fully-open visual state.
+  if (window.setTorusHoldProgress) window.setTorusHoldProgress(1);
+  const hint = document.getElementById('portal-hint');
+  if (hint) { hint.style.opacity = '1'; hint.textContent = 'choose your room →'; }
+  const chooser = document.getElementById('entrance-room-chooser');
+  if (!chooser) return;
+  chooser.classList.add('visible');
+  // Reveal each tile (CSS keeps them at opacity:0 until shown).
+  chooser.querySelectorAll('.room-tile').forEach(tile => {
+    tile.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    tile.style.opacity = '1';
+    tile.style.transform = 'translateX(0)';
+  });
+}
 
 const API_BASE = 'https://commonunity-production.up.railway.app';
 
@@ -10132,13 +10162,9 @@ function processCompassImport(file) {
       const nameEl = document.getElementById('entrance-name');
       if (displayName) nameEl.textContent = `Welcome back, ${displayName}`;
 
-      // Open portal if not already
+      // Open portal + reveal the room tiles (skips the hold ritual).
       if (!portalOpened) {
-        portalOpened = true;
-        const portal = document.getElementById('portal');
-        portal.classList.add('doors-open');
-        const chooser = document.getElementById('entrance-room-chooser');
-        if (chooser) chooser.classList.add('visible');
+        revealRoomChooser();
         // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
 
@@ -10272,13 +10298,9 @@ function studioLoadJSON(file) {
         nameDisp.classList.add('visible');
       }
 
-      // Open portal if not open
+      // Open portal + reveal the room tiles (skips the hold ritual).
       if (!portalOpened) {
-        portalOpened = true;
-        const portal = document.getElementById('portal');
-        if (portal) portal.classList.add('doors-open');
-        const chooser = document.getElementById('entrance-room-chooser');
-        if (chooser) chooser.classList.add('visible');
+        revealRoomChooser();
         // showRosePrompt() — removed, Nexus prompt not shown on entrance
       }
 
