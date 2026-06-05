@@ -234,10 +234,25 @@ If you are only generating one compass point, still return the full JSON structu
 
 Return ONLY valid JSON. No explanation, no markdown fences, no preamble."""
 
+# Neutral placeholder the client sends instead of a real name (identity
+# minimization for synthesis / website copy). When present, instruct the model
+# to keep it verbatim and never invent a name; the client substitutes the
+# user's chosen display name locally on render.
+SYNTH_DISPLAY_PLACEHOLDER = "{{display_name}}"
+
+
+def _companion_prompt_line(companion: str) -> str:
+    if companion == SYNTH_DISPLAY_PLACEHOLDER:
+        return (f"Companion: {SYNTH_DISPLAY_PLACEHOLDER} "
+                "(this is a placeholder — if you must refer to the person by name, "
+                f"write {SYNTH_DISPLAY_PLACEHOLDER} verbatim; never invent a name)")
+    return f"Companion: {companion}"
+
+
 def build_user_prompt(request: GenerateRequest, points_to_generate: list[str]) -> str:
     lines = []
     if request.companion:
-        lines.append(f"Companion: {request.companion}")
+        lines.append(_companion_prompt_line(request.companion))
     if request.guide:
         lines.append(f"Guide: {request.guide}")
     lines.append("")
@@ -690,7 +705,7 @@ async def inspire(request: InspireRequest):
     point_label = point_names.get(request.point, request.point)
 
     user_msg = f"""Compass point: {point_label}
-Companion: {request.companion or 'Unknown'}
+{_companion_prompt_line(request.companion) if request.companion else 'Companion: Unknown'}
 
 {chr(10).join(context_parts) if context_parts else 'No session material yet for this point.'}
 
@@ -3047,7 +3062,7 @@ async def inspire_layer2(request: InspireLayer2Request):
     }
 
     user_msg = f"""Compass point: {point_label}
-Companion: {request.companion or 'Unknown'}
+{_companion_prompt_line(request.companion) if request.companion else 'Companion: Unknown'}
 
 Gene Key profile: {' · '.join(gk_parts) if gk_parts else 'Not provided'}
 
