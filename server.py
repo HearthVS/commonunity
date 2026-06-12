@@ -38,6 +38,11 @@ app.add_middleware(
 
 client = Anthropic()
 
+# ── Model configuration ──────────────────────────────────────────────────────
+# Single place to update the model for all Nexus/Studio/generation endpoints.
+# Current: claude-sonnet-4-6 (upgraded from claude-sonnet-4-5, June 2026)
+_NEXUS_MODEL = "claude-sonnet-4-6"
+
 CONTEXT_PATH = pathlib.Path(__file__).parent / "commonunity-context.md"
 BRAND_REF_PATH = pathlib.Path(__file__).parent / "brand-reference.txt"
 context_document: str = ""
@@ -453,7 +458,7 @@ DOCUMENT:
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=1500,
                 system=CV_EXTRACTION_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -533,7 +538,7 @@ TRANSCRIPT:
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=3000,
                 system=TRANSCRIPT_ROUTING_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -637,7 +642,7 @@ QUESTION: {request.query}"""
     async def stream():
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=800,
                 system=system,
                 messages=[{"role": "user", "content": user_msg}]
@@ -716,7 +721,7 @@ Write a short contemplative starting point (2–3 sentences) to help this person
     async def stream():
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=200,
                 system=INSPIRE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -827,7 +832,7 @@ async def threshold_name_essay(req: NameEssayRequest):
 
     try:
         resp = client.messages.create(
-            model="claude-sonnet-4-5",
+            model=_NEXUS_MODEL,
             max_tokens=900,
             system=NAME_ESSAY_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
@@ -936,7 +941,7 @@ async def generate(request: GenerateRequest):
         full_text = ""
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=2048,
                 system=system,
                 messages=[{"role": "user", "content": user}]
@@ -2772,7 +2777,7 @@ Return only the question or observation — no preamble, no attribution."""
     async def stream():
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=100,
                 system=ROSE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -2826,7 +2831,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
     async def stream():
         async for event, payload in _stream_with_retry(
             client,
-            model="claude-sonnet-4-5",
+            model=_NEXUS_MODEL,
             max_tokens=120,
             system=ROSE_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
@@ -2842,7 +2847,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
                             companion=request.companion or "",
                             endpoint="rose-room-opening",
                             room=request.room or "",
-                            model="claude-sonnet-4-5",
+                            model=_NEXUS_MODEL,
                             input_tokens=payload.usage.input_tokens,
                             output_tokens=payload.usage.output_tokens,
                         )
@@ -2981,7 +2986,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
     async def stream():
         async for event, payload in _stream_with_retry(
             client,
-            model="claude-sonnet-4-5",
+            model=_NEXUS_MODEL,
             max_tokens=600 if is_studio else 200,
             system=system,
             messages=messages,
@@ -2997,7 +3002,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
                             companion=request.companion or "",
                             endpoint="rose-mirror",
                             room=request.room or "",
-                            model="claude-sonnet-4-5",
+                            model=_NEXUS_MODEL,
                             input_tokens=payload.usage.input_tokens,
                             output_tokens=payload.usage.output_tokens,
                             invite_token=getattr(request, "invite_token", "") or "",
@@ -3084,7 +3089,7 @@ Task: {field_instructions.get(request.field, 'Write a synthesis.')}"""
     async def stream():
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-5",
+                model=_NEXUS_MODEL,
                 max_tokens=200,
                 system=INSPIRE_L2_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -3288,7 +3293,7 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
 
     try:
         msg = client.messages.create(
-            model="claude-sonnet-4-5",
+            model=_NEXUS_MODEL,
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_msg}],
