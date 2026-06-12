@@ -892,7 +892,7 @@ async def brand_reference_status():
 
 
 @app.post("/generate")
-async def generate(request: GenerateRequest):
+async def generate(request: GenerateRequest, req: Request):
     """
     Stream Layer 3 generation for one or all compass points.
     Returns server-sent events with partial JSON, then a final complete JSON.
@@ -971,6 +971,20 @@ async def generate(request: GenerateRequest):
                         "heading": "", "intro": "", "highlights": [],
                         "closing": "", "questions": questions
                     }
+
+            # Record compass room milestones for completed viable points
+            invite_token = _invite_token_from_cookie(req)
+            if invite_token:
+                _room_to_milestone = {
+                    "work": "compass_work_done",
+                    "lens": "compass_lens_done",
+                    "field": "compass_field_done",
+                    "call": "compass_call_done",
+                }
+                for room_key in viable:
+                    ms = _room_to_milestone.get(room_key)
+                    if ms:
+                        _record_milestone(invite_token, ms)
 
             yield f"data: {json.dumps({'done': True, 'result': parsed})}\n\n"
 
@@ -1080,6 +1094,55 @@ def _brand_logo_svg(palette: dict | None = None) -> str:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _record_milestone(token: str, milestone: str) -> None:
+    """Record a member progress milestone. Idempotent — first occurrence wins."""
+    if not token or not milestone:
+        return
+    try:
+        now = _now_iso()
+        with _admin_db() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO member_milestones (token, milestone, achieved_at)
+                VALUES (?, ?, ?)
+                """,
+                (token.strip(), milestone, now),
+            )
+            if milestone in ("compass_work_done", "compass_lens_done",
+                             "compass_field_done", "compass_call_done"):
+                done = {r[0] for r in conn.execute(
+                    "SELECT milestone FROM member_milestones WHERE token=?",
+                    (token.strip(),)
+                ).fetchall()}
+                if {"compass_work_done", "compass_lens_done",
+                    "compass_field_done", "compass_call_done"}.issubset(done):
+                    conn.execute(
+                        "INSERT OR IGNORE INTO member_milestones (token, milestone, achieved_at) VALUES (?,?,?)",
+                        (token.strip(), "compass_complete", now),
+                    )
+    except Exception as exc:
+        print(f"milestone logging failed ({milestone}): {exc}")
+
+
+def _milestones_for_tokens(tokens: list[str]) -> dict[str, dict]:
+    """Return {token: {milestone: achieved_at}} for a list of tokens."""
+    if not tokens:
+        return {}
+    try:
+        placeholders = ",".join("?" * len(tokens))
+        with _admin_db() as conn:
+            rows = conn.execute(
+                f"SELECT token, milestone, achieved_at FROM member_milestones WHERE token IN ({placeholders})",
+                tokens,
+            ).fetchall()
+        result: dict[str, dict] = {t: {} for t in tokens}
+        for row in rows:
+            result[row[0]][row[1]] = row[2]
+        return result
+    except Exception:
+        return {t: {} for t in tokens}
 
 
 def _admin_db_path() -> pathlib.Path:
@@ -1204,6 +1267,24 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── Member milestones table ──────────────────────────────────────────
+    # Privacy-safe progress tracker. Keyed by invite token. Stores only
+    # milestone name + timestamp — no personal data, no content.
+    # Milestones: link_opened, om_cipher_saved, compass_work_done,
+    # compass_lens_done, compass_field_done, compass_call_done, compass_complete
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS member_milestones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT NOT NULL,
+            milestone TEXT NOT NULL,
+            achieved_at TEXT NOT NULL,
+            UNIQUE(token, milestone)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_milestones_token ON member_milestones(token)")
+
     # ── Waitlist table ────────────────────────────────────────────────────
     conn.execute(
         """
@@ -1920,6 +2001,7 @@ def _serve_private_file(request: Request, app_key: str, file_path: pathlib.Path,
             _set_invite_cookie(response, request, invite.strip())
             if db_invite:
                 _touch_invite(invite.strip(), request, "invite_opened", app_key)
+                _record_milestone(invite.strip(), "link_opened")
             else:
                 _record_event(
                     "env_invite_opened",
@@ -1928,6 +2010,7 @@ def _serve_private_file(request: Request, app_key: str, file_path: pathlib.Path,
                     source=app_key,
                     user_agent=request.headers.get("user-agent", "")[:320],
                 )
+                _record_milestone(invite.strip(), "link_opened")
         return response
     if not _has_beta_access(request):
         return _beta_gate(app_key, request.url.path)
@@ -2203,7 +2286,35 @@ async def admin_list_invites(request: Request):
             LIMIT 500
             """
         ).fetchall()
-    return {"invites": [_invite_admin_row(row) for row in rows]}
+    invites = [_invite_admin_row(row) for row in rows]
+    # Attach milestone data to each invite (privacy-safe: timestamps only)
+    tokens = [inv.get("token", "") or inv.get("token_preview", "") for inv in invites]
+    # Use full tokens from raw rows for milestone lookup
+    raw_tokens = [dict(row).get("token", "") for row in rows]
+    milestones_map = _milestones_for_tokens([t for t in raw_tokens if t])
+    for invite, raw_token in zip(invites, raw_tokens):
+        invite["milestones"] = milestones_map.get(raw_token, {})
+    return {"invites": invites}
+
+
+@app.get("/api/admin/milestones")
+async def admin_milestones(request: Request):
+    """Return all member milestones, keyed by token, for the admin panel."""
+    _require_admin(request)
+    try:
+        with _admin_db() as conn:
+            rows = conn.execute(
+                "SELECT token, milestone, achieved_at FROM member_milestones ORDER BY achieved_at ASC"
+            ).fetchall()
+        result: dict[str, dict] = {}
+        for row in rows:
+            t, m, ts = row["token"], row["milestone"], row["achieved_at"]
+            if t not in result:
+                result[t] = {}
+            result[t][m] = ts
+        return {"milestones": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/admin/invites")
@@ -3600,7 +3711,7 @@ def _om_disabled_response():
 
 
 @app.post("/api/om-cipher/generate")
-async def om_cipher_generate(body: OmCipherInput):
+async def om_cipher_generate(body: OmCipherInput, req: Request):
     if not _om_engine.is_enabled():
         _om_disabled_response()
     payload = body.dict()
@@ -3616,6 +3727,10 @@ async def om_cipher_generate(body: OmCipherInput):
             return {"ok": True, "member_id": member_id, "om_cipher": existing, "reused": True}
         record["member_id"] = member_id
         _om_save(record)
+    # Record milestone — OM Cipher saved for this invite token
+    invite_token = _invite_token_from_cookie(req)
+    if invite_token:
+        _record_milestone(invite_token, "om_cipher_saved")
     return {"ok": True, "member_id": member_id, "om_cipher": record}
 
 

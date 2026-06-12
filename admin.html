@@ -962,6 +962,7 @@
                   <th>Opened</th>
                   <th>Threshold</th>
                   <th>cOMpass</th>
+                  <th>Journey</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1417,6 +1418,25 @@
       $('metric-compass').textContent = state.metrics.compass_entered || 0;
       $('config-status').textContent = state.configured.smtp ? 'Admin room open · email ready' : 'Admin room open · SMTP needed';
 
+      function milestoneStrip(ms) {
+        ms = ms || {};
+        const dot = (key, label, colour) => {
+          const hit = ms[key];
+          const ts = hit ? new Date(hit).toLocaleString(undefined, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+          return `<span title="${label}${ts ? ': ' + ts : ''}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${hit ? colour : '#333'};margin:0 2px;border:1px solid ${hit ? colour : '#555'};cursor:default"></span>`;
+        };
+        const allRooms = ms.compass_work_done && ms.compass_lens_done && ms.compass_field_done && ms.compass_call_done;
+        return [
+          dot('link_opened',       '🔗 Link opened',      '#a8d8a8'),
+          dot('om_cipher_saved',   '🔑 OM Cipher saved',  '#f7c873'),
+          dot('compass_work_done', 'The Work',            '#9bb8d4'),
+          dot('compass_lens_done', 'The Lens',            '#9bb8d4'),
+          dot('compass_field_done','The Field',           '#9bb8d4'),
+          dot('compass_call_done', 'The Call',            '#9bb8d4'),
+          allRooms ? dot('compass_complete', '✓ cOMpass complete', '#c3a8d8') : '',
+        ].join('');
+      }
+
       $('invite-rows').innerHTML = state.invites.map(inv => `
         <tr>
           <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong><div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
@@ -1425,6 +1445,7 @@
           <td>${date(inv.first_opened_at)}</td>
           <td>${date(inv.threshold_completed_at)}</td>
           <td>${date(inv.compass_entered_at)}</td>
+          <td style="white-space:nowrap">${milestoneStrip(inv.milestones)}</td>
           <td>
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
@@ -1433,7 +1454,7 @@
             </div>
           </td>
         </tr>
-      `).join('') || '<tr><td colspan="7" class="muted">No invitations yet.</td></tr>';
+      `).join('') || '<tr><td colspan="8" class="muted">No invitations yet.</td></tr>';
 
       $('events').innerHTML = state.events.map(ev => `
         <div class="event">
