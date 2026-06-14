@@ -1,1791 +1,969 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  CommonUnity — homepage.html
+  "Align the inner. Shape the outer."
+
+  An evolutionary field for unified living.
+  Quietly underwritten by the Oṁ principle:
+    Begin from listening. Move through resonance. Return toward coherence.
+
+  Single self-contained file — embedded CSS, minimal JS.
+  Built with CommonUnity · HearthVS · commonunity.io
+  Crafted with Perplexity Computer.
+  ============================================================================
+-->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CommonUnity — Align the inner. Shape the outer.</title>
-<meta name="description" content="CommonUnity is an evolutionary field for unified living, rooted in timeless principles and brought into practice through self-knowledge, frequency, community, and conscious action.">
-<meta name="theme-color" content="#0b1120">
-<meta property="og:title" content="CommonUnity — Align the inner. Shape the outer.">
-<meta property="og:description" content="An evolutionary field for unified living. Rooted in timeless principles. Brought into practice through self-knowledge, frequency, community, and conscious action.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://commonunity.io/">
-<link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
-<link rel="mask-icon" href="/assets/brand/mono-mark.svg" color="#B8872E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Josefin+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --base: #0b1120;
-    --base-2: #0f172a;
-    --base-3: #131c34;
-    --teal: #2A6B8C;
-    --teal-soft: #3a8aae;
-    --forest: #5C7A3E;
-    --gold: #B8872E;
-    --gold-soft: #d4a04a;
-    --terracotta: #C8622A;
-    --cream: #FAF8F4;
-    --cream-dim: rgba(250, 248, 244, 0.72);
-    --cream-faint: rgba(250, 248, 244, 0.45);
-    --line: rgba(250, 248, 244, 0.10);
-    --line-strong: rgba(250, 248, 244, 0.18);
-    --max: 1180px;
-    --pad: clamp(20px, 4vw, 48px);
-    --radius: 6px;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    --font-display: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-    --font-mark: 'Josefin Sans', 'Plus Jakarta Sans', system-ui, sans-serif;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CommonUnity — Align the inner. Shape the outer.</title>
+  <meta name="description" content="CommonUnity is an evolutionary field for unified living — rooted in timeless principles, brought into practice through self-knowledge, attunement, and conscious creation." />
 
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    background: var(--base);
-    color: var(--cream);
-    font-family: var(--font-sans);
-    font-weight: 400;
-    line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-    overflow-x: hidden;
-  }
+  <!-- Google Fonts: Cormorant Garamond (display), Plus Jakarta Sans (body), Josefin Sans (wordmark) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Josefin+Sans:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse 60% 50% at 12% 10%, rgba(42,107,140,0.18), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 88% 8%, rgba(184,135,46,0.12), transparent 60%),
-      radial-gradient(ellipse 70% 60% at 50% 110%, rgba(92,122,62,0.14), transparent 60%);
-    z-index: 0;
-  }
+  <style>
+    /* ========================================================================
+       TOKENS — warm, deep, field-like palette (departing from cold navy)
+       ===================================================================== */
+    :root {
+      --bg:            #0e0c09;   /* very deep warm dark — almost black, brown undertone */
+      --surface:       #141210;   /* warm surface for cards */
+      --border:        rgba(250, 235, 200, 0.06);  /* very subtle warm card border */
+      --line:          rgba(245, 238, 216, 0.08);  /* 1px section divider */
 
-  a { color: inherit; text-decoration: none; }
-  a:focus-visible, button:focus-visible {
-    outline: 2px solid var(--gold-soft);
-    outline-offset: 3px;
-    border-radius: 3px;
-  }
+      --gold:          #C4993A;   /* primary accent — warmer, deeper */
+      --sage:          #4A7A5C;   /* secondary accent — forest/sage */
+      --terra:         #A85535;   /* tertiary — dusty terracotta, used sparingly */
 
-  /* ─────────── Layout ─────────── */
-  .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); position: relative; z-index: 1; }
+      --text:          #F5EED8;                       /* warm cream */
+      --muted:         rgba(245, 238, 216, 0.55);     /* muted text */
+      --faint:         rgba(245, 238, 216, 0.30);     /* faint text */
 
-  /* ─────────── Header ─────────── */
-  header.site {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: rgba(11, 17, 32, 0.72);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 18px;
-    padding-bottom: 18px;
-    gap: 24px;
-  }
-  .brand { display: flex; align-items: center; }
-  .brand svg.lockup { display: block; height: 28px; width: auto; }
-  @media (max-width: 480px) {
-    .brand svg.lockup { height: 24px; }
-  }
-  .nav-links { display: flex; gap: 26px; align-items: center; }
-  .nav-links a {
-    font-size: 14px;
-    color: var(--cream-dim);
-    transition: color .18s ease;
-    font-weight: 500;
-  }
-  .nav-links a:hover { color: var(--cream); }
-  @media (max-width: 760px) {
-    .nav-links { display: none; }
-  }
+      --display: 'Cormorant Garamond', Georgia, serif;
+      --body:    'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --mark:    'Josefin Sans', sans-serif;
 
-  /* ─────────── Hero ─────────── */
-  .hero {
-    padding-top: clamp(70px, 12vh, 140px);
-    padding-bottom: clamp(70px, 12vh, 130px);
-    text-align: center;
-    position: relative;
-  }
-  .hero .lockup-hero {
-    display: block;
-    width: clamp(280px, 60vw, 560px);
-    height: auto;
-    margin: 0 auto 36px;
-  }
-  .hero h1 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(40px, 7vw, 78px);
-    line-height: 1.04;
-    letter-spacing: -0.01em;
-    margin: 0 0 22px;
-    color: var(--cream);
-  }
-  .hero h1 em {
-    font-style: italic;
-    color: var(--gold-soft);
-    font-weight: 400;
-  }
-  .hero .lede {
-    font-size: clamp(17px, 2vw, 21px);
-    color: var(--cream-dim);
-    max-width: 680px;
-    margin: 0 auto 36px;
-    line-height: 1.55;
-  }
-  .cta-row {
-    display: flex;
-    gap: 14px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 26px;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: var(--radius);
-    transition: all .2s ease;
-    border: 1px solid transparent;
-    cursor: pointer;
-  }
-  .btn-primary {
-    background: var(--gold);
-    color: var(--base);
-    border-color: var(--gold);
-  }
-  .btn-primary:hover { background: var(--gold-soft); border-color: var(--gold-soft); transform: translateY(-1px); }
-  .btn-ghost {
-    background: transparent;
-    color: var(--cream);
-    border-color: var(--line-strong);
-  }
-  .btn-ghost:hover { border-color: var(--cream-dim); background: rgba(250,248,244,0.04); }
-  .btn .arrow { font-size: 16px; line-height: 1; transition: transform .2s ease; }
-  .btn:hover .arrow { transform: translateX(3px); }
-
-  /* ─────────── Section base ─────────── */
-  section { padding-top: clamp(72px, 10vh, 120px); padding-bottom: clamp(72px, 10vh, 120px); position: relative; }
-  .section-eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--gold-soft);
-    margin-bottom: 14px;
-    font-weight: 500;
-  }
-  .section-title {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(30px, 4.6vw, 48px);
-    line-height: 1.12;
-    letter-spacing: -0.005em;
-    margin: 0 0 18px;
-  }
-  .section-title em { font-style: italic; color: var(--gold-soft); font-weight: 400; }
-  .section-lede {
-    font-size: clamp(16px, 1.6vw, 18px);
-    color: var(--cream-dim);
-    max-width: 660px;
-    line-height: 1.6;
-  }
-  .section-head { max-width: 760px; margin-bottom: 56px; }
-
-  /* ─────────── Principles (Unity is a practice) ─────────── */
-  .principles {
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-  }
-  .principles-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-top: 12px;
-  }
-  @media (max-width: 920px) { .principles-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 460px) { .principles-grid { grid-template-columns: 1fr; } }
-  .principle {
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 22px 20px;
-    background: linear-gradient(180deg, rgba(250,248,244,0.025), rgba(250,248,244,0.005));
-    transition: border-color .2s ease, transform .2s ease;
-  }
-  .principle:hover { border-color: var(--line-strong); transform: translateY(-1px); }
-  .principle .num {
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--gold-soft);
-    font-size: 15px;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-  }
-  .principle h4 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 22px;
-    margin: 0 0 6px;
-    color: var(--cream);
-    letter-spacing: -0.005em;
-  }
-  .principle p {
-    margin: 0;
-    color: var(--cream-dim);
-    font-size: 14px;
-    line-height: 1.55;
-  }
-  .principles-coda {
-    margin-top: 44px;
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: clamp(18px, 2vw, 22px);
-    color: var(--cream);
-    max-width: 700px;
-    line-height: 1.5;
-  }
-  .principles-lead {
-    margin-top: 22px;
-    color: var(--cream-dim);
-    font-size: clamp(15px, 1.5vw, 17px);
-    line-height: 1.65;
-    max-width: 700px;
-  }
-  .principles-link {
-    margin-top: 14px;
-    font-size: 14px;
-    letter-spacing: 0.02em;
-  }
-  .principles-link a {
-    color: var(--gold-soft);
-    border-bottom: 1px solid rgba(212,160,74,0.35);
-    transition: color .15s ease, border-color .15s ease;
-    padding-bottom: 1px;
-  }
-  .principles-link a:hover { color: var(--cream); border-color: var(--cream-dim); }
-  .principles-link .arrow { display: inline-block; transition: transform .2s ease; }
-  .principles-link a:hover .arrow { transform: translateX(3px); }
-
-  /* ─────────── Nexus / Human core ─────────── */
-  .core-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(40px, 6vw, 80px);
-    align-items: start;
-  }
-  @media (max-width: 860px) { .core-grid { grid-template-columns: 1fr; } }
-  .core-grid > * { min-width: 0; }
-  .core-prose p {
-    color: var(--cream-dim);
-    font-size: clamp(16px, 1.6vw, 18px);
-    line-height: 1.65;
-    margin: 0 0 18px;
-  }
-  .core-prose p:last-child { margin-bottom: 0; }
-  .core-prose .pull-line {
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--cream);
-    font-size: clamp(20px, 2.4vw, 26px);
-    line-height: 1.4;
-    margin: 0 0 24px;
-    padding-left: 18px;
-    border-left: 2px solid var(--gold);
-  }
-  .om-principle {
-    aspect-ratio: 1 / 1;
-    width: 100%;
-    max-width: 440px;
-    margin: 0 auto;
-  }
-
-  /* ─────────── Tools within the field ─────────── */
-  .tools-eyebrow-line {
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    color: var(--cream-faint);
-    margin-top: 8px;
-    font-style: italic;
-    font-family: var(--font-display);
-  }
-  .instruments {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-  }
-  @media (max-width: 920px) { .instruments { grid-template-columns: 1fr; } }
-  .instruments > * { min-width: 0; }
-  .instrument {
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 32px 28px;
-    background: linear-gradient(180deg, rgba(250,248,244,0.025), rgba(250,248,244,0.008));
-    transition: all .25s ease;
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    position: relative;
-    overflow: hidden;
-  }
-  .instrument::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: radial-gradient(ellipse 50% 50% at 50% 0%, var(--accent-color, transparent) 0%, transparent 70%);
-    opacity: 0.10;
-    transition: opacity .25s ease;
-  }
-  .instrument:hover { border-color: var(--line-strong); transform: translateY(-2px); }
-  .instrument:hover::after { opacity: 0.18; }
-  .instrument .glyph {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 22px;
-  }
-  .instrument h3 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 28px;
-    margin: 0 0 6px;
-    letter-spacing: -0.005em;
-  }
-  .instrument .role {
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-    margin-bottom: 14px;
-  }
-  .instrument p {
-    color: var(--cream-dim);
-    font-size: 15px;
-    line-height: 1.6;
-    margin: 0 0 20px;
-    flex-grow: 1;
-  }
-  .instrument .features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 22px;
-    font-size: 13px;
-    color: var(--cream-faint);
-  }
-  .instrument .features li {
-    padding: 4px 0;
-    border-top: 1px dashed var(--line);
-  }
-  .instrument .features li:first-child { border-top: 1px solid var(--line); padding-top: 10px; }
-  .instrument .visit {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--accent-color);
-    font-weight: 500;
-  }
-  .instrument .visit::after { content: "→"; transition: transform .2s ease; }
-  .instrument:hover .visit::after { transform: translateX(4px); }
-  .instrument.compass { --accent-color: var(--teal-soft); }
-  .instrument.studio { --accent-color: var(--gold-soft); }
-  .instrument.tuner { --accent-color: var(--terracotta); }
-
-  /* ─────────── Nexus ─────────── */
-  .nexus-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(40px, 6vw, 80px);
-    align-items: start;
-  }
-  @media (max-width: 920px) { .nexus-grid { grid-template-columns: 1fr; } }
-  .nexus-grid > * { min-width: 0; }
-  .nexus-prose .pull-line {
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--cream);
-    font-size: clamp(20px, 2.4vw, 26px);
-    line-height: 1.4;
-    margin: 0 0 24px;
-    padding-left: 18px;
-    border-left: 2px solid var(--forest);
-  }
-  .nexus-prose p {
-    color: var(--cream-dim);
-    font-size: clamp(16px, 1.6vw, 18px);
-    line-height: 1.65;
-    margin: 0 0 18px;
-  }
-  .nexus-prose .nexus-coda {
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--gold-soft);
-    font-size: clamp(18px, 2vw, 22px);
-    line-height: 1.45;
-    margin: 8px 0 24px;
-  }
-  details.nexus-details {
-    margin-top: 8px;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-    padding: 4px 0;
-  }
-  details.nexus-details > summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 16px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--cream);
-    font-weight: 500;
-  }
-  details.nexus-details > summary::-webkit-details-marker { display: none; }
-  details.nexus-details > summary::after {
-    content: "+";
-    font-family: var(--font-display);
-    font-size: 22px;
-    line-height: 1;
-    color: var(--forest);
-    transition: transform .25s ease;
-  }
-  details.nexus-details[open] > summary::after { content: "−"; }
-  details.nexus-details .nexus-detail-body {
-    padding: 4px 0 20px;
-    color: var(--cream-dim);
-    font-size: 15px;
-    line-height: 1.65;
-  }
-  details.nexus-details .nexus-detail-body p { margin: 0 0 14px; }
-  details.nexus-details .nexus-detail-body p:last-child { margin-bottom: 0; }
-
-  /* Mockup */
-  .nexus-mockup {
-    border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    padding: 22px;
-    background:
-      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(92,122,62,0.16), transparent 70%),
-      linear-gradient(180deg, rgba(250,248,244,0.025), rgba(11,17,32,0.5));
-    position: relative;
-    overflow: hidden;
-  }
-  .nexus-mockup::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(250,248,244,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(250,248,244,0.04) 1px, transparent 1px);
-    background-size: 28px 28px;
-    opacity: 0.45;
-    pointer-events: none;
-  }
-  .nexus-mockup-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    position: relative;
-    z-index: 1;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--line);
-  }
-  .nexus-mockup-mark {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .nexus-mockup-mark svg { display: block; }
-  .nexus-mockup-title {
-    font-family: var(--font-mark);
-    font-weight: 700;
-    letter-spacing: 0.32em;
-    font-size: 13px;
-    color: var(--cream);
-  }
-  .nexus-mockup-status {
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--forest);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .nexus-mockup-status::before {
-    content: "";
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #88b15c;
-    box-shadow: 0 0 10px rgba(136,177,92,0.85);
-  }
-  .nexus-signal {
-    position: relative;
-    z-index: 1;
-    margin: 18px 0 16px;
-    height: 56px;
-    width: 100%;
-  }
-  .nexus-cards {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    gap: 10px;
-  }
-  .nexus-card {
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 12px 14px;
-    background: rgba(11,17,32,0.6);
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 12px;
-    align-items: baseline;
-  }
-  .nexus-card .nx-src {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-    font-weight: 600;
-    padding-top: 1px;
-  }
-  .nexus-card .nx-text {
-    color: var(--cream-dim);
-    font-size: 13.5px;
-    line-height: 1.5;
-  }
-  .nexus-card.compass .nx-src { color: var(--teal-soft); }
-  .nexus-card.studio  .nx-src { color: var(--gold-soft); }
-  .nexus-card.tuner   .nx-src { color: var(--terracotta); }
-  .nexus-mockup-foot {
-    position: relative;
-    z-index: 1;
-    margin-top: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-  }
-
-  /* ─────────── Key ─────────── */
-  .key {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(40px, 5vw, 70px);
-    align-items: start;
-  }
-  .key > * { min-width: 0; max-width: 100%; }
-  @media (max-width: 860px) { .key { grid-template-columns: 1fr; } }
-  .key-card {
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    padding: 30px;
-    background: linear-gradient(180deg, rgba(42,107,140,0.06), rgba(11,17,32,0.4));
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 1.7;
-    color: var(--cream-dim);
-    overflow-x: auto;
-    max-width: 100%;
-    margin: 0;
-    white-space: pre;
-  }
-  @media (max-width: 360px) {
-    .key-card { padding: 20px 18px; font-size: 11.5px; }
-  }
-  .key-card .k { color: var(--teal-soft); }
-  .key-card .s { color: var(--gold-soft); }
-  .key-card .n { color: var(--terracotta); }
-  .key-features {
-    list-style: none;
-    padding: 0;
-    margin: 28px 0 0;
-  }
-  .key-features li {
-    padding: 14px 0;
-    border-top: 1px solid var(--line);
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 18px;
-    align-items: baseline;
-  }
-  .key-features li:last-child { border-bottom: 1px solid var(--line); }
-  .key-features .k-label {
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--gold-soft);
-    font-size: 17px;
-    min-width: 110px;
-  }
-  .key-features .k-text { color: var(--cream-dim); font-size: 15px; line-height: 1.5; }
-
-  /* ─────────── Practitioners ─────────── */
-  .practitioners-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-    margin-top: 40px;
-  }
-  @media (max-width: 860px) { .practitioners-grid { grid-template-columns: 1fr; } }
-  .pcard {
-    border-left: 2px solid var(--gold);
-    padding: 6px 0 6px 22px;
-  }
-  .pcard h4 {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--cream);
-    letter-spacing: 0.005em;
-  }
-  .pcard p {
-    margin: 0;
-    color: var(--cream-dim);
-    font-size: 14px;
-    line-height: 1.6;
-  }
-  .pcard.teal { border-color: var(--teal-soft); }
-  .pcard.forest { border-color: var(--forest); }
-  .pcard.terracotta { border-color: var(--terracotta); }
-
-  /* ─────────── Pull-quote ─────────── */
-  .pull {
-    text-align: center;
-    padding: 70px 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-  }
-  .pull blockquote {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-weight: 400;
-    font-size: clamp(22px, 3vw, 32px);
-    line-height: 1.4;
-    color: var(--cream);
-    margin: 0 auto;
-    max-width: 760px;
-  }
-  .pull cite {
-    display: block;
-    margin-top: 18px;
-    font-style: normal;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-  }
-
-  /* ─────────── Connect ─────────── */
-  .connect {
-    text-align: center;
-    padding-top: clamp(72px, 10vh, 110px);
-    padding-bottom: clamp(72px, 10vh, 110px);
-  }
-  .connect .section-lede { margin-left: auto; margin-right: auto; }
-  .connect .closing {
-    display: inline-block;
-    margin-top: 36px;
-    font-family: var(--font-display);
-    font-style: italic;
-    color: var(--gold-soft);
-    font-size: 22px;
-    letter-spacing: 0.04em;
-  }
-
-  /* ─────────── Waitlist ─────────── */
-  .waitlist {
-    margin: 56px auto 0;
-    max-width: 520px;
-    text-align: left;
-    border-top: 1px solid var(--line);
-    padding-top: 40px;
-  }
-  .waitlist .wl-eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--gold-soft);
-    margin-bottom: 10px;
-    text-align: center;
-    font-weight: 500;
-  }
-  .waitlist h3 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(22px, 3vw, 28px);
-    text-align: center;
-    margin: 0 0 10px;
-    color: var(--cream);
-  }
-  .waitlist .wl-lede {
-    text-align: center;
-    color: var(--cream-faint);
-    margin: 0 0 24px;
-    line-height: 1.55;
-  }
-  .waitlist form {
-    display: grid;
-    gap: 14px;
-  }
-  .waitlist label {
-    display: block;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-    margin-bottom: 6px;
-    font-weight: 500;
-  }
-  .waitlist input[type="email"],
-  .waitlist input[type="text"],
-  .waitlist select {
-    width: 100%;
-    padding: 12px 14px;
-    background: rgba(250,248,244,0.03);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    color: var(--cream);
-    font-family: inherit;
-    font-size: 15px;
-    transition: border-color .2s ease, background .2s ease;
-  }
-  .waitlist input:focus,
-  .waitlist select:focus {
-    outline: none;
-    border-color: var(--gold-soft);
-    background: rgba(250,248,244,0.05);
-  }
-  .waitlist .wl-honey {
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .waitlist .wl-actions {
-    display: flex;
-    justify-content: center;
-    margin-top: 8px;
-  }
-  .waitlist .wl-note {
-    text-align: center;
-    color: var(--cream-faint);
-    font-size: 12px;
-    margin: 14px 0 0;
-    letter-spacing: 0.04em;
-  }
-  .waitlist .wl-thanks {
-    text-align: center;
-    color: var(--gold-soft);
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 18px;
-    margin: 12px 0 0;
-  }
-  @media (min-width: 560px) {
-    .waitlist .wl-row-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      --maxw: 1120px;
+      --gutter: clamp(20px, 5vw, 56px);
+      --radius: 14px;
+      --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
     }
-  }
 
-  /* ─────────── Footer ─────────── */
-  footer.site {
-    border-top: 1px solid var(--line);
-    padding: 48px 0 56px;
-    color: var(--cream-faint);
-    font-size: 13px;
-  }
-  .foot {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 32px;
-  }
-  @media (max-width: 720px) { .foot { grid-template-columns: 1fr 1fr; gap: 28px 20px; } }
-  @media (max-width: 380px) { .foot { grid-template-columns: 1fr; } }
-  .foot h5 {
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--cream);
-    margin: 0 0 14px;
-    font-weight: 600;
-  }
-  .foot a { display: block; padding: 4px 0; color: var(--cream-faint); transition: color .15s; }
-  .foot a:hover { color: var(--cream); }
-  .foot .colophon { color: var(--cream-faint); line-height: 1.7; max-width: 320px; }
-  .foot-meta {
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    color: var(--cream-faint);
-    font-size: 12px;
-    letter-spacing: 0.04em;
-  }
+    /* ========================================================================
+       RESET / BASE
+       ===================================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      font-weight: 300;
+      font-size: 17px;
+      line-height: 1.7;
+      letter-spacing: 0.005em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-  /* ─────────── Reveal animation ─────────── */
-  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .7s ease, transform .7s ease; }
-  .reveal.in { opacity: 1; transform: translateY(0); }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
-    html { scroll-behavior: auto; }
-  }
-</style>
+    /* Full spectrum underlayer — the complete range of vibration, felt beneath the surface.
+       Exists as a slow conic sweep across the entire viewport, at very low opacity.
+       The warm radials above act as a veil, tinting the spectrum into earthy zones. */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background: conic-gradient(
+        from 200deg at 60% 38%,
+        rgba(180,  30,  60, 0.09),   /* red-violet */
+        rgba(200,  80,  20, 0.08),   /* red-orange */
+        rgba(210, 140,  20, 0.09),   /* amber */
+        rgba(120, 170,  40, 0.08),   /* yellow-green */
+        rgba( 40, 140,  90, 0.09),   /* green */
+        rgba( 30, 120, 160, 0.08),   /* teal */
+        rgba( 50,  80, 190, 0.09),   /* indigo */
+        rgba(110,  50, 180, 0.08),   /* violet */
+        rgba(160,  30, 140, 0.09),   /* magenta */
+        rgba(180,  30,  60, 0.09)    /* back to red-violet — seamless loop */
+      );
+    }
+
+    /* Warm atmospheric veil — amber, terracotta, forest — draped over the spectrum.
+       Together they read as earthed warmth, with spectral depth beneath. */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(58% 50% at 12% 8%,  rgba(196, 153, 58, 0.13), transparent 70%),
+        radial-gradient(50% 46% at 88% 6%,  rgba(168, 85, 53, 0.085), transparent 72%),
+        radial-gradient(64% 58% at 86% 96%, rgba(74, 122, 92, 0.12), transparent 72%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    h1, h2, h3 {
+      font-family: var(--display);
+      font-weight: 500;
+      letter-spacing: 0.005em;
+      margin: 0;
+      line-height: 1.12;
+    }
+    p { margin: 0; }
+
+    /* ========================================================================
+       LAYOUT PRIMITIVES
+       ===================================================================== */
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding-left: var(--gutter);
+      padding-right: var(--gutter);
+    }
+
+    section { position: relative; }
+
+    /* Single 1px warm line between sections */
+    .section-line {
+      border-top: 1px solid var(--line);
+    }
+
+    .pad {
+      padding-top: clamp(72px, 11vw, 132px);
+      padding-bottom: clamp(72px, 11vw, 132px);
+    }
+
+    .eyebrow {
+      font-family: var(--body);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      margin: 0 0 22px;
+    }
+
+    .lede {
+      color: var(--muted);
+      font-size: clamp(16px, 1.6vw, 18px);
+      max-width: 62ch;
+    }
+
+    /* ========================================================================
+       NAV — subtle sticky, frosted glass
+       ===================================================================== */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(14, 12, 9, 0.62);
+      -webkit-backdrop-filter: blur(16px) saturate(120%);
+      backdrop-filter: blur(16px) saturate(120%);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+    }
+    .wordmark { display: inline-flex; align-items: center; }
+    .wordmark svg { height: 22px; width: auto; display: block; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: clamp(18px, 2.6vw, 34px);
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      transition: color 0.25s var(--ease);
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-toggle { display: none; }
+
+    /* ========================================================================
+       HERO — presence, not features
+       ===================================================================== */
+    .hero { padding-top: clamp(86px, 13vw, 168px); padding-bottom: clamp(80px, 12vw, 150px); }
+    .hero h1 {
+      font-style: italic;
+      font-weight: 500;
+      font-size: clamp(46px, 8.4vw, 104px);
+      line-height: 1.02;
+      letter-spacing: -0.005em;
+      max-width: 16ch;
+    }
+    .hero .sub {
+      margin-top: 30px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.9vw, 21px);
+      line-height: 1.65;
+      max-width: 60ch;
+      font-weight: 300;
+    }
+    .hero-ctas {
+      margin-top: 42px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* ========================================================================
+       BUTTONS — ghost + filled gold
+       ===================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--body);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      padding: 14px 26px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+                  background 0.3s var(--ease), color 0.3s var(--ease);
+    }
+    .btn-ghost {
+      color: var(--text);
+      background: transparent;
+      border: 1px solid rgba(245, 238, 216, 0.22);
+    }
+    .btn-ghost:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .btn-gold {
+      background: var(--gold);
+      color: #1a1407;
+      border: 1px solid var(--gold);
+      font-weight: 600;
+    }
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      background: #d4a847;
+      border-color: #d4a847;
+    }
+
+    /* ========================================================================
+       THE FIELD — mission / 8 movements
+       ===================================================================== */
+    .field-head { max-width: 30ch; }
+    .field-head h2 { font-size: clamp(34px, 5vw, 60px); }
+    .field-body { margin-top: 30px; max-width: 66ch; color: var(--muted); font-size: clamp(16px, 1.6vw, 18px); }
+
+    .movements {
+      margin-top: 52px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 0;
+      padding-top: 26px;
+      border-top: 1px solid var(--line);
+      font-family: var(--display);
+    }
+    .movements .mv {
+      font-size: clamp(16px, 1.8vw, 20px);
+      color: var(--text);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .movements .mv .num {
+      color: var(--gold);
+      font-style: italic;
+      margin-right: 6px;
+      font-size: 0.92em;
+    }
+    .movements .sep {
+      color: var(--faint);
+      padding: 0 clamp(10px, 1.6vw, 18px);
+      font-family: var(--body);
+      font-weight: 300;
+    }
+    .deeper {
+      margin-top: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 14px;
+      color: var(--gold);
+      letter-spacing: 0.01em;
+      transition: gap 0.25s var(--ease), color 0.25s var(--ease);
+    }
+    .deeper:hover { gap: 12px; color: #d4a847; }
+
+    /* ========================================================================
+       OM CIPHER — weighty, ceremonial
+       ===================================================================== */
+    .cipher { text-align: center; }
+    .cipher .eyebrow { margin-bottom: 26px; }
+    .cipher h2 {
+      font-style: italic;
+      font-size: clamp(36px, 5.6vw, 66px);
+      margin: 0 auto;
+      max-width: 18ch;
+    }
+    .cipher .copy {
+      margin: 34px auto 0;
+      max-width: 64ch;
+      color: var(--muted);
+      font-size: clamp(16px, 1.7vw, 19px);
+      line-height: 1.75;
+    }
+    .cipher .seal-note {
+      margin: 40px auto 0;
+      max-width: 52ch;
+      padding-top: 26px;
+      border-top: 1px solid var(--line);
+      color: var(--faint);
+      font-style: italic;
+      font-family: var(--display);
+      font-size: clamp(17px, 1.9vw, 21px);
+    }
+    /* Ceremonial glyph */
+    .cipher-glyph {
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 38px;
+      opacity: 0.9;
+    }
+    .cipher-glyph svg { width: 100%; height: 100%; display: block; }
+
+    /* ========================================================================
+       NEXUS — intelligence in service of practice
+       ===================================================================== */
+    .nexus h2 { font-size: clamp(34px, 5vw, 60px); max-width: 22ch; }
+    .nexus .copy { margin-top: 30px; max-width: 66ch; color: var(--muted); font-size: clamp(16px, 1.6vw, 18px); }
+    .pullquote {
+      margin-top: 52px;
+      padding: 6px 0 6px 28px;
+      border-left: 2px solid var(--gold);
+      max-width: 40ch;
+    }
+    .pullquote p {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: clamp(24px, 3vw, 30px);
+      line-height: 1.32;
+      color: var(--text);
+    }
+    .pullquote cite {
+      display: block;
+      margin-top: 16px;
+      font-family: var(--body);
+      font-style: normal;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* ========================================================================
+       THE KEY — trust architecture, schema snippet
+       ===================================================================== */
+    .key-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: clamp(34px, 5vw, 72px);
+      align-items: start;
+    }
+    .key-grid h2 { font-size: clamp(34px, 4.6vw, 56px); max-width: 16ch; }
+    .key-grid .copy { margin-top: 28px; color: var(--muted); font-size: clamp(16px, 1.6vw, 18px); }
+
+    .pillars {
+      margin-top: 36px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 0;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+    .pillars .pillar {
+      font-size: 14px;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .pillars .pillar::before {
+      content: "";
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--sage);
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .pillars .dot {
+      color: var(--faint);
+      padding: 0 clamp(12px, 1.8vw, 20px);
+    }
+
+    /* code block */
+    .code-card {
+      background: #0a0907;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(245, 238, 216, 0.03);
+    }
+    .code-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--faint);
+    }
+    .code-head .glyph { color: var(--gold); }
+    .code-card pre {
+      margin: 0;
+      padding: 20px 22px 24px;
+      overflow-x: auto;
+      font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--muted);
+    }
+    .code-card .k { color: var(--gold); }       /* keys */
+    .code-card .s { color: var(--sage); }       /* strings */
+    .code-card .c { color: var(--faint); }      /* comments / punctuation */
+
+    /* ========================================================================
+       SACRED MODE — design philosophy
+       ===================================================================== */
+    .sacred { text-align: center; }
+    .sacred h2 {
+      font-style: italic;
+      font-size: clamp(34px, 5vw, 60px);
+      max-width: 18ch;
+      margin: 0 auto;
+    }
+    .sacred .copy {
+      margin: 32px auto 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: clamp(16px, 1.7vw, 19px);
+      line-height: 1.75;
+    }
+    .sacred .copy em { color: var(--text); font-style: italic; }
+
+    /* ========================================================================
+       ENTER THE FIELD — invitation / form
+       ===================================================================== */
+    .enter { text-align: center; }
+    .enter h2 { font-style: italic; font-size: clamp(34px, 5.2vw, 62px); max-width: 16ch; margin: 0 auto; }
+    .enter .copy { margin: 30px auto 0; max-width: 60ch; color: var(--muted); font-size: clamp(16px, 1.6vw, 18px); }
+
+    .waitlist {
+      margin: 44px auto 0;
+      max-width: 540px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .waitlist .field-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .waitlist input[type="text"],
+    .waitlist input[type="email"] {
+      flex: 1 1 200px;
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid rgba(245, 238, 216, 0.12);
+      border-radius: 999px;
+      color: var(--text);
+      font-family: var(--body);
+      font-size: 15px;
+      font-weight: 300;
+      padding: 15px 22px;
+      transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .waitlist input::placeholder { color: var(--faint); }
+    .waitlist input:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(196, 153, 58, 0.18);
+    }
+    .waitlist .btn-gold { width: 100%; justify-content: center; }
+    /* honeypot — hidden from humans */
+    .hp {
+      position: absolute;
+      left: -9999px;
+      width: 1px; height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .form-note {
+      margin: 16px auto 0;
+      font-size: 12px;
+      color: var(--faint);
+      letter-spacing: 0.02em;
+    }
+    .form-status {
+      margin-top: 14px;
+      font-size: 14px;
+      color: var(--sage);
+      min-height: 1em;
+    }
+    .enter-ctas {
+      margin-top: 48px;
+      padding-top: 36px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    /* ========================================================================
+       FOOTER
+       ===================================================================== */
+    footer { border-top: 1px solid var(--line); }
+    .footer-inner {
+      padding-top: clamp(56px, 8vw, 88px);
+      padding-bottom: clamp(56px, 8vw, 88px);
+    }
+    .footer-tag {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: clamp(19px, 2.4vw, 26px);
+      color: var(--text);
+      max-width: 34ch;
+    }
+    .footer-links {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 0;
+      list-style: none;
+      padding: 0;
+    }
+    .footer-links a {
+      font-size: 14px;
+      color: var(--muted);
+      transition: color 0.25s var(--ease);
+    }
+    .footer-links a:hover { color: var(--gold); }
+    .footer-links .sep { color: var(--faint); padding: 0 14px; }
+    .footer-meta {
+      margin-top: 36px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12.5px;
+      color: var(--faint);
+      letter-spacing: 0.02em;
+    }
+
+    /* ========================================================================
+       RESPONSIVE — stack at <= 760px
+       ===================================================================== */
+    @media (max-width: 760px) {
+      body { font-size: 16px; }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 68px;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        background: rgba(14, 12, 9, 0.96);
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+        border-bottom: 1px solid var(--line);
+        padding: 8px var(--gutter) 18px;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { width: 100%; padding: 13px 0; font-size: 16px; }
+
+      .nav-toggle {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        width: 40px; height: 40px;
+        background: transparent;
+        border: 1px solid rgba(245, 238, 216, 0.18);
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .nav-toggle span {
+        display: block;
+        width: 18px; height: 1.5px;
+        margin: 0 auto;
+        background: var(--text);
+      }
+
+      .key-grid { grid-template-columns: 1fr; }
+      .movements .sep { padding: 0 10px; }
+      .hero-ctas .btn,
+      .enter-ctas .btn { flex: 1 1 auto; justify-content: center; }
+    }
+
+    /* reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- ─────────── Inline SVG defs for repeated marks ─────────── -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <!-- Typographic COMMONUNITY lockup.
-         OM is discovered inside the wordmark by highlighting letters 2–3 (O,M)
-         in gold with a subtle glow. A restrained crescent + bindu sit above
-         the OM letters — the chandra/bindu of Devanagari Oṁ, embedded in language. -->
-    <filter id="om-glow" x="-50%" y="-80%" width="200%" height="260%">
-      <feGaussianBlur stdDeviation="2.6" result="b"/>
-      <feMerge>
-        <feMergeNode in="b"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <!-- Primary lockup: COMMONUNITY with OM highlighted, crescent + bindu above OM.
-         Strategy: a single <text> with three <tspan>s so the kerning and tracking are
-         identical across cream and gold runs.
-         Geometry (measured from rendered Josefin Sans 600 / 80px / +6 tracking, anchor=middle, x=350):
-           C-tspan glyph extends to x≈-15 on the left and Y to x≈716 on the right of a 0..700 box —
-           hence viewBox is widened to "-30 0 760 132" with ~14–15px breathing room each side.
-           The gold OM tspan (letters 2–3 of 11) spans x≈47..201, optical center x≈124 —
-           crescent and bindu are centered on x=124, NOT the previous x=180 (which fell over the
-           second M). -->
-    <symbol id="logo-lockup" viewBox="-30 0 760 132">
-      <text x="350" y="108" text-anchor="middle"
-            font-family="Josefin Sans, Plus Jakarta Sans, system-ui, sans-serif"
-            font-weight="600" font-size="80" letter-spacing="6"
-            text-rendering="geometricPrecision">
-        <tspan fill="#FAF8F4" fill-opacity="0.96">C</tspan><tspan fill="#d4a04a" filter="url(#om-glow)">OM</tspan><tspan fill="#FAF8F4" fill-opacity="0.96">MONUNITY</tspan>
-      </text>
-      <!-- Crescent (chandra) optically centered over the OM pair at x=122 (nudged 2px left of
-           geometric tspan midpoint to compensate for M's heavier weight) and lifted to y=26/38
-           so the curve clears the M cap-top with breathing room. Shares om-glow filter. -->
-      <path d="M 92 26 Q 122 38 152 26" fill="none" stroke="#d4a04a"
-            stroke-width="2.2" stroke-linecap="round" opacity="0.92"
-            filter="url(#om-glow)"/>
-      <!-- Bindu: small filled diamond above crescent, centered on x=122, lifted to y=4..14. -->
-      <path d="M 122 4 L 126 9 L 122 14 L 118 9 Z" fill="#d4a04a" opacity="0.96"
-            filter="url(#om-glow)"/>
-    </symbol>
-
-    <!-- Compact OM mark: typographic OM in gold with crescent + bindu above.
-         Used only at very small sizes (favicon, app icon). The lockup is the primary mark. -->
-    <symbol id="logo-mark" viewBox="0 0 96 96">
-      <!-- crescent — lifted 6px and routed through om-glow for parity with OM letters -->
-      <path d="M 28 22 Q 47 32 67 22" fill="none" stroke="#d4a04a" stroke-width="2.4" stroke-linecap="round" opacity="0.94" filter="url(#om-glow)"/>
-      <!-- bindu (diamond) — lifted 4px, glows with the OM -->
-      <path d="M 47 6 L 51 12 L 47 18 L 43 12 Z" fill="#d4a04a" opacity="0.96" filter="url(#om-glow)"/>
-      <!-- OM letters -->
-      <text x="48" y="78" text-anchor="middle"
-            font-family="Josefin Sans, Plus Jakarta Sans, system-ui, sans-serif"
-            font-weight="600" font-size="56" letter-spacing="2"
-            filter="url(#om-glow)"
-            fill="#d4a04a">OM</text>
-    </symbol>
-
-    <!-- Compass glyph: cross with a single point -->
-    <symbol id="g-compass" viewBox="0 0 48 48">
-      <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
-      <path d="M24 4 L26 22 L44 24 L26 26 L24 44 L22 26 L4 24 L22 22 Z" fill="currentColor"/>
-      <circle cx="24" cy="24" r="2" fill="#0b1120"/>
-    </symbol>
-
-    <!-- Studio glyph: vesica + waveform -->
-    <symbol id="g-studio" viewBox="0 0 48 48">
-      <circle cx="18" cy="24" r="14" fill="none" stroke="currentColor" stroke-width="1"/>
-      <circle cx="30" cy="24" r="14" fill="none" stroke="currentColor" stroke-width="1"/>
-      <path d="M14 24 Q18 16, 24 24 T34 24" fill="none" stroke="currentColor" stroke-width="1.4"/>
-    </symbol>
-
-    <!-- Tuner glyph: tuning fork -->
-    <symbol id="g-tuner" viewBox="0 0 48 48">
-      <path d="M18 6 L18 22 Q18 28 24 28 Q30 28 30 22 L30 6"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path d="M24 28 L24 42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="24" cy="42" r="2" fill="currentColor"/>
-    </symbol>
-  </defs>
-</svg>
-
-<!-- ─────────── Header ─────────── -->
-<header class="site">
-  <div class="wrap nav">
-    <a class="brand" href="/" aria-label="CommonUnity home">
-      <svg class="lockup" viewBox="-30 0 760 132" aria-hidden="true"><use href="#logo-lockup"/></svg>
-    </a>
-    <nav class="nav-links" aria-label="Primary">
-      <a href="#practice">Practice</a>
-      <a href="#nexus">Nexus</a>
-      <a href="#tools">Tools</a>
-      <a href="#key">The Key</a>
-      <a href="/source-code">Source Code</a>
-      <a href="#field">Enter the field</a>
-    </nav>
-  </div>
-</header>
-
-<!-- ─────────── Hero ─────────── -->
-<section class="hero">
-  <div class="wrap">
-    <svg class="lockup-hero" viewBox="-30 0 760 132" aria-hidden="true"><use href="#logo-lockup"/></svg>
-    <h1>Align the inner. Shape the <em>outer.</em></h1>
-    <p class="lede">
-      CommonUnity is an evolutionary field for unified living, rooted in timeless
-      principles and brought into practice through self-knowledge, frequency,
-      community, and conscious action.
-    </p>
-    <p class="lede lede-sub">
-      A place for self-study, digital sovereignty, and shared practice — with
-      tools for creating from inner alignment.
-    </p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="#field">
-        Enter the field <span class="arrow">→</span>
-      </a>
-      <a class="btn btn-ghost" href="#tools">
-        Explore the tools
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- ─────────── Unity is a practice (universal-language principles) ─────────── -->
-<section id="practice" class="principles">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div class="section-eyebrow">Unity is a practice</div>
-      <h2 class="section-title">Eight movements of <em>good living.</em></h2>
-      <p class="section-lede">
-        Universal principles, drawn from many lineages and shaped by lived
-        experience. Not steps to climb. Movements that fold into each other —
-        each one practiced quietly until the next becomes possible.
-      </p>
-    </div>
-
-    <div class="principles-grid">
-      <div class="principle reveal">
-        <div class="num">i</div>
-        <h4>Relationship</h4>
-        <p>How we meet others, the world, and ourselves. The first ground.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">ii</div>
-        <h4>Practice</h4>
-        <p>What we return to, refine, and take responsibility for.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">iii</div>
-        <h4>Embodiment</h4>
-        <p>The body as the instrument. Posture, gesture, the felt sense of being here.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">iv</div>
-        <h4>Breath</h4>
-        <p>The bridge between inner and outer. The rhythm beneath every action.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">v</div>
-        <h4>Attention</h4>
-        <p>What we choose to give to. The currency of an examined life.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">vi</div>
-        <h4>Focus</h4>
-        <p>Holding one thing long enough for it to open.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">vii</div>
-        <h4>Meditation</h4>
-        <p>Sustained presence. The practice that does itself.</p>
-      </div>
-      <div class="principle reveal">
-        <div class="num">viii</div>
-        <h4>Unity</h4>
-        <p>The remembering that nothing was ever separate.</p>
-      </div>
-    </div>
-
-    <p class="principles-coda reveal">
-      CommonUnity cultivates these as core human skills — and uses the latest
-      technology in a way that strengthens, rather than substitutes for, the
-      human core.
-    </p>
-
-    <p class="principles-lead reveal">
-      The 8 movements are introduced here as a simple map for unified living.
-      In the Source Code, they become the founding principles behind how
-      CommonUnity is built, practiced, and shared.
-    </p>
-    <p class="principles-link reveal">
-      <a href="/source-code">Go deeper: how the 8 movements shape our Source Code <span class="arrow">→</span></a>
-    </p>
-  </div>
-</section>
-
-<!-- ─────────── Technology that strengthens the human core ─────────── -->
-<section id="core">
-  <div class="wrap">
-    <div class="core-grid">
-      <div class="reveal core-prose">
-        <div class="section-eyebrow">The Human Core</div>
-        <h2 class="section-title">Technology that strengthens the <em>human core.</em></h2>
-        <p class="pull-line">
-          CommonUnity uses modern intelligence without asking you to outsource wisdom.
-        </p>
-        <p>
-          Nexus is the synthesis engine and intelligence layer inside the
-          ecosystem. It bridges human and AI intelligence, helping
-          practitioners reflect, connect patterns, remember context, and
-          translate insight into practice.
-        </p>
-        <p>
-          Guided by the Oṁ principle, Nexus begins from listening, moves
-          through resonance, and returns toward coherence. It is not a
-          replacement for attention, intuition, relationship, or lived
-          experience. It is technology designed to strengthen the human core.
-        </p>
-      </div>
-
-      <!-- Right: Oṁ at the centre, Nexus / Compass / Studio / Tuner orbiting as tools within the field -->
-      <div class="reveal" aria-hidden="true">
-        <svg class="om-principle" viewBox="0 0 400 400">
-          <defs>
-            <radialGradient id="om-glow" cx="50%" cy="50%" r="42%">
-              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.85"/>
-              <stop offset="55%" stop-color="#B8872E" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="#0b1120" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-
-          <!-- Outer field boundary -->
-          <circle cx="200" cy="200" r="186" fill="none" stroke="#FAF8F4" stroke-opacity="0.10"/>
-          <circle cx="200" cy="200" r="160" fill="none" stroke="#FAF8F4" stroke-opacity="0.06"/>
-          <text x="200" y="34" text-anchor="middle"
-                font-family="Plus Jakarta Sans, sans-serif" font-size="10"
-                letter-spacing="3" fill="#d4a04a" opacity="0.78">THE LIVING FIELD</text>
-
-          <!-- Resonance rings -->
-          <g fill="none" stroke="#FAF8F4" stroke-opacity="0.10">
-            <circle cx="200" cy="200" r="120"/>
-            <circle cx="200" cy="200" r="92"/>
-          </g>
-
-          <!-- Tool nodes orbiting Oṁ: Compass (top), Studio (right), Tuner (left), Nexus (bottom) -->
-          <g font-family="Plus Jakarta Sans, sans-serif" font-size="11" letter-spacing="2" fill="#FAF8F4" opacity="0.85">
-            <g>
-              <circle cx="200" cy="80" r="6" fill="none" stroke="#3a8aae" stroke-width="1.4"/>
-              <circle cx="200" cy="80" r="2" fill="#3a8aae"/>
-              <text x="200" y="62" text-anchor="middle" fill="#3a8aae">COMPASS</text>
-            </g>
-            <g>
-              <circle cx="320" cy="200" r="6" fill="none" stroke="#d4a04a" stroke-width="1.4"/>
-              <circle cx="320" cy="200" r="2" fill="#d4a04a"/>
-              <text x="338" y="204" text-anchor="start" fill="#d4a04a">STUDIO</text>
-            </g>
-            <g>
-              <circle cx="80" cy="200" r="6" fill="none" stroke="#C8622A" stroke-width="1.4"/>
-              <circle cx="80" cy="200" r="2" fill="#C8622A"/>
-              <text x="62" y="204" text-anchor="end" fill="#C8622A">TUNER</text>
-            </g>
-            <g>
-              <circle cx="200" cy="320" r="6" fill="none" stroke="#5C7A3E" stroke-width="1.4"/>
-              <circle cx="200" cy="320" r="2" fill="#5C7A3E"/>
-              <text x="200" y="342" text-anchor="middle" fill="#5C7A3E">NEXUS</text>
-            </g>
-          </g>
-
-          <!-- Faint connectors from each tool to centre -->
-          <g stroke="#FAF8F4" stroke-opacity="0.10" stroke-width="0.7">
-            <line x1="200" y1="92" x2="200" y2="148"/>
-            <line x1="308" y1="200" x2="252" y2="200"/>
-            <line x1="92" y1="200" x2="148" y2="200"/>
-            <line x1="200" y1="308" x2="200" y2="252"/>
-          </g>
-
-          <!-- Centre: Oṁ -->
-          <circle cx="200" cy="200" r="60" fill="url(#om-glow)"/>
-          <text x="200" y="212" text-anchor="middle"
-                font-family="Cormorant Garamond, serif"
-                font-style="italic" font-size="42"
-                fill="#FAF8F4" opacity="0.96">Oṁ</text>
+  <!-- ====================================================================
+       1 · NAV
+       ================================================================= -->
+  <nav class="nav" aria-label="Primary">
+    <div class="wrap nav-inner">
+      <a href="#top" class="wordmark" aria-label="CommonUnity home">
+        <!-- C·OM·MONUNITY — Josefin Sans, gold OM, cream rest -->
+        <svg viewBox="0 0 240 28" role="img" aria-label="C·OM·MONUNITY">
+          <text x="0" y="21" font-family="'Josefin Sans', sans-serif" font-size="22" font-weight="500" letter-spacing="1.5">
+            <tspan fill="#F5EED8">C·</tspan><tspan fill="#C4993A">OM</tspan><tspan fill="#F5EED8">·MONUNITY</tspan>
+          </text>
         </svg>
-      </div>
+      </a>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="/compass">cOMpass</a></li>
+        <li><a href="/studio">stUdio</a></li>
+        <li><a href="#field">The Field</a></li>
+        <li><a href="/manifesto">Source Code</a></li>
+      </ul>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
     </div>
-  </div>
-</section>
+  </nav>
 
-<!-- ─────────── Nexus ─────────── -->
-<section id="nexus">
-  <div class="wrap">
-    <div class="nexus-grid">
-      <div class="reveal nexus-prose">
-        <div class="section-eyebrow">Nexus</div>
-        <h2 class="section-title">Intelligence in service of <em>practice.</em></h2>
-        <p class="pull-line">
-          Nexus is the synthesis layer of CommonUnity: a bridge between human
-          and AI intelligence that helps patterns become visible, context
-          become useful, and insight become practice.
-        </p>
-        <p class="nexus-coda">
-          It supports your evolution without outsourcing your wisdom.
-        </p>
+  <main id="top">
 
-        <details class="nexus-details">
-          <summary>How Nexus works</summary>
-          <div class="nexus-detail-body">
-            <p>
-              Nexus listens across the CommonUnity ecosystem. With your
-              permission, it can draw from your Compass profile, Studio
-              reflections, Tuner protocols, and CommonUnity Key to help you
-              see relationships that might otherwise remain scattered.
-            </p>
-            <p>
-              It can reflect themes back to you, connect insights across
-              practices, remember context between sessions, and suggest
-              next steps. But it does not replace discernment, embodiment,
-              relationship, or lived experience.
-            </p>
-            <p>
-              Nexus is designed to strengthen the human core: attention,
-              intuition, responsibility, creativity, and conscious action.
-            </p>
-          </div>
-        </details>
+    <!-- ==================================================================
+         2 · HERO — presence
+         =============================================================== -->
+    <section class="hero">
+      <div class="wrap">
+        <h1>Align the inner.<br />Shape the outer.</h1>
+        <p class="sub">
+          CommonUnity is an evolutionary field for unified living — rooted in timeless
+          principles, brought into practice through self-knowledge, attunement,
+          and conscious creation.
+        </p>
+        <div class="hero-ctas">
+          <a href="/compass" class="btn btn-ghost">Open cOMpass <span aria-hidden="true">→</span></a>
+          <a href="/studio" class="btn btn-ghost">Enter stUdio <span aria-hidden="true">→</span></a>
+        </div>
       </div>
+    </section>
 
-      <!-- Right: Nexus mockup. Synthesis layer preview. -->
-      <div class="reveal" aria-hidden="true">
-        <div class="nexus-mockup">
-          <div class="nexus-mockup-head">
-            <div class="nexus-mockup-mark">
-              <svg width="36" height="36" viewBox="0 0 48 48" aria-hidden="true">
-                <defs>
-                  <radialGradient id="nx-core" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#88b15c" stop-opacity="0.95"/>
-                    <stop offset="60%" stop-color="#5C7A3E" stop-opacity="0.35"/>
-                    <stop offset="100%" stop-color="#0b1120" stop-opacity="0"/>
-                  </radialGradient>
-                </defs>
-                <!-- Outer hex frame -->
-                <polygon points="24,3 42,13 42,35 24,45 6,35 6,13"
-                         fill="none" stroke="#5C7A3E" stroke-opacity="0.55" stroke-width="1.2"/>
-                <!-- Inner field rings -->
-                <circle cx="24" cy="24" r="14" fill="none" stroke="#FAF8F4" stroke-opacity="0.10"/>
-                <circle cx="24" cy="24" r="10" fill="none" stroke="#FAF8F4" stroke-opacity="0.18"/>
-                <!-- Connector spokes -->
-                <g stroke="#FAF8F4" stroke-opacity="0.22" stroke-width="0.8">
-                  <line x1="24" y1="6" x2="24" y2="14"/>
-                  <line x1="24" y1="34" x2="24" y2="42"/>
-                  <line x1="6"  y1="24" x2="14" y2="24"/>
-                  <line x1="34" y1="24" x2="42" y2="24"/>
-                </g>
-                <!-- Tool node anchors (Compass, Studio, Tuner, Key) -->
-                <circle cx="24" cy="6"  r="1.6" fill="#3a8aae"/>
-                <circle cx="42" cy="24" r="1.6" fill="#d4a04a"/>
-                <circle cx="24" cy="42" r="1.6" fill="#C8622A"/>
-                <circle cx="6"  cy="24" r="1.6" fill="#B8872E"/>
-                <!-- Core -->
-                <circle cx="24" cy="24" r="6" fill="url(#nx-core)"/>
-                <circle cx="24" cy="24" r="2.2" fill="#FAF8F4" opacity="0.95"/>
-              </svg>
-              <div class="nexus-mockup-title">NEXUS</div>
-            </div>
-            <div class="nexus-mockup-status">Listening</div>
-          </div>
+    <!-- ==================================================================
+         3 · THE FIELD — mission / why
+         =============================================================== -->
+    <section class="section-line pad" id="field">
+      <div class="wrap">
+        <div class="field-head">
+          <p class="eyebrow">The Field</p>
+          <h2>Unity is a practice.</h2>
+        </div>
+        <p class="field-body">
+          We live in a moment of profound fragmentation — between inner truth and outer
+          livelihood, between self and profile, between technology and sovereignty.
+          CommonUnity was built as a response to that split. Not as an app. As a field.
+          A place where the work of becoming whole can be done with tools that respect
+          its nuance — tools that strengthen the human core rather than substitute for it.
+        </p>
 
-          <svg class="nexus-signal" viewBox="0 0 320 56" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="nx-line" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%"  stop-color="#3a8aae" stop-opacity="0.0"/>
-                <stop offset="20%" stop-color="#3a8aae" stop-opacity="0.85"/>
-                <stop offset="50%" stop-color="#88b15c" stop-opacity="0.95"/>
-                <stop offset="80%" stop-color="#d4a04a" stop-opacity="0.85"/>
-                <stop offset="100%" stop-color="#C8622A" stop-opacity="0.0"/>
-              </linearGradient>
-            </defs>
-            <path d="M0 30 Q 40 6, 80 28 T 160 30 T 240 26 T 320 28"
-                  fill="none" stroke="url(#nx-line)" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M0 38 Q 40 22, 80 36 T 160 40 T 240 34 T 320 38"
-                  fill="none" stroke="#FAF8F4" stroke-opacity="0.18" stroke-width="0.9"/>
-            <g fill="#FAF8F4" fill-opacity="0.6">
-              <circle cx="56"  cy="22" r="1.6"/>
-              <circle cx="128" cy="30" r="1.6"/>
-              <circle cx="200" cy="26" r="1.6"/>
-              <circle cx="268" cy="30" r="1.6"/>
-            </g>
+        <!-- the 8 movements, condensed -->
+        <div class="movements" aria-label="The eight movements">
+          <span class="mv"><span class="num">i</span>Relationship</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">ii</span>Practice</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">iii</span>Embodiment</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">iv</span>Breath</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">v</span>Attention</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">vi</span>Focus</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">vii</span>Meditation</span>
+          <span class="sep">·</span>
+          <span class="mv"><span class="num">viii</span>Unity</span>
+        </div>
+
+        <a href="/manifesto" class="deeper">Go deeper: the Source Code <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         4 · OM CIPHER — ceremonial
+         =============================================================== -->
+    <section class="section-line pad cipher">
+      <div class="wrap">
+        <div class="cipher-glyph" aria-hidden="true">
+          <!-- seal: nested circles + seed point -->
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#C4993A" stroke-width="1" opacity="0.55"/>
+            <circle cx="50" cy="50" r="33" fill="none" stroke="#C4993A" stroke-width="0.8" opacity="0.4"/>
+            <circle cx="50" cy="50" r="20" fill="none" stroke="#4A7A5C" stroke-width="0.8" opacity="0.6"/>
+            <circle cx="50" cy="50" r="3.4" fill="#C4993A"/>
           </svg>
-
-          <div class="nexus-cards">
-            <div class="nexus-card compass">
-              <span class="nx-src">Compass</span>
-              <span class="nx-text">A theme of <em>quiet authority</em> is recurring across your Work and Call points.</span>
-            </div>
-            <div class="nexus-card studio">
-              <span class="nx-src">Studio</span>
-              <span class="nx-text">Three reflections this month return to the same edge: <em>finishing what you begin.</em></span>
-            </div>
-            <div class="nexus-card tuner">
-              <span class="nx-src">Tuner</span>
-              <span class="nx-text">Protocols you ran most lean toward grounding sequences before sound work.</span>
-            </div>
-          </div>
-
-          <div class="nexus-mockup-foot">
-            <span>Synthesis layer · Preview</span>
-            <span>Owned by you</span>
-          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─────────── Tools within the field ─────────── -->
-<section id="tools">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div class="section-eyebrow">Tools within the field</div>
-      <h2 class="section-title">Three instruments. <em>One field.</em></h2>
-      <p class="section-lede">
-        Compass, Studio, and Tuner are not the identity — the field is.
-        Together they form a pathway: Compass orients you and points you home,
-        Studio builds your Living Profile, Personal Home, and Personal OS
-        from that source, and Tuner calibrates the practice you carry into
-        the room.
-      </p>
-      <p class="tools-eyebrow-line">An evolving toolkit — open to builders and contributors who want to shape what comes next.</p>
-    </div>
-
-    <div class="instruments">
-      <article class="instrument compass reveal">
-        <svg class="glyph" style="color:var(--teal-soft)" aria-hidden="true"><use href="#g-compass"/></svg>
-        <div class="role">Orient</div>
-        <h3>Compass</h3>
-        <p>
-          The orientation stage. A facilitated conversation that gathers
-          the source material of your living identity — Work, Lens, Field,
-          Call — against your Gene Keys profile, and points you home.
-          The takeaways export straight into Studio.
+        <p class="eyebrow">OM Cipher</p>
+        <h2>Your source pattern, sealed.</h2>
+        <p class="copy">
+          Before Studio. Before cOMmons. The OM Cipher. A canonical identity record
+          derived from your birth data, Gene Keys, Human Design, name resonance, seed
+          syllable, and the frequency of your own voice — captured through Bhramari
+          pranayama. It is not an avatar. Not a badge. It is the geometry of your given
+          structure — compressed, deterministic, yours. It is the seal of your initiation
+          into CommonUnity, and the private foundation beneath everything you build here.
         </p>
-        <ul class="features">
-          <li>Four-point compass · Universal laws</li>
-          <li>Gene Keys profile</li>
-          <li>Source export → Studio · CommonUnity Key</li>
-        </ul>
-        <a class="visit" href="/compass">
-          commonunity.io/compass
-        </a>
-      </article>
-
-      <article class="instrument studio reveal">
-        <svg class="glyph" style="color:var(--gold-soft)" aria-hidden="true"><use href="#g-studio"/></svg>
-        <div class="role">Create</div>
-        <h3>Studio</h3>
-        <p>
-          The construction stage. Studio takes the source material from
-          Compass and builds it out across three levels: a Living Profile
-          (the minimum viable digital self and doorway into the field), a
-          Personal Home (a four-room digital home built around Work, Lens,
-          Field, Call), and a Personal OS (the expanded home for becoming,
-          creating, and co-emerging with AI). Trust architecture by design:
-          honest self-representation over performance.
-        </p>
-        <ul class="features">
-          <li>Level 1 · Living Profile — your doorway into the field</li>
-          <li>Level 2 · Personal Home — four rooms: Work, Lens, Field, Call</li>
-          <li>Level 3 · Personal OS — expanded home for co-emergence</li>
-        </ul>
-        <a class="visit" href="/studio">
-          commonunity.io/studio
-        </a>
-      </article>
-
-      <article class="instrument tuner reveal">
-        <svg class="glyph" style="color:var(--terracotta)" aria-hidden="true"><use href="#g-tuner"/></svg>
-        <div class="role">Calibrate</div>
-        <h3>Tuner</h3>
-        <p>
-          A practitioner's bench for sound, biofield, and frequency work.
-          Twenty-five instruments, a Synthesis Engine, atlas chains, and a
-          protocol generator built for the room you actually hold.
-        </p>
-        <ul class="features">
-          <li>25 instruments · Synthesis Engine v2</li>
-          <li>Chakra &amp; Biofield Atlas · Composer</li>
-          <li>Protocol generator · Practitioner guide</li>
-        </ul>
-        <a class="visit" href="/tuner">
-          commonunity.io/tuner
-        </a>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ─────────── CommonUnity Key ─────────── -->
-<section id="key">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div class="section-eyebrow">The CommonUnity Key</div>
-      <h2 class="section-title">A portable self-profile <em>you own.</em></h2>
-      <p class="section-lede">
-        Your pattern travels with you. The Key carries your patterns, preferences,
-        reflections, and practice context across Compass, Studio, Tuner, and the
-        tools still to come. It lets your tools remember without owning you —
-        continuity without lock-in. This is trust architecture for conscious technology.
-      </p>
-    </div>
-
-    <div class="key">
-      <div class="reveal">
-        <pre class="key-card" aria-label="Example CommonUnity Key"><span class="k">{</span>
-  <span class="s">"schema"</span>: <span class="n">"commonunity-key/1.0"</span>,
-  <span class="s">"profile"</span>: <span class="k">{</span>
-    <span class="s">"work"</span>:  <span class="k">{</span> <span class="s">"gate"</span>: <span class="n">22</span>, <span class="s">"line"</span>: <span class="n">4</span> <span class="k">}</span>,
-    <span class="s">"lens"</span>:  <span class="k">{</span> <span class="s">"gate"</span>: <span class="n">47</span>, <span class="s">"line"</span>: <span class="n">2</span> <span class="k">}</span>,
-    <span class="s">"field"</span>: <span class="k">{</span> <span class="s">"gate"</span>: <span class="n">11</span>, <span class="s">"line"</span>: <span class="n">5</span> <span class="k">}</span>,
-    <span class="s">"call"</span>:  <span class="k">{</span> <span class="s">"gate"</span>: <span class="n">36</span>, <span class="s">"line"</span>: <span class="n">3</span> <span class="k">}</span>
-  <span class="k">}</span>,
-  <span class="s">"keynote"</span>: <span class="k">{</span> <span class="s">"name"</span>: <span class="n">"OM"</span> <span class="k">}</span>,
-  <span class="s">"sessions"</span>: <span class="k">[</span> <span class="n">…</span> <span class="k">]</span>,
-  <span class="s">"owned_by"</span>: <span class="n">"you"</span>
-<span class="k">}</span></pre>
-      </div>
-      <div class="reveal">
-        <ul class="key-features">
-          <li>
-            <span class="k-label">Yours to carry</span>
-            <span class="k-text">A single self-profile you keep, share, or set aside. No vendor lock-in, no hostage data.</span>
-          </li>
-          <li>
-            <span class="k-label">Coherent across tools</span>
-            <span class="k-text">Compass, Studio, and Tuner all meet you through the same Key. The same person, recognised everywhere.</span>
-          </li>
-          <li>
-            <span class="k-label">Local-first &amp; sovereign</span>
-            <span class="k-text">Lives on your device by default. The cloud is a copy, not the original — your context stays yours.</span>
-          </li>
-          <li class="k-builder">
-            <span class="k-label">Builder note</span>
-            <span class="k-text">Under the hood it's an open, structured file (JSON) — readable, auditable, and portable by design.</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─────────── Pull-quote ─────────── -->
-<section class="pull">
-  <div class="wrap reveal">
-    <blockquote>
-      &ldquo;Begin from listening. Move through resonance. Return toward coherence.&rdquo;
-    </blockquote>
-    <cite>The Oṁ Principle · CommonUnity</cite>
-  </div>
-</section>
-
-<!-- ─────────── Who this is for ─────────── -->
-<section id="practitioners">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div class="section-eyebrow">Who this is for</div>
-      <h2 class="section-title">For people ready to make unity <em>practical.</em></h2>
-      <p class="section-lede">
-        CommonUnity is for those who feel the split between inner truth and
-        outer livelihood, self and profile, technology and sovereignty,
-        community and commerce — and are ready to build a more coherent
-        field. Trust architecture for becoming whole in a fragmented digital
-        world. Build your field, not just your profile.
-      </p>
-    </div>
-
-    <div class="practitioners-grid">
-      <div class="pcard teal reveal">
-        <h4>Practitioners of inner work</h4>
-        <p>
-          Yoga teachers, sound practitioners, Gene Keys guides, coaches,
-          facilitators, therapists, breathwork practitioners, bodyworkers,
-          and contemplative educators — people who hold transformation as
-          their craft, and who need tools that respect its nuance.
+        <p class="seal-note">
+          Your Cipher is sealed by default. You choose what, if anything, is shared.
         </p>
       </div>
-      <div class="pcard reveal">
-        <h4>Conscious creators &amp; independent professionals</h4>
-        <p>
-          Musicians, writers, designers, developers, consultants, founders,
-          and creative entrepreneurs. People making a living from authentic
-          expression, without becoming a hollow brand version of themselves.
-        </p>
-      </div>
-      <div class="pcard forest reveal">
-        <h4>Digital sovereignty seekers</h4>
-        <p>
-          People who understand that platform dependency, algorithmic
-          identity, and centralised data ownership are not neutral. They
-          may not use spiritual language — they resonate with portable
-          context, personal data sovereignty, and tools that remember
-          without owning them.
-        </p>
-      </div>
-      <div class="pcard terracotta reveal">
-        <h4>Community builders</h4>
-        <p>
-          People building circles, retreats, studios, learning groups,
-          collectives, and practice communities. Ways to preserve the spark
-          of community without turning everything into a centralised ego
-          structure. A community of communities, not a platform.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ─────────── Enter the field ─────────── -->
-<section id="field" class="connect">
-  <div class="wrap reveal">
-    <div class="section-eyebrow">Enter the field</div>
-    <h2 class="section-title">Begin where you <em>are.</em></h2>
-    <p class="section-lede">
-      The field is open. Pick the tool that meets your moment — orient with
-      Compass, create in Studio, or calibrate at the Tuner bench. If you are
-      bringing this to a practice, write — we honour serious enquiry.
-    </p>
-    <div class="cta-row" style="margin-top:36px;">
-      <a class="btn btn-primary" href="/compass">
-        Open Compass <span class="arrow">→</span>
-      </a>
-      <a class="btn btn-ghost" href="/studio">
-        Enter Studio
-      </a>
-      <a class="btn btn-ghost" href="/tuner">
-        Open Tuner
-      </a>
-    </div>
+    <!-- ==================================================================
+         5 · NEXUS — intelligence in service of practice
+         =============================================================== -->
+    <section class="section-line pad nexus">
+      <div class="wrap">
+        <p class="eyebrow">Nexus</p>
+        <h2>Intelligence in service of practice.</h2>
+        <p class="copy">
+          Nexus is the synthesis intelligence inside CommonUnity. It is not a chatbot.
+          It begins from listening — from your Compass profile, your reflections, your
+          current session — and moves through resonance toward coherence. It does not
+          replace discernment, embodiment, relationship, or lived experience. It is
+          technology designed to strengthen the human core: attention, intuition,
+          responsibility, creative action. Co-emergence, not automation.
+        </p>
+        <blockquote class="pullquote">
+          <p>Begin from listening. Move through resonance. Return toward coherence.</p>
+          <cite>— The Oṁ Principle</cite>
+        </blockquote>
+      </div>
+    </section>
 
-    <div class="waitlist reveal" id="waitlist">
-      <div class="wl-eyebrow">Beta · Early circle</div>
-      <h3>Join the early circle</h3>
-      <p class="wl-lede">
-        CommonUnity opens through human conversation, not a sign-up form. Leave
-        your details and we will be in touch to begin a Compass onboarding,
-        introduce you to the toolkit, and invite you to co-shape what comes
-        next as part of the beta circle.
-      </p>
-      <form method="post" action="/api/waitlist" id="waitlist-form" novalidate>
+    <!-- ==================================================================
+         6 · THE KEY — trust architecture
+         =============================================================== -->
+    <section class="section-line pad">
+      <div class="wrap key-grid">
         <div>
-          <label for="wl-email">Email <span aria-hidden="true">·</span> required</label>
-          <input type="email" id="wl-email" name="email" autocomplete="email" required placeholder="you@domain.com">
-        </div>
-        <div class="wl-row-2">
-          <div>
-            <label for="wl-name">Name <span aria-hidden="true">·</span> optional</label>
-            <input type="text" id="wl-name" name="name" autocomplete="name" placeholder="How shall we greet you?">
-          </div>
-          <div>
-            <label for="wl-interest">Interest <span aria-hidden="true">·</span> optional</label>
-            <select id="wl-interest" name="interest">
-              <option value="">— select —</option>
-              <option value="compass-onboarding">Compass onboarding</option>
-              <option value="studio-digital-self">Studio / digital self</option>
-              <option value="tuner">Tuner / practitioner bench</option>
-              <option value="builder-circle">Builder circle</option>
-              <option value="forum-beta">Corporate Unplugged / Forum beta</option>
-              <option value="practitioner">Practitioner community</option>
-              <option value="collaboration">Collaboration</option>
-            </select>
+          <p class="eyebrow">The Key</p>
+          <h2>Your pattern travels with you.</h2>
+          <p class="copy">
+            The CommonUnity Key is a portable self-profile you own. A single structured
+            file — readable, auditable, open — that carries your patterns, preferences,
+            and reflections across Compass, Studio, and the tools still to come. Your
+            tools remember without owning you. Continuity without lock-in. The cloud is
+            a copy. The original stays yours.
+          </p>
+          <div class="pillars">
+            <span class="pillar">Yours to carry</span>
+            <span class="dot">·</span>
+            <span class="pillar">Local-first &amp; sovereign</span>
+            <span class="dot">·</span>
+            <span class="pillar">Coherent across tools</span>
           </div>
         </div>
-        <div class="wl-honey" aria-hidden="true">
-          <label for="wl-website">Leave this field empty</label>
-          <input type="text" id="wl-website" name="website" tabindex="-1" autocomplete="off">
-        </div>
-        <input type="hidden" name="source" value="homepage">
-        <div class="wl-actions">
-          <button type="submit" class="btn btn-primary">
-            Join the beta <span class="arrow">→</span>
-          </button>
-        </div>
-        <p class="wl-note">No spam. Your data stays yours.</p>
-      </form>
-    </div>
-  </div>
-</section>
 
-<!-- ─────────── Footer ─────────── -->
-<footer class="site">
-  <div class="wrap">
-    <div class="foot">
-      <div>
-        <div class="brand" style="margin-bottom:14px;">
-          <svg class="lockup" viewBox="-30 0 760 132" aria-hidden="true" style="height:24px"><use href="#logo-lockup"/></svg>
+        <div class="code-card" aria-label="CommonUnity Key schema">
+          <div class="code-head"><span class="glyph">◇</span> commonunity.key.json</div>
+<pre><span class="c">{</span>
+  <span class="k">"$schema"</span><span class="c">:</span> <span class="s">"commonunity/key/v0.2"</span><span class="c">,</span>
+  <span class="k">"owner"</span><span class="c">:</span> <span class="s">"self"</span><span class="c">,</span>
+  <span class="k">"sovereignty"</span><span class="c">:</span> <span class="s">"local-first"</span><span class="c">,</span>
+  <span class="k">"cipher"</span><span class="c">:</span> <span class="c">{</span>
+    <span class="k">"sealed"</span><span class="c">:</span> <span class="s">true</span><span class="c">,</span>
+    <span class="k">"shared"</span><span class="c">:</span> <span class="c">[]</span>
+  <span class="c">},</span>
+  <span class="k">"patterns"</span><span class="c">:</span> <span class="c">{</span>
+    <span class="k">"compass"</span><span class="c">:</span> <span class="s">"…"</span><span class="c">,</span>
+    <span class="k">"reflections"</span><span class="c">:</span> <span class="s">"…"</span>
+  <span class="c">},</span>
+  <span class="k">"portable"</span><span class="c">:</span> <span class="s">true</span><span class="c">,</span>
+  <span class="k">"lock_in"</span><span class="c">:</span> <span class="s">false</span>
+<span class="c">}</span></pre>
         </div>
-        <p class="colophon">
-          An evolutionary field for unified living. Quietly underwritten by the Oṁ principle.
-          Built on universal principles, open schemas, and attributed lineages.
-          Your data stays yours.
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         7 · SACRED MODE — design philosophy
+         =============================================================== -->
+    <section class="section-line pad sacred">
+      <div class="wrap">
+        <p class="eyebrow">Trust Architecture</p>
+        <h2>Some truths remain sacred.</h2>
+        <p class="copy">
+          CommonUnity is built around a simple conviction: not everything should be
+          transmitted, analysed, or folded into a model. Sacred Mode is a boundary — a
+          contemplative trust layer for material that belongs only to you. When you enter
+          it, the surface changes. The periphery softens. The writing field becomes a
+          held space. AI does not enter. What you write there stays there.
+          <em>This is not a privacy setting. It is a design philosophy.</em>
         </p>
       </div>
-      <div>
-        <h5>Tools</h5>
-        <a href="/compass">Compass</a>
-        <a href="/studio">Studio</a>
-        <a href="/tuner">Tuner</a>
-        <a href="/commons">cOMmons</a>
-      </div>
-      <div>
-        <h5>The Field</h5>
-        <a href="#practice">Unity is a practice</a>
-        <a href="#core">Human core</a>
-        <a href="#key">CommonUnity Key</a>
-      </div>
-      <div>
-        <h5>Lineages</h5>
-        <a href="https://genekeys.com" target="_blank" rel="noopener">Gene Keys</a>
-        <a href="https://biofieldtuning.com" target="_blank" rel="noopener">Biofield Tuning</a>
-      </div>
-    </div>
-    <div class="foot-meta">
-      <span>© CommonUnity · HearthVS</span>
-      <span>commonunity.io</span>
-    </div>
-  </div>
-</footer>
+    </section>
 
-<script>
-  // Reveal-on-scroll. CSS handles reduced-motion fallback.
-  (function () {
-    if (!('IntersectionObserver' in window)) {
-      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
-      return;
-    }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          e.target.classList.add('in');
-          io.unobserve(e.target);
+    <!-- ==================================================================
+         8 · ENTER THE FIELD — invitation
+         =============================================================== -->
+    <section class="section-line pad enter">
+      <div class="wrap">
+        <p class="eyebrow">Early Circle</p>
+        <h2>Entry is through conversation.</h2>
+        <p class="copy">
+          CommonUnity opens through human exchange, not a sign-up form. If something here
+          is calling to you — write. We honour serious enquiry and respond personally.
+          For those who want to be considered for the early circle: leave your details
+          below and we will be in touch.
+        </p>
+
+        <form class="waitlist" action="/api/waitlist" method="POST" id="waitlistForm">
+          <!-- honeypot: must stay empty -->
+          <div class="hp" aria-hidden="true">
+            <label>Leave this field empty
+              <input type="text" name="company" tabindex="-1" autocomplete="off" />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <input type="text" name="name" placeholder="Your name" autocomplete="name" required />
+            <input type="email" name="email" placeholder="Your email" autocomplete="email" required />
+          </div>
+          <button type="submit" class="btn btn-gold">Request consideration <span aria-hidden="true">→</span></button>
+        </form>
+
+        <p class="form-note">No spam. Your data stays yours.</p>
+        <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+
+        <div class="enter-ctas">
+          <a href="/compass" class="btn btn-ghost">Open cOMpass <span aria-hidden="true">→</span></a>
+          <a href="/studio" class="btn btn-ghost">Enter stUdio <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ====================================================================
+       9 · FOOTER
+       ================================================================= -->
+  <footer>
+    <div class="wrap footer-inner">
+      <p class="footer-tag">
+        An evolutionary field for unified living. Quietly underwritten by the Oṁ principle.
+      </p>
+      <ul class="footer-links">
+        <li><a href="/compass">cOMpass</a></li>
+        <li class="sep">·</li>
+        <li><a href="/studio">stUdio</a></li>
+        <li class="sep">·</li>
+        <li><a href="#field">The Field</a></li>
+        <li class="sep">·</li>
+        <li><a href="/manifesto">Source Code</a></li>
+      </ul>
+      <div class="footer-meta">
+        <span>Built on universal principles, open schemas, and attributed lineages.</span>
+        <span>© CommonUnity · HearthVS · commonunity.io</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ====================================================================
+       MINIMAL JS — mobile nav toggle + graceful form submit
+       ================================================================= -->
+  <script>
+    // Mobile nav
+    (function () {
+      var toggle = document.getElementById('navToggle');
+      var links = document.getElementById('navLinks');
+      if (toggle && links) {
+        toggle.addEventListener('click', function () {
+          var open = links.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        links.addEventListener('click', function (e) {
+          if (e.target.tagName === 'A') {
+            links.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+    })();
+
+    // Waitlist form — POST to existing /api/waitlist endpoint.
+    // Progressive enhancement: if fetch fails, the native POST still works.
+    (function () {
+      var form = document.getElementById('waitlistForm');
+      var status = document.getElementById('formStatus');
+      if (!form) return;
+
+      form.addEventListener('submit', function (e) {
+        // Honeypot — silently drop bots.
+        if (form.company && form.company.value.trim() !== '') {
+          e.preventDefault();
+          return;
+        }
+
+        // Enhance with fetch when available.
+        if (window.fetch) {
+          e.preventDefault();
+          var data = new FormData(form);
+          status.textContent = 'Sending…';
+          status.style.color = 'var(--muted)';
+
+          fetch(form.action, { method: 'POST', body: data })
+            .then(function (res) {
+              if (!res.ok) throw new Error('bad response');
+              form.reset();
+              status.style.color = 'var(--sage)';
+              status.textContent = 'Received. We will be in touch — personally.';
+            })
+            .catch(function () {
+              status.style.color = 'var(--terra)';
+              status.textContent = 'Something interrupted the signal. Please try again, or write to us directly.';
+            });
         }
       });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
-  })();
+    })();
+  </script>
 
-  // Waitlist: show thank-you state when the FastAPI handler redirects back with ?joined=1.
-  (function () {
-    try {
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('joined') !== '1') return;
-      var form = document.getElementById('waitlist-form');
-      if (!form) return;
-      var thanks = document.createElement('p');
-      thanks.className = 'wl-thanks';
-      thanks.setAttribute('role', 'status');
-      thanks.textContent = 'Thank you. You are on the list — we will be in touch.';
-      form.parentNode.replaceChild(thanks, form);
-      var wl = document.getElementById('waitlist');
-      if (wl && wl.scrollIntoView) wl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } catch (e) { /* no-op */ }
-  })();
-</script>
-
-<!-- CommonUnity Feedback Widget -->
-<div id="cu-feedback-widget">
-  <button id="cu-fb-trigger" title="Send feedback" aria-label="Send feedback">
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6l-4 3V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-    </svg>
-  </button>
-  <div id="cu-fb-panel" class="cu-hidden">
-    <div id="cu-fb-head">
-      <span>Beta feedback</span>
-      <button id="cu-fb-close">×</button>
-    </div>
-    <form id="cu-fb-form">
-      <div class="cu-fb-row">
-        <label>Type</label>
-        <div class="cu-fb-radios">
-          <label><input type="radio" name="fb-type" value="bug" /> Bug</label>
-          <label><input type="radio" name="fb-type" value="feature" /> Feature</label>
-          <label><input type="radio" name="fb-type" value="general" checked /> General</label>
-        </div>
-      </div>
-      <div class="cu-fb-row">
-        <label>App</label>
-        <select id="cu-fb-app">
-          <option value="compass">cOMpass</option>
-          <option value="studio">stUdio</option>
-          <option value="tuner">Tuner</option>
-          <option value="hexagram-reader">Hexagram Reader</option>
-          <option value="threshold">Threshold</option>
-          <option value="commons">cOMmons</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="cu-fb-row">
-        <label>Message</label>
-        <textarea id="cu-fb-message" placeholder="What's on your mind?" required></textarea>
-      </div>
-      <div class="cu-fb-row">
-        <label>Your name (optional)</label>
-        <input id="cu-fb-name" type="text" placeholder="Leave blank to stay anonymous">
-      </div>
-      <button type="submit" id="cu-fb-submit">Send</button>
-      <div id="cu-fb-msg"></div>
-    </form>
-  </div>
-</div>
-<style>
-#cu-feedback-widget {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 9000;
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-}
-#cu-fb-trigger {
-  width: 46px; height: 46px;
-  border-radius: 999px;
-  border: 1px solid rgba(213,173,100,0.35);
-  background: rgba(8,8,13,0.88);
-  color: rgba(213,173,100,0.8);
-  display: grid; place-items: center;
-  cursor: pointer;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.36);
-  backdrop-filter: blur(12px);
-  transition: color 180ms, border-color 180ms, transform 120ms;
-}
-#cu-fb-trigger:hover { color: #d5ad64; border-color: rgba(213,173,100,0.6); transform: scale(1.06); }
-#cu-fb-panel {
-  position: absolute;
-  bottom: 58px; right: 0;
-  width: 320px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(8,8,13,0.96);
-  border: 1px solid rgba(248,242,232,0.16);
-  border-radius: 20px;
-  box-shadow: 0 24px 70px rgba(0,0,0,0.46);
-  overflow: hidden;
-}
-#cu-fb-panel.cu-hidden { display: none; }
-#cu-fb-head {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid rgba(248,242,232,0.09);
-  color: rgba(248,242,232,0.86);
-  font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase;
-}
-#cu-fb-close {
-  background: none; border: none; color: rgba(248,242,232,0.46);
-  font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0;
-}
-#cu-fb-form { padding: 14px 18px 18px; display: grid; gap: 12px; }
-.cu-fb-row { display: grid; gap: 6px; }
-.cu-fb-row label { font-size: 0.72rem; color: rgba(248,242,232,0.46); letter-spacing: 0.12em; text-transform: uppercase; }
-.cu-fb-radios { display: flex; gap: 12px; }
-.cu-fb-radios label { font-size: 0.84rem; color: rgba(248,242,232,0.78); text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-#cu-fb-form textarea, #cu-fb-form input[type="text"], #cu-fb-form select {
-  width: 100%; color: rgba(248,242,232,0.9);
-  border: 1px solid rgba(248,242,232,0.16); border-radius: 12px;
-  background: rgba(0,0,0,0.24); padding: 10px 12px; font: inherit; font-size: 0.9rem; outline: none;
-}
-#cu-fb-form textarea { min-height: 80px; resize: vertical; }
-#cu-fb-form textarea:focus, #cu-fb-form input:focus, #cu-fb-form select:focus {
-  border-color: rgba(213,173,100,0.52);
-  box-shadow: 0 0 0 3px rgba(213,173,100,0.1);
-}
-#cu-fb-submit {
-  width: 100%; padding: 11px; border: 0; border-radius: 999px;
-  background: linear-gradient(135deg, #f5e7bd, #d5ad64);
-  color: #0a0805; font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
-}
-#cu-fb-msg { font-size: 0.8rem; color: rgba(248,242,232,0.6); min-height: 18px; }
-</style>
-<script>
-(function() {
-  const trigger = document.getElementById('cu-fb-trigger');
-  const panel = document.getElementById('cu-fb-panel');
-  const closeBtn = document.getElementById('cu-fb-close');
-  const form = document.getElementById('cu-fb-form');
-  const msg = document.getElementById('cu-fb-msg');
-
-  trigger.addEventListener('click', () => panel.classList.toggle('cu-hidden'));
-  closeBtn.addEventListener('click', () => panel.classList.add('cu-hidden'));
-
-  // Detect current app from URL
-  const path = location.pathname;
-  const appMap = { '/compass': 'compass', '/studio': 'studio', '/tuner': 'tuner', '/commons': 'commons', '/threshold': 'threshold' };
-  const detectedApp = Object.entries(appMap).find(([k]) => path.startsWith(k))?.[1] || 'other';
-  const appSelect = document.getElementById('cu-fb-app');
-  if (appSelect) appSelect.value = detectedApp;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const submitBtn = document.getElementById('cu-fb-submit');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Sending…';
-    try {
-      const type = form.querySelector('input[name="fb-type"]:checked')?.value || 'general';
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          app: appSelect.value,
-          message: document.getElementById('cu-fb-message').value,
-          name: document.getElementById('cu-fb-name').value,
-        }),
-      });
-      if (res.ok) {
-        msg.textContent = 'Thank you — received.';
-        form.reset();
-        appSelect.value = detectedApp;
-        setTimeout(() => { panel.classList.add('cu-hidden'); msg.textContent = ''; }, 1800);
-      } else {
-        msg.textContent = 'Could not send. Please try again.';
-      }
-    } catch {
-      msg.textContent = 'Network error. Please try again.';
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Send';
-    }
-  });
-})();
-</script>
 </body>
 </html>
