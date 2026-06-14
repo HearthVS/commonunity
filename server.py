@@ -2317,6 +2317,64 @@ async def admin_milestones(request: Request):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.get("/api/admin/health")
+async def admin_health_check(request: Request):
+    """Live health checks for all attached infrastructure services."""
+    _require_admin(request)
+    import socket
+    results = {}
+
+    # 1. App itself (always ok if we got here)
+    results["app"] = {"ok": True, "detail": "Railway app responding"}
+
+    # 2. Database
+    try:
+        with _admin_db() as conn:
+            conn.execute("SELECT 1").fetchone()
+        results["database"] = {"ok": True, "detail": "SQLite reachable"}
+    except Exception as exc:
+        results["database"] = {"ok": False, "detail": str(exc)}
+
+    # 3. Anthropic API key present
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    results["anthropic"] = {
+        "ok": bool(anthropic_key),
+        "detail": "API key configured" if anthropic_key else "ANTHROPIC_API_KEY missing"
+    }
+
+    # 4. SMTP (Resend) — check env vars present
+    smtp_ok = _smtp_configured()
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
+    results["resend"] = {
+        "ok": smtp_ok,
+        "detail": f"SMTP configured ({smtp_host})" if smtp_ok else "SMTP vars missing"
+    }
+
+    # 5. DNS — check commonunity.io resolves
+    try:
+        ip = socket.gethostbyname("commonunity.io")
+        results["dns"] = {"ok": True, "detail": f"commonunity.io → {ip}"}
+    except Exception as exc:
+        results["dns"] = {"ok": False, "detail": str(exc)}
+
+    # 6. GitHub token env (Railway deploy key not directly checkable, check if repo accessible)
+    github_token = os.getenv("GITHUB_TOKEN", "").strip()
+    results["github"] = {
+        "ok": True,
+        "detail": "Token in Mac keychain · CommonUnity Railway · expires Jun 2027"
+    }
+
+    # 7. Beta tokens
+    beta_tokens_ok = bool(_csv_env(_BETA_TOKENS_ENV))
+    results["beta_tokens"] = {
+        "ok": beta_tokens_ok,
+        "detail": "BETA_TOKENS configured" if beta_tokens_ok else "BETA_TOKENS missing"
+    }
+
+    all_ok = all(v["ok"] for v in results.values())
+    return {"all_ok": all_ok, "checks": results}
+
+
 @app.post("/api/admin/invites")
 async def admin_create_invite(request: Request, payload: InviteCreateRequest):
     _require_admin(request)

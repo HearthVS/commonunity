@@ -617,6 +617,59 @@
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
+    /* ── Infrastructure tab ── */
+    .infra-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .infra-card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .infra-card-head > div {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .infra-icon { font-size: 1.2rem; width: 24px; text-align: center; }
+    .infra-role { font-size: 0.72rem; color: #888; }
+    .infra-link { font-size: 0.72rem; color: var(--accent); text-decoration: none; white-space: nowrap; }
+    .infra-link:hover { text-decoration: underline; }
+    .infra-details { display: grid; gap: 5px; font-size: 0.78rem; }
+    .infra-details > div { display: flex; gap: 8px; align-items: baseline; }
+    .infra-label { color: #666; min-width: 110px; flex-shrink: 0; font-size: 0.72rem; }
+    .infra-ok { color: #7ec89a; }
+    .infra-warn { color: #f0c060; }
+    .infra-err { color: #e07070; }
+    /* health check cards */
+    .health-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+    }
+    .health-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      background: #444;
+    }
+    .health-dot.ok { background: #7ec89a; box-shadow: 0 0 6px #7ec89a88; }
+    .health-dot.warn { background: #f0c060; }
+    .health-dot.err { background: #e07070; }
+    .health-dot.loading { background: #555; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .health-card-body { flex: 1; }
+    .health-card-body strong { display: block; }
+    .health-card-body small { color: #777; }
+
     /* ── Members ── */
     .member-grid {
       display: grid;
@@ -890,6 +943,7 @@
         <button class="tab-btn" data-tab="golden-thread">Golden Thread</button>
         <button class="tab-btn" data-tab="token-usage">Token Usage</button>
         <button class="tab-btn" data-tab="system">System</button>
+        <button class="tab-btn" data-tab="infrastructure">Infrastructure</button>
       </nav>
 
       <!-- ═══ Tab: Field ═══ -->
@@ -1222,6 +1276,106 @@
           <div id="config-checklist" style="display:grid;gap:10px;margin-top:16px;"></div>
         </section>
       </div><!-- /tab-pane system -->
+
+      <!-- ═══ Tab: Infrastructure ═══ -->
+      <div class="tab-pane" data-pane="infrastructure">
+
+        <!-- Live health checks -->
+        <section class="panel card" style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+              <h2 style="margin:0">Live Health</h2>
+              <p class="hint" style="margin:4px 0 0">Real-time connectivity checks for all attached services.</p>
+            </div>
+            <button class="btn" id="infra-refresh">Refresh</button>
+          </div>
+          <div id="infra-health-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
+        </section>
+
+        <!-- Static services registry -->
+        <section class="panel card">
+          <h2 style="margin-bottom:4px">Services Registry</h2>
+          <p class="hint" style="margin-bottom:18px">All connected infrastructure, accounts, and credentials. Reference only — no sensitive values stored here.</p>
+          <div style="display:grid;gap:12px;" id="infra-registry">
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">☁</span><div><strong>Cloudflare</strong><span class="infra-role">DNS &amp; CDN</span></div><a href="https://dash.cloudflare.com" target="_blank" class="infra-link">Dashboard ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Domain</span><span>commonunity.io</span></div>
+                <div><span class="infra-label">Account</span><span>markus@jointidea.com</span></div>
+                <div><span class="infra-label">Proxy</span><span>Active on apex + www + commons</span></div>
+                <div><span class="infra-label">DNS records</span><span>MX (GoDaddy), SPF, DMARC, Resend DKIM</span></div>
+                <div><span class="infra-label">Expires</span><span class="infra-ok">No expiry (free plan)</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">🚂</span><div><strong>Railway</strong><span class="infra-role">App hosting &amp; deployment</span></div><a href="https://railway.app" target="_blank" class="infra-link">Dashboard ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Project</span><span>HearthVS / commonunity</span></div>
+                <div><span class="infra-label">Account</span><span>markus@jointidea.com</span></div>
+                <div><span class="infra-label">URLs</span><span>commonunity.io · www · commons</span></div>
+                <div><span class="infra-label">Plan</span><span>Railway Pro</span></div>
+                <div><span class="infra-label">Deploy source</span><span>GitHub → HearthVS/commonunity (main)</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">⌥</span><div><strong>GitHub</strong><span class="infra-role">Source control</span></div><a href="https://github.com/HearthVS/commonunity" target="_blank" class="infra-link">Repo ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Org</span><span>HearthVS</span></div>
+                <div><span class="infra-label">Repo</span><span>HearthVS/commonunity (public)</span></div>
+                <div><span class="infra-label">Active token</span><span>CommonUnity Railway</span></div>
+                <div><span class="infra-label">Token scopes</span><span>repo, workflow + admin</span></div>
+                <div><span class="infra-label">Token expires</span><span class="infra-warn">Jun 14, 2027</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">✉</span><div><strong>Resend</strong><span class="infra-role">Transactional email (magic links)</span></div><a href="https://resend.com" target="_blank" class="infra-link">Dashboard ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Domain</span><span>commonunity.io (verified)</span></div>
+                <div><span class="infra-label">Sender</span><span>om@commonunity.io</span></div>
+                <div><span class="infra-label">API key var</span><span>SMTP_PASSWORD in Railway</span></div>
+                <div><span class="infra-label">SMTP host</span><span>smtp.resend.com : 587</span></div>
+                <div><span class="infra-label">Plan</span><span class="infra-ok">Free · 3,000 emails/month</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">◈</span><div><strong>GoDaddy</strong><span class="infra-role">Domain registrar &amp; Workspace Email</span></div><a href="https://accounts.godaddy.com" target="_blank" class="infra-link">Dashboard ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Domain</span><span>commonunity.io</span></div>
+                <div><span class="infra-label">DNS</span><span>Delegated to Cloudflare</span></div>
+                <div><span class="infra-label">Workspace Email</span><span>om@commonunity.io (personal mail only)</span></div>
+                <div><span class="infra-label">Note</span><span>GoDaddy SMTP not used — replaced by Resend</span></div>
+                <div><span class="infra-label">Domain expires</span><span class="infra-warn">Check GoDaddy dashboard</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">◭</span><div><strong>Anthropic</strong><span class="infra-role">AI — Nexus &amp; all Studio endpoints</span></div><a href="https://console.anthropic.com" target="_blank" class="infra-link">Console ↗</a></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Model</span><span>claude-sonnet-4-6 (all endpoints)</span></div>
+                <div><span class="infra-label">Config constant</span><span>_NEXUS_MODEL in server.py</span></div>
+                <div><span class="infra-label">API key var</span><span>ANTHROPIC_API_KEY in Railway</span></div>
+                <div><span class="infra-label">Usage</span><span>Tracked in Token Usage tab</span></div>
+              </div>
+            </div>
+
+            <div class="infra-card">
+              <div class="infra-card-head"><span class="infra-icon">◫</span><div><strong>SQLite Database</strong><span class="infra-role">Members, invites, milestones, events</span></div></div>
+              <div class="infra-details">
+                <div><span class="infra-label">Location</span><span>Railway volume (COMMONUNITY_ADMIN_DB_PATH)</span></div>
+                <div><span class="infra-label">Tables</span><span>invites · member_milestones · om_cipher_members · events · waitlist · brand_versions</span></div>
+                <div><span class="infra-label">Backup</span><span class="infra-warn">Manual — no automated backup yet</span></div>
+              </div>
+            </div>
+
+          </div><!-- /infra-registry -->
+        </section>
+      </div><!-- /tab-pane infrastructure -->
+
 
     </main>
   </div>
@@ -2175,6 +2329,56 @@
 
     $('refresh').addEventListener('click', loadDashboard);
     $('ops-refresh').addEventListener('click', loadDashboard);
+
+    // ── Infrastructure health checks ──
+    const HEALTH_LABELS = {
+      app:         { label: 'Railway App',    icon: '🚂' },
+      database:    { label: 'Database',       icon: '◫' },
+      anthropic:   { label: 'Anthropic API',  icon: '◭' },
+      resend:      { label: 'Resend SMTP',    icon: '✉' },
+      dns:         { label: 'Cloudflare DNS', icon: '☁' },
+      github:      { label: 'GitHub Token',  icon: '⌥' },
+      beta_tokens: { label: 'Beta Tokens',   icon: '🔑' },
+    };
+
+    function renderHealthGrid(checks) {
+      const grid = $('infra-health-grid');
+      if (!grid) return;
+      grid.innerHTML = Object.entries(checks).map(([key, val]) => {
+        const meta = HEALTH_LABELS[key] || { label: key, icon: '○' };
+        const dot = val.ok ? 'ok' : 'err';
+        return `<div class="health-card">
+          <div class="health-dot ${dot}"></div>
+          <div class="health-card-body">
+            <strong>${meta.icon} ${meta.label}</strong>
+            <small>${escapeHtml(val.detail || '')}</small>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function loadInfraHealth() {
+      const grid = $('infra-health-grid');
+      if (!grid) return;
+      grid.innerHTML = Object.values(HEALTH_LABELS).map(m =>
+        `<div class="health-card"><div class="health-dot loading"></div><div class="health-card-body"><strong>${m.icon} ${m.label}</strong><small>Checking…</small></div></div>`
+      ).join('');
+      try {
+        const res = await api('/api/admin/health');
+        renderHealthGrid(res.checks || {});
+      } catch(e) {
+        grid.innerHTML = `<div class="health-card"><div class="health-dot err"></div><div class="health-card-body"><strong>Health check failed</strong><small>${escapeHtml(String(e))}</small></div></div>`;
+      }
+    }
+
+    $('infra-refresh') && $('infra-refresh').addEventListener('click', loadInfraHealth);
+
+    // Auto-load health when Infrastructure tab is opened
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.tab === 'infrastructure') loadInfraHealth();
+      });
+    });
 
     boot();
   </script>
