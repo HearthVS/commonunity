@@ -785,28 +785,61 @@
     .deeper-trigger {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       margin-top: 28px;
       font-family: var(--body);
-      font-size: 13px;
-      letter-spacing: 0.08em;
+      font-size: 12px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--gold);
       cursor: pointer;
       background: none;
-      border: none;
-      padding: 0;
-      opacity: 0.75;
-      transition: opacity 0.2s;
+      border: 1px solid rgba(196,153,58,0.28);
+      border-radius: 20px;
+      padding: 8px 18px;
+      opacity: 0.82;
+      transition: opacity 0.25s, box-shadow 0.25s;
       user-select: none;
+      box-shadow:
+        0 0 0 1px rgba(196,153,58,0.15),
+        0 0 10px rgba(196,153,58,0.22),
+        0 0 22px rgba(196,153,58,0.08);
+      animation: deeper-glow 4s ease-in-out infinite;
     }
-    .deeper-trigger:hover { opacity: 1; }
+    @keyframes deeper-glow {
+      0%, 100% {
+        box-shadow:
+          0 0 0 1px rgba(196,153,58,0.18),
+          0 0 10px rgba(196,153,58,0.22),
+          0 0 22px rgba(196,153,58,0.08);
+        opacity: 0.80;
+      }
+      50% {
+        box-shadow:
+          0 0 0 1px rgba(196,153,58,0.38),
+          0 0 18px rgba(196,153,58,0.45),
+          0 0 40px rgba(196,153,58,0.18);
+        opacity: 1;
+      }
+    }
+    .deeper-trigger:hover {
+      opacity: 1;
+      animation: none;
+      box-shadow:
+        0 0 0 1px rgba(196,153,58,0.55),
+        0 0 22px rgba(196,153,58,0.55),
+        0 0 48px rgba(196,153,58,0.22);
+    }
     .deeper-trigger .arrow {
       display: inline-block;
       transition: transform 0.35s ease;
       font-style: normal;
+      font-size: 14px;
     }
     .deeper-trigger.open .arrow { transform: rotate(180deg); }
+    @media (prefers-reduced-motion: reduce) {
+      .deeper-trigger { animation: none; }
+    }
 
     .deeper-drawer {
       overflow: hidden;
