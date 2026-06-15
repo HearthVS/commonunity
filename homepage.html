@@ -314,6 +314,74 @@
     .deeper:hover { gap: 12px; color: #d4a847; }
 
     /* ========================================================================
+       EIGHT LIMBS — digital governance arc
+       ===================================================================== */
+    .limbs-section .limbs-intro {
+      max-width: 62ch;
+      margin-bottom: 52px;
+    }
+    .limbs-section .limbs-intro h2 {
+      font-size: clamp(32px, 4.6vw, 54px);
+      margin-bottom: 20px;
+    }
+    .limbs-section .limbs-intro p {
+      color: var(--muted);
+      font-size: clamp(16px, 1.6vw, 18px);
+      line-height: 1.75;
+    }
+
+    .limbs-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .limb-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      transition: border-color 0.3s var(--ease), transform 0.3s var(--ease);
+      border-bottom: 2px solid transparent;
+    }
+    .limb-card:hover {
+      transform: translateY(-3px);
+    }
+    .limb-card .limb-num {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 13px;
+      color: var(--gold);
+      display: block;
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+    .limb-card .limb-name {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--gold);
+      font-variant: small-caps;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .limb-card .limb-desc {
+      font-size: 13px;
+      color: var(--faint);
+      line-height: 1.65;
+    }
+
+    @media (max-width: 900px) {
+      .limbs-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .limbs-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ========================================================================
        OM CIPHER — weighty, ceremonial
        ===================================================================== */
     .cipher { text-align: center; }
@@ -380,7 +448,7 @@
     }
 
     /* ========================================================================
-       THE KEY — trust architecture, schema snippet
+       THE KEY — torus compass diagram
        ===================================================================== */
     .key-grid {
       display: grid;
@@ -419,37 +487,41 @@
       padding: 0 clamp(12px, 1.8vw, 20px);
     }
 
-    /* code block */
-    .code-card {
-      background: #0a0907;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: inset 0 1px 0 rgba(245, 238, 216, 0.03);
-    }
-    .code-head {
+    /* Torus compass wrapper */
+    .torus-wrap {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 8px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-      letter-spacing: 0.04em;
+      gap: 14px;
+    }
+    .torus-canvas-container {
+      position: relative;
+      width: min(440px, 92vw);
+      height: min(440px, 92vw);
+      border-radius: 50%;
+      transition: filter 0.4s var(--ease);
+    }
+    .torus-canvas-container:hover {
+      filter: drop-shadow(0 0 18px rgba(196, 153, 58, 0.22));
+    }
+    .torus-canvas-container canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .torus-caption {
+      font-size: 11px;
       color: var(--faint);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
     }
-    .code-head .glyph { color: var(--gold); }
-    .code-card pre {
-      margin: 0;
-      padding: 20px 22px 24px;
-      overflow-x: auto;
-      font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.75;
-      color: var(--muted);
-    }
-    .code-card .k { color: var(--gold); }       /* keys */
-    .code-card .s { color: var(--sage); }       /* strings */
-    .code-card .c { color: var(--faint); }      /* comments / punctuation */
+
+    /* .code-card styles kept commented for potential reuse */
+    /*
+    .code-card { ... }
+    .code-head { ... }
+    */
 
     /* ========================================================================
        SACRED MODE — design philosophy
@@ -469,6 +541,79 @@
       line-height: 1.75;
     }
     .sacred .copy em { color: var(--text); font-style: italic; }
+
+    /* Trust Architecture depth stack */
+    .trust-diagram {
+      margin-top: 56px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .trust-diagram-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .trust-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .trust-layer {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .trust-layer-accent {
+      width: 3px;
+      flex-shrink: 0;
+      align-self: stretch;
+      border-radius: 2px;
+      min-height: 36px;
+    }
+    .trust-layer-body {
+      flex: 1;
+    }
+    .trust-layer-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1.3;
+    }
+    .trust-layer-name .lock-icon {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .trust-layer-desc {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--faint);
+      line-height: 1.55;
+    }
+    .trust-pullquote {
+      margin-top: 40px;
+      text-align: center;
+    }
+    .trust-pullquote p {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: clamp(18px, 2.4vw, 22px);
+      color: var(--muted);
+      line-height: 1.45;
+    }
 
     /* ========================================================================
        ENTER THE FIELD — invitation / form
@@ -737,6 +882,71 @@
     </section>
 
     <!-- ==================================================================
+         3b · EIGHT LIMBS — digital governance
+         =============================================================== -->
+    <section class="section-line pad limbs-section">
+      <div class="wrap">
+        <div class="limbs-intro">
+          <p class="eyebrow">Eight Limbs · Digital Governance</p>
+          <h2>A framework for conscious technology.</h2>
+          <p>The Eight Limbs of yoga are not only a personal practice framework. Inside CommonUnity, they become the governing principles of how technology is built and how AI is used.</p>
+        </div>
+
+        <div class="limbs-grid" id="limbsGrid">
+
+          <div class="limb-card" data-limb-index="0">
+            <span class="limb-num">i</span>
+            <span class="limb-name">Yama</span>
+            <p class="limb-desc">Ahimsa applies to architecture. The system does not harm, extract, or manipulate.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="1">
+            <span class="limb-num">ii</span>
+            <span class="limb-name">Niyama</span>
+            <p class="limb-desc">Inner discipline. Every feature asks: does this support wholeness?</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="2">
+            <span class="limb-num">iii</span>
+            <span class="limb-name">Asana</span>
+            <p class="limb-desc">The steady and easeful seat. AI relationship should not strain.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="3">
+            <span class="limb-num">iv</span>
+            <span class="limb-name">Pranayama</span>
+            <p class="limb-desc">Rhythm and pause. Sometimes the correct response is space.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="4">
+            <span class="limb-num">v</span>
+            <span class="limb-name">Pratyahara</span>
+            <p class="limb-desc">Withdrawal. Sacred Mode: contemplate without offering to the machine.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="5">
+            <span class="limb-num">vi</span>
+            <span class="limb-name">Dharana</span>
+            <p class="limb-desc">Concentration. AI protects focus rather than fragments it.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="6">
+            <span class="limb-num">vii</span>
+            <span class="limb-name">Dhyana</span>
+            <p class="limb-desc">Sustained flow. AI carries complexity so depth remains intact.</p>
+          </div>
+
+          <div class="limb-card" data-limb-index="7">
+            <span class="limb-num">viii</span>
+            <span class="limb-name">Samadhi</span>
+            <p class="limb-desc">Union. AI serves the conditions around it. It does not claim this space.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
          4 · OM CIPHER — ceremonial
          =============================================================== -->
     <section class="section-line pad cipher">
@@ -797,7 +1007,7 @@
     </section>
 
     <!-- ==================================================================
-         6 · THE KEY — trust architecture
+         6 · THE KEY — torus compass diagram
          =============================================================== -->
     <section class="section-line pad">
       <div class="wrap key-grid">
@@ -820,29 +1030,18 @@
           </div>
         </div>
 
-        <div class="code-card" aria-label="CommonUnity Key schema">
-          <div class="code-head"><span class="glyph">◇</span> commonunity.key.json</div>
-<pre><span class="c">{</span>
-  <span class="k">"$schema"</span><span class="c">:</span> <span class="s">"commonunity/key/v0.2"</span><span class="c">,</span>
-  <span class="k">"owner"</span><span class="c">:</span> <span class="s">"self"</span><span class="c">,</span>
-  <span class="k">"sovereignty"</span><span class="c">:</span> <span class="s">"local-first"</span><span class="c">,</span>
-  <span class="k">"cipher"</span><span class="c">:</span> <span class="c">{</span>
-    <span class="k">"sealed"</span><span class="c">:</span> <span class="s">true</span><span class="c">,</span>
-    <span class="k">"shared"</span><span class="c">:</span> <span class="c">[]</span>
-  <span class="c">},</span>
-  <span class="k">"patterns"</span><span class="c">:</span> <span class="c">{</span>
-    <span class="k">"compass"</span><span class="c">:</span> <span class="s">"…"</span><span class="c">,</span>
-    <span class="k">"reflections"</span><span class="c">:</span> <span class="s">"…"</span>
-  <span class="c">},</span>
-  <span class="k">"portable"</span><span class="c">:</span> <span class="s">true</span><span class="c">,</span>
-  <span class="k">"lock_in"</span><span class="c">:</span> <span class="s">false</span>
-<span class="c">}</span></pre>
+        <!-- Torus compass diagram replacing code-card -->
+        <div class="torus-wrap" aria-label="The OM Structure — four points of orientation">
+          <div class="torus-canvas-container">
+            <canvas id="torusCanvas" width="360" height="360" aria-hidden="true"></canvas>
+          </div>
+          <p class="torus-caption">The OM Structure — four points of orientation</p>
         </div>
       </div>
     </section>
 
     <!-- ==================================================================
-         7 · SACRED MODE — design philosophy
+         7 · SACRED MODE — design philosophy + trust architecture
          =============================================================== -->
     <section class="section-line pad sacred">
       <div class="wrap">
@@ -860,6 +1059,66 @@
           true, what is necessary, and what is yours alone to carry.
           <em>This is not a privacy setting. It is a design philosophy.</em>
         </p>
+
+        <!-- Trust architecture depth diagram -->
+        <div class="trust-diagram" aria-label="Trust architecture data layers">
+          <p class="trust-diagram-label">What Nexus can see — at any moment, you decide</p>
+          <div class="trust-layers">
+
+            <div class="trust-layer">
+              <div class="trust-layer-accent" style="background: rgba(196,153,58,0.7);"></div>
+              <div class="trust-layer-body">
+                <div class="trust-layer-name">Present-moment</div>
+                <p class="trust-layer-desc">What Nexus sees right now</p>
+              </div>
+            </div>
+
+            <div class="trust-layer">
+              <div class="trust-layer-accent" style="background: rgba(120,170,40,0.6);"></div>
+              <div class="trust-layer-body">
+                <div class="trust-layer-name">Session</div>
+                <p class="trust-layer-desc">What you've shared in this session</p>
+              </div>
+            </div>
+
+            <div class="trust-layer">
+              <div class="trust-layer-accent" style="background: rgba(74,122,92,0.65);"></div>
+              <div class="trust-layer-body">
+                <div class="trust-layer-name">Vault</div>
+                <p class="trust-layer-desc">Saved reflections you've chosen to keep</p>
+              </div>
+            </div>
+
+            <div class="trust-layer">
+              <div class="trust-layer-accent" style="background: rgba(110,50,180,0.65);"></div>
+              <div class="trust-layer-body">
+                <div class="trust-layer-name">Cipher</div>
+                <p class="trust-layer-desc">Your source pattern, sealed</p>
+              </div>
+            </div>
+
+            <div class="trust-layer">
+              <div class="trust-layer-accent" style="background: rgba(160,30,140,0.55);"></div>
+              <div class="trust-layer-body">
+                <div class="trust-layer-name">
+                  Sacred
+                  <!-- Lock icon SVG -->
+                  <svg class="lock-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-label="Protected" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2.5" y="6" width="9" height="7" rx="1.5" stroke="rgba(245,238,216,0.45)" stroke-width="1"/>
+                    <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" stroke="rgba(245,238,216,0.45)" stroke-width="1" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <p class="trust-layer-desc">The undigitized — AI does not enter</p>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="trust-pullquote">
+            <p><em>How digital can I become without losing sovereignty over myself?</em></p>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -929,7 +1188,7 @@
   </footer>
 
   <!-- ====================================================================
-       MINIMAL JS — mobile nav toggle + graceful form submit
+       MINIMAL JS — mobile nav + form + torus canvas + limb hover colors
        ================================================================= -->
   <script>
     // Mobile nav
@@ -984,6 +1243,184 @@
             });
         }
       });
+    })();
+
+    // Eight Limbs — spectral hover underline by card index (0–7 → hue 0°–315°)
+    (function () {
+      var cards = document.querySelectorAll('.limb-card');
+      cards.forEach(function (card) {
+        var idx = parseInt(card.getAttribute('data-limb-index'), 10) || 0;
+        var hue = idx * 45; // 0, 45, 90, 135, 180, 225, 270, 315
+        card.addEventListener('mouseenter', function () {
+          card.style.borderBottomColor = 'hsl(' + hue + 'deg, 55%, 55%)';
+        });
+        card.addEventListener('mouseleave', function () {
+          card.style.borderBottomColor = 'transparent';
+        });
+      });
+    })();
+
+    // Torus canvas — IIFE, breathing animated dot-cloud torus + four compass axes
+    (function () {
+      var canvas = document.getElementById('torusCanvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+
+      // Respect reduced-motion preference
+      var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Canvas logical size
+      var SIZE = 440;
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+
+      var cx = SIZE / 2;
+      var cy = SIZE / 2;
+
+      // Torus parameters
+      var R = 76;   // major radius
+      var r = 28;   // minor radius
+      var numDots = 520;
+
+      // Pre-compute torus dot positions on unit torus
+      var dots = [];
+      for (var i = 0; i < numDots; i++) {
+        var theta = Math.random() * Math.PI * 2;
+        var phi   = Math.random() * Math.PI * 2;
+        dots.push({ theta: theta, phi: phi });
+      }
+
+      // Compass axes config
+      var axes = [
+        { label: 'The Work',  law: 'Law of Awareness',  sub: '(hands)',  angle: Math.PI,        color: '#A85535' },  // LEFT
+        { label: 'The Lens',  law: 'Law of Clarity',    sub: '(head)',   angle: -Math.PI / 2,   color: '#C4993A' },  // TOP
+        { label: 'The Field', law: 'Law of Balance',    sub: '(heart)',  angle: 0,              color: '#4A7A5C' },  // RIGHT
+        { label: 'The Call',  law: 'Law of Creation',   sub: '(all)',    angle: Math.PI / 2,    color: '#F5EED8' }   // BOTTOM
+      ];
+
+      var t = 0;
+
+      function draw(timestamp) {
+        ctx.clearRect(0, 0, SIZE, SIZE);
+
+        // Breathing factor
+        var breath = prefersReduced ? 1 : (1 + 0.04 * Math.sin(t * 0.9));
+        t += 0.012;
+
+        // Outer spectral ring — thin hue-rotation ring
+        var ringR = 160;
+        var ringSteps = 120;
+        for (var s = 0; s < ringSteps; s++) {
+          var a0 = (s / ringSteps) * Math.PI * 2;
+          var a1 = ((s + 1) / ringSteps) * Math.PI * 2;
+          var hue = (s / ringSteps) * 360;
+          ctx.beginPath();
+          ctx.arc(cx, cy, ringR, a0, a1);
+          ctx.strokeStyle = 'hsla(' + hue + ', 55%, 55%, 0.18)';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+
+        // Torus dots
+        var rotY = prefersReduced ? 0.2 : (t * 0.22);
+        var rotX = prefersReduced ? 0.3 : (0.3 + 0.06 * Math.sin(t * 0.4));
+
+        var cosRY = Math.cos(rotY), sinRY = Math.sin(rotY);
+        var cosRX = Math.cos(rotX), sinRX = Math.sin(rotX);
+
+        for (var d = 0; d < dots.length; d++) {
+          var dot = dots[d];
+
+          // Torus position in local space
+          var lx = (R + r * Math.cos(dot.phi)) * Math.cos(dot.theta);
+          var ly = (R + r * Math.cos(dot.phi)) * Math.sin(dot.theta);
+          var lz = r * Math.sin(dot.phi);
+
+          // Rotate around Y
+          var x1 = lx * cosRY - lz * sinRY;
+          var z1 = lx * sinRY + lz * cosRY;
+
+          // Rotate around X
+          var y1 = ly * cosRX - z1 * sinRX;
+          var z2 = ly * sinRX + z1 * cosRX;
+
+          // Project to screen (simple orthographic)
+          var px = cx + x1 * breath;
+          var py = cy + y1 * breath;
+
+          // Depth-based opacity [0.08 … 0.75]
+          var depth = (z2 + r + R) / (2 * (r + R));
+          var alpha = 0.08 + depth * 0.67;
+
+          // Dot radius with slight depth variation
+          var dotR = 0.9 + depth * 0.7;
+
+          ctx.beginPath();
+          ctx.arc(px, py, dotR, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(170,140,255,' + alpha.toFixed(3) + ')';
+          ctx.fill();
+        }
+
+        // Four compass axes
+        var axisLength = 72;
+        var axisStart  = 42;  // gap from center so it clears the torus
+
+        for (var k = 0; k < axes.length; k++) {
+          var ax = axes[k];
+          var cosA = Math.cos(ax.angle);
+          var sinA = Math.sin(ax.angle);
+
+          var x0 = cx + cosA * axisStart;
+          var y0 = cy + sinA * axisStart;
+          var x1 = cx + cosA * (axisStart + axisLength);
+          var y1 = cy + sinA * (axisStart + axisLength);
+
+          // Axis line
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.strokeStyle = ax.color;
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Dot at end
+          ctx.beginPath();
+          ctx.arc(x1, y1, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = ax.color;
+          ctx.globalAlpha = 0.8;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          // Label positioning — push out a bit further from the dot
+          var labelDist = axisStart + axisLength + 18;
+          var lxPos = cx + cosA * labelDist;
+          var lyPos = cy + sinA * labelDist;
+
+          // Text alignment by quadrant
+          var textAlign = 'center';
+          if (ax.angle === Math.PI)       textAlign = 'right';
+          else if (ax.angle === 0)        textAlign = 'left';
+
+          ctx.textAlign = textAlign;
+          ctx.textBaseline = 'middle';
+
+          // Main label
+          ctx.font = "500 13px 'Cormorant Garamond', Georgia, serif";
+          ctx.fillStyle = ax.color;
+          ctx.fillText(ax.label, lxPos, lyPos - 8);
+
+          // Law sub-label
+          ctx.font = "400 10px 'Plus Jakarta Sans', sans-serif";
+          ctx.fillStyle = 'rgba(245,238,216,0.30)';
+          ctx.fillText(ax.law.toUpperCase(), lxPos, lyPos + 5);
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      requestAnimationFrame(draw);
     })();
   </script>
 
