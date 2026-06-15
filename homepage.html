@@ -780,6 +780,126 @@
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; scroll-behavior: auto !important; }
     }
+
+    /* ── Go Deeper drawer ─────────────────────────────────── */
+    .deeper-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 28px;
+      font-family: var(--body);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      opacity: 0.75;
+      transition: opacity 0.2s;
+      user-select: none;
+    }
+    .deeper-trigger:hover { opacity: 1; }
+    .deeper-trigger .arrow {
+      display: inline-block;
+      transition: transform 0.35s ease;
+      font-style: normal;
+    }
+    .deeper-trigger.open .arrow { transform: rotate(180deg); }
+
+    .deeper-drawer {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.45s ease;
+      opacity: 0;
+    }
+    .deeper-drawer.open {
+      max-height: 1200px;
+      opacity: 1;
+    }
+    .deeper-inner {
+      margin-top: 28px;
+      padding: 28px 32px 24px;
+      border-left: 2px solid rgba(196,153,58,0.25);
+      background: rgba(20,18,16,0.55);
+      border-radius: 0 8px 8px 0;
+    }
+    .deeper-inner p {
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .deeper-inner p:last-of-type { margin-bottom: 0; }
+    .deeper-inner .deeper-doc-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(245,238,216,0.15);
+      padding-bottom: 2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .deeper-inner .deeper-doc-link:hover {
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    /* ── OM Principle closing section ────────────────────── */
+    .om-principle-section {
+      padding: 100px 0 80px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+    }
+    .om-principle-section .eyebrow { margin-bottom: 32px; }
+    .om-principle-section .om-movements {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 40px 0 48px;
+    }
+    .om-movement {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 40px;
+      border-right: 1px solid var(--line);
+    }
+    .om-movement:last-child { border-right: none; }
+    .om-movement .num {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 13px;
+      color: var(--gold);
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+    .om-movement .phrase {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 22px;
+      color: var(--text);
+      line-height: 1.4;
+      max-width: 200px;
+      text-align: center;
+    }
+    .om-principle-section .om-body {
+      max-width: 640px;
+      margin: 0 auto;
+      font-size: 16px;
+      line-height: 1.85;
+      color: var(--muted);
+    }
+    @media (max-width: 640px) {
+      .om-movement { padding: 16px 0; border-right: none; border-bottom: 1px solid var(--line); width: 100%; }
+      .om-movement:last-child { border-bottom: none; }
+    }
   </style>
 </head>
 <body>
@@ -857,6 +977,18 @@
           action. It is not simply about helping you know yourself. It is about helping you
           become knowable to one another in more truthful and skillful ways.
         </p>
+
+        <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+          Go deeper <span class="arrow" aria-hidden="true">↓</span>
+        </button>
+        <div class="deeper-drawer" role="region">
+          <div class="deeper-inner">
+            <p>CommonUnity was designed as a threshold rather than a funnel. Most digital environments are optimised for acquisition — they are built to get you in, keep you engaged, and extract value from your presence. A threshold is built differently. It is optimised for arrival: for the establishment of a genuine relationship between a person, the space they are entering, and the intelligence that may emerge within it.</p>
+            <p>The fragmentation we carry is not simply a matter of being busy or distracted. It runs deeper. The inner life — our reflections, our patterns, our longings, our symbolic understanding of ourselves — has been systematically excluded from the tools we use every day. Work tools do not hold the inner life. Social platforms flatten it. Even the most sophisticated AI conversations treat it as raw material rather than as something sacred. The result is a split between who we are and what we do, between what we know inside and what we can build in the world.</p>
+            <p>Unity is the answer not because it is easy, but because it is true. When inner and outer are in alignment — even partially, even provisionally — something moves. Work becomes more coherent. Relationships become more honest. The sense of fragmentation begins to dissolve, not by force, but through the slow accumulation of small acts of integrity.</p>
+            <a href="#" class="deeper-doc-link">CommonUnity Positioning Brief — full document ↗</a>
+          </div>
+        </div>
 
         <!-- the 8 movements, condensed -->
         <div class="movements" aria-label="The eight movements">
@@ -943,6 +1075,18 @@
           </div>
 
         </div>
+
+        <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+          Go deeper <span class="arrow" aria-hidden="true">↓</span>
+        </button>
+        <div class="deeper-drawer" role="region">
+          <div class="deeper-inner">
+            <p>The Eight Limbs were written as a map of the inner journey — from ethical foundation through physical steadiness, breath, withdrawal, concentration, flow, and finally union. They were not written for technology. But they translate with unusual precision.</p>
+            <p>Every design decision inside CommonUnity can be tested against them. Does this feature cause harm — to attention, to sovereignty, to the user’s ability to discern? Does this default serve the user’s wholeness, or does it quietly serve extraction? Is the AI relationship steady and easeful, or is it rewarding strain? Is there space for pause, for silence, for the breath between sessions? Is there a place where the user can withdraw entirely from the senses of the machine?</p>
+            <p>The highest test is Samadhi: union. AI does not claim this space. It does not interpret union, perform it, or monetise it. The correct promise of technology — any technology — is to ease human suffering and support the conditions in which genuine integration becomes possible. Nexus serves union by knowing when to speak, when to hold structure, and when to step back entirely.</p>
+            <a href="#" class="deeper-doc-link">CommonUnity Governance Principle — full document ↗</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -973,6 +1117,19 @@
           compressed, deterministic, yours. It is the seal of your initiation into
           CommonUnity, and the private foundation beneath everything that follows.
         </p>
+
+        <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+          Go deeper <span class="arrow" aria-hidden="true">↓</span>
+        </button>
+        <div class="deeper-drawer" role="region">
+          <div class="deeper-inner">
+            <p>The minimum viable digital self is a design principle as much as a technical one. Most platforms grow your digital presence without asking: how much of yourself do you actually want to offer? The assumption is always more — more data, more context, more history, more profile. CommonUnity begins from the opposite assumption: what is the smallest, most essential record of who you are that would allow the tools to genuinely serve you?</p>
+            <p>The OM Cipher answers that question. It does not ask for your opinions, your history, or your goals. It asks for your structure — the pattern you were born with, as revealed through Gene Keys, Human Design, and the resonance of your own voice. These are not things you choose. They are things you are. The Cipher does not describe you from the outside. It maps the geometry of your given nature from the inside.</p>
+            <p>Crucially, the Cipher is yours. It is stored locally. It is pseudonymous by default — the mapping between your real-world identity and your Cipher identity is kept separate. You decide what, if anything, is shared with Nexus. Your Cipher is sealed at creation, but it is always revisable by you. The cloud holds a copy. The original stays on your device.</p>
+            <a href="#" class="deeper-doc-link">CommonUnity Governance Principle — full document ↗</a>
+          </div>
+        </div>
+
         <p class="seal-note">
           Your Cipher is sealed by default. You choose what, if anything, is shared.
         </p>
@@ -999,6 +1156,19 @@
           It is technology designed to strengthen the human core: attention, intuition,
           responsibility, creative action. Co-emergence, not automation.
         </p>
+
+        <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+          Go deeper <span class="arrow" aria-hidden="true">↓</span>
+        </button>
+        <div class="deeper-drawer" role="region">
+          <div class="deeper-inner">
+            <p>Every time you engage Nexus, something crosses a boundary. That boundary is between your inner life — your reflections, your patterns, the context you have built inside CommonUnity — and an external intelligence process. Most AI tools make this crossing invisible. The interface feels seamless, and that seamlessness obscures a fundamental act: you are offering your inner material into a system that processes, retains, and learns from it.</p>
+            <p>CommonUnity does not hide this crossing. Nexus is designed as what we call a boundary-crossing event — a chosen offering of context into external intelligence. The system distinguishes between what Nexus can see at this moment, what it holds from this session, what you have chosen to carry in your Vault, and what remains sealed in your Cipher or protected in Sacred Mode. These layers do not bleed into each other silently. You decide the depth of context at each point.</p>
+            <p>There is also a principle of non-accumulation at work. AI memory carries a particular risk: it can freeze you inside an older pattern and keep reintroducing that pattern as if it were still true. Nexus is designed to hold memory lightly. It can ask whether a remembered pattern still feels alive, whether a reflection should be retained or released, whether silence is wiser than preservation. Memory is sacred. And so is forgetting.</p>
+            <a href="#" class="deeper-doc-link">CommonUnity Governance Principle — full document ↗</a>
+          </div>
+        </div>
+
         <blockquote class="pullquote">
           <p>Begin from listening. Move through resonance. Return toward coherence.</p>
           <cite>— The Oṁ Principle</cite>
@@ -1027,6 +1197,18 @@
             <span class="pillar">Local-first &amp; sovereign</span>
             <span class="dot">·</span>
             <span class="pillar">Coherent across tools</span>
+          </div>
+
+          <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+            Go deeper <span class="arrow" aria-hidden="true">↓</span>
+          </button>
+          <div class="deeper-drawer" role="region">
+            <div class="deeper-inner">
+              <p>The question of data sovereignty is usually answered technically — with encryption, local storage, and access controls. These matter, and CommonUnity pursues the strongest possible technical protections. But technical controls alone cannot complete the picture. The deeper answer requires something more human: discernment.</p>
+              <p>Anything that leaves you through speech, writing, or digital transmission can be misunderstood, taken out of context, copied, retained, or used in ways you did not intend. This is not unique to AI. A spoken confidence can be repeated. A journal can be stolen. AI makes the issue more powerful because it can process, summarise, pattern, and retain what is offered into it at a scale no previous tool could match.</p>
+              <p>The CommonUnity Key is therefore not only a technical artefact. It is a practice. It is the part of you that travels, revisable and releaseable — the record that belongs to you and not to any platform. When you carry your own key, the relationship inverts. You are not a user of the system. The system is in service of you.</p>
+              <a href="#" class="deeper-doc-link">CommonUnity Governance Principle — full document ↗</a>
+            </div>
           </div>
         </div>
 
@@ -1059,6 +1241,19 @@
           true, what is necessary, and what is yours alone to carry.
           <em>This is not a privacy setting. It is a design philosophy.</em>
         </p>
+
+        <button class="deeper-trigger" onclick="toggleDeeper(this)" aria-expanded="false">
+          Go deeper <span class="arrow" aria-hidden="true">↓</span>
+        </button>
+        <div class="deeper-drawer" role="region">
+          <div class="deeper-inner">
+            <p>There is an important distinction between four words that are often used interchangeably: private, secret, scared, and sacred. Each carries a different energy — and the nuance matters for how you understand your relationship with any technology.</p>
+            <p>Private is a boundary of access. It says: this is not for everyone. Privacy is necessary, but it can feel procedural, defensive, or merely technical. Secret is hidden knowledge — it may carry shame, fear, or power alongside protection. Scared is protection through fear: the nervous system contracts, and while fear may be a useful signal, it should not be the foundation of a trust architecture.</p>
+            <p>Sacred is different. Sacred is protected because it has dignity, depth, timing, and value. Sacredness does not require religion. It means that some thoughts, feelings, prayers, recognitions, and inner movements belong first to you — to silence, to your body, to source, to the mystery of becoming. Sacred Mode protects from care, not paranoia. It is a place where something can be true without being spoken to AI, analysed, optimised, or made useful.</p>
+            <p>A fourth question lives at the threshold of every act of digital sharing: <em>Is this mine to offer into this system?</em> Not every truth needs to be said. Not everything that is true is necessary to share. Withholding can be an act of integrity when it arises from care and timing rather than fear or deception. CommonUnity is built to support that discernment.</p>
+            <a href="#" class="deeper-doc-link">CommonUnity Governance Principle — full document ↗</a>
+          </div>
+        </div>
 
         <!-- Trust architecture depth diagram -->
         <div class="trust-diagram" aria-label="Trust architecture data layers">
@@ -1119,6 +1314,31 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- OM PRINCIPLE CLOSING SECTION -->
+    <section class="om-principle-section">
+      <div class="container">
+        <p class="eyebrow">The OM Principle</p>
+        <h2 style="font-family: var(--display); font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 300; font-style: italic; color: var(--text); margin-bottom: 16px; line-height: 1.25;">The grammar beneath everything.</h2>
+        <div class="om-movements">
+          <div class="om-movement">
+            <span class="num">i</span>
+            <span class="phrase">Begin from listening.</span>
+          </div>
+          <div class="om-movement">
+            <span class="num">ii</span>
+            <span class="phrase">Move through resonance.</span>
+          </div>
+          <div class="om-movement">
+            <span class="num">iii</span>
+            <span class="phrase">Return toward coherence.</span>
+          </div>
+        </div>
+        <p class="om-body">These three movements are not a slogan. They are a practice. They describe how Nexus is designed to think. They describe how the cOMpass is designed to orient. They describe how the stUdio is designed to work. They describe, at the most fundamental level, what CommonUnity is trying to do — and what it asks of anyone who enters the field.</p>
+        <p class="om-body" style="margin-top: 20px;">Oṃ is the sound that contains all sounds. It is not a religious symbol in CommonUnity — it is a principle of unity: that beneath the apparent diversity of patterns, purposes, and expressions, there is a coherence that can be heard when we are still enough to listen for it. The whole system is quietly underwritten by this principle.</p>
+        <p class="om-body" style="margin-top: 20px; font-family: var(--display); font-style: italic; font-size: 18px; color: var(--text);">What kind of world could we create if we were honest with ourselves, with each other, and with the powerful technologies we are now using?</p>
       </div>
     </section>
 
@@ -1422,6 +1642,16 @@
 
       requestAnimationFrame(draw);
     })();
+
+    // Go Deeper drawer toggle
+    function toggleDeeper(btn) {
+      var drawer = btn.nextElementSibling;
+      var isOpen = drawer.classList.contains('open');
+      drawer.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      btn.querySelector('.arrow').textContent = isOpen ? '↓' : '↑';
+    }
   </script>
 
 </body>
