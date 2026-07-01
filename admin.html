@@ -198,6 +198,8 @@
     .btn-danger { color: var(--danger); border-color: rgba(230,160,160,0.28); }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
     .table-wrap { overflow-x: auto; }
+    /* Bounded vertical scroll region so the header can stick as the list grows. */
+    .table-wrap--sticky { max-height: 62vh; overflow-y: auto; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -216,6 +218,19 @@
       text-transform: uppercase;
       font-weight: 500;
     }
+    /* Sticky column headers. An opaque background keeps rows from showing
+       through the semi-transparent panel as they scroll under the header; the
+       inset shadow preserves the bottom rule (border-bottom can drop out while
+       stuck) and lifts the header a touch over the glass surface. */
+    .table-wrap thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #0b0b12;
+      box-shadow: inset 0 -1px 0 rgba(248,242,232,0.16);
+    }
+    .btn.is-loading { opacity: 0.7; cursor: progress; }
+    .btn:disabled { cursor: not-allowed; }
     td { color: rgba(248,242,232,0.84); font-size: 0.94rem; }
     .muted { color: var(--faint); }
     .status {
@@ -1029,7 +1044,7 @@
             <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#c3a8d8;border:1px solid #c3a8d8;margin-right:5px;vertical-align:middle"></span>cOMpass complete</span>
             <span style="margin-left:4px;color:#555">· Grey = not yet reached · Hover dot for timestamp</span>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap table-wrap--sticky">
             <table>
               <thead>
                 <tr>
@@ -2351,8 +2366,32 @@
       $('brand-message').textContent = 'Active brand loaded into the editor.';
     });
 
-    $('refresh').addEventListener('click', loadDashboard);
-    $('ops-refresh').addEventListener('click', loadDashboard);
+    // Refresh: re-pull the whole admin payload (invites + metrics/feed + brand)
+    // with a visible loading state, a guard against overlapping runs from
+    // repeated clicks, and error recovery so a failed sub-request no longer
+    // leaves the button looking inert. Admin auth is unchanged — loadDashboard
+    // still calls the same credentialed endpoints.
+    let dashboardRefreshing = false;
+    async function refreshDashboard(evt) {
+      const btn = evt && evt.currentTarget ? evt.currentTarget : null;
+      if (dashboardRefreshing) return;
+      dashboardRefreshing = true;
+      const label = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'Refreshing…'; }
+      try {
+        await loadDashboard();
+        if (btn) btn.textContent = label || 'Refresh';
+      } catch (err) {
+        console.error('Admin dashboard refresh failed:', err);
+        if (btn) btn.textContent = 'Retry refresh';
+      } finally {
+        dashboardRefreshing = false;
+        if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+      }
+    }
+
+    $('refresh').addEventListener('click', refreshDashboard);
+    $('ops-refresh').addEventListener('click', refreshDashboard);
 
     // ── Infrastructure health checks ──
     const HEALTH_LABELS = {
