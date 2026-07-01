@@ -3863,7 +3863,15 @@ async def om_cipher_generate(body: OmCipherInput, req: Request):
 
 
 @app.get("/api/om-cipher/{member_id}")
-async def om_cipher_get(member_id: str):
+async def om_cipher_get(member_id: str, request: Request):
+    # The full OM Cipher record carries legal_name, birth_date, birth_time and
+    # full_record_json. It must never be served to an unauthenticated caller who
+    # merely knows (or guesses) the member_id UUID. There is no member session
+    # that ties a caller to a specific member_id — the record is captured client
+    # side and returned once by POST /generate, which the browser caches — so the
+    # only safe reader here is an authenticated admin. Public consumers use the
+    # projection-only /public and /badge endpoints, which stay open by design.
+    _require_admin(request)
     if not _om_engine.is_enabled():
         _om_disabled_response()
     with _OM_STORE_LOCK:
@@ -3998,8 +4006,9 @@ async def admin_members(request: Request):
     pseudonymous member_id, the visibility_tier flag, and timestamps. Personal
     identity and OM Cipher profile fields (real/legal name, birth date/time,
     numerology, Gene Keys, Human Design, om_cipher_seed, sigil, and the full
-    source record) are never included. Members read their own full record via
-    GET /api/om-cipher/{member_id}; that path is unchanged."""
+    source record) are never included. The full record lives behind admin auth
+    at GET /api/om-cipher/{member_id}; public consumers use the projection-only
+    /public and /badge endpoints."""
     _require_admin(request)
     rows = _om_all()
     members = [_om_admin_metadata(r) for r in rows]
