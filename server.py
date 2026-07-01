@@ -1422,6 +1422,65 @@ def _mask_token(token: str | None) -> str:
     return f"{t[:4]}…{t[-4:]}"
 
 
+def _mask_email(email: str | None) -> str:
+    """Non-reversible-ish display form of an invite email for admin surfaces
+    that prefer masking. Keeps the first character of the local part and the
+    domain so a human can recognise a row without the full address rendered.
+    The admin invites tab already shows the full address behind admin auth, so
+    the feed carries both forms and the UI chooses; this helper exists so a
+    masked projection is available where preferred."""
+    e = (email or "").strip()
+    if not e or "@" not in e:
+        return ""
+    local, _, domain = e.partition("@")
+    if not local:
+        return f"@{domain}"
+    head = local[0]
+    return f"{head}{'•' * max(len(local) - 1, 1)}@{domain}"
+
+
+def _admin_feed_row(row: sqlite3.Row | None) -> dict | None:
+    """Admin feed / metrics-events projection (whitelist, never SELECT *).
+
+    Privacy contract: participant identity in the feed is resolved ONLY from
+    the admin-authored `invites` record, reached by the event's `invite_id`
+    linkage. It is never derived from participant-submitted/private data
+    (Threshold contract, Compass local state, OM Cipher record, Golden Thread,
+    Nexus/AI transcripts). Each row carries lifecycle metadata — event type,
+    timestamp, route, source, masked token — plus the invite name/email when
+    (and only when) the event links to an invite. `detail` is passed through
+    unchanged (invite-lifecycle rows are already blanked at write/scrub time),
+    so no private content enters the feed. `content_status` is always
+    'private': this row exposes who + when, never any user content."""
+    d = _row_to_dict(row)
+    if d is None:
+        return None
+    name = (d.get("invite_name") or "").strip()
+    email = (d.get("invite_email") or "").strip()
+    # Identity is present iff the row resolved to an invite record (by invite_id
+    # or the token fallback). name/email are sourced only from that admin-authored
+    # invite, so their presence — regardless of whether the raw event carried an
+    # invite_id — is what marks the row as invite-derived.
+    linked = bool(name or email)
+    invite_id = d.get("resolved_invite_id", d.get("invite_id"))
+    full_token = d.get("invite_full_token") or d.get("token") or ""
+    return {
+        "id": d.get("id"),
+        "timestamp": d.get("timestamp"),
+        "type": d.get("type"),
+        "route": d.get("route") or "",
+        "source": d.get("source") or "",
+        "detail": d.get("detail") or "",
+        "invite_id": invite_id,
+        "token_masked": _mask_token(full_token),
+        "invite_name": name,
+        "invite_email": email,
+        "invite_email_masked": _mask_email(email),
+        "identity_source": "invite_record" if linked else "",
+        "content_status": "private",
+    }
+
+
 def _invite_admin_row(row: sqlite3.Row | None) -> dict | None:
     """Admin-facing invite projection. Carries the operational contact metadata
     the admin needs (name/email/notes/status/timeline) but never the raw
@@ -2486,17 +2545,42 @@ async def admin_metrics(request: Request):
             FROM invites
             """
         ).fetchone()
+        # Enrich the feed with invite identity ONLY through admin-authored invite
+        # linkages: the event's invite_id first, then — for historical rows that
+        # carry a token but no invite_id (older writers / env-token rows) — the
+        # events.token → invites.token match. Both keys are admin-originated
+        # invite identifiers; no participant content is joined in. The token
+        # fallback fires only when invite_id IS NULL, so it can't produce
+        # duplicate rows or override the primary linkage. events.detail is never
+        # used for identity (scrub invariant preserved). Explicit column
+        # whitelist, never SELECT *.
         recent = conn.execute(
             """
-            SELECT id, timestamp, type, invite_id, route, source, detail
-            FROM events
-            ORDER BY timestamp DESC, id DESC
+            SELECT
+                e.id           AS id,
+                e.timestamp    AS timestamp,
+                e.type         AS type,
+                e.invite_id    AS invite_id,
+                e.token        AS token,
+                e.route        AS route,
+                e.source       AS source,
+                e.detail       AS detail,
+                COALESCE(bi.id, bt.id)       AS resolved_invite_id,
+                COALESCE(bi.name, bt.name)   AS invite_name,
+                COALESCE(bi.email, bt.email) AS invite_email,
+                COALESCE(bi.token, bt.token) AS invite_full_token
+            FROM events e
+            LEFT JOIN invites bi ON e.invite_id = bi.id
+            LEFT JOIN invites bt ON e.invite_id IS NULL
+                                AND e.token <> ''
+                                AND e.token = bt.token
+            ORDER BY e.timestamp DESC, e.id DESC
             LIMIT 80
             """
         ).fetchall()
     return {
         "metrics": _row_to_dict(row),
-        "events": [_row_to_dict(r) for r in recent],
+        "events": [_admin_feed_row(r) for r in recent],
         "configured": {
             "admin_code": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
             "beta_code": bool(_csv_env(_BETA_CODE_ENV)),
@@ -3793,7 +3877,15 @@ async def om_cipher_generate(body: OmCipherInput, req: Request):
 
 
 @app.get("/api/om-cipher/{member_id}")
-async def om_cipher_get(member_id: str):
+async def om_cipher_get(member_id: str, request: Request):
+    # The full OM Cipher record carries legal_name, birth_date, birth_time and
+    # full_record_json. It must never be served to an unauthenticated caller who
+    # merely knows (or guesses) the member_id UUID. There is no member session
+    # that ties a caller to a specific member_id — the record is captured client
+    # side and returned once by POST /generate, which the browser caches — so the
+    # only safe reader here is an authenticated admin. Public consumers use the
+    # projection-only /public and /badge endpoints, which stay open by design.
+    _require_admin(request)
     if not _om_engine.is_enabled():
         _om_disabled_response()
     with _OM_STORE_LOCK:
@@ -3928,8 +4020,9 @@ async def admin_members(request: Request):
     pseudonymous member_id, the visibility_tier flag, and timestamps. Personal
     identity and OM Cipher profile fields (real/legal name, birth date/time,
     numerology, Gene Keys, Human Design, om_cipher_seed, sigil, and the full
-    source record) are never included. Members read their own full record via
-    GET /api/om-cipher/{member_id}; that path is unchanged."""
+    source record) are never included. The full record lives behind admin auth
+    at GET /api/om-cipher/{member_id}; public consumers use the projection-only
+    /public and /badge endpoints."""
     _require_admin(request)
     rows = _om_all()
     members = [_om_admin_metadata(r) for r in rows]

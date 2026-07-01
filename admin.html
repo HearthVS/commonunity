@@ -198,6 +198,8 @@
     .btn-danger { color: var(--danger); border-color: rgba(230,160,160,0.28); }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
     .table-wrap { overflow-x: auto; }
+    /* Bounded vertical scroll region so the header can stick as the list grows. */
+    .table-wrap--sticky { max-height: 62vh; overflow-y: auto; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -216,6 +218,19 @@
       text-transform: uppercase;
       font-weight: 500;
     }
+    /* Sticky column headers. An opaque background keeps rows from showing
+       through the semi-transparent panel as they scroll under the header; the
+       inset shadow preserves the bottom rule (border-bottom can drop out while
+       stuck) and lifts the header a touch over the glass surface. */
+    .table-wrap thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #0b0b12;
+      box-shadow: inset 0 -1px 0 rgba(248,242,232,0.16);
+    }
+    .btn.is-loading { opacity: 0.7; cursor: progress; }
+    .btn:disabled { cursor: not-allowed; }
     td { color: rgba(248,242,232,0.84); font-size: 0.94rem; }
     .muted { color: var(--faint); }
     .status {
@@ -247,6 +262,18 @@
     }
     .event strong { font-weight: 560; }
     .event small { color: var(--faint); }
+    .event-who { margin-left: 8px; font-size: 0.85rem; color: var(--muted); }
+    .event-private {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      border: 1px solid rgba(248,242,232,0.16);
+    }
     .message {
       min-height: 22px;
       margin-top: 12px;
@@ -1017,7 +1044,7 @@
             <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#c3a8d8;border:1px solid #c3a8d8;margin-right:5px;vertical-align:middle"></span>cOMpass complete</span>
             <span style="margin-left:4px;color:#555">· Grey = not yet reached · Hover dot for timestamp</span>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap table-wrap--sticky">
             <table>
               <thead>
                 <tr>
@@ -1621,12 +1648,24 @@
         </tr>
       `).join('') || '<tr><td colspan="8" class="muted">No invitations yet.</td></tr>';
 
-      $('events').innerHTML = state.events.map(ev => `
+      $('events').innerHTML = state.events.map(ev => {
+        // Identity is resolved server-side ONLY from the admin-authored invite
+        // record (ev.identity_source === 'invite_record'); never from any
+        // participant content. content_status stays 'private' — the feed shows
+        // who + when, never what.
+        const named = ev.identity_source === 'invite_record' && (ev.invite_name || ev.invite_email);
+        const who = named
+          ? `<span class="event-who">${escapeHtml(ev.invite_name || ev.invite_email)}`
+            + `${ev.invite_name && ev.invite_email ? ' · ' + escapeHtml(ev.invite_email) : ''}`
+            + ` <span class="event-private" title="Identity from invite record; participant content stays private">private</span></span>`
+          : '';
+        return `
         <div class="event">
-          <strong>${escapeHtml(ev.type || 'event')}</strong>
+          <strong>${escapeHtml(ev.type || 'event')}</strong>${who}
           <small>${date(ev.timestamp)} · ${escapeHtml(ev.route || '')} ${ev.detail ? '· ' + escapeHtml(ev.detail) : ''}</small>
         </div>
-      `).join('') || '<p class="muted">No activity yet.</p>';
+      `;
+      }).join('') || '<p class="muted">No activity yet.</p>';
 
       renderBrand();
     }
@@ -2327,8 +2366,32 @@
       $('brand-message').textContent = 'Active brand loaded into the editor.';
     });
 
-    $('refresh').addEventListener('click', loadDashboard);
-    $('ops-refresh').addEventListener('click', loadDashboard);
+    // Refresh: re-pull the whole admin payload (invites + metrics/feed + brand)
+    // with a visible loading state, a guard against overlapping runs from
+    // repeated clicks, and error recovery so a failed sub-request no longer
+    // leaves the button looking inert. Admin auth is unchanged — loadDashboard
+    // still calls the same credentialed endpoints.
+    let dashboardRefreshing = false;
+    async function refreshDashboard(evt) {
+      const btn = evt && evt.currentTarget ? evt.currentTarget : null;
+      if (dashboardRefreshing) return;
+      dashboardRefreshing = true;
+      const label = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'Refreshing…'; }
+      try {
+        await loadDashboard();
+        if (btn) btn.textContent = label || 'Refresh';
+      } catch (err) {
+        console.error('Admin dashboard refresh failed:', err);
+        if (btn) btn.textContent = 'Retry refresh';
+      } finally {
+        dashboardRefreshing = false;
+        if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+      }
+    }
+
+    $('refresh').addEventListener('click', refreshDashboard);
+    $('ops-refresh').addEventListener('click', refreshDashboard);
 
     // ── Infrastructure health checks ──
     const HEALTH_LABELS = {
