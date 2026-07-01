@@ -1422,6 +1422,61 @@ def _mask_token(token: str | None) -> str:
     return f"{t[:4]}…{t[-4:]}"
 
 
+def _mask_email(email: str | None) -> str:
+    """Non-reversible-ish display form of an invite email for admin surfaces
+    that prefer masking. Keeps the first character of the local part and the
+    domain so a human can recognise a row without the full address rendered.
+    The admin invites tab already shows the full address behind admin auth, so
+    the feed carries both forms and the UI chooses; this helper exists so a
+    masked projection is available where preferred."""
+    e = (email or "").strip()
+    if not e or "@" not in e:
+        return ""
+    local, _, domain = e.partition("@")
+    if not local:
+        return f"@{domain}"
+    head = local[0]
+    return f"{head}{'•' * max(len(local) - 1, 1)}@{domain}"
+
+
+def _admin_feed_row(row: sqlite3.Row | None) -> dict | None:
+    """Admin feed / metrics-events projection (whitelist, never SELECT *).
+
+    Privacy contract: participant identity in the feed is resolved ONLY from
+    the admin-authored `invites` record, reached by the event's `invite_id`
+    linkage. It is never derived from participant-submitted/private data
+    (Threshold contract, Compass local state, OM Cipher record, Golden Thread,
+    Nexus/AI transcripts). Each row carries lifecycle metadata — event type,
+    timestamp, route, source, masked token — plus the invite name/email when
+    (and only when) the event links to an invite. `detail` is passed through
+    unchanged (invite-lifecycle rows are already blanked at write/scrub time),
+    so no private content enters the feed. `content_status` is always
+    'private': this row exposes who + when, never any user content."""
+    d = _row_to_dict(row)
+    if d is None:
+        return None
+    invite_id = d.get("invite_id")
+    name = (d.get("invite_name") or "").strip()
+    email = (d.get("invite_email") or "").strip()
+    linked = invite_id is not None and bool(name or email)
+    full_token = d.get("invite_full_token") or d.get("token") or ""
+    return {
+        "id": d.get("id"),
+        "timestamp": d.get("timestamp"),
+        "type": d.get("type"),
+        "route": d.get("route") or "",
+        "source": d.get("source") or "",
+        "detail": d.get("detail") or "",
+        "invite_id": invite_id,
+        "token_masked": _mask_token(full_token),
+        "invite_name": name,
+        "invite_email": email,
+        "invite_email_masked": _mask_email(email),
+        "identity_source": "invite_record" if linked else "",
+        "content_status": "private",
+    }
+
+
 def _invite_admin_row(row: sqlite3.Row | None) -> dict | None:
     """Admin-facing invite projection. Carries the operational contact metadata
     the admin needs (name/email/notes/status/timeline) but never the raw
@@ -2486,17 +2541,32 @@ async def admin_metrics(request: Request):
             FROM invites
             """
         ).fetchone()
+        # Enrich the feed with invite identity ONLY through the event's
+        # invite_id → invites linkage (admin-authored records). No participant
+        # content is joined in. Explicit column whitelist, never SELECT *.
         recent = conn.execute(
             """
-            SELECT id, timestamp, type, invite_id, route, source, detail
-            FROM events
-            ORDER BY timestamp DESC, id DESC
+            SELECT
+                e.id           AS id,
+                e.timestamp    AS timestamp,
+                e.type         AS type,
+                e.invite_id    AS invite_id,
+                e.token        AS token,
+                e.route        AS route,
+                e.source       AS source,
+                e.detail       AS detail,
+                i.name         AS invite_name,
+                i.email        AS invite_email,
+                i.token        AS invite_full_token
+            FROM events e
+            LEFT JOIN invites i ON e.invite_id = i.id
+            ORDER BY e.timestamp DESC, e.id DESC
             LIMIT 80
             """
         ).fetchall()
     return {
         "metrics": _row_to_dict(row),
-        "events": [_row_to_dict(r) for r in recent],
+        "events": [_admin_feed_row(r) for r in recent],
         "configured": {
             "admin_code": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
             "beta_code": bool(_csv_env(_BETA_CODE_ENV)),

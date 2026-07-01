@@ -247,6 +247,18 @@
     }
     .event strong { font-weight: 560; }
     .event small { color: var(--faint); }
+    .event-who { margin-left: 8px; font-size: 0.85rem; color: var(--muted); }
+    .event-private {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      border: 1px solid rgba(248,242,232,0.16);
+    }
     .message {
       min-height: 22px;
       margin-top: 12px;
@@ -1621,12 +1633,24 @@
         </tr>
       `).join('') || '<tr><td colspan="8" class="muted">No invitations yet.</td></tr>';
 
-      $('events').innerHTML = state.events.map(ev => `
+      $('events').innerHTML = state.events.map(ev => {
+        // Identity is resolved server-side ONLY from the admin-authored invite
+        // record (ev.identity_source === 'invite_record'); never from any
+        // participant content. content_status stays 'private' — the feed shows
+        // who + when, never what.
+        const named = ev.identity_source === 'invite_record' && (ev.invite_name || ev.invite_email);
+        const who = named
+          ? `<span class="event-who">${escapeHtml(ev.invite_name || ev.invite_email)}`
+            + `${ev.invite_name && ev.invite_email ? ' · ' + escapeHtml(ev.invite_email) : ''}`
+            + ` <span class="event-private" title="Identity from invite record; participant content stays private">private</span></span>`
+          : '';
+        return `
         <div class="event">
-          <strong>${escapeHtml(ev.type || 'event')}</strong>
+          <strong>${escapeHtml(ev.type || 'event')}</strong>${who}
           <small>${date(ev.timestamp)} · ${escapeHtml(ev.route || '')} ${ev.detail ? '· ' + escapeHtml(ev.detail) : ''}</small>
         </div>
-      `).join('') || '<p class="muted">No activity yet.</p>';
+      `;
+      }).join('') || '<p class="muted">No activity yet.</p>';
 
       renderBrand();
     }
