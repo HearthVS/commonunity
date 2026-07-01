@@ -1455,10 +1455,14 @@ def _admin_feed_row(row: sqlite3.Row | None) -> dict | None:
     d = _row_to_dict(row)
     if d is None:
         return None
-    invite_id = d.get("invite_id")
     name = (d.get("invite_name") or "").strip()
     email = (d.get("invite_email") or "").strip()
-    linked = invite_id is not None and bool(name or email)
+    # Identity is present iff the row resolved to an invite record (by invite_id
+    # or the token fallback). name/email are sourced only from that admin-authored
+    # invite, so their presence — regardless of whether the raw event carried an
+    # invite_id — is what marks the row as invite-derived.
+    linked = bool(name or email)
+    invite_id = d.get("resolved_invite_id", d.get("invite_id"))
     full_token = d.get("invite_full_token") or d.get("token") or ""
     return {
         "id": d.get("id"),
@@ -2541,9 +2545,15 @@ async def admin_metrics(request: Request):
             FROM invites
             """
         ).fetchone()
-        # Enrich the feed with invite identity ONLY through the event's
-        # invite_id → invites linkage (admin-authored records). No participant
-        # content is joined in. Explicit column whitelist, never SELECT *.
+        # Enrich the feed with invite identity ONLY through admin-authored invite
+        # linkages: the event's invite_id first, then — for historical rows that
+        # carry a token but no invite_id (older writers / env-token rows) — the
+        # events.token → invites.token match. Both keys are admin-originated
+        # invite identifiers; no participant content is joined in. The token
+        # fallback fires only when invite_id IS NULL, so it can't produce
+        # duplicate rows or override the primary linkage. events.detail is never
+        # used for identity (scrub invariant preserved). Explicit column
+        # whitelist, never SELECT *.
         recent = conn.execute(
             """
             SELECT
@@ -2555,11 +2565,15 @@ async def admin_metrics(request: Request):
                 e.route        AS route,
                 e.source       AS source,
                 e.detail       AS detail,
-                i.name         AS invite_name,
-                i.email        AS invite_email,
-                i.token        AS invite_full_token
+                COALESCE(bi.id, bt.id)       AS resolved_invite_id,
+                COALESCE(bi.name, bt.name)   AS invite_name,
+                COALESCE(bi.email, bt.email) AS invite_email,
+                COALESCE(bi.token, bt.token) AS invite_full_token
             FROM events e
-            LEFT JOIN invites i ON e.invite_id = i.id
+            LEFT JOIN invites bi ON e.invite_id = bi.id
+            LEFT JOIN invites bt ON e.invite_id IS NULL
+                                AND e.token <> ''
+                                AND e.token = bt.token
             ORDER BY e.timestamp DESC, e.id DESC
             LIMIT 80
             """
