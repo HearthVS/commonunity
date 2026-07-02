@@ -59,6 +59,22 @@ for (const [label, entrySrc] of [['index.html', src], ['studio.html', studioSrc]
   ok(label + ': /api/messages fetch wired',          /\/api\/messages/.test(entrySrc));
 }
 
+// cOMmunication v1 refinements — live refresh + "sign of life" glow.
+// New messages must appear without a manual reload (client-side polling),
+// and the attention cue is a calm soft-gold pulse/glow, never a red badge.
+// These pin the polling loop and the glow into the served files so future
+// edits can't silently drop them.
+console.log('\nindex.html + studio.html carry cOMmunication live-refresh + glow markers');
+for (const [label, entrySrc] of [['index.html', src], ['studio.html', studioSrc]]) {
+  ok(label + ': polling interval defined',     /CU_POLL_INTERVAL_MS/.test(entrySrc));
+  ok(label + ': setInterval polling loop',     /setInterval\([\s\S]{0,120}loadMessages/.test(entrySrc));
+  ok(label + ': backs off when tab hidden',    /document\.hidden/.test(entrySrc));
+  ok(label + ': refresh on visibilitychange',  /visibilitychange/.test(entrySrc));
+  ok(label + ': living-glow keyframes present',/@keyframes\s+cu-living-pulse/.test(entrySrc));
+  ok(label + ': living-glow class toggled',    /cu-living/.test(entrySrc));
+  ok(label + ': respects reduced motion',      /prefers-reduced-motion/.test(entrySrc));
+}
+
 console.log('\nserver.py mounts /sdk so the static script is reachable');
 const serverPath = path.resolve(__dirname, '..', 'server.py');
 const serverSrc = fs.readFileSync(serverPath, 'utf8');
