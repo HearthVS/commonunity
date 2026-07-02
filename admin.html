@@ -1031,7 +1031,10 @@
               <h2>Invitations</h2>
               <p class="hint">Copy links, see movement, and revoke access when needed.</p>
             </div>
-            <button class="btn" id="refresh">Refresh</button>
+            <div class="actions" style="margin:0">
+              <button class="btn" id="message-all">Message all</button>
+              <button class="btn" id="refresh">Refresh</button>
+            </div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:11px;color:#888;">
             <span style="color:#aaa;font-weight:600;letter-spacing:.05em;margin-right:4px;">JOURNEY</span>
@@ -1415,6 +1418,38 @@
     </div>
   </div>
 
+  <!-- cOMmunication composer modal -->
+  <div id="comm-modal" style="display:none;" class="modal-backdrop">
+    <div class="modal-box">
+      <button class="modal-close" id="comm-close">×</button>
+      <h2 id="comm-title" style="margin-top:0;">cOMmunication</h2>
+      <p class="hint" id="comm-recipient" style="margin-top:-6px;"></p>
+      <form id="comm-form" class="fields">
+        <div>
+          <label for="comm-subject">Subject</label>
+          <input id="comm-subject" placeholder="A note from CommonUnity">
+        </div>
+        <div>
+          <label for="comm-body">Message</label>
+          <textarea id="comm-body" required placeholder="Write a calm, respectful message…"></textarea>
+        </div>
+        <div>
+          <label>Delivery</label>
+          <div class="actions" style="margin:0;gap:16px;">
+            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="both" checked> Both</label>
+            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="in_app"> In-app</label>
+            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="email"> Email</label>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:4px;">
+          <button type="submit" class="btn" id="comm-send">Send message</button>
+        </div>
+        <div class="message" id="comm-message"></div>
+      </form>
+      <div id="comm-history" style="margin-top:18px;"></div>
+    </div>
+  </div>
+
   <script>
     const $ = (id) => document.getElementById(id);
     const state = {
@@ -1642,6 +1677,7 @@
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
               ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
+              ${inv.status !== 'revoked' ? `<button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
             </div>
           </td>
@@ -2229,6 +2265,15 @@
       const deleteFeedbackId = event.target?.dataset?.deleteFeedback;
       const ackOrientationId = event.target?.dataset?.ackOrientation;
       const inviteFromName = event.target?.dataset?.inviteFromName;
+      const messageId = event.target?.dataset?.message;
+
+      if (messageId) {
+        openComposer('individual', {
+          inviteId: messageId,
+          name: event.target?.dataset?.messageName || '',
+          email: event.target?.dataset?.messageEmail || '',
+        });
+      }
 
       if (copyLinkId) {
         // The raw token is never in the list payload (masked for privacy); ask
@@ -2343,6 +2388,99 @@
         await loadDashboard();
       } catch (err) {
         $('invite-message').textContent = err.message;
+      }
+    });
+
+    // ── cOMmunication composer ──
+    const commState = { mode: null, inviteId: null };
+
+    function closeComposer() {
+      $('comm-modal').style.display = 'none';
+    }
+
+    async function openComposer(mode, opts = {}) {
+      commState.mode = mode;
+      commState.inviteId = opts.inviteId || null;
+      $('comm-form').reset();
+      $('comm-message').textContent = '';
+      $('comm-history').innerHTML = '';
+      const both = document.querySelector('input[name="comm-channel"][value="both"]');
+      if (both) both.checked = true;
+      if (mode === 'broadcast') {
+        $('comm-title').textContent = 'Message all';
+        $('comm-recipient').textContent = 'Loading recipient count…';
+        $('comm-modal').style.display = 'grid';
+        try {
+          const r = await api('/api/admin/broadcast/recipients');
+          $('comm-recipient').textContent = `${r.total} active invite recipient${r.total === 1 ? '' : 's'} · ${r.with_email} with an email address on file.`;
+        } catch (err) {
+          $('comm-recipient').textContent = err.message;
+        }
+      } else {
+        $('comm-title').textContent = 'Message';
+        const who = [opts.name, opts.email].filter(Boolean).join(' · ') || 'this invite';
+        $('comm-recipient').textContent = `To ${who} (from invite record).`;
+        $('comm-modal').style.display = 'grid';
+        try {
+          const r = await api(`/api/admin/invites/${opts.inviteId}/messages`);
+          renderCommHistory(r.messages || []);
+        } catch (_) {}
+      }
+    }
+
+    function renderCommHistory(messages) {
+      if (!messages.length) { $('comm-history').innerHTML = ''; return; }
+      const seen = new Set();
+      const rows = messages.filter(m => {
+        if (seen.has(m.message_id)) return false;
+        seen.add(m.message_id); return true;
+      }).map(m => `
+        <div class="event">
+          <strong>${escapeHtml(m.subject || '(no subject)')}</strong>
+          <small>${date(m.created_at)} · ${escapeHtml(m.kind)}</small>
+          <div class="muted" style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(m.body || '')}</div>
+        </div>`).join('');
+      $('comm-history').innerHTML = `<p class="hint">Previous messages</p>${rows}`;
+    }
+
+    $('message-all').addEventListener('click', () => openComposer('broadcast'));
+    $('comm-close').addEventListener('click', closeComposer);
+    $('comm-modal').addEventListener('click', (e) => { if (e.target === $('comm-modal')) closeComposer(); });
+
+    $('comm-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const channel = document.querySelector('input[name="comm-channel"]:checked')?.value || 'both';
+      const payload = {
+        subject: $('comm-subject').value,
+        body: $('comm-body').value,
+        channel,
+      };
+      const sendBtn = $('comm-send');
+      sendBtn.disabled = true;
+      const original = sendBtn.textContent;
+      sendBtn.textContent = 'Sending…';
+      $('comm-message').textContent = '';
+      try {
+        let result;
+        if (commState.mode === 'broadcast') {
+          result = await api('/api/admin/broadcast', { method: 'POST', body: JSON.stringify(payload) });
+          $('comm-message').textContent = `Sent to ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}. In-app: ${result.in_app} · email sent: ${result.email_sent}${result.email_pending ? ` · email pending: ${result.email_pending}` : ''}${result.email_failed ? ` · email failed: ${result.email_failed}` : ''}.`;
+        } else {
+          result = await api(`/api/admin/invites/${commState.inviteId}/message`, { method: 'POST', body: JSON.stringify(payload) });
+          $('comm-message').textContent = `Message sent. In-app: ${result.in_app} · email sent: ${result.email_sent}${result.email_pending ? ` · email pending (SMTP not configured): ${result.email_pending}` : ''}${result.email_failed ? ` · email failed: ${result.email_failed}` : ''}.`;
+          try {
+            const r = await api(`/api/admin/invites/${commState.inviteId}/messages`);
+            renderCommHistory(r.messages || []);
+          } catch (_) {}
+        }
+        $('comm-subject').value = '';
+        $('comm-body').value = '';
+        await loadDashboard();
+      } catch (err) {
+        $('comm-message').textContent = err.message;
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = original;
       }
     });
 
