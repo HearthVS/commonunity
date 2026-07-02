@@ -18,8 +18,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const indexPath = path.resolve(__dirname, '..', 'index.html');
-const sdkPath   = path.resolve(__dirname, '..', 'sdk', 'astronomy.js');
+const indexPath  = path.resolve(__dirname, '..', 'index.html');
+const studioPath = path.resolve(__dirname, '..', 'studio.html');
+const sdkPath    = path.resolve(__dirname, '..', 'sdk', 'astronomy.js');
 
 let failed = 0;
 function ok(msg, cond) {
@@ -41,6 +42,21 @@ if (fs.existsSync(sdkPath)) {
   const astroSrc = fs.readFileSync(sdkPath, 'utf8');
   ok('exports identity-chart helpers',
      /computeIdentityChart|computeSun|computeMoon/.test(astroSrc));
+}
+
+// cOMmunication v1 (PR #86) — the participant messaging surface lives
+// in the served Compass/Studio entry files, but only renders behind the
+// beta/invite gate (unauthenticated fetches of /compass and /studio get
+// beta_gate.html, and / is homepage.html). A post-merge live check that
+// fetched those gated/marketing URLs saw no markers and looked like a
+// stale deploy — it was not. These assertions pin the markers into the
+// served files so they can't be quietly dropped by future edits.
+console.log('\nindex.html + studio.html carry cOMmunication v1 (PR #86) markers');
+const studioSrc = fs.readFileSync(studioPath, 'utf8');
+for (const [label, entrySrc] of [['index.html', src], ['studio.html', studioSrc]]) {
+  ok(label + ': cOMmunication panel title present', /cOMmunication/.test(entrySrc));
+  ok(label + ': Messages surface present',          /Messages/.test(entrySrc));
+  ok(label + ': /api/messages fetch wired',          /\/api\/messages/.test(entrySrc));
 }
 
 console.log('\nserver.py mounts /sdk so the static script is reachable');
