@@ -1676,7 +1676,7 @@
           <td>
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
-              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link">Studio link</button>` : ''}
+              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
               ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
@@ -2320,12 +2320,12 @@
           } else if (await copyTextToClipboard(res.studio_link)) {
             $('manual-copy').classList.add('hidden');
             event.target.textContent = 'Copied';
-            $('invite-message').textContent = 'Studio link copied to clipboard.';
+            $('invite-message').textContent = 'Studio link copied — send it to the recipient to open directly in a browser. It is not a beta access code; do not paste it into the beta gate.';
             setTimeout(() => { event.target.textContent = original; }, 1200);
           } else {
             event.target.textContent = original;
             $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
-            showManualCopy('Studio link', res.studio_link);
+            showManualCopy('Studio link (open directly in a browser — not a beta access code)', res.studio_link);
           }
         } catch (err) {
           event.target.textContent = original;

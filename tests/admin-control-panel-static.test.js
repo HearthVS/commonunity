@@ -88,6 +88,13 @@ assert(admin.includes('isSecureContext'),
   'clipboard helper should only trust the async Clipboard API in a secure context');
 assert(admin.includes('showManualCopy') && admin.includes('manual-copy'),
   'admin page should offer a visible manual-copy fallback when clipboard access is blocked');
+// The Studio link is a full /studio?invite=<token> URL to be OPENED directly
+// (it sets the beta+invite cookies and bypasses the gate). It is NOT a beta
+// access code — pasting it into the beta gate's code field fails validation.
+// The copy must steer the admin away from that mistake.
+assert(admin.includes('data-studio-link'), 'invite rows should wire a direct Studio link action');
+assert(admin.includes('do not paste it into the beta gate'),
+  'Studio link copy should tell the admin to open the link directly, not paste it into the beta gate');
 assert(admin.includes('Brand Field'), 'admin page should include the Brand Field section');
 assert(admin.includes('/api/admin/brand/versions'), 'admin page should call brand version APIs');
 assert(admin.includes('Save as draft'), 'admin page should support brand drafts');
