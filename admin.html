@@ -247,6 +247,11 @@
       border-color: rgba(230,160,160,0.26);
       background: rgba(230,160,160,0.08);
     }
+    .status.expired {
+      color: #e6c07a;
+      border-color: rgba(230,192,122,0.3);
+      background: rgba(230,192,122,0.09);
+    }
     .events {
       display: grid;
       gap: 9px;
@@ -1064,6 +1069,54 @@
               <tbody id="invite-rows"></tbody>
             </table>
           </div>
+
+          <details id="expired-invites" style="margin-top:16px;">
+            <summary style="cursor:pointer;color:#e6c07a;font-weight:600;letter-spacing:.03em;">
+              Expired invitations <span id="expired-count" class="muted"></span>
+            </summary>
+            <p class="hint" style="margin:8px 0 0;">The invitee never acted before the link expired. The old link is dead (no copy/Studio-link), but you can follow up or revoke it.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Opened</th>
+                    <th>Threshold</th>
+                    <th>cOMpass</th>
+                    <th>Journey</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="expired-invite-rows"></tbody>
+              </table>
+            </div>
+          </details>
+
+          <details id="revoked-invites" style="margin-top:16px;">
+            <summary style="cursor:pointer;color:var(--danger);font-weight:600;letter-spacing:.03em;">
+              Revoked invitations <span id="revoked-count" class="muted"></span>
+            </summary>
+            <p class="hint" style="margin:8px 0 0;">Access was intentionally closed by an admin. These rows are read-only — no copy/Studio-link or other actions. Kept for the record.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Opened</th>
+                    <th>Threshold</th>
+                    <th>cOMpass</th>
+                    <th>Journey</th>
+                    <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody id="revoked-invite-rows"></tbody>
+              </table>
+            </div>
+          </details>
         </section>
 
         <div class="section-divider">Visual field</div>
@@ -1664,26 +1717,79 @@
         ].join('');
       }
 
-      $('invite-rows').innerHTML = state.invites.map(inv => `
-        <tr>
+      // Revoked and expired are distinct action points and are kept apart:
+      //   • revoked = an admin intentionally closed access (read-only record).
+      //   • expired = the invitee never acted before the link's expiry; the link
+      //     is dead but the invite is still open, so follow-up / revoke apply.
+      // Only genuinely actionable invites stay in the main working table.
+      const nowIso = new Date().toISOString();
+      const isRevoked = (inv) => inv.status === 'revoked';
+      const isExpired = (inv) => {
+        if (inv.status === 'revoked') return false;
+        const exp = (inv.expires_at || '').trim();
+        return !!exp && exp < nowIso;
+      };
+
+      const statusPill = (inv, kind) => {
+        const cls = kind === 'revoked' ? 'revoked' : kind === 'expired' ? 'expired' : '';
+        const label = kind === 'expired' ? 'expired' : escapeHtml(inv.status);
+        return `<span class="status ${cls}">${label}</span>`;
+      };
+      const commonCells = (inv, kind) => `
           <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong><div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
-          <td><span class="status ${inv.status === 'revoked' ? 'revoked' : ''}">${escapeHtml(inv.status)}</span></td>
+          <td>${statusPill(inv, kind)}</td>
           <td>${date(inv.created_at)}</td>
           <td>${date(inv.first_opened_at)}</td>
           <td>${date(inv.threshold_completed_at)}</td>
           <td>${date(inv.compass_entered_at)}</td>
-          <td style="white-space:nowrap">${milestoneStrip(inv.milestones)}</td>
+          <td style="white-space:nowrap">${milestoneStrip(inv.milestones)}</td>`;
+
+      const revokedInvites = state.invites.filter(isRevoked);
+      const expiredInvites = state.invites.filter(isExpired);
+      const activeInvites = state.invites.filter(inv => !isRevoked(inv) && !isExpired(inv));
+
+      $('invite-rows').innerHTML = activeInvites.map(inv => `
+        <tr>
+          ${commonCells(inv, 'active')}
           <td>
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
-              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link">Studio link</button>` : ''}
-              ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
-              ${inv.status !== 'revoked' ? `<button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>` : ''}
-              ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
+              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
+              ${inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
+              <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
+              <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
             </div>
           </td>
         </tr>
-      `).join('') || '<tr><td colspan="8" class="muted">No invitations yet.</td></tr>';
+      `).join('') || '<tr><td colspan="8" class="muted">No active invitations yet.</td></tr>';
+
+      // Expired rows: the old link is dead, so NO copy/Studio-link/Send (a resend
+      // would only mail another expired link — there is no renewal endpoint).
+      // Follow-up (Message) and Revoke stay, since the invite is still open and
+      // may need a nudge or intentional close.
+      $('expired-invite-rows').innerHTML = expiredInvites.map(inv => `
+        <tr style="opacity:.82">
+          ${commonCells(inv, 'expired')}
+          <td>
+            <div class="actions" style="margin:0">
+              <span class="muted" title="The invite link has expired; generate a new invite if the person still needs access.">Link expired</span>
+              <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
+              <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="8" class="muted">No expired invitations.</td></tr>';
+      $('expired-count').textContent = `(${expiredInvites.length})`;
+
+      // Revoked rows: intentionally closed. Read-only — no copy/Studio-link or
+      // any other action; nothing should look copyable or re-openable.
+      $('revoked-invite-rows').innerHTML = revokedInvites.map(inv => `
+        <tr style="opacity:.72">
+          ${commonCells(inv, 'revoked')}
+          <td><span class="muted" title="Access was revoked by an admin; its link no longer works.">Revoked — link inactive</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="8" class="muted">No revoked invitations.</td></tr>';
+      $('revoked-count').textContent = `(${revokedInvites.length})`;
 
       $('events').innerHTML = state.events.map(ev => {
         // Identity is resolved server-side ONLY from the admin-authored invite
@@ -2320,12 +2426,12 @@
           } else if (await copyTextToClipboard(res.studio_link)) {
             $('manual-copy').classList.add('hidden');
             event.target.textContent = 'Copied';
-            $('invite-message').textContent = 'Studio link copied to clipboard.';
+            $('invite-message').textContent = 'Studio link copied — send it to the recipient to open directly in a browser. It is not a beta access code; do not paste it into the beta gate.';
             setTimeout(() => { event.target.textContent = original; }, 1200);
           } else {
             event.target.textContent = original;
             $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
-            showManualCopy('Studio link', res.studio_link);
+            showManualCopy('Studio link (open directly in a browser — not a beta access code)', res.studio_link);
           }
         } catch (err) {
           event.target.textContent = original;
