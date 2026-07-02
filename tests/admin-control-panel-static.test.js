@@ -95,20 +95,43 @@ assert(admin.includes('showManualCopy') && admin.includes('manual-copy'),
 assert(admin.includes('data-studio-link'), 'invite rows should wire a direct Studio link action');
 assert(admin.includes('do not paste it into the beta gate'),
   'Studio link copy should tell the admin to open the link directly, not paste it into the beta gate');
-// Revoked/expired invites must leave the main working list and move to a
-// separate area, and must NOT render copy/Studio-link buttons (their links are
-// dead — showing them only produces "link inactive"). Active invites drive the
-// actionable buttons; inactive invites drive the read-only revoked section.
-assert(admin.includes('revoked-invite-rows'),
-  'admin page should render revoked/expired invites in a separate table body');
-assert(admin.includes('Revoked &amp; expired invitations'),
-  'admin page should label the separate revoked/expired invitations area');
-assert(admin.includes('activeInvites') && admin.includes('inactiveInvites'),
-  'admin page should split invites into active vs inactive lists');
+// Revoked and expired are DISTINCT action points and must not be collapsed
+// together. Both leave the main working list, but into two separate sections,
+// and neither renders copy/Studio-link buttons (their links are dead). Active
+// invites drive the actionable buttons.
+assert(admin.includes('activeInvites') && admin.includes('expiredInvites') && admin.includes('revokedInvites'),
+  'admin page should split invites into three distinct lists: active, expired, revoked');
 assert(/activeInvites\.map/.test(admin),
   'copy/Studio-link action rows should render from the active-invites list only');
-assert(/revoked-invite-rows'\)\.innerHTML = inactiveInvites\.map/.test(admin),
-  'the revoked section should render from the inactive-invites list');
+
+// Two separate sections + table bodies, one per state.
+assert(admin.includes('expired-invite-rows') && admin.includes('revoked-invite-rows'),
+  'admin page should render expired and revoked invites in separate table bodies');
+assert(/expired-invite-rows'\)\.innerHTML = expiredInvites\.map/.test(admin),
+  'the expired section should render from the expired-invites list');
+assert(/revoked-invite-rows'\)\.innerHTML = revokedInvites\.map/.test(admin),
+  'the revoked section should render from the revoked-invites list');
+assert(admin.includes('Expired invitations') && admin.includes('Revoked invitations'),
+  'admin page should label the Expired and Revoked sections separately');
+assert(admin.includes('.status.expired'),
+  'expired status should have a visually distinct style from revoked');
+
+// Revoked rows are read-only: no action wiring in the revoked render block.
+// Expired rows keep sensible existing follow-up actions (Message + Revoke) but
+// never copy/Studio/Send (a resend would mail a dead link; there is no renewal
+// endpoint). Anchor the blocks on their JS render statements.
+const expiredStart = admin.indexOf("expired-invite-rows').innerHTML");
+const revokedStart = admin.indexOf("revoked-invite-rows').innerHTML");
+assert(expiredStart !== -1 && revokedStart !== -1 && expiredStart < revokedStart,
+  'expired and revoked render blocks should both exist, expired first');
+const expiredBlock = admin.slice(expiredStart, revokedStart);
+const revokedBlock = admin.slice(revokedStart, admin.indexOf('revoked-count', revokedStart) + 40);
+assert(!/data-copy-link|data-studio-link|data-send/.test(expiredBlock),
+  'expired rows must not offer copy, Studio-link, or resend actions');
+assert(/data-message/.test(expiredBlock) && /data-revoke/.test(expiredBlock),
+  'expired rows should keep follow-up (message) and revoke actions');
+assert(!/data-copy-link|data-studio-link|data-send|data-message|data-revoke/.test(revokedBlock),
+  'revoked rows must be read-only (no actionable buttons)');
 assert(admin.includes('Brand Field'), 'admin page should include the Brand Field section');
 assert(admin.includes('/api/admin/brand/versions'), 'admin page should call brand version APIs');
 assert(admin.includes('Save as draft'), 'admin page should support brand drafts');
