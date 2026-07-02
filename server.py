@@ -1874,6 +1874,15 @@ def _invite_magic_link(request: Request, token: str) -> str:
     return f"{_public_base_url(request)}/invite/{quote(token, safe='')}"
 
 
+def _invite_studio_link(request: Request, token: str) -> str:
+    # Direct Studio entry link. Unlike the /invite/<token> magic link (which
+    # hands off to /threshold for Compass onboarding), this drops the recipient
+    # straight into Studio. /studio?invite=<token> is handled by
+    # _serve_private_file: it sets the beta + invite cookies and redirects to
+    # /studio, so Studio opens without needing the shared beta code first.
+    return f"{_public_base_url(request)}/studio?invite={quote(token, safe='')}"
+
+
 def _base_url_from_link(link: str) -> str:
     parsed = urlsplit(link)
     if parsed.scheme and parsed.netloc:
@@ -2742,6 +2751,7 @@ async def admin_invite_link(invite_id: int, request: Request):
         active = False
     return {
         "magic_link": _invite_magic_link(request, token),
+        "studio_link": _invite_studio_link(request, token),
         "status": invite.get("status") or "",
         "active": active,
     }

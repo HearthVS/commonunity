@@ -102,6 +102,29 @@ ok(link.endswith("/invite/" + server.quote(real_token, safe="")),
 ok(server._valid_invite_token(real_token) is True,
    "the revealed link's token validates server-side (link actually works)")
 
+# The same reveal also carries a direct Studio entry link. Unlike the
+# /invite/<token> magic link (which hands off to /threshold onboarding), the
+# Studio link drops the recipient straight into Studio.
+studio_link = body.get("studio_link", "")
+ok(studio_link.endswith("/studio?invite=" + server.quote(real_token, safe="")),
+   "reveal returns a direct /studio?invite=<token> link with the real token")
+ok(studio_link != link, "studio link is distinct from the threshold magic link")
+
+# The Studio link opens Studio end-to-end for a fresh visitor with no beta
+# code: /studio?invite=<token> sets the beta+invite cookies and redirects to
+# /studio, which then serves the Studio page.
+visitor = fresh_client()
+hop = visitor.get(f"/studio?invite={server.quote(real_token, safe='')}",
+                  follow_redirects=False)
+ok(hop.status_code == 303 and hop.headers.get("location") == "/studio",
+   "studio invite link redirects to /studio")
+set_cookie = hop.headers.get("set-cookie", "")
+ok(server._BETA_COOKIE in set_cookie and server._INVITE_COOKIE in set_cookie,
+   "studio invite link sets both the beta and invite cookies")
+landed = visitor.get("/studio", follow_redirects=False)
+ok(landed.status_code == 200 and "text/html" in landed.headers.get("content-type", ""),
+   "visitor lands in Studio with no shared beta code required")
+
 # Reveal is admin-gated — a non-admin caller cannot reveal the link.
 ok(fresh_client().get(f"/api/admin/invites/{invite_id}/link").status_code == 401,
    "reveal endpoint rejects non-admin callers")
