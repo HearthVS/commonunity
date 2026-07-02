@@ -99,6 +99,16 @@ class InviteCreateRequest(BaseModel):
     tag: str = ""
     expires_at: str = ""
 
+class AdminMessageRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    channel: str = "both"  # "email" | "in_app" | "both"
+
+class AdminBroadcastRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    channel: str = "both"  # "email" | "in_app" | "both"
+
 class BrandVersionRequest(BaseModel):
     name: str = ""
     logo_palette: dict = {}
@@ -1380,6 +1390,65 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── cOMmunication tables ──────────────────────────────────────────────
+    # General relational-messaging model (see communication_communication spec).
+    # v1 is admin-to-participant and invite-scoped, but the schema deliberately
+    # carries scope/actor/recipient type columns so it can grow to user-to-user,
+    # circle, group, and cOMmons contexts without a rebuild. Privacy contract:
+    # every recipient is an admin-authored `invites` row (recipient_type='invite',
+    # recipient_id=invites.id). No participant-private content (Threshold,
+    # Compass, OM Cipher, Golden Thread, Nexus) is ever joined in or targeted on.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS communication_threads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scope_type TEXT NOT NULL DEFAULT 'invite',
+            scope_id INTEGER,
+            thread_type TEXT NOT NULL DEFAULT 'admin_individual',
+            created_by_type TEXT NOT NULL DEFAULT 'admin',
+            created_by_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS communication_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id INTEGER NOT NULL,
+            sender_type TEXT NOT NULL DEFAULT 'admin',
+            sender_id TEXT NOT NULL DEFAULT '',
+            message_kind TEXT NOT NULL DEFAULT 'individual',
+            subject TEXT NOT NULL DEFAULT '',
+            body TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(thread_id) REFERENCES communication_threads(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS communication_deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            recipient_type TEXT NOT NULL DEFAULT 'invite',
+            recipient_id INTEGER,
+            channel TEXT NOT NULL DEFAULT 'in_app',
+            delivery_state TEXT NOT NULL DEFAULT 'sent',
+            sent_at TEXT,
+            read_at TEXT,
+            failure_reason TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY(message_id) REFERENCES communication_messages(id)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_comm_del_recipient ON communication_deliveries(recipient_type, recipient_id, channel)"
+    )
+
     # Historical privacy scrub (idempotent). Before PR #73, invite lifecycle
     # events wrote the invitee name/email into events.detail; that column is
     # rendered verbatim in the shared admin metrics feed. New rows are written
@@ -1886,6 +1955,128 @@ def _send_invite_email(to_email: str, person_name: str, magic_link: str) -> None
         raise HTTPException(status_code=502, detail=f"Email could not be sent: {exc}")
     except OSError as exc:
         raise HTTPException(status_code=502, detail=f"Email server unreachable: {exc}")
+
+
+# ── cOMmunication email delivery ───────────────────────────────────────────
+# Calm, quiet transactional copy per the cOMmunication spec: a message is a
+# relational signal, not a notification blast. No urgency, no surveillance, no
+# private lifecycle detail beyond what the admin intentionally wrote in the body.
+def _communication_email_html(subject: str, body: str, return_link: str) -> str:
+    safe_subject = html.escape(subject or "A new CommonUnity message")
+    safe_body = html.escape(body or "").replace("\n", "<br>")
+    safe_link = html.escape(return_link or "")
+    link_block = (
+        f"""<div style="text-align:center;margin:30px 0 6px;">
+                  <a href="{safe_link}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:linear-gradient(135deg,#f5e7bd,#d5ad64);color:#090805;text-decoration:none;font-weight:600;">Return to CommonUnity</a>
+                </div>"""
+        if safe_link
+        else ""
+    )
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#030306;color:#f8f2e8;font-family:Inter,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#030306;">
+      <tr>
+        <td align="center" style="padding:36px 18px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;border:1px solid rgba(248,242,232,0.16);border-radius:24px;overflow:hidden;background:#0a0a10;">
+            <tr>
+              <td style="padding:32px 30px 10px;">
+                <p style="margin:0 0 4px;color:#d5ad64;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">CommonUnity message</p>
+                <h1 style="margin:0;color:#fff8ec;font-size:26px;line-height:1.2;letter-spacing:-0.02em;font-weight:500;">{safe_subject}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 30px 30px;">
+                <p style="margin:0 0 8px;color:rgba(248,242,232,0.55);font-size:14px;">You have a new CommonUnity message.</p>
+                <div style="margin:14px 0;color:rgba(248,242,232,0.86);font-size:16px;line-height:1.7;">{safe_body}</div>
+                {link_block}
+                <p style="margin:26px 0 0;color:rgba(248,242,232,0.42);font-size:12px;line-height:1.6;">You are receiving this because you were invited to the CommonUnity beta. Return when ready.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+def _send_communication_email(to_email: str, subject: str, body: str, return_link: str) -> tuple[str, str]:
+    """Send a cOMmunication message by email. Returns (delivery_state, failure_reason).
+
+    Unlike _send_invite_email, this never raises: broadcast fan-out must not abort
+    on a single bad address, and the in-app message is the durable artifact when
+    that channel is selected. When SMTP is unconfigured it returns ('pending', ...)
+    so the admin can see the message was stored but not yet emailed, rather than a
+    hard failure."""
+    host = os.getenv(_SMTP_HOST_ENV, "").strip()
+    user = os.getenv(_SMTP_USER_ENV, "").strip()
+    password = os.getenv(_SMTP_PASSWORD_ENV, "").strip()
+    sender = _smtp_sender()
+    port = int(os.getenv(_SMTP_PORT_ENV, "587").strip() or "587")
+    use_tls = os.getenv(_SMTP_USE_TLS_ENV, "true").strip().lower() not in {"0", "false", "no", "off"}
+    if not (host and user and password and sender):
+        return ("pending", "SMTP not configured")
+    if not (to_email or "").strip():
+        return ("failed", "no email address")
+    msg = EmailMessage()
+    msg["Subject"] = subject or "A new CommonUnity message"
+    msg["From"] = sender
+    msg["To"] = to_email
+    plain = (
+        "You have a new CommonUnity message.\n\n"
+        f"{subject}\n\n{body}\n\n"
+    )
+    if return_link:
+        plain += f"Return to CommonUnity:\n{return_link}\n\n"
+    plain += "You are receiving this because you were invited to the CommonUnity beta.\n"
+    msg.set_content(plain)
+    msg.add_alternative(_communication_email_html(subject, body, return_link), subtype="html")
+    try:
+        with smtplib.SMTP(host, port, timeout=20) as smtp:
+            if use_tls:
+                smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+        return ("sent", "")
+    except (smtplib.SMTPException, OSError) as exc:
+        return ("failed", str(exc)[:400])
+
+
+def _active_invites_for_broadcast(conn: sqlite3.Connection) -> list[dict]:
+    """Active, non-expired invite recipients for a broadcast. Invite records only —
+    never participant-private data. Explicit column projection, never SELECT *."""
+    now = _now_iso()
+    rows = conn.execute(
+        """
+        SELECT id, token, name, email, expires_at
+        FROM invites
+        WHERE status = 'active'
+          AND (expires_at IS NULL OR expires_at = '' OR expires_at > ?)
+        ORDER BY id
+        """,
+        (now,),
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def _communication_message_row(row: sqlite3.Row | None) -> dict | None:
+    """Participant-facing message projection. Carries only the message artifact
+    (subject/body/kind/date) and this recipient's delivery state — no sender
+    identity beyond a coarse label, no other recipients, no private content."""
+    d = _row_to_dict(row)
+    if d is None:
+        return None
+    return {
+        "id": d.get("delivery_id"),
+        "message_id": d.get("message_id"),
+        "kind": d.get("message_kind") or "individual",
+        "subject": d.get("subject") or "",
+        "body": d.get("body") or "",
+        "created_at": d.get("created_at") or "",
+        "read": bool((d.get("read_at") or "").strip()),
+        "from": "CommonUnity",
+    }
 
 
 def _lookup_active_invite(token: str | None) -> dict | None:
@@ -2732,6 +2923,292 @@ async def admin_send_invite(invite_id: int, request: Request):
             ),
         )
     return {"ok": True, "sent_to": email, "magic_link": magic_link}
+
+
+# ── cOMmunication: admin → participant ─────────────────────────────────────
+_COMM_CHANNELS = {"email", "in_app", "both"}
+
+
+def _normalize_channel(value: str) -> str:
+    v = (value or "").strip().lower()
+    return v if v in _COMM_CHANNELS else "both"
+
+
+def _create_message_with_deliveries(
+    conn: sqlite3.Connection,
+    *,
+    thread_type: str,
+    message_kind: str,
+    scope_type: str,
+    scope_id: int | None,
+    subject: str,
+    body: str,
+    channel: str,
+    recipients: list[dict],
+    request: Request,
+) -> dict:
+    """Create one thread + message and fan out per-recipient deliveries.
+
+    `recipients` are invite dicts (id/token/name/email) — the only recipient
+    source. For each recipient we write an in_app delivery (the durable artifact)
+    and/or an email delivery per the selected channel. Email is attempted inline
+    with graceful status; a failed/pending send never blocks the in_app record."""
+    now = _now_iso()
+    want_email = channel in ("email", "both")
+    want_in_app = channel in ("in_app", "both")
+    cur = conn.execute(
+        """
+        INSERT INTO communication_threads
+            (scope_type, scope_id, thread_type, created_by_type, created_by_id, created_at, updated_at)
+        VALUES (?, ?, ?, 'admin', '', ?, ?)
+        """,
+        (scope_type, scope_id, thread_type, now, now),
+    )
+    thread_id = cur.lastrowid
+    cur = conn.execute(
+        """
+        INSERT INTO communication_messages
+            (thread_id, sender_type, sender_id, message_kind, subject, body, created_at)
+        VALUES (?, 'admin', '', ?, ?, ?, ?)
+        """,
+        (thread_id, message_kind, subject, body, now),
+    )
+    message_id = cur.lastrowid
+
+    in_app_count = 0
+    email_sent = 0
+    email_pending = 0
+    email_failed = 0
+    for inv in recipients:
+        invite_id = inv.get("id")
+        if want_in_app:
+            conn.execute(
+                """
+                INSERT INTO communication_deliveries
+                    (message_id, recipient_type, recipient_id, channel, delivery_state, sent_at, read_at, failure_reason)
+                VALUES (?, 'invite', ?, 'in_app', 'sent', ?, NULL, '')
+                """,
+                (message_id, invite_id, now),
+            )
+            in_app_count += 1
+        if want_email:
+            email = (inv.get("email") or "").strip()
+            token = (inv.get("token") or "").strip()
+            return_link = _invite_magic_link(request, token) if token else _public_base_url(request)
+            if not email:
+                state, reason = "failed", "no email address"
+            else:
+                state, reason = _send_communication_email(email, subject, body, return_link)
+            conn.execute(
+                """
+                INSERT INTO communication_deliveries
+                    (message_id, recipient_type, recipient_id, channel, delivery_state, sent_at, read_at, failure_reason)
+                VALUES (?, 'invite', ?, 'email', ?, ?, NULL, ?)
+                """,
+                (message_id, invite_id, state, now if state == "sent" else None, reason),
+            )
+            if state == "sent":
+                email_sent += 1
+            elif state == "pending":
+                email_pending += 1
+            else:
+                email_failed += 1
+    return {
+        "message_id": message_id,
+        "thread_id": thread_id,
+        "in_app": in_app_count,
+        "email_sent": email_sent,
+        "email_pending": email_pending,
+        "email_failed": email_failed,
+    }
+
+
+@app.post("/api/admin/invites/{invite_id}/message")
+async def admin_message_invite(invite_id: int, request: Request, payload: AdminMessageRequest):
+    """Send an individual cOMmunication message to one invite recipient.
+
+    Recipient identity comes solely from the admin-authored invite record. The
+    in-app message is stored as the durable artifact whenever the in-app channel
+    is selected; email is a delivery path with graceful status handling."""
+    _require_admin(request)
+    subject = (payload.subject or "").strip()[:300]
+    body = (payload.body or "").strip()[:8000]
+    channel = _normalize_channel(payload.channel)
+    if not body:
+        raise HTTPException(status_code=400, detail="message body is required")
+    with _admin_db() as conn:
+        row = conn.execute("SELECT id, token, name, email, status FROM invites WHERE id = ?", (invite_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="invite not found")
+        invite = _row_to_dict(row)
+        if invite.get("status") != "active":
+            raise HTTPException(status_code=400, detail="invite is not active")
+        result = _create_message_with_deliveries(
+            conn,
+            thread_type="admin_individual",
+            message_kind="individual",
+            scope_type="invite",
+            scope_id=invite_id,
+            subject=subject,
+            body=body,
+            channel=channel,
+            recipients=[invite],
+            request=request,
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'communication_message_sent', ?, ?, '/admin', 'admin', ?, '')
+            """,
+            (_now_iso(), invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
+        )
+    return {"ok": True, "channel": channel, **result}
+
+
+@app.get("/api/admin/invites/{invite_id}/messages")
+async def admin_invite_messages(invite_id: int, request: Request):
+    """Previous cOMmunication messages addressed to this invite (individual +
+    broadcast), for the admin composer history. Invite-scoped; never joins
+    participant-private content."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        exists = conn.execute("SELECT id FROM invites WHERE id = ?", (invite_id,)).fetchone()
+        if not exists:
+            raise HTTPException(status_code=404, detail="invite not found")
+        rows = conn.execute(
+            """
+            SELECT m.id AS message_id, m.message_kind AS message_kind, m.subject AS subject,
+                   m.body AS body, m.created_at AS created_at,
+                   d.channel AS channel, d.delivery_state AS delivery_state, d.read_at AS read_at
+            FROM communication_deliveries d
+            JOIN communication_messages m ON m.id = d.message_id
+            WHERE d.recipient_type = 'invite' AND d.recipient_id = ?
+            ORDER BY m.created_at DESC, m.id DESC, d.channel
+            LIMIT 200
+            """,
+            (invite_id,),
+        ).fetchall()
+    messages = [
+        {
+            "message_id": r["message_id"],
+            "kind": r["message_kind"],
+            "subject": r["subject"] or "",
+            "body": r["body"] or "",
+            "created_at": r["created_at"] or "",
+            "channel": r["channel"],
+            "delivery_state": r["delivery_state"],
+            "read": bool((r["read_at"] or "").strip()),
+        }
+        for r in rows
+    ]
+    return {"messages": messages}
+
+
+@app.get("/api/admin/broadcast/recipients")
+async def admin_broadcast_recipients(request: Request):
+    """Recipient count preview for Message all — computed before sending."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        recipients = _active_invites_for_broadcast(conn)
+    with_email = sum(1 for r in recipients if (r.get("email") or "").strip())
+    return {"total": len(recipients), "with_email": with_email}
+
+
+@app.post("/api/admin/broadcast")
+async def admin_broadcast(request: Request, payload: AdminBroadcastRequest):
+    """Send one cOMmunication message to all active invite recipients.
+
+    A field message to the invited cohort — not a notification blast. Deliveries
+    are created per active invite record (in-app durable artifact and/or email)."""
+    _require_admin(request)
+    subject = (payload.subject or "").strip()[:300]
+    body = (payload.body or "").strip()[:8000]
+    channel = _normalize_channel(payload.channel)
+    if not body:
+        raise HTTPException(status_code=400, detail="message body is required")
+    with _admin_db() as conn:
+        recipients = _active_invites_for_broadcast(conn)
+        if not recipients:
+            raise HTTPException(status_code=400, detail="no active invite recipients")
+        result = _create_message_with_deliveries(
+            conn,
+            thread_type="admin_broadcast",
+            message_kind="broadcast",
+            scope_type="cohort",
+            scope_id=None,
+            subject=subject,
+            body=body,
+            channel=channel,
+            recipients=recipients,
+            request=request,
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'communication_broadcast_sent', NULL, '', '/admin', 'admin', ?, '')
+            """,
+            (_now_iso(), request.headers.get("user-agent", "")[:320]),
+        )
+    return {"ok": True, "channel": channel, "recipients": len(recipients), **result}
+
+
+# ── cOMmunication: participant surface ─────────────────────────────────────
+@app.get("/api/messages")
+async def participant_messages(request: Request):
+    """In-app messages visible to the current invite/token context.
+
+    Returns individual + broadcast messages delivered in-app to this invite only.
+    Targeting is by the signed invite cookie → invites.id; a token can never see
+    another invite's deliveries. No private participant content is read."""
+    token = _invite_token_from_cookie(request)
+    invite = _lookup_active_invite(token)
+    if not invite:
+        return {"messages": [], "unread": 0, "context": "none"}
+    invite_id = invite.get("id")
+    with _admin_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT d.id AS delivery_id, m.id AS message_id, m.message_kind AS message_kind,
+                   m.subject AS subject, m.body AS body, m.created_at AS created_at,
+                   d.read_at AS read_at
+            FROM communication_deliveries d
+            JOIN communication_messages m ON m.id = d.message_id
+            WHERE d.channel = 'in_app'
+              AND d.recipient_type = 'invite'
+              AND d.recipient_id = ?
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT 200
+            """,
+            (invite_id,),
+        ).fetchall()
+    messages = [_communication_message_row(r) for r in rows]
+    unread = sum(1 for m in messages if not m["read"])
+    return {"messages": messages, "unread": unread, "context": "invite"}
+
+
+@app.post("/api/messages/{delivery_id}/read")
+async def participant_mark_read(delivery_id: int, request: Request):
+    """Mark one in-app delivery read, scoped to the caller's invite context so a
+    token cannot mark another invite's message."""
+    token = _invite_token_from_cookie(request)
+    invite = _lookup_active_invite(token)
+    if not invite:
+        raise HTTPException(status_code=403, detail="no invite context")
+    invite_id = invite.get("id")
+    now = _now_iso()
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT id, recipient_id, read_at FROM communication_deliveries WHERE id = ? AND channel = 'in_app'",
+            (delivery_id,),
+        ).fetchone()
+        if not row or row["recipient_id"] != invite_id:
+            raise HTTPException(status_code=404, detail="message not found")
+        if not (row["read_at"] or "").strip():
+            conn.execute(
+                "UPDATE communication_deliveries SET read_at = ? WHERE id = ?",
+                (now, delivery_id),
+            )
+    return {"ok": True}
 
 
 # Serve public homepage at root

@@ -19017,19 +19017,27 @@ if (document.readyState === 'loading') {
 })();
 </script>
 <
-<<!-- CommonUnity Feedback Widget -->
+<<!-- CommonUnity cOMmunication Widget -->
 <div id="cu-feedback-widget">
-  <button id="cu-fb-trigger" title="Send feedback" aria-label="Send feedback">
+  <button id="cu-fb-trigger" title="Messages" aria-label="Messages">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
       <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6l-4 3V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>
+    <span id="cu-comm-dot" class="cu-hidden" aria-label="A new message is waiting"></span>
   </button>
   <div id="cu-fb-panel" class="cu-hidden">
     <div id="cu-fb-head">
-      <span>Beta feedback</span>
+      <span>cOMmunication</span>
       <button id="cu-fb-close">×</button>
     </div>
-    <form id="cu-fb-form">
+    <div id="cu-comm-tabs">
+      <button type="button" class="cu-comm-tab cu-comm-tab--active" data-comm-tab="messages">Messages</button>
+      <button type="button" class="cu-comm-tab" data-comm-tab="feedback">Feedback</button>
+    </div>
+    <div id="cu-comm-messages" class="cu-comm-section">
+      <div id="cu-msg-list"><p class="cu-msg-empty">This space stays quiet until a message arrives.</p></div>
+    </div>
+    <form id="cu-fb-form" class="cu-comm-section cu-hidden">
       <div class="cu-fb-row">
         <label>Type</label>
         <div class="cu-fb-radios">
@@ -19127,6 +19135,34 @@ if (document.readyState === 'loading') {
   color: #0a0805; font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
 }
 #cu-fb-msg { font-size: 0.8rem; color: rgba(248,242,232,0.6); min-height: 18px; }
+/* Calm attention: a small soft-gold dot, never a red badge or count. */
+#cu-comm-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 9px; height: 9px; border-radius: 999px;
+  background: radial-gradient(circle, #f5e7bd, #d5ad64);
+  box-shadow: 0 0 8px rgba(213,173,100,0.6);
+}
+#cu-comm-dot.cu-hidden { display: none; }
+#cu-fb-trigger { position: relative; }
+#cu-comm-tabs { display: flex; gap: 4px; padding: 10px 18px 0; }
+.cu-comm-tab {
+  background: none; border: none; cursor: pointer;
+  color: rgba(248,242,232,0.5); font: inherit; font-size: 0.78rem;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 4px;
+  border-bottom: 2px solid transparent;
+}
+.cu-comm-tab--active { color: #d5ad64; border-bottom-color: rgba(213,173,100,0.6); }
+.cu-comm-section.cu-hidden { display: none; }
+#cu-fb-form.cu-hidden { display: none; }
+#cu-comm-messages { padding: 12px 18px 18px; max-height: 340px; overflow-y: auto; }
+.cu-msg-empty { font-size: 0.86rem; color: rgba(248,242,232,0.5); line-height: 1.6; margin: 8px 0; }
+.cu-msg-item { padding: 12px 0; border-bottom: 1px solid rgba(248,242,232,0.08); }
+.cu-msg-item:last-child { border-bottom: none; }
+.cu-msg-subject { color: rgba(248,242,232,0.92); font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.cu-msg-new-dot { width: 7px; height: 7px; border-radius: 999px; background: radial-gradient(circle, #f5e7bd, #d5ad64); flex: none; }
+.cu-msg-body { color: rgba(248,242,232,0.74); font-size: 0.88rem; line-height: 1.6; margin: 5px 0 0; white-space: pre-wrap; }
+.cu-msg-meta { color: rgba(248,242,232,0.4); font-size: 0.72rem; margin-top: 6px; letter-spacing: 0.04em; }
+.cu-msg-kind { color: rgba(213,173,100,0.7); }
 </style>
 <script>
 (function() {
@@ -19135,9 +19171,71 @@ if (document.readyState === 'loading') {
   const closeBtn = document.getElementById('cu-fb-close');
   const form = document.getElementById('cu-fb-form');
   const msg = document.getElementById('cu-fb-msg');
+  const dot = document.getElementById('cu-comm-dot');
+  const tabs = document.querySelectorAll('.cu-comm-tab');
+  const msgSection = document.getElementById('cu-comm-messages');
+  const msgList = document.getElementById('cu-msg-list');
 
-  trigger.addEventListener('click', () => panel.classList.toggle('cu-hidden'));
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+  function fmtDate(v) { try { return v ? new Date(v).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : ''; } catch { return ''; } }
+
+  let messages = [];
+  function renderMessages() {
+    if (!messages.length) {
+      msgList.innerHTML = '<p class="cu-msg-empty">This space stays quiet until a message arrives.</p>';
+      return;
+    }
+    msgList.innerHTML = messages.map(m => `
+      <div class="cu-msg-item ${m.read ? '' : 'cu-msg-new'}">
+        <div class="cu-msg-subject">${m.read ? '' : '<span class="cu-msg-new-dot"></span>'}${escapeHtml(m.subject || '(no subject)')}</div>
+        <div class="cu-msg-body">${escapeHtml(m.body || '')}</div>
+        <div class="cu-msg-meta">${fmtDate(m.created_at)}${m.kind === 'broadcast' ? ' · <span class="cu-msg-kind">to the cohort</span>' : ''}</div>
+      </div>`).join('');
+  }
+  function updateDot() {
+    const unread = messages.filter(m => !m.read).length;
+    dot.classList.toggle('cu-hidden', unread === 0);
+  }
+  async function loadMessages() {
+    try {
+      const res = await fetch('/api/messages', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      messages = data.messages || [];
+      renderMessages();
+      updateDot();
+    } catch (_) {}
+  }
+  async function markAllRead() {
+    const unread = messages.filter(m => !m.read);
+    if (!unread.length) return;
+    await Promise.all(unread.map(m =>
+      fetch(`/api/messages/${m.id}/read`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+    ));
+    messages = messages.map(m => ({ ...m, read: true }));
+    renderMessages();
+    updateDot();
+  }
+
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('cu-comm-tab--active', t === tab));
+    const which = tab.dataset.commTab;
+    msgSection.classList.toggle('cu-hidden', which !== 'messages');
+    form.classList.toggle('cu-hidden', which !== 'feedback');
+  }));
+
+  function openPanel() {
+    panel.classList.remove('cu-hidden');
+    loadMessages().then(() => setTimeout(markAllRead, 1200));
+  }
+  trigger.addEventListener('click', () => {
+    if (panel.classList.contains('cu-hidden')) openPanel();
+    else panel.classList.add('cu-hidden');
+  });
   closeBtn.addEventListener('click', () => panel.classList.add('cu-hidden'));
+  loadMessages();
 
   // Detect current app from URL
   const path = location.pathname;
