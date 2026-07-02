@@ -7615,6 +7615,24 @@ input, textarea { font: inherit; color: inherit; }
             <div id="archive-studio-items"></div>
             <div id="archive-session-log"></div>
           </div>
+          <div class="archive-section" id="archive-field-observations">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div class="archive-section-label">Field Observations</div>
+            </div>
+            <p style="font-size:11px;font-style:italic;color:var(--text-faint);line-height:1.5;margin:2px 0 6px;">Observe widely. Bring forward intentionally.</p>
+            <p style="font-size:10px;color:var(--text-faint);line-height:1.5;margin:0 0 10px;opacity:0.8;">Nothing here enters Nexus automatically. Choose an observation when you are ready to bring it into the conversation.</p>
+            <form id="fo-form" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;" autocomplete="off">
+              <input type="text" id="fo-title" placeholder="Title (optional)"
+                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);">
+              <input type="text" id="fo-source" placeholder="Source / context (optional)"
+                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);">
+              <textarea id="fo-body" rows="3" placeholder="What did you observe? (required)"
+                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);resize:vertical;font-family:inherit;"></textarea>
+              <button type="submit" id="fo-save-btn"
+                style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:7px 10px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);background:color-mix(in srgb,var(--card) 80%,transparent);color:var(--text);cursor:pointer;">Save observation</button>
+            </form>
+            <div id="fo-list"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -10959,6 +10977,136 @@ async function studioSaveGoldenThread(content) {
   } catch (_) {}
 }
 
+// ── Field Observations — Studio ─────────────────────────────────────────────
+// Member-scoped capture/read layer. Reads/writes are isolated per-member by
+// cipher_id (server falls back to the caller's invite-token cookie). Bringing
+// an observation into Nexus is deliberate and client-side — it only populates
+// the Nexus input; it never sends or calls the AI.
+
+function foCipherId() {
+  const ci = (typeof studioCipherIdentity === 'function') ? studioCipherIdentity() : null;
+  return (ci && ci.cipher_id) || '';
+}
+
+async function studioLoadFieldObservations() {
+  const cipherId = foCipherId();
+  try {
+    const qs = cipherId ? `?cipher_id=${encodeURIComponent(cipherId)}&limit=50` : '?limit=50';
+    const res = await fetch(`${API_BASE}/api/studio/field-observations${qs}`);
+    if (!res.ok) { state.fieldObservations = []; }
+    else { const data = await res.json(); state.fieldObservations = data.observations || []; }
+  } catch (_) { state.fieldObservations = []; }
+  studioRenderFieldObservations();
+}
+
+function studioRenderFieldObservations() {
+  const list = document.getElementById('fo-list');
+  if (!list) return;
+  const items = state.fieldObservations || [];
+  if (!items.length) {
+    list.innerHTML = '<p style="font-size:11px;color:var(--text-faint);font-style:italic;opacity:0.7;">No observations yet.</p>';
+    return;
+  }
+  list.innerHTML = items.map(o => {
+    const body = String(o.body || '');
+    const title = String(o.title || '').trim() || body.split('\n')[0].slice(0, 60);
+    const date = o.created_at ? String(o.created_at).slice(0, 10) : '';
+    const preview = body.length > 220 ? body.slice(0, 220) + '…' : body;
+    const src = String(o.source_label || '').trim();
+    return `<div class="fo-card" style="border:1px solid color-mix(in srgb,var(--border) 55%,transparent);border-radius:var(--radius-md);padding:8px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--card) 55%,transparent);">
+      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;">${studioNexusEscape(title)}</div>
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin:2px 0 6px;">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
+      <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;">${studioNexusEscape(preview)}</div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" class="fo-bring-btn" data-id="${studioNexusEscape(o.id)}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring into Nexus</button>
+        <button type="button" class="fo-delete-btn" data-id="${studioNexusEscape(o.id)}" title="Delete observation" style="font-size:10px;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.fo-bring-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioBringObservationIntoNexus(btn.dataset.id));
+  });
+  list.querySelectorAll('.fo-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
+  });
+}
+
+async function studioCreateFieldObservation(e) {
+  if (e) e.preventDefault();
+  const bodyEl = document.getElementById('fo-body');
+  const titleEl = document.getElementById('fo-title');
+  const srcEl = document.getElementById('fo-source');
+  const body = (bodyEl.value || '').trim();
+  if (!body) { if (typeof showToast === 'function') showToast('An observation needs a body.'); bodyEl.focus(); return; }
+  const btn = document.getElementById('fo-save-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(`${API_BASE}/api/studio/field-observations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        body,
+        title: (titleEl.value || '').trim(),
+        source_label: (srcEl.value || '').trim(),
+        cipher_id: foCipherId()
+      })
+    });
+    if (!res.ok) throw new Error('save failed');
+    bodyEl.value = ''; titleEl.value = ''; srcEl.value = '';
+    await studioLoadFieldObservations();
+    if (typeof showToast === 'function') showToast('Observation saved.');
+  } catch (_) {
+    if (typeof showToast === 'function') showToast('Could not save observation.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function studioDeleteFieldObservation(id) {
+  if (!id) return;
+  const cipherId = foCipherId();
+  const qs = cipherId ? `?cipher_id=${encodeURIComponent(cipherId)}` : '';
+  try {
+    const res = await fetch(`${API_BASE}/api/studio/field-observations/${encodeURIComponent(id)}${qs}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) throw new Error('delete failed');
+    state.fieldObservations = (state.fieldObservations || []).filter(o => o.id !== id);
+    studioRenderFieldObservations();
+  } catch (_) {
+    if (typeof showToast === 'function') showToast('Could not delete observation.');
+  }
+}
+
+// Bring an observation forward into Nexus. This is the trust boundary in
+// action: we populate and focus the Nexus input, but never submit and never
+// call the AI. The member edits and presses send intentionally.
+function studioBringObservationIntoNexus(id) {
+  const obs = (state.fieldObservations || []).find(o => o.id === id);
+  if (!obs) return;
+  if (!currentRoom) {
+    if (typeof showToast === 'function') showToast('Enter a room to bring this into Nexus.');
+    return;
+  }
+  const title = String(obs.title || '').trim() || String(obs.body || '').split('\n')[0].slice(0, 60);
+  const text = `I want to bring this Field Observation into Nexus:\n\n${title}\n${String(obs.body || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
+  // Reveal the Nexus input without firing the AI opening question (instant=true
+  // skips initRoomRose). No message is sent.
+  const mirror = document.getElementById('room-mirror');
+  const row = document.getElementById('mirror-input-row');
+  const hint = document.getElementById('nexus-knock-hint');
+  const orbWrap = document.getElementById('nexus-orb-wrap');
+  if (typeof awakenNexus === 'function' && mirror && orbWrap) {
+    awakenNexus(mirror, row, hint, orbWrap, true);
+  }
+  const input = document.getElementById('mirror-input');
+  if (input) {
+    input.value = text;
+    if (mirror) mirror.classList.add('orb-active');
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; }, 60);
+  }
+  if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Re-apply after DOMContentLoaded as a safety net in case the
   // contract was written between script parse and DOMContentLoaded,
@@ -10968,6 +11116,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initEntrance();
   initParticles();
   studioLoadGoldenThread();
+  studioLoadFieldObservations();
+  const foForm = document.getElementById('fo-form');
+  if (foForm) foForm.addEventListener('submit', studioCreateFieldObservation);
   initPortalTooltips();
   initInfoPopups();
   initStudioJSON();
