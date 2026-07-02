@@ -1373,6 +1373,34 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE golden_thread ADD COLUMN cipher_id TEXT NOT NULL DEFAULT ''")
     if "unity_point" not in _gt_cols:
         conn.execute("ALTER TABLE golden_thread ADD COLUMN unity_point TEXT NOT NULL DEFAULT ''")
+    # ── Field Observations table ──────────────────────────────────────────
+    # Member-scoped capture layer for lived text material. Scoped exactly like
+    # golden_thread: the pseudonymous cipher_id is the primary member key, with
+    # the signed invite-token cookie as the fallback binding for callers that
+    # have no cipher_id. Nothing here ever enters Nexus automatically — the
+    # member intentionally brings an observation forward, client-side.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS field_observations (
+            id TEXT PRIMARY KEY,
+            cipher_id TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL DEFAULT '',
+            body TEXT NOT NULL,
+            source_label TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observations_cipher_created "
+        "ON field_observations(cipher_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observations_invite_created "
+        "ON field_observations(invite_token, created_at DESC)"
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS token_log (
@@ -4846,6 +4874,128 @@ async def delete_golden_thread(thread_id: int, req: Request):
         if not row:
             raise HTTPException(status_code=404, detail="not found")
         conn.execute("DELETE FROM golden_thread WHERE id=?", (thread_id,))
+    return {"ok": True}
+
+
+# ── Field Observations endpoints ──────────────────────────────────────────────
+# Member-scoped capture/read layer for lived text material. Mirrors the Golden
+# Thread access contract: gated by _has_member_access, reads/writes isolated
+# per-member by cipher_id (with the signed invite-token cookie as fallback), and
+# there is NO unfiltered branch — a caller that resolves to no per-member key
+# gets an empty list, never the whole table. Nothing here touches Nexus or the
+# AI: bringing an observation forward is a deliberate, client-side action.
+
+class FieldObservationSaveRequest(BaseModel):
+    body: str
+    title: str = ""
+    source_label: str = ""
+    cipher_id: str = ""           # pseudonymous OM Cipher member key
+
+
+def _fo_scope(req: Request, cipher_id: str) -> tuple[str, str]:
+    """Resolve the caller's own member keys for scoping. cipher_id is the
+    client-supplied pseudonymous key; the invite token is read from the signed
+    cookie only (never trusted from the body) so it always binds to *this*
+    caller."""
+    return cipher_id.strip(), _invite_token_from_cookie(req).strip()
+
+
+@app.post("/api/studio/field-observations")
+async def create_field_observation(request: FieldObservationSaveRequest, req: Request):
+    """Create a member-scoped text observation."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    if not request.body.strip():
+        raise HTTPException(status_code=400, detail="body required")
+    cipher_id, invite_token = _fo_scope(req, request.cipher_id)
+    now = _now_iso()
+    obs_id = "fobs_" + secrets.token_hex(16)
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO field_observations
+                (id, cipher_id, invite_token, title, body, source_label, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                obs_id,
+                cipher_id,
+                invite_token,
+                request.title.strip(),
+                request.body.strip(),
+                request.source_label.strip(),
+                now,
+                now,
+            ),
+        )
+    return {"ok": True, "id": obs_id, "created_at": now}
+
+
+@app.get("/api/studio/field-observations")
+async def list_field_observations(req: Request, cipher_id: str = "", limit: int = 50):
+    """List the caller's own field observations (most recent first).
+
+    Reads are isolated per-member. Resolution order:
+      1. `cipher_id` query param (the caller's own pseudonymous key) → rows
+         WHERE cipher_id matches.
+      2. else the caller's signed invite-token cookie → rows WHERE invite_token
+         matches (covers callers with no cipher_id yet, but only rows bound to
+         this caller's own token).
+    A request that resolves to neither key returns an empty list — there is no
+    unfiltered branch, so observations are never cross-member readable."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    cipher_id, caller_invite = _fo_scope(req, cipher_id)
+    limit = max(1, min(int(limit or 50), 200))
+    with _admin_db() as conn:
+        if cipher_id:
+            rows = conn.execute(
+                "SELECT * FROM field_observations WHERE cipher_id=? AND cipher_id!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (cipher_id, limit),
+            ).fetchall()
+        elif caller_invite:
+            rows = conn.execute(
+                "SELECT * FROM field_observations WHERE invite_token=? AND invite_token!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (caller_invite, limit),
+            ).fetchall()
+        else:
+            rows = []
+    # The invite_token is a per-caller secret binding, not member-facing data.
+    observations = []
+    for r in rows:
+        d = _row_to_dict(r)
+        d.pop("invite_token", None)
+        observations.append(d)
+    return {"observations": observations}
+
+
+@app.delete("/api/studio/field-observations/{observation_id}")
+async def delete_field_observation(observation_id: str, req: Request, cipher_id: str = ""):
+    """Delete one of the caller's own field observations.
+
+    Member-scoped: the DELETE only matches rows bound to the caller's own
+    cipher_id or invite-token cookie, so a member can never delete another
+    member's observation by guessing an id."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    cipher_id, caller_invite = _fo_scope(req, cipher_id)
+    with _admin_db() as conn:
+        if cipher_id:
+            cur = conn.execute(
+                "DELETE FROM field_observations WHERE id=? AND cipher_id=? AND cipher_id!=''",
+                (observation_id, cipher_id),
+            )
+        elif caller_invite:
+            cur = conn.execute(
+                "DELETE FROM field_observations WHERE id=? AND invite_token=? AND invite_token!=''",
+                (observation_id, caller_invite),
+            )
+        else:
+            raise HTTPException(status_code=403, detail="forbidden")
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="not found")
     return {"ok": True}
 
 
