@@ -2325,6 +2325,51 @@ input, textarea { font: inherit; color: inherit; }
   background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
 }
 
+/* ── Nexus keep / export (whole-thread) button ─────────────── */
+.nexus-keep-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, #c8a96e 35%, transparent);
+  background: color-mix(in srgb, #c8a96e 6%, transparent);
+  color: #c8a96e;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+.nexus-keep-btn:hover {
+  background: color-mix(in srgb, #c8a96e 16%, transparent);
+  transform: scale(1.08);
+}
+/* Calm inline action card offered in the Nexus stream. */
+.nexus-action-card {
+  border: 1px solid color-mix(in srgb, #c8a96e 30%, transparent);
+  background: color-mix(in srgb, #c8a96e 6%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.nexus-action-card .cn-action-title {
+  display: flex; align-items: center; gap: 7px;
+  color: var(--text); font-size: 12px; letter-spacing: 0.04em; margin-bottom: 6px;
+}
+.nexus-action-card .cn-action-hint { font-size: 11px; color: var(--text-faint); margin-bottom: 10px; }
+.nexus-action-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.nexus-action-btn {
+  background: color-mix(in srgb, #c8a96e 10%, transparent);
+  border: 1px solid color-mix(in srgb, #c8a96e 35%, transparent);
+  color: #c8a96e; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.nexus-action-btn:hover { background: color-mix(in srgb, #c8a96e 18%, transparent); transform: translateY(-1px); }
+.nexus-action-note { margin-top: 9px; font-size: 10.5px; color: var(--text-faint); opacity: 0.8; }
+
 /* ── Nexus new-project button ──────────────────────────────── */
 .nexus-new-project-btn {
   font-size: 9px;
@@ -7623,6 +7668,9 @@ input, textarea { font: inherit; color: inherit; }
         <span class="notepad-label">Nexus</span>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="nexus-etiquette-btn" id="nexus-etiquette-btn" title="How to work with Nexus">?</button>
+          <button class="nexus-keep-btn" id="nexus-keep-btn" title="Keep this thread — a knot binds one moment to your Golden Thread; export preserves the whole conversation on your device." aria-label="Keep this thread — export the full conversation">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="15" x2="8.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="15" x2="11.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11.5 11 C13 9 14 7 13 5.5 C12 4 10 4 9 5.5 C8 7 9 9.5 11 10.5 C13 11.5 14 10 13.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          </button>
           <button class="nexus-new-project-btn nexus-dormant-hidden" id="nexus-new-project-btn" title="Start a new project — clears this session">New project</button>
           <button class="studio-info-btn" data-info="info-rose-overlay" title="About Nexus"><i>i</i></button>
         </div>
@@ -9744,11 +9792,156 @@ async function initRoomRose(roomKey) {
 // ============================================================
 // MIRROR — send message to Nexus
 // ============================================================
+// ============================================================
+// STUDIO NEXUS — full-thread export (client-side / local only)
+// ------------------------------------------------------------
+// A knot keeps one moment to the Golden Thread; sometimes the whole thread
+// is worth keeping. These helpers preserve the current room's conversation
+// on the user's own device — Markdown, plain text, or a printable page
+// (→ Save as PDF). Nothing is uploaded; private Nexus content never travels
+// through a server or admin endpoint. Mirrors CommonUnity's privacy model.
+// ============================================================
+function studioNexusEscape(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function studioNexusBuildTranscript() {
+  let title = 'CommonUnity Nexus Conversation';
+  try {
+    const meta = currentRoom ? ROOM_META[currentRoom] : null;
+    if (meta && meta.title) title = `Nexus · ${meta.title}`;
+  } catch (_) {}
+  const now = new Date();
+  const hist = (currentRoom && state.rooms[currentRoom] && state.rooms[currentRoom].mirrorHistory) || [];
+  const messages = hist.map(m => ({
+    who: m.role === 'rose' ? 'NEXUS' : 'You',
+    // Stored text may contain streamed HTML markup; strip tags for a clean transcript.
+    text: String(m.text || '').replace(/<[^>]+>/g, '').trim()
+  })).filter(m => m.text);
+  return { title, dateISO: now.toISOString().slice(0, 10), dateHuman: now.toLocaleString(), messages };
+}
+
+function studioNexusDownload(filename, mime, content) {
+  try {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (_) {}
+}
+
+function studioNexusExportMarkdown() {
+  const t = studioNexusBuildTranscript();
+  let out = `# ${t.title}\n\n_CommonUnity Nexus Conversation · ${t.dateHuman}_\n\n`;
+  if (!t.messages.length) out += '_(This thread is still empty.)_\n';
+  for (const m of t.messages) out += `**${m.who}:**\n\n${m.text}\n\n---\n\n`;
+  studioNexusDownload(`nexus-thread-${t.dateISO}.md`, 'text/markdown', out);
+}
+
+function studioNexusExportText() {
+  const t = studioNexusBuildTranscript();
+  let out = `${t.title}\nCommonUnity Nexus Conversation · ${t.dateHuman}\n${'='.repeat(48)}\n\n`;
+  if (!t.messages.length) out += '(This thread is still empty.)\n';
+  for (const m of t.messages) out += `${m.who}:\n${m.text}\n\n`;
+  studioNexusDownload(`nexus-thread-${t.dateISO}.txt`, 'text/plain', out);
+}
+
+function studioNexusExportPDF() {
+  const t = studioNexusBuildTranscript();
+  const rows = t.messages.map(m => {
+    const cls = m.who === 'NEXUS' ? 'nexus' : 'user';
+    return `<div class="msg ${cls}"><div class="who">${studioNexusEscape(m.who)}</div><div class="body">${studioNexusEscape(m.text).replace(/\n/g, '<br>')}</div></div>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${studioNexusEscape(t.title)}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 720px; margin: 40px auto; padding: 0 24px; line-height: 1.65; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #666; font-size: 12px; margin-bottom: 28px; }
+  .msg { margin: 0 0 18px; page-break-inside: avoid; }
+  .who { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #8a7a52; margin-bottom: 3px; }
+  .msg.user .who { color: #4a4a8a; }
+  .body { font-size: 14px; }
+  .foot { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+  <h1>${studioNexusEscape(t.title)}</h1>
+  <div class="meta">CommonUnity Nexus Conversation · ${studioNexusEscape(t.dateHuman)}</div>
+  ${rows || '<p><em>This thread is still empty.</em></p>'}
+  <div class="foot">Kept locally from your CommonUnity Nexus. Private — nothing here was uploaded.</div>
+  <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { studioNexusExportMarkdown(); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
+function studioNexusDetectAction(msg) {
+  const s = (msg || '').toLowerCase().trim();
+  if (s.length > 90) return null;
+  const mentionsThread = /\b(this|the|full|whole|entire|our)\b.*\b(thread|conversation|chat|dialogue|exchange|talk)\b/.test(s)
+    || /\b(thread|conversation|dialogue)\b/.test(s);
+  const verb = /\b(export|save|download|keep|preserve|archive|back ?up)\b/.test(s);
+  if (!verb || !mentionsThread) return null;
+  if (/\bpdf\b/.test(s)) return 'pdf';
+  if (/\b(markdown|\.md|md)\b/.test(s)) return 'markdown';
+  if (/\b(text|txt|plain)\b/.test(s)) return 'text';
+  return 'menu';
+}
+
+function studioNexusShowActionCard(preferred) {
+  const conv = document.getElementById('mirror-conversation');
+  if (!conv) return;
+  const intro = document.getElementById('mirror-intro');
+  if (intro) intro.style.display = 'none';
+  const hist = (currentRoom && state.rooms[currentRoom] && state.rooms[currentRoom].mirrorHistory) || [];
+  const empty = !hist.some(m => String(m.text || '').trim());
+  const card = document.createElement('div');
+  card.className = 'nexus-action-card';
+  card.innerHTML = `
+    <div class="cn-action-title">${STUDIO_KNOT_SVG}<span>Keep this thread</span></div>
+    <div class="cn-action-hint">${empty ? 'There is nothing kept here yet — begin, and this will hold the whole exchange.' : 'Preserve the whole conversation on your device. Choose a form:'}</div>
+    <div class="nexus-action-row">
+      <button type="button" class="nexus-action-btn" data-fmt="pdf">PDF</button>
+      <button type="button" class="nexus-action-btn" data-fmt="markdown">Markdown</button>
+      <button type="button" class="nexus-action-btn" data-fmt="text">Plain text</button>
+    </div>
+    <div class="nexus-action-note">Stays on your device — nothing is uploaded. A knot on a single reply saves that one moment to your Golden Thread; this keeps everything.</div>`;
+  card.querySelectorAll('.nexus-action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fmt = btn.dataset.fmt;
+      if (fmt === 'pdf') studioNexusExportPDF();
+      else if (fmt === 'markdown') studioNexusExportMarkdown();
+      else studioNexusExportText();
+    });
+  });
+  conv.appendChild(card);
+  conv.scrollTop = conv.scrollHeight;
+  if (!empty && preferred && preferred !== 'menu') {
+    if (preferred === 'pdf') studioNexusExportPDF();
+    else if (preferred === 'markdown') studioNexusExportMarkdown();
+    else if (preferred === 'text') studioNexusExportText();
+  }
+}
+
 async function sendMirrorMessage() {
   const input = document.getElementById('mirror-input');
   const sendBtn = document.getElementById('mirror-send-btn');
   const msg = input.value.trim();
   if (!msg || !currentRoom) return;
+
+  // Living action layer: honour "keep/export this thread" locally instead of
+  // replying that files can't be saved. Fully client-side — no upload.
+  const nexusAction = studioNexusDetectAction(msg);
+  if (nexusAction) {
+    input.value = '';
+    appendMirrorMessage('user', msg);
+    studioNexusShowActionCard(nexusAction);
+    return;
+  }
 
   input.value = '';
   appendMirrorMessage('user', msg);
@@ -12148,6 +12341,7 @@ function initNexusNewProject() {
 document.addEventListener('DOMContentLoaded', () => {
   initNexusEtiquette();
   initNexusNewProject();
+  document.getElementById('nexus-keep-btn')?.addEventListener('click', () => studioNexusShowActionCard('menu'));
   updateContextBar();
   updateSessionStats();
 });

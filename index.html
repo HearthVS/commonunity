@@ -3339,6 +3339,76 @@ body.companion-mode .companion-mode-banner { display: block; }
   line-height: 1;
 }
 .compass-nexus-close:hover { color: var(--text); }
+.compass-nexus-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* Knot/keep affordance in the header — "tie a knot on what is worth keeping". */
+.compass-nexus-keep {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.compass-nexus-keep:hover { color: #c8a96e; background: color-mix(in srgb, #c8a96e 10%, transparent); }
+.compass-nexus-keep[disabled] { opacity: 0.35; cursor: default; }
+/* Calm action card offered inline in the conversation stream. */
+.compass-nexus-action-card {
+  align-self: stretch;
+  border: 1px solid color-mix(in srgb, #c8a96e 30%, transparent);
+  background: color-mix(in srgb, #c8a96e 6%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.compass-nexus-action-card .cn-action-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.compass-nexus-action-card .cn-action-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+.compass-nexus-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.compass-nexus-action-btn {
+  background: color-mix(in srgb, #c8a96e 10%, transparent);
+  border: 1px solid color-mix(in srgb, #c8a96e 35%, transparent);
+  color: #c8a96e;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.compass-nexus-action-btn:hover {
+  background: color-mix(in srgb, #c8a96e 18%, transparent);
+  transform: translateY(-1px);
+}
+.compass-nexus-action-note {
+  margin-top: 9px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  opacity: 0.8;
+}
 .compass-nexus-convo {
   flex: 1;
   padding: var(--space-4);
@@ -5263,7 +5333,12 @@ body.companion-mode .companion-mode-banner { display: block; }
           <span class="compass-nexus-header-title" id="compass-nexus-title">Nexus</span>
           <span class="compass-nexus-freq-cue" id="compass-nexus-freq-cue" hidden></span>
         </span>
-        <button type="button" class="compass-nexus-close" id="compass-nexus-close" aria-label="Close Nexus">✕</button>
+        <span class="compass-nexus-header-actions">
+          <button type="button" class="compass-nexus-keep" id="compass-nexus-keep" aria-label="Keep this thread — export the full conversation" title="Keep this thread — a knot binds one moment to your Golden Thread; export preserves the whole conversation on your device.">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="15" x2="8.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="15" x2="11.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11.5 11 C13 9 14 7 13 5.5 C12 4 10 4 9 5.5 C8 7 9 9.5 11 10.5 C13 11.5 14 10 13.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M8.5 11 C8 10 7.5 9 8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          </button>
+          <button type="button" class="compass-nexus-close" id="compass-nexus-close" aria-label="Close Nexus">✕</button>
+        </span>
       </div>
       <div class="compass-nexus-convo" id="compass-nexus-convo">
         <div class="compass-nexus-intro">Nexus is present.</div>
@@ -11072,6 +11147,18 @@ async function sendCompassNexusMessage() {
   const msg = input.value.trim();
   if (!msg) return;
 
+  // Living action layer: if the user asks to keep/export the thread, honour it
+  // as a local action instead of sending a "I can't save files" reply. The
+  // request is echoed, then a calm action card is offered (and, when a format
+  // was named, the export runs immediately). Fully client-side — no upload.
+  const action = compassNexusDetectAction(msg);
+  if (action) {
+    input.value = '';
+    appendCompassNexusMsg('user', msg);
+    compassNexusShowActionCard(action);
+    return;
+  }
+
   if (!compassNexusHasConsent()) {
     const granted = await compassNexusRequestConsent();
     if (!granted) return;
@@ -11218,6 +11305,162 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
   }
 }
 
+// ============================================================
+// COMPASS NEXUS — full-thread export (client-side / local only)
+// ------------------------------------------------------------
+// The whole conversation is a living thing; a knot keeps one moment, but
+// sometimes the whole thread is worth keeping. These helpers preserve the
+// current conversation on the user's own device — Markdown, plain text, or
+// a printable page (→ Save as PDF). Nothing leaves the browser: private
+// Nexus content is NEVER uploaded here and is never routed through admin
+// endpoints. This mirrors CommonUnity's privacy model (see
+// buildNexusSafeCipherContext) — local capture, no silent server storage.
+// ============================================================
+
+// Build a structured transcript from the live conversation history.
+// Returns { title, dateISO, dateHuman, messages: [{who, text}] }.
+function compassNexusBuildTranscript() {
+  let title = 'CommonUnity Nexus Conversation';
+  try {
+    const ctx = compassNexusSeedContext();
+    if (ctx && ctx.room_title) title = `Nexus · ${ctx.room_title}`;
+  } catch (_) {}
+  const now = new Date();
+  const messages = (compassNexusState.history || []).map(m => ({
+    who: m.role === 'rose' ? 'NEXUS' : 'You',
+    text: (m.text || '').trim()
+  })).filter(m => m.text);
+  return {
+    title,
+    dateISO: now.toISOString().slice(0, 10),
+    dateHuman: now.toLocaleString(),
+    messages
+  };
+}
+
+// Trigger a client-side download of a text blob — never touches the server.
+function compassNexusDownload(filename, mime, content) {
+  try {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (_) {}
+}
+
+function compassNexusExportMarkdown() {
+  const t = compassNexusBuildTranscript();
+  let out = `# ${t.title}\n\n_CommonUnity Nexus Conversation · ${t.dateHuman}_\n\n`;
+  if (!t.messages.length) out += '_(This thread is still empty.)_\n';
+  for (const m of t.messages) {
+    out += `**${m.who}:**\n\n${m.text}\n\n---\n\n`;
+  }
+  compassNexusDownload(`nexus-thread-${t.dateISO}.md`, 'text/markdown', out);
+}
+
+function compassNexusExportText() {
+  const t = compassNexusBuildTranscript();
+  let out = `${t.title}\nCommonUnity Nexus Conversation · ${t.dateHuman}\n${'='.repeat(48)}\n\n`;
+  if (!t.messages.length) out += '(This thread is still empty.)\n';
+  for (const m of t.messages) {
+    out += `${m.who}:\n${m.text}\n\n`;
+  }
+  compassNexusDownload(`nexus-thread-${t.dateISO}.txt`, 'text/plain', out);
+}
+
+// PDF via the browser's own print pipeline — no heavy library, no upload.
+// Opens a minimal styled page and invokes print(); the user chooses
+// "Save as PDF". Falls back to a Markdown download if popups are blocked.
+function compassNexusExportPDF() {
+  const t = compassNexusBuildTranscript();
+  const rows = t.messages.map(m => {
+    const cls = m.who === 'NEXUS' ? 'nexus' : 'user';
+    return `<div class="msg ${cls}"><div class="who">${escapeHtml(m.who)}</div><div class="body">${escapeHtml(m.text).replace(/\n/g, '<br>')}</div></div>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(t.title)}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 720px; margin: 40px auto; padding: 0 24px; line-height: 1.65; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #666; font-size: 12px; margin-bottom: 28px; }
+  .msg { margin: 0 0 18px; page-break-inside: avoid; }
+  .who { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #8a7a52; margin-bottom: 3px; }
+  .msg.user .who { color: #4a4a8a; }
+  .body { font-size: 14px; white-space: normal; }
+  .foot { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+  <h1>${escapeHtml(t.title)}</h1>
+  <div class="meta">CommonUnity Nexus Conversation · ${escapeHtml(t.dateHuman)}</div>
+  ${rows || '<p><em>This thread is still empty.</em></p>'}
+  <div class="foot">Kept locally from your CommonUnity Nexus. Private — nothing here was uploaded.</div>
+  <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { compassNexusExportMarkdown(); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+// Recognize typed conversational commands like "export this thread as PDF",
+// "save this conversation", "download the full thread as text". Returns a
+// format string ('pdf' | 'markdown' | 'text' | 'menu') or null when the
+// message is ordinary conversation that should go to Nexus as usual.
+function compassNexusDetectAction(msg) {
+  const s = (msg || '').toLowerCase().trim();
+  if (s.length > 90) return null; // long messages are contemplation, not commands
+  const mentionsThread = /\b(this|the|full|whole|entire|our)\b.*\b(thread|conversation|chat|dialogue|exchange|talk)\b/.test(s)
+    || /\b(thread|conversation|dialogue)\b/.test(s);
+  const verb = /\b(export|save|download|keep|preserve|archive|back ?up)\b/.test(s);
+  if (!verb || !mentionsThread) return null;
+  if (/\bpdf\b/.test(s)) return 'pdf';
+  if (/\b(markdown|\.md|md)\b/.test(s)) return 'markdown';
+  if (/\b(text|txt|plain)\b/.test(s)) return 'text';
+  return 'menu';
+}
+
+// A calm inline action card — doors, not demands. Offered in the stream when
+// the user asks to keep the thread, or from the header knot button.
+function compassNexusShowActionCard(preferred) {
+  const conv = document.getElementById('compass-nexus-convo');
+  if (!conv) return;
+  const empty = !(compassNexusState.history || []).some(m => (m.text || '').trim());
+  const card = document.createElement('div');
+  card.className = 'compass-nexus-action-card';
+  const knot = `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="15" x2="8.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="15" x2="11.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11.5 11 C13 9 14 7 13 5.5 C12 4 10 4 9 5.5 C8 7 9 9.5 11 10.5 C13 11.5 14 10 13.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>`;
+  card.innerHTML = `
+    <div class="cn-action-title">${knot}<span>Keep this thread</span></div>
+    <div class="cn-action-hint">${empty ? 'There is nothing kept here yet — begin, and this will hold the whole exchange.' : 'Preserve the whole conversation on your device. Choose a form:'}</div>
+    <div class="compass-nexus-action-row">
+      <button type="button" class="compass-nexus-action-btn" data-fmt="pdf">PDF</button>
+      <button type="button" class="compass-nexus-action-btn" data-fmt="markdown">Markdown</button>
+      <button type="button" class="compass-nexus-action-btn" data-fmt="text">Plain text</button>
+    </div>
+    <div class="compass-nexus-action-note">Stays on your device — nothing is uploaded. A knot on a single reply saves that one moment to your Golden Thread; this keeps everything.</div>`;
+  card.querySelectorAll('.compass-nexus-action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fmt = btn.dataset.fmt;
+      if (fmt === 'pdf') compassNexusExportPDF();
+      else if (fmt === 'markdown') compassNexusExportMarkdown();
+      else compassNexusExportText();
+    });
+  });
+  conv.appendChild(card);
+  conv.scrollTop = conv.scrollHeight;
+  // If the user named a specific format, act immediately and also leave the
+  // card as a visible confirmation of what happened.
+  if (!empty && preferred && preferred !== 'menu') {
+    if (preferred === 'pdf') compassNexusExportPDF();
+    else if (preferred === 'markdown') compassNexusExportMarkdown();
+    else if (preferred === 'text') compassNexusExportText();
+  }
+}
+
 function initCompassNexus() {
   const orb = document.getElementById('compass-nexus-orb');
   const modal = document.getElementById('compass-nexus-modal');
@@ -11259,6 +11502,7 @@ function initCompassNexus() {
   orb.addEventListener('click', (e) => { e.preventDefault(); });
 
   closeBtn?.addEventListener('click', closeCompassNexus);
+  document.getElementById('compass-nexus-keep')?.addEventListener('click', () => compassNexusShowActionCard('menu'));
   // Click outside the panel closes the modal
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeCompassNexus(false);
