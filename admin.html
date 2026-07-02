@@ -1064,6 +1064,30 @@
               <tbody id="invite-rows"></tbody>
             </table>
           </div>
+
+          <details id="revoked-invites" style="margin-top:16px;">
+            <summary style="cursor:pointer;color:#aaa;font-weight:600;letter-spacing:.03em;">
+              Revoked &amp; expired invitations <span id="revoked-count" class="muted"></span>
+            </summary>
+            <p class="hint" style="margin:8px 0 0;">These invites are inactive: their links no longer work, so no copy/Studio-link actions are offered. Kept for the record.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Opened</th>
+                    <th>Threshold</th>
+                    <th>cOMpass</th>
+                    <th>Journey</th>
+                    <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody id="revoked-invite-rows"></tbody>
+              </table>
+            </div>
+          </details>
         </section>
 
         <div class="section-divider">Visual field</div>
@@ -1664,26 +1688,53 @@
         ].join('');
       }
 
-      $('invite-rows').innerHTML = state.invites.map(inv => `
-        <tr>
+      // An invite is inactive (revoked or past its expiry) exactly when its link
+      // would report "link inactive" server-side. Mirror that logic so inactive
+      // rows drop out of the working list and never render copy/Studio actions
+      // that only fail — they move to the "Revoked & expired" area instead.
+      const nowIso = new Date().toISOString();
+      const isInactive = (inv) => {
+        if (inv.status === 'revoked') return true;
+        const exp = (inv.expires_at || '').trim();
+        return !!exp && exp < nowIso;
+      };
+
+      const commonCells = (inv) => `
           <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong><div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
           <td><span class="status ${inv.status === 'revoked' ? 'revoked' : ''}">${escapeHtml(inv.status)}</span></td>
           <td>${date(inv.created_at)}</td>
           <td>${date(inv.first_opened_at)}</td>
           <td>${date(inv.threshold_completed_at)}</td>
           <td>${date(inv.compass_entered_at)}</td>
-          <td style="white-space:nowrap">${milestoneStrip(inv.milestones)}</td>
+          <td style="white-space:nowrap">${milestoneStrip(inv.milestones)}</td>`;
+
+      const activeInvites = state.invites.filter(inv => !isInactive(inv));
+      const inactiveInvites = state.invites.filter(isInactive);
+
+      $('invite-rows').innerHTML = activeInvites.map(inv => `
+        <tr>
+          ${commonCells(inv)}
           <td>
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
               ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
-              ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
-              ${inv.status !== 'revoked' ? `<button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>` : ''}
-              ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
+              ${inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
+              <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
+              <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
             </div>
           </td>
         </tr>
-      `).join('') || '<tr><td colspan="8" class="muted">No invitations yet.</td></tr>';
+      `).join('') || '<tr><td colspan="8" class="muted">No active invitations yet.</td></tr>';
+
+      // Revoked/expired rows: no copy or Studio-link buttons (their links are
+      // dead), just an inactive indicator so nothing looks copyable.
+      $('revoked-invite-rows').innerHTML = inactiveInvites.map(inv => `
+        <tr style="opacity:.72">
+          ${commonCells(inv)}
+          <td><span class="muted" title="This invite is revoked or expired; its link no longer works.">Link inactive</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="8" class="muted">No revoked or expired invitations.</td></tr>';
+      $('revoked-count').textContent = inactiveInvites.length ? `(${inactiveInvites.length})` : '(0)';
 
       $('events').innerHTML = state.events.map(ev => {
         // Identity is resolved server-side ONLY from the admin-authored invite

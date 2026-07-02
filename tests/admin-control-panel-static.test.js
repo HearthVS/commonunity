@@ -95,6 +95,20 @@ assert(admin.includes('showManualCopy') && admin.includes('manual-copy'),
 assert(admin.includes('data-studio-link'), 'invite rows should wire a direct Studio link action');
 assert(admin.includes('do not paste it into the beta gate'),
   'Studio link copy should tell the admin to open the link directly, not paste it into the beta gate');
+// Revoked/expired invites must leave the main working list and move to a
+// separate area, and must NOT render copy/Studio-link buttons (their links are
+// dead — showing them only produces "link inactive"). Active invites drive the
+// actionable buttons; inactive invites drive the read-only revoked section.
+assert(admin.includes('revoked-invite-rows'),
+  'admin page should render revoked/expired invites in a separate table body');
+assert(admin.includes('Revoked &amp; expired invitations'),
+  'admin page should label the separate revoked/expired invitations area');
+assert(admin.includes('activeInvites') && admin.includes('inactiveInvites'),
+  'admin page should split invites into active vs inactive lists');
+assert(/activeInvites\.map/.test(admin),
+  'copy/Studio-link action rows should render from the active-invites list only');
+assert(/revoked-invite-rows'\)\.innerHTML = inactiveInvites\.map/.test(admin),
+  'the revoked section should render from the inactive-invites list');
 assert(admin.includes('Brand Field'), 'admin page should include the Brand Field section');
 assert(admin.includes('/api/admin/brand/versions'), 'admin page should call brand version APIs');
 assert(admin.includes('Save as draft'), 'admin page should support brand drafts');
