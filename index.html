@@ -3403,6 +3403,12 @@ body.companion-mode .companion-mode-banner { display: block; }
   background: color-mix(in srgb, #c8a96e 18%, transparent);
   transform: translateY(-1px);
 }
+.compass-nexus-action-btn.is-preferred {
+  background: color-mix(in srgb, #c8a96e 24%, transparent);
+  border-color: #c8a96e;
+  color: var(--text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #c8a96e 45%, transparent);
+}
 .compass-nexus-action-note {
   margin-top: 9px;
   font-size: 10.5px;
@@ -11407,21 +11413,51 @@ function compassNexusExportPDF() {
   w.document.close();
 }
 
-// Recognize typed conversational commands like "export this thread as PDF",
-// "save this conversation", "download the full thread as text". Returns a
-// format string ('pdf' | 'markdown' | 'text' | 'menu') or null when the
-// message is ordinary conversation that should go to Nexus as usual.
+// Recognize typed conversational commands so the user can ask for an export in
+// natural language and Nexus honours it locally instead of replying that it
+// "can't save files". Handles casual phrasing ("do a pdf of our conversation",
+// "make a pdf of this chat", "can you save this as a pdf", "export all of
+// this") as well as explicit ones. Returns a format string
+// ('pdf' | 'markdown' | 'text' | 'menu') or null when the message is ordinary
+// conversation that should go to Nexus as usual. Kept in lockstep with
+// studioNexusDetectAction and tests/nexus_export.test.js.
 function compassNexusDetectAction(msg) {
   const s = (msg || '').toLowerCase().trim();
-  if (s.length > 90) return null; // long messages are contemplation, not commands
-  const mentionsThread = /\b(this|the|full|whole|entire|our)\b.*\b(thread|conversation|chat|dialogue|exchange|talk)\b/.test(s)
-    || /\b(thread|conversation|dialogue)\b/.test(s);
-  const verb = /\b(export|save|download|keep|preserve|archive|back ?up)\b/.test(s);
-  if (!verb || !mentionsThread) return null;
-  if (/\bpdf\b/.test(s)) return 'pdf';
-  if (/\b(markdown|\.md|md)\b/.test(s)) return 'markdown';
-  if (/\b(text|txt|plain)\b/.test(s)) return 'text';
-  return 'menu';
+  if (!s || s.length > 140) return null; // long messages are contemplation, not commands
+
+  // A named output format. "text" is common in prose, so only count it when
+  // clearly meant as a file/format ("plain text", "txt", "as text", "text file").
+  const fmtPdf = /\bpdf\b/.test(s);
+  const fmtMd  = /\bmarkdown\b/.test(s) || /\.md\b/.test(s) || /\bas\s+md\b/.test(s);
+  const fmtTxt = /\b(plain\s*text|txt|text\s*file)\b/.test(s)
+    || /\b(as|to|into)\s+(a\s+)?(plain\s+)?text\b/.test(s);
+  const hasFormat = fmtPdf || fmtMd || fmtTxt;
+
+  // Reference to the current Nexus thread. "conversation"/"chat" mean the same
+  // as "thread". Loose phrases ("all of this", "everything") count only when
+  // paired with an explicit save/export verb (branch 2 below).
+  const subject = /\b(thread|conversation|convo|chat|dialogue|dialog|exchange|discussion|transcript|session)\b/.test(s)
+    || /\ball of (this|it)\b/.test(s)
+    || /\beverything\b/.test(s)
+    || /\bthe whole (thing|lot|thread|conversation|chat)\b/.test(s)
+    || /\bour talk\b/.test(s);
+
+  // Explicit save/export verbs.
+  const strongVerb = /\b(export|save|download|keep|preserve|archive|back\s?up|print|capture|store)\b/.test(s);
+  // Casual "produce an artifact" verbs — only meaningful when a format is named.
+  const softVerb = /\b(do|make|create|generate|build|produce|render|write|turn|convert|put|give|get|hand)\b/.test(s);
+
+  // 1) A named file format + any create/export verb ⇒ that format directly.
+  //    Covers "do a pdf of our conversation", "make a pdf", "save this as pdf".
+  if (hasFormat && (strongVerb || softVerb)) {
+    if (fmtPdf) return 'pdf';
+    if (fmtMd)  return 'markdown';
+    return 'text';
+  }
+  // 2) An explicit export verb about the conversation, no format named ⇒ menu.
+  //    Covers "save the whole thread", "export all of this".
+  if (strongVerb && subject) return 'menu';
+  return null;
 }
 
 // A calm inline action card — doors, not demands. Offered in the stream when
@@ -11443,6 +11479,11 @@ function compassNexusShowActionCard(preferred) {
     </div>
     <div class="compass-nexus-action-note">Stays on your device — nothing is uploaded. A knot on a single reply saves that one moment to your Golden Thread; this keeps everything.</div>`;
   card.querySelectorAll('.compass-nexus-action-btn').forEach(btn => {
+    // Highlight the option the user asked for, so if a popup blocker stops the
+    // immediate export the obvious next click is right there.
+    if (preferred && preferred !== 'menu' && btn.dataset.fmt === preferred) {
+      btn.classList.add('is-preferred');
+    }
     btn.addEventListener('click', () => {
       const fmt = btn.dataset.fmt;
       if (fmt === 'pdf') compassNexusExportPDF();

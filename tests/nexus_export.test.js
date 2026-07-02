@@ -87,29 +87,68 @@ console.log('Privacy contract');
   });
 });
 
-// ── Action-detection regex sanity (behavioural) ───────────────
-// Re-implement the detector's contract and assert it classifies example
-// phrases the way the UI expects. Keep in lockstep with compassNexusDetectAction.
+// ── Action-detection behaviour (against the REAL served function) ─
+// Extract the actual detector from each served file and evaluate it, so this
+// test tracks production code rather than a hand-kept copy. This is what would
+// have caught the 2026-07 regression where natural phrasing ("do a pdf of our
+// conversation") fell through to the AI, which replied it could not save files.
 console.log('Action detection behaviour');
-function detect(msg) {
-  const s = (msg || '').toLowerCase().trim();
-  if (s.length > 90) return null;
-  const mentionsThread = /\b(this|the|full|whole|entire|our)\b.*\b(thread|conversation|chat|dialogue|exchange|talk)\b/.test(s)
-    || /\b(thread|conversation|dialogue)\b/.test(s);
-  const verb = /\b(export|save|download|keep|preserve|archive|back ?up)\b/.test(s);
-  if (!verb || !mentionsThread) return null;
-  if (/\bpdf\b/.test(s)) return 'pdf';
-  if (/\b(markdown|\.md|md)\b/.test(s)) return 'markdown';
-  if (/\b(text|txt|plain)\b/.test(s)) return 'text';
-  return 'menu';
+
+function extractFn(src, name) {
+  const start = src.indexOf(`function ${name}`);
+  if (start === -1) throw new Error(`could not find ${name} in served file`);
+  // Walk braces from the first '{' to find the matching close.
+  const open = src.indexOf('{', start);
+  let depth = 0, i = open;
+  for (; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { i++; break; } }
+  }
+  const body = src.slice(start, i);
+  // eslint-disable-next-line no-new-func
+  return new Function(`${body}; return ${name};`)();
 }
-assert(detect('export this thread as PDF') === 'pdf', 'recognizes "export this thread as PDF"');
-assert(detect('save this conversation') === 'menu', 'recognizes "save this conversation"');
-assert(detect('download the full thread as text') === 'text', 'recognizes "download the full thread as text"');
-assert(detect('save full thread') === 'menu', 'recognizes "save full thread"');
-assert(detect('preserve our dialogue as markdown') === 'markdown', 'recognizes "preserve our dialogue as markdown"');
-assert(detect('what does this hexagram mean?') === null, 'ignores ordinary contemplation');
-assert(detect('I want to save more time in my day') === null, 'ignores unrelated "save" usage');
+
+const compassDetect = extractFn(compass, 'compassNexusDetectAction');
+const studioDetect  = extractFn(studio, 'studioNexusDetectAction');
+
+// Phrases that MUST be recognized. Value is the expected format ('menu' when
+// no format is named). Includes the user's exact failed phrase.
+const RECOGNIZE = [
+  ['do a pdf of our conversation', 'pdf'],          // ← the exact reported failure
+  ['make a pdf of this conversation', 'pdf'],
+  ['can you save this as a pdf', 'pdf'],
+  ['save our conversation as pdf', 'pdf'],
+  ['export our conversation to pdf', 'pdf'],
+  ['download this chat as pdf', 'pdf'],
+  ['save the whole thread', 'menu'],
+  ['can you export all of this', 'menu'],
+  ['export this thread as PDF', 'pdf'],
+  ['save this conversation', 'menu'],
+  ['download the full thread as text', 'text'],
+  ['save full thread', 'menu'],
+  ['preserve our dialogue as markdown', 'markdown'],
+];
+// Phrases that must be IGNORED (ordinary conversation → goes to Nexus).
+const IGNORE = [
+  'what does this hexagram mean?',
+  'I want to save more time in my day',
+  'keep this in mind as we go',
+  'do you think this is right',
+  'make the text bigger please',
+  'can you summarize our conversation',
+  'what should I do about this',
+];
+
+[['Compass', compassDetect], ['Studio', studioDetect]].forEach(([label, fn]) => {
+  RECOGNIZE.forEach(([phrase, expected]) => {
+    assert(fn(phrase) === expected, `${label} recognizes "${phrase}" → ${expected}`);
+  });
+  IGNORE.forEach(phrase => {
+    assert(fn(phrase) === null, `${label} ignores "${phrase}"`);
+  });
+});
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures) {
