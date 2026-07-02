@@ -1676,6 +1676,7 @@
           <td>
             <div class="actions" style="margin:0">
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
+              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link">Studio link</button>` : ''}
               ${inv.status !== 'revoked' && inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>` : ''}
               ${inv.status !== 'revoked' ? `<button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>` : ''}
@@ -2256,6 +2257,7 @@
     // ── Global click handler ──
     document.addEventListener('click', async (event) => {
       const copyLinkId = event.target?.dataset?.copyLink;
+      const studioLinkId = event.target?.dataset?.studioLink;
       const sendId = event.target?.dataset?.send;
       const revokeId = event.target?.dataset?.revoke;
       const brandLoad = event.target?.dataset?.brandLoad;
@@ -2297,6 +2299,33 @@
             event.target.textContent = original;
             $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
             showManualCopy('Magic link', res.magic_link);
+          }
+        } catch (err) {
+          event.target.textContent = original;
+          $('invite-message').textContent = err.message;
+        }
+      }
+      if (studioLinkId) {
+        // Same server reveal as Copy link, but hands back the direct Studio
+        // entry URL (/studio?invite=<token>) instead of the /threshold magic
+        // link. The raw token stays out of the list payload.
+        const original = event.target.textContent;
+        event.target.textContent = 'Fetching…';
+        try {
+          const res = await api(`/api/admin/invites/${studioLinkId}/link`);
+          if (!res.active) {
+            event.target.textContent = 'Link inactive';
+            $('invite-message').textContent = 'This invite is revoked or expired; its link no longer works.';
+            setTimeout(() => { event.target.textContent = original; }, 1600);
+          } else if (await copyTextToClipboard(res.studio_link)) {
+            $('manual-copy').classList.add('hidden');
+            event.target.textContent = 'Copied';
+            $('invite-message').textContent = 'Studio link copied to clipboard.';
+            setTimeout(() => { event.target.textContent = original; }, 1200);
+          } else {
+            event.target.textContent = original;
+            $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
+            showManualCopy('Studio link', res.studio_link);
           }
         } catch (err) {
           event.target.textContent = original;
