@@ -19144,6 +19144,30 @@ if (document.readyState === 'loading') {
 }
 #cu-comm-dot.cu-hidden { display: none; }
 #cu-fb-trigger { position: relative; }
+/* Sign of life: a slow, soft gold glow that breathes on the Messages bubble
+   when something unread is waiting — not an alert, just a living presence.
+   Calms the moment messages are read/opened (class removed). */
+@keyframes cu-living-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.36), 0 0 0 0 rgba(213,173,100,0);
+    border-color: rgba(213,173,100,0.35);
+  }
+  50% {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.36), 0 0 18px 3px rgba(213,173,100,0.5);
+    border-color: rgba(213,173,100,0.62);
+  }
+}
+#cu-fb-trigger.cu-living {
+  color: #d5ad64;
+  border-color: rgba(213,173,100,0.55);
+  animation: cu-living-pulse 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #cu-fb-trigger.cu-living {
+    animation: none;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.36), 0 0 14px 2px rgba(213,173,100,0.42);
+  }
+}
 #cu-comm-tabs { display: flex; gap: 4px; padding: 10px 18px 0; }
 .cu-comm-tab {
   background: none; border: none; cursor: pointer;
@@ -19182,6 +19206,11 @@ if (document.readyState === 'loading') {
   function fmtDate(v) { try { return v ? new Date(v).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : ''; } catch { return ''; } }
 
   let messages = [];
+  let markTimer = null;
+  let pollTimer = null;
+  // Modest, respectful refresh so new messages appear without a manual reload.
+  const CU_POLL_INTERVAL_MS = 45000;
+  function panelOpen() { return !panel.classList.contains('cu-hidden'); }
   function renderMessages() {
     if (!messages.length) {
       msgList.innerHTML = '<p class="cu-msg-empty">This space stays quiet until a message arrives.</p>';
@@ -19197,6 +19226,12 @@ if (document.readyState === 'loading') {
   function updateDot() {
     const unread = messages.filter(m => !m.read).length;
     dot.classList.toggle('cu-hidden', unread === 0);
+    // Soft gold "sign of life" glow on the bubble; calms once nothing is unread.
+    trigger.classList.toggle('cu-living', unread > 0);
+  }
+  function scheduleMarkRead() {
+    clearTimeout(markTimer);
+    markTimer = setTimeout(markAllRead, 1200);
   }
   async function loadMessages() {
     try {
@@ -19206,6 +19241,9 @@ if (document.readyState === 'loading') {
       messages = data.messages || [];
       renderMessages();
       updateDot();
+      // Preserve mark-read behaviour: if the panel is open (initial open or a
+      // poll that arrived while open), mark read after the brief reveal delay.
+      if (panelOpen()) scheduleMarkRead();
     } catch (_) {}
   }
   async function markAllRead() {
@@ -19218,6 +19256,14 @@ if (document.readyState === 'loading') {
     renderMessages();
     updateDot();
   }
+  function startPolling() {
+    if (pollTimer) return;
+    // Back off while the tab is hidden; refresh only when the page is visible.
+    pollTimer = setInterval(() => { if (!document.hidden) loadMessages(); }, CU_POLL_INTERVAL_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadMessages();
+  });
 
   tabs.forEach(tab => tab.addEventListener('click', () => {
     tabs.forEach(t => t.classList.toggle('cu-comm-tab--active', t === tab));
@@ -19228,7 +19274,7 @@ if (document.readyState === 'loading') {
 
   function openPanel() {
     panel.classList.remove('cu-hidden');
-    loadMessages().then(() => setTimeout(markAllRead, 1200));
+    loadMessages();
   }
   trigger.addEventListener('click', () => {
     if (panel.classList.contains('cu-hidden')) openPanel();
@@ -19236,6 +19282,7 @@ if (document.readyState === 'loading') {
   });
   closeBtn.addEventListener('click', () => panel.classList.add('cu-hidden'));
   loadMessages();
+  startPolling();
 
   // Detect current app from URL
   const path = location.pathname;
