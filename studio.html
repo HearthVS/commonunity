@@ -8014,7 +8014,7 @@ input, textarea { font: inherit; color: inherit; }
                   <div class="archive-actions-row">
                     <button type="button" class="archive-action-btn archive-action-btn--nexus" id="archive-bring-selected-text" disabled aria-disabled="true">Bring selected text to Nexus</button>
                   </div>
-                  <p class="archive-actions-note">Tick one or more text observations below, then bring them across. This fills the Nexus input for you to review — nothing is sent automatically.</p>
+                  <p class="archive-actions-note">Tick one or more text observations (or extracted PDF text) below, then bring them across. This fills the Nexus input for you to review — nothing is sent automatically.</p>
                 </div>
                 <div class="archive-actions-group">
                   <span class="archive-actions-group-label">Standard tools</span>
@@ -11480,6 +11480,8 @@ async function studioSaveGoldenThread(content) {
 // client-only and used solely to build a Nexus hand-off prompt; it is never
 // persisted or sent anywhere on its own.
 const studioSelectedTextObs = new Set();
+// Extracted-text artifacts (pdf_text) ticked for the multi-select Nexus hand-off.
+const studioSelectedProcessedText = new Set();
 
 function foCipherId() {
   const ci = (typeof studioCipherIdentity === 'function') ? studioCipherIdentity() : null;
@@ -11630,12 +11632,23 @@ function studioPopulateNexusInput(text) {
 // into one framed prompt and populate the Nexus input. Like the single-item
 // path this only fills the input — it never submits or invokes the AI.
 function studioBringSelectedTextToNexus() {
-  const items = (state.fieldObservations || []).filter(o => studioSelectedTextObs.has(String(o.id)));
-  if (!items.length) return;
-  const blocks = items.map((o, i) => {
+  const textObs = (state.fieldObservations || []).filter(o => studioSelectedTextObs.has(String(o.id)));
+  // Extracted-text artifacts (pdf_text, status done) join the same hand-off so a
+  // member can carry captured notes and processed PDF text across together.
+  const procItems = (state.fieldObservationProcessed || [])
+    .filter(p => p.status === 'done' && studioSelectedProcessedText.has(String(p.id)));
+  const items = [];
+  textObs.forEach(o => {
     const title = String(o.title || '').trim() || String(o.body || '').split('\n')[0].slice(0, 60);
-    return `${i + 1}. ${title}\n${String(o.body || '')}`;
-  }).join('\n\n');
+    items.push(`${title}\n${String(o.body || '')}`);
+  });
+  procItems.forEach(p => {
+    const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(p.source_media_id));
+    const label = (media && String(media.filename || '').trim()) || 'Extracted PDF text';
+    items.push(`${label} (extracted text)\n${String(p.text || '')}`);
+  });
+  if (!items.length) return;
+  const blocks = items.map((b, i) => `${i + 1}. ${b}`).join('\n\n');
   const lead = items.length === 1
     ? 'I want to bring this Field Observation into Nexus:'
     : `I want to bring these ${items.length} Field Observations into Nexus:`;
@@ -11654,9 +11667,15 @@ function updateArchiveSelectionUI() {
   const group = document.getElementById('archive-actions-selected-text');
   const btn = document.getElementById('archive-bring-selected-text');
   const liveIds = new Set((state.fieldObservations || []).map(o => String(o.id)));
+  const liveProcIds = new Set((state.fieldObservationProcessed || [])
+    .filter(p => p.status === 'done').map(p => String(p.id)));
+  // Prune selections whose backing rows no longer exist so stale ticks cannot
+  // survive deletes, retries, or member scope changes.
+  studioSelectedProcessedText.forEach(id => { if (!liveProcIds.has(id)) studioSelectedProcessedText.delete(id); });
   let count = 0;
   studioSelectedTextObs.forEach(id => { if (liveIds.has(id)) count += 1; });
-  if (group) group.hidden = liveIds.size === 0;
+  studioSelectedProcessedText.forEach(id => { if (liveProcIds.has(id)) count += 1; });
+  if (group) group.hidden = liveIds.size === 0 && liveProcIds.size === 0;
   if (btn) {
     btn.disabled = count === 0;
     btn.setAttribute('aria-disabled', String(count === 0));
@@ -11696,7 +11715,26 @@ async function studioLoadFieldObservationMedia() {
     if (!res.ok) { state.fieldObservationMedia = []; }
     else { const data = await res.json(); state.fieldObservationMedia = data.attachments || []; }
   } catch (_) { state.fieldObservationMedia = []; }
+  await studioLoadFieldObservationProcessed();
   studioRenderFieldObservationMedia();
+}
+
+// Load the caller's own processed artifacts (this iteration: extracted PDF
+// text). Member-scoped server-side; nothing here is sent to Nexus automatically.
+async function studioLoadFieldObservationProcessed() {
+  try {
+    const qs = foMediaQuery() ? `${foMediaQuery()}&limit=200` : '?limit=200';
+    const res = await fetch(`${API_BASE}/api/studio/field-observations/processed${qs}`);
+    if (!res.ok) { state.fieldObservationProcessed = []; }
+    else { const data = await res.json(); state.fieldObservationProcessed = data.processed || []; }
+  } catch (_) { state.fieldObservationProcessed = []; }
+}
+
+// Most recent pdf_text artifact for a given source media id, or null.
+function foProcessedForMedia(mediaId) {
+  const items = (state.fieldObservationProcessed || [])
+    .filter(p => String(p.source_media_id) === String(mediaId) && p.process_type === 'pdf_text');
+  return items.length ? items[0] : null;
 }
 
 function foFormatBytes(n) {
@@ -11753,6 +11791,8 @@ function foArchiveMediaCard(m) {
   const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
   const size = foFormatBytes(m.byte_size);
   const url = foMediaFileUrl(m.id);
+  const isPdf = kind === 'doc' || kind === 'document' ||
+    String(m.content_type || '').toLowerCase() === 'application/pdf';
   let body = '';
   if (kind === 'image') {
     body = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
@@ -11761,12 +11801,61 @@ function foArchiveMediaCard(m) {
   } else {
     body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
   }
+  // PDF cards get an Extract text affordance and — once extracted — a compact,
+  // reviewable processed-text card. Nothing here is auto-sent to Nexus.
+  let extractBtn = '';
+  let processedCard = '';
+  if (isPdf) {
+    const proc = foProcessedForMedia(m.id);
+    const status = proc ? String(proc.status || '') : '';
+    if (!proc) {
+      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Extract text</button>`;
+    } else if (status !== 'done') {
+      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Retry extraction</button>`;
+    } else {
+      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Re-extract</button>`;
+    }
+    if (proc) processedCard = foProcessedTextCard(proc);
+  }
   return `<div class="fo-media-card">
     <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
     <div class="fo-media-card-name">${name}</div>
     ${body}
     <div class="fo-media-card-actions">
+      ${extractBtn}
       <button type="button" class="archive-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
+    </div>
+    ${processedCard}
+  </div>`;
+}
+
+// Compact, reviewable card for an extracted-text artifact. On success it shows a
+// text preview, a checkbox that joins the existing "Bring selected text to
+// Nexus" multi-select, and a single Bring-into-Nexus button. On empty/encrypted/
+// error it shows the stored user-visible message instead. This only ever
+// populates the Nexus input downstream — it never submits or calls the AI.
+function foProcessedTextCard(proc) {
+  const pid = studioNexusEscape(proc.id);
+  const status = String(proc.status || '');
+  if (status !== 'done') {
+    const msg = studioNexusEscape(String(proc.error || 'Text could not be extracted.'));
+    return `<div class="fo-processed-card fo-processed-card--issue" style="margin-top:8px;border:1px dashed color-mix(in srgb,var(--border) 60%,transparent);border-radius:var(--radius-md);padding:7px 9px;background:color-mix(in srgb,var(--card) 40%,transparent);">
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:3px;">Processed text · ${studioNexusEscape(status)}</div>
+      <div style="font-size:11px;color:var(--text-faint);line-height:1.5;">${msg}</div>
+    </div>`;
+  }
+  const text = String(proc.text || '');
+  const preview = text.length > 300 ? text.slice(0, 300) + '…' : text;
+  const checked = studioSelectedProcessedText.has(String(proc.id)) ? ' checked' : '';
+  const chars = text.length;
+  return `<div class="fo-processed-card" style="margin-top:8px;border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 40%,transparent);border-radius:var(--radius-md);padding:7px 9px;background:color-mix(in srgb,var(--card) 55%,transparent);">
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <input type="checkbox" class="fo-processed-select" data-id="${pid}" aria-label="Select this extracted text to bring to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);flex:1 1 auto;">Extracted text · ${chars.toLocaleString()} chars</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;margin-top:4px;max-height:140px;overflow:auto;">${studioNexusEscape(preview)}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button type="button" class="fo-processed-bring-btn" data-id="${pid}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring text into Nexus</button>
     </div>
   </div>`;
 }
@@ -11800,8 +11889,62 @@ function renderArchiveMedia() {
     el.querySelectorAll('.archive-media-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
     });
+    el.querySelectorAll('.fo-extract-btn').forEach(btn => {
+      btn.addEventListener('click', () => studioExtractPdfText(btn.dataset.id, btn));
+    });
+    el.querySelectorAll('.fo-processed-bring-btn').forEach(btn => {
+      btn.addEventListener('click', () => studioBringProcessedTextIntoNexus(btn.dataset.id));
+    });
+    el.querySelectorAll('.fo-processed-select').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = String(cb.dataset.id);
+        if (cb.checked) studioSelectedProcessedText.add(id); else studioSelectedProcessedText.delete(id);
+        updateArchiveSelectionUI();
+      });
+    });
   });
   updateArchiveActionsBox();
+  updateArchiveSelectionUI();
+}
+
+// Trigger server-side text extraction for a PDF media item, then refresh the
+// processed artifacts and re-render. Member-scoped server-side. This only
+// derives and stores text — it never sends anything to Nexus or the AI.
+async function studioExtractPdfText(mediaId, btn) {
+  if (!mediaId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Extracting…'; }
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(mediaId)}/extract${foMediaQuery()}`,
+      { method: 'POST' }
+    );
+    if (!res.ok) throw new Error('extract failed');
+    const data = await res.json();
+    const proc = data.processed || {};
+    await studioLoadFieldObservationProcessed();
+    studioRenderFieldObservationMedia();
+    if (typeof showToast === 'function') {
+      if (proc.status === 'done') showToast('Text extracted — review it under the PDF.');
+      else showToast(String(proc.error || 'Could not extract text from this PDF.'));
+    }
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Extract text'; }
+    if (typeof showToast === 'function') showToast('Could not extract text from this PDF.');
+  }
+}
+
+// Bring a single extracted-text artifact forward into Nexus. Like every other
+// hand-off this only fills and focuses the Nexus input — never submits, never
+// calls the AI.
+function studioBringProcessedTextIntoNexus(procId) {
+  const proc = (state.fieldObservationProcessed || []).find(p => String(p.id) === String(procId));
+  if (!proc || proc.status !== 'done') return;
+  const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(proc.source_media_id));
+  const label = (media && String(media.filename || '').trim()) || 'Extracted PDF text';
+  const text = `I want to bring this extracted text from a Field Observation into Nexus:\n\n${label}\n${String(proc.text || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
+  if (studioPopulateNexusInput(text)) {
+    if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
+  }
 }
 
 // Show the "What do you want to do with these files?" action layer only when

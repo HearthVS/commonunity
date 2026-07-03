@@ -1436,6 +1436,43 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_field_observation_media_invite_created "
         "ON field_observation_media(invite_token, created_at DESC)"
     )
+    # ── Field Observation processed artifacts ─────────────────────────────
+    # Server-side derived outputs from a source media item (this iteration:
+    # extracted text from an uploaded PDF). Scoped exactly like the media it
+    # derives from — the pseudonymous cipher_id is the primary member key, with
+    # the signed invite-token cookie as the fallback binding. Each artifact links
+    # back to its source_media_id and never enters Nexus automatically: the
+    # member brings processed text forward deliberately, client-side. `status`
+    # is one of done / empty / encrypted / error; `error` carries a user-visible
+    # message when text could not be extracted.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS field_observation_processed (
+            id TEXT PRIMARY KEY,
+            cipher_id TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            source_media_id TEXT NOT NULL,
+            process_type TEXT NOT NULL DEFAULT 'pdf_text',
+            status TEXT NOT NULL DEFAULT '',
+            text TEXT NOT NULL DEFAULT '',
+            error TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observation_processed_cipher_created "
+        "ON field_observation_processed(cipher_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observation_processed_invite_created "
+        "ON field_observation_processed(invite_token, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observation_processed_source "
+        "ON field_observation_processed(source_media_id)"
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS token_log (
@@ -5280,10 +5317,214 @@ async def delete_field_observation_media(media_id: str, req: Request, cipher_id:
         raise HTTPException(status_code=404, detail="not found")
     with _admin_db() as conn:
         conn.execute("DELETE FROM field_observation_media WHERE id=?", (media_id,))
+        # Cascade: drop any processed artifacts derived from this media so no
+        # orphaned extracted text survives its source.
+        conn.execute(
+            "DELETE FROM field_observation_processed WHERE source_media_id=?",
+            (media_id,),
+        )
     stored_name = row["stored_name"]
     if stored_name and "/" not in stored_name and "\\" not in stored_name:
         (_fo_media_dir() / stored_name).unlink(missing_ok=True)
     return {"ok": True}
+
+
+# ── Field Observation processed artifacts (PDF text extraction) ───────────────
+# Server-side text extraction from a member's own uploaded PDF media. Storage
+# mirrors the media trust model: member-scoped by cipher_id (invite-token cookie
+# fallback), no unfiltered read branch, and every read/trigger only ever matches
+# the caller's own rows. Extraction reads the PDF bytes from disk (never a
+# client-supplied path) and writes the result as a processed artifact linked to
+# the source media id. Nothing here is auto-sent to Nexus or handed to the AI:
+# the member brings extracted text forward deliberately, client-side.
+#
+# This iteration supports ONLY pdf_text. Audio transcription and image OCR are
+# intentionally out of scope (surfaced as "coming soon" in the UI).
+
+# Max characters of extracted text stored per artifact — a generous cap that
+# keeps a runaway PDF from bloating the row while preserving real documents.
+_FO_PROCESSED_MAX_CHARS = 500_000
+
+
+def _fo_extract_pdf_text(data: bytes) -> dict:
+    """Extract text from PDF bytes. Never raises for content problems: returns a
+    dict {status, text, error} so the outcome can be stored as an artifact and
+    shown to the member. status is one of:
+      done       — real text extracted
+      empty       — a valid PDF with no extractable text layer (likely scanned)
+      encrypted   — password-protected / encrypted PDF
+      error       — the bytes could not be parsed as a PDF
+    """
+    if not data or len(data) < 10:
+        return {"status": "empty", "text": "",
+                "error": "This PDF appears to be empty."}
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            # An empty-password decrypt sometimes succeeds for lightly-secured
+            # PDFs; try it once before giving up.
+            try:
+                if reader.decrypt("") == 0:
+                    return {"status": "encrypted", "text": "",
+                            "error": "This PDF is password-protected. Please "
+                                     "upload an unprotected version to extract text."}
+            except Exception:
+                return {"status": "encrypted", "text": "",
+                        "error": "This PDF is password-protected. Please upload "
+                                 "an unprotected version to extract text."}
+        pages = []
+        for page in reader.pages:
+            try:
+                t = page.extract_text()
+                if t and t.strip():
+                    pages.append(t.strip())
+            except Exception:
+                continue  # skip an unreadable page rather than failing the whole doc
+        text = "\n\n".join(pages).strip()
+        if not text:
+            return {"status": "empty", "text": "",
+                    "error": "No selectable text found — this looks like a "
+                             "scanned or image-only PDF. Text extraction is not "
+                             "available for it yet."}
+        if len(text) > _FO_PROCESSED_MAX_CHARS:
+            text = text[:_FO_PROCESSED_MAX_CHARS]
+        return {"status": "done", "text": text, "error": ""}
+    except Exception as e:
+        return {"status": "error", "text": "",
+                "error": f"Could not read this PDF ({str(e)[:120]})."}
+
+
+def _fo_processed_row_to_public(row: sqlite3.Row) -> dict:
+    """Serialise a processed artifact for the owning member. The invite_token is
+    a per-caller secret binding, not member-facing data, so it is dropped."""
+    d = _row_to_dict(row) or {}
+    d.pop("invite_token", None)
+    return d
+
+
+@app.post("/api/studio/field-observations/attachments/{media_id}/extract")
+async def extract_field_observation_media(media_id: str, req: Request, cipher_id: str = ""):
+    """Extract text from one of the caller's own PDF media items.
+
+    Member-scoped: the source media row must belong to the caller (cipher_id or
+    invite-token cookie), so extraction can never be triggered against another
+    member's media even with a guessed id. Only PDF media is supported; anything
+    else is rejected. The result (including graceful empty/encrypted/error
+    outcomes) is stored as a processed artifact linked to the source media and
+    returned. Re-running replaces the prior artifact (retry). Nothing is sent to
+    Nexus or the AI here."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    row = _fo_media_owned_row(req, media_id, cipher_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    content_type = (row["content_type"] or "").split(";")[0].strip().lower()
+    if content_type != "application/pdf" or row["media_kind"] != "document":
+        raise HTTPException(
+            status_code=400,
+            detail="Text extraction is only supported for PDF documents.",
+        )
+    stored_name = row["stored_name"]
+    if "/" in stored_name or "\\" in stored_name or stored_name in ("", ".", ".."):
+        raise HTTPException(status_code=404, detail="not found")
+    path = _fo_media_dir() / stored_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="not found")
+
+    result = _fo_extract_pdf_text(path.read_bytes())
+
+    scope_cipher, invite_token = _fo_scope(req, cipher_id)
+    now = _now_iso()
+    proc_id = "fprc_" + secrets.token_hex(16)
+    with _admin_db() as conn:
+        # One artifact per (source media, process_type): drop the prior one so a
+        # retry cleanly replaces it rather than accumulating stale rows.
+        conn.execute(
+            "DELETE FROM field_observation_processed "
+            "WHERE source_media_id=? AND process_type='pdf_text'",
+            (media_id,),
+        )
+        conn.execute(
+            """
+            INSERT INTO field_observation_processed
+                (id, cipher_id, invite_token, source_media_id, process_type,
+                 status, text, error, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'pdf_text', ?, ?, ?, ?, ?)
+            """,
+            (
+                proc_id, scope_cipher, invite_token, media_id,
+                result["status"], result["text"], result["error"], now, now,
+            ),
+        )
+        stored = conn.execute(
+            "SELECT * FROM field_observation_processed WHERE id=?", (proc_id,)
+        ).fetchone()
+    return {"ok": result["status"] == "done", "processed": _fo_processed_row_to_public(stored)}
+
+
+@app.get("/api/studio/field-observations/processed")
+async def list_field_observation_processed(
+    req: Request, cipher_id: str = "", source_media_id: str = "", limit: int = 100
+):
+    """List the caller's own processed artifacts (most recent first).
+
+    Same isolation contract as the media: resolve by cipher_id, else the caller's
+    signed invite-token cookie, else return an empty list. There is no unfiltered
+    branch, so artifacts are never cross-member readable. An optional
+    source_media_id narrows the list to one source's artifacts."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    limit = max(1, min(int(limit or 100), 200))
+    src = source_media_id.strip()
+    with _admin_db() as conn:
+        if scope_cipher:
+            base = ("SELECT * FROM field_observation_processed "
+                    "WHERE cipher_id=? AND cipher_id!=''")
+            params: tuple = (scope_cipher,)
+        elif caller_invite:
+            base = ("SELECT * FROM field_observation_processed "
+                    "WHERE invite_token=? AND invite_token!=''")
+            params = (caller_invite,)
+        else:
+            return {"processed": []}
+        if src:
+            base += " AND source_media_id=?"
+            params = params + (src,)
+        base += " ORDER BY created_at DESC LIMIT ?"
+        params = params + (limit,)
+        rows = conn.execute(base, params).fetchall()
+    return {"processed": [_fo_processed_row_to_public(r) for r in rows]}
+
+
+@app.get("/api/studio/field-observations/processed/{proc_id}")
+async def get_field_observation_processed(proc_id: str, req: Request, cipher_id: str = ""):
+    """Retrieve one of the caller's own processed artifacts.
+
+    Member-scoped: the row must be bound to the caller's cipher_id or invite
+    token, so there is no cross-member read even with a guessed id."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    with _admin_db() as conn:
+        if scope_cipher:
+            row = conn.execute(
+                "SELECT * FROM field_observation_processed "
+                "WHERE id=? AND cipher_id=? AND cipher_id!=''",
+                (proc_id, scope_cipher),
+            ).fetchone()
+        elif caller_invite:
+            row = conn.execute(
+                "SELECT * FROM field_observation_processed "
+                "WHERE id=? AND invite_token=? AND invite_token!=''",
+                (proc_id, caller_invite),
+            ).fetchone()
+        else:
+            row = None
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"processed": _fo_processed_row_to_public(row)}
 
 
 # Fields the admin surface is permitted to see. Golden Thread `content` and
