@@ -1436,6 +1436,44 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_field_observation_media_invite_created "
         "ON field_observation_media(invite_token, created_at DESC)"
     )
+    # ── Field Observation processed outputs (standard extraction) ─────────────
+    # Member-scoped store for the result of *standard* (non-AI) processing of a
+    # media item — currently PDF text extraction. Scoped exactly like the media
+    # it derives from: cipher_id primary, invite-token cookie fallback. One row
+    # per (source, process_type); re-running an extraction replaces the row. This
+    # is a plain utility: extraction never calls Nexus or the AI. The stored text
+    # is what the member later chooses to bring into Nexus, always by hand.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS field_observation_extractions (
+            id TEXT PRIMARY KEY,
+            cipher_id TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            source_type TEXT NOT NULL DEFAULT 'media',
+            source_id TEXT NOT NULL,
+            process_type TEXT NOT NULL DEFAULT 'pdf_extract',
+            status TEXT NOT NULL DEFAULT 'done',
+            text TEXT NOT NULL DEFAULT '',
+            error TEXT NOT NULL DEFAULT '',
+            char_count INTEGER NOT NULL DEFAULT 0,
+            page_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_fo_extractions_cipher "
+        "ON field_observation_extractions(cipher_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_fo_extractions_invite "
+        "ON field_observation_extractions(invite_token, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_fo_extractions_source "
+        "ON field_observation_extractions(source_id, process_type)"
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS token_log (
@@ -5283,7 +5321,155 @@ async def delete_field_observation_media(media_id: str, req: Request, cipher_id:
     stored_name = row["stored_name"]
     if stored_name and "/" not in stored_name and "\\" not in stored_name:
         (_fo_media_dir() / stored_name).unlink(missing_ok=True)
+    # Drop any processed output derived from this media so nothing is orphaned.
+    with _admin_db() as conn:
+        conn.execute(
+            "DELETE FROM field_observation_extractions WHERE source_id=?", (media_id,)
+        )
     return {"ok": True}
+
+
+# ── Field Observation standard processing (PDF text extraction) ────────────────
+# Standard, non-AI utility processing over captured media. The only process today
+# is PDF text extraction (pypdf). It is deliberately NOT routed through Nexus or
+# Anthropic — extraction is a plain local utility. The result is stored member-
+# scoped and linked to the source media so the member can review it after a
+# refresh and later, by hand, bring it into Nexus.
+
+# Which media kinds each standard process can act on. Anything not listed is
+# surfaced to the client as "coming soon" rather than silently failing.
+_FO_PROCESS_SUPPORTED = {
+    "pdf_extract": ("application/pdf",),
+}
+
+
+def _fo_extraction_row_to_public(row: sqlite3.Row) -> dict:
+    """Serialise an extraction row for the owning member. Drops the per-caller
+    invite-token secret binding, which is never member-facing data."""
+    d = _row_to_dict(row) or {}
+    d.pop("invite_token", None)
+    return d
+
+
+def _fo_extract_pdf(content: bytes) -> dict:
+    """Standard PDF text extraction. Returns a result dict rather than raising, so
+    that graceful failures (encrypted / scanned / unparseable) can be stored and
+    shown to the member. Never calls the AI."""
+    try:
+        text = extract_text_from_pdf(content)
+    except HTTPException as e:
+        return {"status": "error", "text": "", "error": str(e.detail), "page_count": 0}
+    except Exception as e:  # pragma: no cover - defensive
+        return {"status": "error", "text": "", "error": f"PDF parsing failed: {e}", "page_count": 0}
+    page_count = 0
+    try:
+        from pypdf import PdfReader
+        page_count = len(PdfReader(io.BytesIO(content)).pages)
+    except Exception:
+        page_count = 0
+    return {"status": "done", "text": text, "error": "", "page_count": page_count}
+
+
+@app.post("/api/studio/field-observations/attachments/{media_id}/extract")
+async def extract_field_observation_media(media_id: str, req: Request, cipher_id: str = ""):
+    """Run standard text extraction on one of the caller's own PDF media items.
+
+    Member-scoped: the media row must belong to the caller (cipher_id or invite-
+    token cookie), so a guessed id can never trigger processing of, or reveal,
+    another member's file. Only PDFs are supported today; other kinds return a
+    clear "coming soon" message. Encrypted / scanned PDFs are stored with an
+    error status and a user-visible message rather than a hard failure. This is a
+    standard utility — it does not call Nexus or the AI."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    row = _fo_media_owned_row(req, media_id, cipher_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+
+    content_type = (row["content_type"] or "").lower()
+    if content_type not in _FO_PROCESS_SUPPORTED["pdf_extract"]:
+        kind = row["media_kind"] or "this"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text extraction is not available for {kind} yet — coming soon.",
+        )
+
+    stored_name = row["stored_name"]
+    if "/" in stored_name or "\\" in stored_name or stored_name in ("", ".", ".."):
+        raise HTTPException(status_code=404, detail="not found")
+    path = _fo_media_dir() / stored_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="not found")
+
+    result = _fo_extract_pdf(path.read_bytes())
+
+    scope_cipher, invite_token = _fo_scope(req, cipher_id)
+    now = _now_iso()
+    text = result["text"]
+    char_count = len(text)
+    # One row per (source_id, process_type): re-extraction replaces the prior
+    # result. INSERT OR REPLACE keeps the storage member-scoped via the columns.
+    with _admin_db() as conn:
+        existing = conn.execute(
+            "SELECT id, created_at FROM field_observation_extractions "
+            "WHERE source_id=? AND process_type=?",
+            (media_id, "pdf_extract"),
+        ).fetchone()
+        ext_id = existing["id"] if existing else ("fext_" + secrets.token_hex(16))
+        created_at = existing["created_at"] if existing else now
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO field_observation_extractions
+                (id, cipher_id, invite_token, source_type, source_id, process_type,
+                 status, text, error, char_count, page_count, created_at, updated_at)
+            VALUES (?, ?, ?, 'media', ?, 'pdf_extract', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ext_id, scope_cipher, invite_token, media_id, result["status"],
+                text, result["error"], char_count, result["page_count"],
+                created_at, now,
+            ),
+        )
+        stored = conn.execute(
+            "SELECT * FROM field_observation_extractions WHERE id=?", (ext_id,)
+        ).fetchone()
+    out = _fo_extraction_row_to_public(stored)
+    if result["status"] != "done":
+        # 200 with an error status: the member can still review the message in the
+        # Archive. The client distinguishes on the `status` field, not HTTP code.
+        out["ok"] = False
+    else:
+        out["ok"] = True
+    return out
+
+
+@app.get("/api/studio/field-observations/extractions")
+async def list_field_observation_extractions(req: Request, cipher_id: str = "", limit: int = 200):
+    """List the caller's own processed outputs (most recent first).
+
+    Same isolation contract as media: resolve by cipher_id, else the caller's
+    signed invite-token cookie, else return an empty list. No unfiltered branch,
+    so processed text is never cross-member readable."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    limit = max(1, min(int(limit or 200), 500))
+    with _admin_db() as conn:
+        if scope_cipher:
+            rows = conn.execute(
+                "SELECT * FROM field_observation_extractions WHERE cipher_id=? AND cipher_id!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (scope_cipher, limit),
+            ).fetchall()
+        elif caller_invite:
+            rows = conn.execute(
+                "SELECT * FROM field_observation_extractions WHERE invite_token=? AND invite_token!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (caller_invite, limit),
+            ).fetchall()
+        else:
+            rows = []
+    return {"extractions": [_fo_extraction_row_to_public(r) for r in rows]}
 
 
 # Fields the admin surface is permitted to see. Golden Thread `content` and
