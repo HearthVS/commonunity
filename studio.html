@@ -1800,10 +1800,13 @@ input, textarea { font: inherit; color: inherit; }
    give Nexus more room when answers wrap. */
 .room-body {
   --nexus-width: 340px;
+  --archive-width: 244px;
   --room-splitter-width: 6px;
+  --room-lsplitter-width: 6px;
   display: grid;
   grid-template-columns:
-    220px
+    var(--archive-width)
+    var(--room-lsplitter-width)
     minmax(0, 1fr)
     var(--room-splitter-width)
     minmax(220px, var(--nexus-width));
@@ -1823,11 +1826,9 @@ input, textarea { font: inherit; color: inherit; }
    splitter — we don't pin a fixed Nexus width here. */
 @media (min-width: 901px) and (max-width: 1180px) {
   .room-body {
-    grid-template-columns:
-      180px
-      minmax(0, 1fr)
-      var(--room-splitter-width)
-      minmax(220px, var(--nexus-width));
+    /* Trim the context column's default so Field Notes keeps room; the
+       user can still widen it via the resizer (clamp keeps it honest). */
+    --archive-width: 200px;
   }
 }
 
@@ -1899,6 +1900,60 @@ input, textarea { font: inherit; color: inherit; }
   .room-splitter { display: none; }
 }
 
+/* ── Horizontal resizer between the context column and Field Notes ──
+   Same affordance as the Nexus splitter, mirrored on the left. Drag
+   or focus + arrow-keys to give the central workspace more room. It
+   writes --archive-width; the grid template reads it. Hidden when the
+   layout stacks (≤ 900px). */
+.room-lsplitter {
+  position: relative;
+  cursor: col-resize;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 12%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 12%, transparent);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  touch-action: none;
+  user-select: none;
+  z-index: 5;
+}
+.room-lsplitter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, transparent);
+  box-shadow:
+    -4px 0 0 color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, transparent),
+     4px 0 0 color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, transparent);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.room-lsplitter:hover,
+.room-lsplitter:focus-visible,
+.room-lsplitter.is-dragging {
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 18%, transparent);
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
+}
+.room-lsplitter:hover::before,
+.room-lsplitter:focus-visible::before,
+.room-lsplitter.is-dragging::before { opacity: 1; }
+.room-lsplitter:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 60%, transparent);
+  outline-offset: -2px;
+}
+.room-lsplitter::after {
+  content: "";
+  position: absolute;
+  inset: 0 -6px;
+}
+@media (max-width: 900px) {
+  .room-lsplitter { display: none; }
+}
+
 /* ── Archive panel (left) ────────────────────────────────────── */
 .room-archive {
   display: flex;
@@ -1916,12 +1971,51 @@ input, textarea { font: inherit; color: inherit; }
   min-width: 0;
 }
 
-/* Archive surface — framed card matching notepad and Nexus */
-.archive-surface {
-  flex: 1;
+/* Left context column holds two stacked cards: the persistent Gene Keys
+   legend and the collapsible Archive drawer. Padding here replaces the
+   old per-card margins so both align to the notepad/Nexus gutter. */
+.room-archive {
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+
+/* ── Gene Keys legend — the room anchor ──────────────────────────
+   Always visible. Deliberately subtle: a thin framed card that sits
+   above the Archive drawer and never scrolls away with it. */
+.room-context-card {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  margin: var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 12%, var(--border));
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.room-context-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.room-context-card-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ── Archive drawer — its own collapsible container ──────────────
+   Distinct framed card beneath the legend. The header stays put; the
+   body scrolls within a bounded height so the Archive never grows an
+   endless column. */
+.archive-drawer {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border-radius: var(--radius-xl);
   border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 15%, var(--border));
   background: color-mix(in srgb, var(--card) 65%, transparent);
@@ -1930,9 +2024,125 @@ input, textarea { font: inherit; color: inherit; }
     0 0 0 1px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 6%, transparent),
     0 4px 32px rgba(0,0,0,0.2),
     0 0 40px color-mix(in srgb, var(--accent-color,var(--setup-accent)) 4%, transparent);
-  transition: box-shadow 0.5s ease;
   overflow: hidden;
+}
+.archive-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+.archive-drawer-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-faint);
+  transition: color 0.15s ease;
+}
+.archive-drawer-toggle:hover,
+.archive-drawer-toggle:focus-visible { color: var(--text); outline: none; }
+.archive-drawer-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.archive-drawer-chevron {
+  display: inline-flex;
+  line-height: 0;
+  transition: transform 0.2s ease;
+}
+.archive-drawer.is-collapsed .archive-drawer-chevron { transform: rotate(-90deg); }
+.archive-drawer.is-collapsed .archive-drawer-body { display: none; }
+.archive-drawer.is-collapsed { flex: 0 0 auto; }
+.archive-drawer-count {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-faint);
+  opacity: 0.7;
+  min-width: 16px;
+  text-align: right;
+}
+.archive-drawer-body {
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  padding-bottom: var(--space-2);
+}
+
+/* Collapsible groups within the drawer — compact, counted, bounded. */
+.archive-group { border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent); }
+.archive-group[open] > .archive-group-head .archive-group-chevron { transform: rotate(90deg); }
+.archive-group-head,
+.archive-subgroup-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.archive-group-head::-webkit-details-marker,
+.archive-subgroup-head::-webkit-details-marker { display: none; }
+.archive-group-head:hover,
+.archive-subgroup-head:hover { background: color-mix(in srgb, var(--accent-color,var(--setup-accent)) 5%, transparent); }
+.archive-group-chevron {
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  color: var(--text-faint);
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.archive-subgroup[open] > .archive-subgroup-head .archive-group-chevron { transform: rotate(90deg); }
+.archive-group-label {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.archive-subgroup-label {
+  flex: 1;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.75;
+}
+.archive-group-count {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent-color,var(--setup-accent));
+  opacity: 0.75;
+}
+.archive-group-count:empty { display: none; }
+/* Bounded internal scroll so no single group runs on forever. */
+.archive-group-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-bottom: var(--space-1);
+}
+.archive-subgroup { border-top: 1px solid color-mix(in srgb, var(--border) 20%, transparent); }
+.archive-subgroup-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-2);
 }
 
 .archive-title {
@@ -2008,14 +2218,13 @@ input, textarea { font: inherit; color: inherit; }
   text-align: center;
 }
 
-/* ── SGS in archive ──────────────────────────────────────────── */
+/* ── SGS — Gene Keys frequencies inside the persistent legend ──── */
 .room-sgs {
   display: flex;
   justify-content: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 6%, transparent);
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 4%, transparent);
   flex-wrap: wrap;
 }
 .room-sgs-item {
@@ -3866,93 +4075,12 @@ input, textarea { font: inherit; color: inherit; }
 }
 .fo-media-card-note { font-size: 10px; color: var(--text-faint); font-style: italic; opacity: 0.8; margin-top: 4px; }
 
-/* ── Archive collapse / expand ─────────────────────────────
-   The Archive column collapses to a slim rail so it stops
-   crowding the workspace. Collapsed state is a class on
-   .room-body; the rail expands it back into the full drawer. */
-.archive-rail { display: none; }
-.room-body.archive-collapsed {
-  grid-template-columns:
-    46px
-    minmax(0, 1fr)
-    var(--room-splitter-width)
-    minmax(220px, var(--nexus-width));
-}
-.room-body.archive-collapsed .archive-surface { display: none; }
-.room-body.archive-collapsed .archive-rail { display: flex; }
-
-.archive-rail {
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin: var(--space-4) 0 var(--space-4) var(--space-4);
-  padding: 12px 0;
-  width: 34px;
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 15%, var(--border));
-  background: color-mix(in srgb, var(--card) 65%, transparent);
-  backdrop-filter: blur(8px);
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-.archive-rail:hover,
-.archive-rail:focus-visible {
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
-  outline: none;
-}
-.archive-rail-label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.archive-collapse-btn {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 2px;
-  line-height: 0;
-  color: var(--text-faint);
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: color 0.15s ease;
-}
-.archive-collapse-btn:hover,
-.archive-collapse-btn:focus-visible { color: var(--text); outline: none; }
-
-@media (min-width: 901px) and (max-width: 1180px) {
-  .room-body.archive-collapsed {
-    grid-template-columns:
-      46px
-      minmax(0, 1fr)
-      var(--room-splitter-width)
-      minmax(220px, var(--nexus-width));
-  }
-}
-
-@media (max-width: 900px) {
-  .room-body.archive-collapsed { grid-template-columns: 1fr; }
-  .archive-rail {
-    flex-direction: row;
-    justify-content: center;
-    width: auto;
-    margin: var(--space-3) var(--space-4) 0;
-    padding: 9px 0;
-  }
-  .archive-rail-label { writing-mode: horizontal-tb; }
-}
-
 /* ── Archive action layer ──────────────────────────────────
    "What do you want to do with these files?" — future
    affordances only. Standard tools are generic; the Nexus
    action is visually distinguished as deeper interpretation. */
 .archive-actions-box {
-  margin: 0 var(--space-4) 12px;
+  margin: 0 var(--space-3) 12px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, var(--border));
   border-radius: var(--radius-md);
@@ -4003,11 +4131,10 @@ input, textarea { font: inherit; color: inherit; }
 }
 .archive-actions-note { font-size: 10px; color: var(--text-faint); font-style: italic; line-height: 1.4; margin: 0; opacity: 0.85; }
 
-/* Archive media groups — organise captured media by type. */
-.archive-media-group { margin-top: 8px; }
-.archive-media-group > .fo-media-list,
-.archive-media-group > #fo-list { padding: 0 var(--space-4); }
-.archive-media-group .archive-empty { padding: 0 var(--space-4) var(--space-2); }
+/* Empty states inside bounded group scrolls — keep them compact so a
+   run of "nothing yet" messages doesn't waste vertical space. */
+.archive-group-scroll .archive-empty,
+.archive-subgroup-scroll .archive-empty { padding: var(--space-2) 0; }
 
 /* ── Toast for placeholder feedback ────────────────────── */
 .concept-toast {
@@ -7808,87 +7935,150 @@ input, textarea { font: inherit; color: inherit; }
 
   <div class="room-body">
 
-    <!-- Archive (left panel) -->
+    <!-- Left context column: persistent Gene Keys legend + Archive drawer -->
     <div class="room-archive" id="room-archive">
-      <!-- Collapsed rail — a compact tab that expands the Archive drawer.
-           Shown only when .room-body has .archive-collapsed. -->
-      <button type="button" class="archive-rail" id="archive-rail-btn"
-              title="Open Archive" aria-label="Open Archive" aria-expanded="true">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
-        <span class="archive-rail-label">Archive</span>
-      </button>
-      <div class="archive-surface" id="archive-surface">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);position:sticky;top:0;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(4px);border-radius:var(--radius-xl) var(--radius-xl) 0 0;z-index:2;">
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Archive</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
-            <button type="button" class="archive-collapse-btn" id="archive-collapse-btn" title="Collapse Archive" aria-label="Collapse Archive">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
-            </button>
-          </div>
+
+      <!-- Gene Keys legend — the room's anchor. Always visible; stays put
+           when the Archive drawer below is collapsed or scrolled. -->
+      <div class="room-context-card" id="room-context-card">
+        <div class="room-context-card-head">
+          <span class="room-context-card-title">Gene Keys</span>
+          <button class="studio-info-btn" data-info="info-archive-overlay" title="About this room"><i>i</i></button>
         </div>
-        <div style="overflow-y:auto;flex:1;min-height:0;">
-          <div class="room-sgs" id="room-sgs">
-            <span style="font-size:var(--text-xs);color:var(--text-faint);font-style:italic;text-align:center;width:100%;">Enter Gene Key to see frequencies</span>
-          </div>
-          <div id="archive-compass-section" class="archive-section">
-            <div class="archive-section-label">From Compass</div>
-            <div id="archive-compass-items"></div>
-          </div>
-          <div class="archive-section">
-            <div class="archive-section-label">Sessions</div>
-            <div id="archive-studio-items"></div>
-            <div id="archive-session-log"></div>
-          </div>
-          <div class="archive-section" id="archive-field-observations">
-            <div class="archive-section-label">Field Observations</div>
-            <p style="font-size:11px;font-style:italic;color:var(--text-faint);line-height:1.5;margin:2px var(--space-4) 6px;">Browse and manage what you have captured. Create new observations in the central Field Observations surface.</p>
-            <p style="font-size:10px;color:var(--text-faint);line-height:1.5;margin:0 var(--space-4) 10px;opacity:0.8;">Nothing here enters Nexus automatically. Choose an observation when you are ready to bring it into the conversation.</p>
+        <div class="room-sgs" id="room-sgs">
+          <span style="font-size:var(--text-xs);color:var(--text-faint);font-style:italic;text-align:center;width:100%;">Enter Gene Key to see frequencies</span>
+        </div>
+      </div>
 
-            <!-- Action layer — appears when captured items exist. Future
-                 affordances only; nothing here runs yet. Standard tools are
-                 generic (they will later run without Nexus); interpretation
-                 is explicitly routed through Nexus and never automatic. -->
-            <div class="archive-actions-box" id="archive-actions-box" hidden>
-              <div class="archive-actions-title">What do you want to do with these files?</div>
-              <div class="archive-actions-group">
-                <span class="archive-actions-group-label">Standard tools</span>
-                <div class="archive-actions-row">
-                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
-                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Extract text <span class="soon">soon</span></button>
-                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
-                </div>
-                <p class="archive-actions-note">Standard extraction will run on its own — no Nexus required.</p>
-              </div>
-              <div class="archive-actions-group archive-actions-group--nexus">
-                <span class="archive-actions-group-label">Deeper interpretation</span>
-                <div class="archive-actions-row">
-                  <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Bring to Nexus for interpretation <span class="soon">soon</span></button>
-                </div>
-                <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
+      <!-- Archive — its own collapsible container beneath the legend.
+           Browse/manage only; nothing here enters Nexus automatically. -->
+      <div class="archive-drawer" id="archive-drawer">
+        <div class="archive-drawer-head">
+          <button type="button" class="archive-drawer-toggle" id="archive-drawer-toggle" aria-expanded="true" aria-controls="archive-drawer-body" title="Collapse or expand the Archive">
+            <span class="archive-drawer-chevron" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+            <span class="archive-drawer-title">Archive</span>
+            <span class="archive-drawer-count" id="archive-total-count" aria-hidden="true"></span>
+          </button>
+          <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
+        </div>
+
+        <div class="archive-drawer-body" id="archive-drawer-body">
+
+          <details class="archive-group" id="archive-grp-compass" open>
+            <summary class="archive-group-head">
+              <span class="archive-group-chevron" aria-hidden="true"></span>
+              <span class="archive-group-label">From Compass</span>
+              <span class="archive-group-count" id="archive-count-compass"></span>
+            </summary>
+            <div class="archive-group-scroll">
+              <div id="archive-compass-section" class="archive-section">
+                <div id="archive-compass-items"></div>
               </div>
             </div>
+          </details>
 
-            <div class="archive-media-group">
-              <div class="archive-section-label">Text observations</div>
-              <div id="fo-list"></div>
+          <details class="archive-group" id="archive-grp-sessions" open>
+            <summary class="archive-group-head">
+              <span class="archive-group-chevron" aria-hidden="true"></span>
+              <span class="archive-group-label">Sessions</span>
+              <span class="archive-group-count" id="archive-count-sessions"></span>
+            </summary>
+            <div class="archive-group-scroll">
+              <div class="archive-section">
+                <div id="archive-studio-items"></div>
+                <div id="archive-session-log"></div>
+              </div>
             </div>
-            <div class="archive-media-group">
-              <div class="archive-section-label">Images</div>
-              <div id="archive-media-image" class="fo-media-list"></div>
+          </details>
+
+          <details class="archive-group" id="archive-grp-fo" open>
+            <summary class="archive-group-head">
+              <span class="archive-group-chevron" aria-hidden="true"></span>
+              <span class="archive-group-label">Field Observations</span>
+              <span class="archive-group-count" id="archive-count-fo"></span>
+            </summary>
+            <div class="archive-group-scroll" id="archive-field-observations">
+              <p style="font-size:11px;font-style:italic;color:var(--text-faint);line-height:1.5;margin:2px 0 6px;">Browse and manage what you have captured. Create new observations in the central Field Observations surface.</p>
+              <p style="font-size:10px;color:var(--text-faint);line-height:1.5;margin:0 0 10px;opacity:0.8;">Nothing here enters Nexus automatically. Choose an observation when you are ready to bring it into the conversation.</p>
+
+              <!-- Action layer — appears when captured items exist. Future
+                   affordances only; nothing here runs yet. Standard tools are
+                   generic (they will later run without Nexus); interpretation
+                   is explicitly routed through Nexus and never automatic. -->
+              <div class="archive-actions-box" id="archive-actions-box" hidden>
+                <div class="archive-actions-title">What do you want to do with these files?</div>
+                <div class="archive-actions-group">
+                  <span class="archive-actions-group-label">Standard tools</span>
+                  <div class="archive-actions-row">
+                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
+                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Extract text <span class="soon">soon</span></button>
+                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
+                  </div>
+                  <p class="archive-actions-note">Standard extraction will run on its own — no Nexus required.</p>
+                </div>
+                <div class="archive-actions-group archive-actions-group--nexus">
+                  <span class="archive-actions-group-label">Deeper interpretation</span>
+                  <div class="archive-actions-row">
+                    <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Bring to Nexus for interpretation <span class="soon">soon</span></button>
+                  </div>
+                  <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
+                </div>
+              </div>
+
+              <details class="archive-subgroup" open>
+                <summary class="archive-subgroup-head">
+                  <span class="archive-group-chevron" aria-hidden="true"></span>
+                  <span class="archive-subgroup-label">Text observations</span>
+                  <span class="archive-group-count" id="archive-count-text"></span>
+                </summary>
+                <div class="archive-subgroup-scroll"><div id="fo-list"></div></div>
+              </details>
+              <details class="archive-subgroup" open>
+                <summary class="archive-subgroup-head">
+                  <span class="archive-group-chevron" aria-hidden="true"></span>
+                  <span class="archive-subgroup-label">Images</span>
+                  <span class="archive-group-count" id="archive-count-image"></span>
+                </summary>
+                <div class="archive-subgroup-scroll"><div id="archive-media-image" class="fo-media-list"></div></div>
+              </details>
+              <details class="archive-subgroup" open>
+                <summary class="archive-subgroup-head">
+                  <span class="archive-group-chevron" aria-hidden="true"></span>
+                  <span class="archive-subgroup-label">Audio</span>
+                  <span class="archive-group-count" id="archive-count-audio"></span>
+                </summary>
+                <div class="archive-subgroup-scroll"><div id="archive-media-audio" class="fo-media-list"></div></div>
+              </details>
+              <details class="archive-subgroup" open>
+                <summary class="archive-subgroup-head">
+                  <span class="archive-group-chevron" aria-hidden="true"></span>
+                  <span class="archive-subgroup-label">PDFs &amp; attachments</span>
+                  <span class="archive-group-count" id="archive-count-doc"></span>
+                </summary>
+                <div class="archive-subgroup-scroll"><div id="archive-media-doc" class="fo-media-list"></div></div>
+              </details>
             </div>
-            <div class="archive-media-group">
-              <div class="archive-section-label">Audio</div>
-              <div id="archive-media-audio" class="fo-media-list"></div>
-            </div>
-            <div class="archive-media-group">
-              <div class="archive-section-label">PDFs &amp; attachments</div>
-              <div id="archive-media-doc" class="fo-media-list"></div>
-            </div>
-          </div>
+          </details>
+
         </div>
       </div>
     </div>
+
+    <!-- Horizontal resizer between the left context column and Field Notes.
+         Pointer-draggable; arrow keys when focused. Writes --archive-width
+         onto .room-body. Hidden when the layout stacks (≤ 900px). -->
+    <div class="room-lsplitter"
+         id="room-lsplitter"
+         role="separator"
+         aria-orientation="vertical"
+         aria-controls="room-archive"
+         aria-label="Resize Archive / Field Notes split"
+         aria-valuemin="180"
+         aria-valuemax="480"
+         aria-valuenow="244"
+         tabindex="0"></div>
 
     <!-- Notepad (centre) -->
     <div class="room-workbench">
@@ -9924,6 +10114,8 @@ function renderArchive(roomKey) {
         </div>`;
     }
   }
+
+  if (typeof updateArchiveCounts === 'function') updateArchiveCounts();
 }
 
 function renderWorkbenchEntries(roomKey) {
@@ -11506,29 +11698,63 @@ function renderArchiveMedia() {
 // there is captured material (text or media) to act on.
 function updateArchiveActionsBox() {
   const box = document.getElementById('archive-actions-box');
-  if (!box) return;
-  const has = (state.fieldObservations || []).length || (state.fieldObservationMedia || []).length;
-  box.hidden = !has;
+  if (box) {
+    const has = (state.fieldObservations || []).length || (state.fieldObservationMedia || []).length;
+    box.hidden = !has;
+  }
+  if (typeof updateArchiveCounts === 'function') updateArchiveCounts();
 }
 
-// Collapse/expand the Archive drawer. Collapsed state is a class on .room-body
-// (so the grid track narrows to a rail) and is remembered across sessions.
+// Collapse/expand the Archive drawer. This now toggles a class on the
+// drawer itself (not the whole column) so the Gene Keys legend above it
+// stays visible either way. State is remembered across sessions.
 function initArchiveCollapse() {
-  const body = document.querySelector('.room-body');
-  if (!body) return;
-  const collapseBtn = document.getElementById('archive-collapse-btn');
-  const railBtn = document.getElementById('archive-rail-btn');
+  const drawer = document.getElementById('archive-drawer');
+  const toggle = document.getElementById('archive-drawer-toggle');
+  if (!drawer || !toggle) return;
   const KEY = 'studioArchiveCollapsed';
   const apply = (collapsed) => {
-    body.classList.toggle('archive-collapsed', collapsed);
-    if (railBtn) railBtn.setAttribute('aria-expanded', String(!collapsed));
+    drawer.classList.toggle('is-collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
     try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (_) {}
   };
   let start = false;
   try { start = localStorage.getItem(KEY) === '1'; } catch (_) {}
   apply(start);
-  if (collapseBtn) collapseBtn.addEventListener('click', () => apply(true));
-  if (railBtn) railBtn.addEventListener('click', () => apply(false));
+  toggle.addEventListener('click', () => apply(!drawer.classList.contains('is-collapsed')));
+}
+
+// Group count badges — keep the collapsed drawer scannable and show how
+// much sits inside each group without expanding it. Called by the render
+// functions whenever their underlying data changes.
+function setArchiveCount(id, n) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = n > 0 ? String(n) : '';
+}
+function updateArchiveCounts() {
+  const media = state.fieldObservationMedia || [];
+  const byKind = { image: 0, audio: 0, doc: 0 };
+  media.forEach(m => {
+    const k = String(m.media_kind || 'other');
+    if (k === 'image') byKind.image++;
+    else if (k === 'audio') byKind.audio++;
+    else byKind.doc++;
+  });
+  const textCount = (state.fieldObservations || []).length;
+  setArchiveCount('archive-count-text', textCount);
+  setArchiveCount('archive-count-image', byKind.image);
+  setArchiveCount('archive-count-audio', byKind.audio);
+  setArchiveCount('archive-count-doc', byKind.doc);
+  const foTotal = textCount + byKind.image + byKind.audio + byKind.doc;
+  setArchiveCount('archive-count-fo', foTotal);
+
+  const compassCount = document.querySelectorAll('#archive-compass-items .archive-item').length;
+  setArchiveCount('archive-count-compass', compassCount);
+  const sessionCount = document.querySelectorAll('#archive-studio-items .archive-item').length;
+  setArchiveCount('archive-count-sessions', sessionCount);
+
+  const total = foTotal + compassCount + sessionCount;
+  setArchiveCount('archive-total-count', total);
 }
 
 async function studioUploadFieldObservationMedia(files) {
@@ -19875,6 +20101,162 @@ if (document.readyState === 'loading') {
     MIN_NOTEPAD: MIN_NOTEPAD,
     apply:       function (px) { return applyWidth(px, { persist: true }); },
     current:     currentNexusPx,
+    clamp:       clampWidth
+  };
+})();
+
+// ============================================================
+// ARCHIVE SPLITTER — horizontal resize between the context
+// column (Gene Keys legend + Archive) and Field Notes.
+// ============================================================
+// Mirrors the Nexus splitter but on the left. Drag the gutter (or
+// focus + arrow keys) to give the central Field Observations
+// workspace more room. The gutter writes a px value into
+// --archive-width on .room-body — the grid template reads it. The
+// width persists across reloads via localStorage. Hidden under the
+// 900px breakpoint (the room layout stacks single-column).
+(function () {
+  'use strict';
+  var STORAGE_KEY = 'cu.studio.archiveWidth';
+  var MIN_ARCHIVE = 180;     // px — context column never collapses below this
+  var MAX_ARCHIVE = 480;     // px — never let it dominate the room
+  var MIN_NOTEPAD = 320;     // px — Field Notes never falls under this
+  var DEFAULT_ARCHIVE = 244; // px — matches the CSS var default
+  var KEY_STEP = 16;
+  var KEY_STEP_BIG = 64;
+
+  function getRoot()      { return document.querySelector('.room-body'); }
+  function getSplitter()  { return document.getElementById('room-lsplitter'); }
+  function getArchive()   { return document.getElementById('room-archive'); }
+  function isStacked() {
+    try { return window.matchMedia('(max-width: 900px)').matches; }
+    catch (_) { return window.innerWidth <= 900; }
+  }
+  function clampWidth(px) {
+    var root = getRoot();
+    if (!root) return px;
+    var rect = root.getBoundingClientRect();
+    // Reserve the notepad minimum, both gutters (12px) and the Nexus
+    // track (pull its live width so the clamp stays honest as the user
+    // resizes the right split too).
+    var nexus = 340;
+    var mirror = document.getElementById('room-mirror');
+    if (mirror) {
+      var w = mirror.getBoundingClientRect().width;
+      if (isFinite(w) && w > 0) nexus = w;
+    }
+    var maxFromViewport = rect.width - nexus - MIN_NOTEPAD - 12;
+    var hardMax = Math.max(MIN_ARCHIVE, Math.min(MAX_ARCHIVE, maxFromViewport));
+    if (!isFinite(hardMax) || hardMax < MIN_ARCHIVE) hardMax = MIN_ARCHIVE;
+    return Math.max(MIN_ARCHIVE, Math.min(hardMax, px));
+  }
+  function readStored() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var n = parseFloat(raw);
+      return isFinite(n) ? n : null;
+    } catch (_) { return null; }
+  }
+  function writeStored(px) {
+    try { window.localStorage.setItem(STORAGE_KEY, String(Math.round(px))); }
+    catch (_) {}
+  }
+  function applyWidth(px, opts) {
+    opts = opts || {};
+    var root = getRoot();
+    var splitter = getSplitter();
+    if (!root) return null;
+    var clamped = clampWidth(px);
+    root.style.setProperty('--archive-width', clamped + 'px');
+    if (splitter) splitter.setAttribute('aria-valuenow', String(Math.round(clamped)));
+    if (opts.persist) writeStored(clamped);
+    return clamped;
+  }
+  function currentArchivePx() {
+    var archive = getArchive();
+    if (archive) return archive.getBoundingClientRect().width;
+    var stored = readStored();
+    return stored || DEFAULT_ARCHIVE;
+  }
+
+  function bind() {
+    var splitter = getSplitter();
+    var root = getRoot();
+    if (!splitter || !root) return;
+
+    var stored = readStored();
+    if (stored != null) applyWidth(stored, { persist: false });
+
+    var dragState = null;
+    splitter.addEventListener('pointerdown', function (e) {
+      if (isStacked()) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      var rootRect = root.getBoundingClientRect();
+      // Archive column starts at the left edge of .room-body.
+      // New archive width = (pointer X) - (room-body left edge).
+      dragState = { pointerId: e.pointerId, leftEdge: rootRect.left };
+      splitter.classList.add('is-dragging');
+      document.body.style.cursor = 'col-resize';
+      try { splitter.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    });
+    splitter.addEventListener('pointermove', function (e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      var newArchive = e.clientX - dragState.leftEdge;
+      applyWidth(newArchive, { persist: false });
+    });
+    function endDrag(e) {
+      if (!dragState) return;
+      if (e && e.pointerId !== dragState.pointerId) return;
+      splitter.classList.remove('is-dragging');
+      document.body.style.cursor = '';
+      try { splitter.releasePointerCapture(dragState.pointerId); } catch (_) {}
+      dragState = null;
+      writeStored(currentArchivePx());
+    }
+    splitter.addEventListener('pointerup',     endDrag);
+    splitter.addEventListener('pointercancel', endDrag);
+
+    splitter.addEventListener('keydown', function (e) {
+      if (isStacked()) return;
+      var step = e.shiftKey ? KEY_STEP_BIG : KEY_STEP;
+      var current = currentArchivePx();
+      var next = null;
+      if (e.key === 'ArrowRight') next = current + step;   // grow Archive
+      if (e.key === 'ArrowLeft')  next = current - step;   // shrink Archive (more room for Field Notes)
+      if (e.key === 'Home')       next = MIN_ARCHIVE;
+      if (e.key === 'End')        next = MAX_ARCHIVE;
+      if (e.key === 'Enter' || e.key === ' ') next = DEFAULT_ARCHIVE;
+      if (next == null) return;
+      e.preventDefault();
+      applyWidth(next, { persist: true });
+    });
+
+    var resizeRaf = 0;
+    window.addEventListener('resize', function () {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(function () {
+        resizeRaf = 0;
+        if (isStacked()) return;
+        applyWidth(currentArchivePx(), { persist: false });
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+
+  window.CommonUnity = window.CommonUnity || {};
+  window.CommonUnity.archiveSplitter = {
+    STORAGE_KEY: STORAGE_KEY,
+    MIN_ARCHIVE: MIN_ARCHIVE,
+    MAX_ARCHIVE: MAX_ARCHIVE,
+    apply:       function (px) { return applyWidth(px, { persist: true }); },
+    current:     currentArchivePx,
     clamp:       clampWidth
   };
 })();
