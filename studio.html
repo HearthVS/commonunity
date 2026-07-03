@@ -3866,6 +3866,149 @@ input, textarea { font: inherit; color: inherit; }
 }
 .fo-media-card-note { font-size: 10px; color: var(--text-faint); font-style: italic; opacity: 0.8; margin-top: 4px; }
 
+/* ── Archive collapse / expand ─────────────────────────────
+   The Archive column collapses to a slim rail so it stops
+   crowding the workspace. Collapsed state is a class on
+   .room-body; the rail expands it back into the full drawer. */
+.archive-rail { display: none; }
+.room-body.archive-collapsed {
+  grid-template-columns:
+    46px
+    minmax(0, 1fr)
+    var(--room-splitter-width)
+    minmax(220px, var(--nexus-width));
+}
+.room-body.archive-collapsed .archive-surface { display: none; }
+.room-body.archive-collapsed .archive-rail { display: flex; }
+
+.archive-rail {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: var(--space-4) 0 var(--space-4) var(--space-4);
+  padding: 12px 0;
+  width: 34px;
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--accent-color,var(--setup-accent)) 15%, var(--border));
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.archive-rail:hover,
+.archive-rail:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 45%, transparent);
+  outline: none;
+}
+.archive-rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.archive-collapse-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 2px;
+  line-height: 0;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: color 0.15s ease;
+}
+.archive-collapse-btn:hover,
+.archive-collapse-btn:focus-visible { color: var(--text); outline: none; }
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .room-body.archive-collapsed {
+    grid-template-columns:
+      46px
+      minmax(0, 1fr)
+      var(--room-splitter-width)
+      minmax(220px, var(--nexus-width));
+  }
+}
+
+@media (max-width: 900px) {
+  .room-body.archive-collapsed { grid-template-columns: 1fr; }
+  .archive-rail {
+    flex-direction: row;
+    justify-content: center;
+    width: auto;
+    margin: var(--space-3) var(--space-4) 0;
+    padding: 9px 0;
+  }
+  .archive-rail-label { writing-mode: horizontal-tb; }
+}
+
+/* ── Archive action layer ──────────────────────────────────
+   "What do you want to do with these files?" — future
+   affordances only. Standard tools are generic; the Nexus
+   action is visually distinguished as deeper interpretation. */
+.archive-actions-box {
+  margin: 0 var(--space-4) 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--rose-color,#c4b5fd) 30%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 6%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.archive-actions-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.archive-actions-group { display: flex; flex-direction: column; gap: 6px; }
+.archive-actions-group-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.archive-actions-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.archive-action-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 6px 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+.archive-action-btn--nexus {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent);
+  color: var(--text);
+}
+.archive-action-btn .soon {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent);
+  color: var(--text-faint);
+}
+.archive-actions-note { font-size: 10px; color: var(--text-faint); font-style: italic; line-height: 1.4; margin: 0; opacity: 0.85; }
+
+/* Archive media groups — organise captured media by type. */
+.archive-media-group { margin-top: 8px; }
+.archive-media-group > .fo-media-list,
+.archive-media-group > #fo-list { padding: 0 var(--space-4); }
+.archive-media-group .archive-empty { padding: 0 var(--space-4) var(--space-2); }
+
 /* ── Toast for placeholder feedback ────────────────────── */
 .concept-toast {
   position: fixed;
@@ -7666,11 +7809,23 @@ input, textarea { font: inherit; color: inherit; }
   <div class="room-body">
 
     <!-- Archive (left panel) -->
-    <div class="room-archive">
-      <div class="archive-surface">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);position:sticky;top:0;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(4px);border-radius:var(--radius-xl) var(--radius-xl) 0 0;">
+    <div class="room-archive" id="room-archive">
+      <!-- Collapsed rail — a compact tab that expands the Archive drawer.
+           Shown only when .room-body has .archive-collapsed. -->
+      <button type="button" class="archive-rail" id="archive-rail-btn"
+              title="Open Archive" aria-label="Open Archive" aria-expanded="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
+        <span class="archive-rail-label">Archive</span>
+      </button>
+      <div class="archive-surface" id="archive-surface">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);position:sticky;top:0;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(4px);border-radius:var(--radius-xl) var(--radius-xl) 0 0;z-index:2;">
           <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Archive</span>
-          <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="studio-info-btn" data-info="info-archive-overlay" title="About the Archive"><i>i</i></button>
+            <button type="button" class="archive-collapse-btn" id="archive-collapse-btn" title="Collapse Archive" aria-label="Collapse Archive">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+          </div>
         </div>
         <div style="overflow-y:auto;flex:1;min-height:0;">
           <div class="room-sgs" id="room-sgs">
@@ -7686,22 +7841,50 @@ input, textarea { font: inherit; color: inherit; }
             <div id="archive-session-log"></div>
           </div>
           <div class="archive-section" id="archive-field-observations">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="archive-section-label">Field Observations</div>
+            <div class="archive-section-label">Field Observations</div>
+            <p style="font-size:11px;font-style:italic;color:var(--text-faint);line-height:1.5;margin:2px var(--space-4) 6px;">Browse and manage what you have captured. Create new observations in the central Field Observations surface.</p>
+            <p style="font-size:10px;color:var(--text-faint);line-height:1.5;margin:0 var(--space-4) 10px;opacity:0.8;">Nothing here enters Nexus automatically. Choose an observation when you are ready to bring it into the conversation.</p>
+
+            <!-- Action layer — appears when captured items exist. Future
+                 affordances only; nothing here runs yet. Standard tools are
+                 generic (they will later run without Nexus); interpretation
+                 is explicitly routed through Nexus and never automatic. -->
+            <div class="archive-actions-box" id="archive-actions-box" hidden>
+              <div class="archive-actions-title">What do you want to do with these files?</div>
+              <div class="archive-actions-group">
+                <span class="archive-actions-group-label">Standard tools</span>
+                <div class="archive-actions-row">
+                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
+                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Extract text <span class="soon">soon</span></button>
+                  <button type="button" class="archive-action-btn" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
+                </div>
+                <p class="archive-actions-note">Standard extraction will run on its own — no Nexus required.</p>
+              </div>
+              <div class="archive-actions-group archive-actions-group--nexus">
+                <span class="archive-actions-group-label">Deeper interpretation</span>
+                <div class="archive-actions-row">
+                  <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Bring to Nexus for interpretation <span class="soon">soon</span></button>
+                </div>
+                <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
+              </div>
             </div>
-            <p style="font-size:11px;font-style:italic;color:var(--text-faint);line-height:1.5;margin:2px 0 6px;">Observe widely. Bring forward intentionally.</p>
-            <p style="font-size:10px;color:var(--text-faint);line-height:1.5;margin:0 0 10px;opacity:0.8;">Nothing here enters Nexus automatically. Choose an observation when you are ready to bring it into the conversation.</p>
-            <form id="fo-form" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;" autocomplete="off">
-              <input type="text" id="fo-title" placeholder="Title (optional)"
-                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);">
-              <input type="text" id="fo-source" placeholder="Source / context (optional)"
-                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);">
-              <textarea id="fo-body" rows="3" placeholder="What did you observe? (required)"
-                style="font-size:12px;padding:6px 8px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--card) 60%,transparent);color:var(--text);resize:vertical;font-family:inherit;"></textarea>
-              <button type="submit" id="fo-save-btn"
-                style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:7px 10px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);background:color-mix(in srgb,var(--card) 80%,transparent);color:var(--text);cursor:pointer;">Save observation</button>
-            </form>
-            <div id="fo-list"></div>
+
+            <div class="archive-media-group">
+              <div class="archive-section-label">Text observations</div>
+              <div id="fo-list"></div>
+            </div>
+            <div class="archive-media-group">
+              <div class="archive-section-label">Images</div>
+              <div id="archive-media-image" class="fo-media-list"></div>
+            </div>
+            <div class="archive-media-group">
+              <div class="archive-section-label">Audio</div>
+              <div id="archive-media-audio" class="fo-media-list"></div>
+            </div>
+            <div class="archive-media-group">
+              <div class="archive-section-label">PDFs &amp; attachments</div>
+              <div id="archive-media-doc" class="fo-media-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -11107,10 +11290,11 @@ async function studioLoadFieldObservations() {
 
 function studioRenderFieldObservations() {
   const list = document.getElementById('fo-list');
+  updateArchiveActionsBox();
   if (!list) return;
   const items = state.fieldObservations || [];
   if (!items.length) {
-    list.innerHTML = '<p style="font-size:11px;color:var(--text-faint);font-style:italic;opacity:0.7;">No observations yet.</p>';
+    list.innerHTML = '<p class="archive-empty">No text observations yet.</p>';
     return;
   }
   list.innerHTML = items.map(o => {
@@ -11135,37 +11319,6 @@ function studioRenderFieldObservations() {
   list.querySelectorAll('.fo-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
   });
-}
-
-async function studioCreateFieldObservation(e) {
-  if (e) e.preventDefault();
-  const bodyEl = document.getElementById('fo-body');
-  const titleEl = document.getElementById('fo-title');
-  const srcEl = document.getElementById('fo-source');
-  const body = (bodyEl.value || '').trim();
-  if (!body) { if (typeof showToast === 'function') showToast('An observation needs a body.'); bodyEl.focus(); return; }
-  const btn = document.getElementById('fo-save-btn');
-  if (btn) btn.disabled = true;
-  try {
-    const res = await fetch(`${API_BASE}/api/studio/field-observations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        body,
-        title: (titleEl.value || '').trim(),
-        source_label: (srcEl.value || '').trim(),
-        cipher_id: foCipherId()
-      })
-    });
-    if (!res.ok) throw new Error('save failed');
-    bodyEl.value = ''; titleEl.value = ''; srcEl.value = '';
-    await studioLoadFieldObservations();
-    if (typeof showToast === 'function') showToast('Observation saved.');
-  } catch (_) {
-    if (typeof showToast === 'function') showToast('Could not save observation.');
-  } finally {
-    if (btn) btn.disabled = false;
-  }
 }
 
 async function studioDeleteFieldObservation(id) {
@@ -11283,6 +11436,99 @@ function studioRenderFieldObservationMedia() {
   list.querySelectorAll('.fo-media-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
   });
+  renderArchiveMedia();
+}
+
+// ── Archive — browse/manage view of captured media, grouped by type ─────────
+// Reads the same member-scoped media state as the central capture surface and
+// renders it into the Archive drawer under Images / Audio / PDFs. Browse and
+// delete only — capture stays on the central surface, and nothing here calls
+// Nexus or any processing.
+function foArchiveMediaCard(m) {
+  const id = studioNexusEscape(m.id);
+  const name = studioNexusEscape(String(m.filename || '').trim() || 'Untitled');
+  const kind = String(m.media_kind || 'other');
+  const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
+  const size = foFormatBytes(m.byte_size);
+  const url = foMediaFileUrl(m.id);
+  let body = '';
+  if (kind === 'image') {
+    body = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
+  } else if (kind === 'audio') {
+    body = `<audio controls preload="none" src="${studioNexusEscape(url)}"></audio>`;
+  } else {
+    body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
+  }
+  return `<div class="fo-media-card">
+    <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+    <div class="fo-media-card-name">${name}</div>
+    ${body}
+    <div class="fo-media-card-actions">
+      <button type="button" class="archive-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
+    </div>
+  </div>`;
+}
+
+function renderArchiveMedia() {
+  const groups = {
+    image: document.getElementById('archive-media-image'),
+    audio: document.getElementById('archive-media-audio'),
+    doc: document.getElementById('archive-media-doc')
+  };
+  if (!groups.image && !groups.audio && !groups.doc) return;
+  const items = state.fieldObservationMedia || [];
+  const byKind = { image: [], audio: [], doc: [] };
+  items.forEach(m => {
+    const k = String(m.media_kind || 'other');
+    if (k === 'image') byKind.image.push(m);
+    else if (k === 'audio') byKind.audio.push(m);
+    else byKind.doc.push(m);
+  });
+  const empties = {
+    image: 'No images yet.',
+    audio: 'No audio yet.',
+    doc: 'No PDFs or attachments yet.'
+  };
+  Object.keys(groups).forEach(k => {
+    const el = groups[k];
+    if (!el) return;
+    el.innerHTML = byKind[k].length
+      ? byKind[k].map(foArchiveMediaCard).join('')
+      : `<p class="archive-empty">${empties[k]}</p>`;
+    el.querySelectorAll('.archive-media-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
+    });
+  });
+  updateArchiveActionsBox();
+}
+
+// Show the "What do you want to do with these files?" action layer only when
+// there is captured material (text or media) to act on.
+function updateArchiveActionsBox() {
+  const box = document.getElementById('archive-actions-box');
+  if (!box) return;
+  const has = (state.fieldObservations || []).length || (state.fieldObservationMedia || []).length;
+  box.hidden = !has;
+}
+
+// Collapse/expand the Archive drawer. Collapsed state is a class on .room-body
+// (so the grid track narrows to a rail) and is remembered across sessions.
+function initArchiveCollapse() {
+  const body = document.querySelector('.room-body');
+  if (!body) return;
+  const collapseBtn = document.getElementById('archive-collapse-btn');
+  const railBtn = document.getElementById('archive-rail-btn');
+  const KEY = 'studioArchiveCollapsed';
+  const apply = (collapsed) => {
+    body.classList.toggle('archive-collapsed', collapsed);
+    if (railBtn) railBtn.setAttribute('aria-expanded', String(!collapsed));
+    try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (_) {}
+  };
+  let start = false;
+  try { start = localStorage.getItem(KEY) === '1'; } catch (_) {}
+  apply(start);
+  if (collapseBtn) collapseBtn.addEventListener('click', () => apply(true));
+  if (railBtn) railBtn.addEventListener('click', () => apply(false));
 }
 
 async function studioUploadFieldObservationMedia(files) {
@@ -11364,8 +11610,7 @@ document.addEventListener('DOMContentLoaded', () => {
   studioLoadGoldenThread();
   studioLoadFieldObservations();
   initFieldObservationMedia();
-  const foForm = document.getElementById('fo-form');
-  if (foForm) foForm.addEventListener('submit', studioCreateFieldObservation);
+  initArchiveCollapse();
   initPortalTooltips();
   initInfoPopups();
   initStudioJSON();
