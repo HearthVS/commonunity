@@ -8009,6 +8009,13 @@ input, textarea { font: inherit; color: inherit; }
                    is explicitly routed through Nexus and never automatic. -->
               <div class="archive-actions-box" id="archive-actions-box" hidden>
                 <div class="archive-actions-title">What do you want to do with these files?</div>
+                <div class="archive-actions-group archive-actions-group--nexus" id="archive-actions-selected-text" hidden>
+                  <span class="archive-actions-group-label">Selected text observations</span>
+                  <div class="archive-actions-row">
+                    <button type="button" class="archive-action-btn archive-action-btn--nexus" id="archive-bring-selected-text" disabled aria-disabled="true">Bring selected text to Nexus</button>
+                  </div>
+                  <p class="archive-actions-note">Tick one or more text observations below, then bring them across. This fills the Nexus input for you to review — nothing is sent automatically.</p>
+                </div>
                 <div class="archive-actions-group">
                   <span class="archive-actions-group-label">Standard tools</span>
                   <div class="archive-actions-row">
@@ -11464,6 +11471,11 @@ async function studioSaveGoldenThread(content) {
 // an observation into Nexus is deliberate and client-side — it only populates
 // the Nexus input; it never sends or calls the AI.
 
+// Ids of text observations the member has ticked in the Archive. Selection is
+// client-only and used solely to build a Nexus hand-off prompt; it is never
+// persisted or sent anywhere on its own.
+const studioSelectedTextObs = new Set();
+
 function foCipherId() {
   const ci = (typeof studioCipherIdentity === 'function') ? studioCipherIdentity() : null;
   return (ci && ci.cipher_id) || '';
@@ -11489,14 +11501,23 @@ function studioRenderFieldObservations() {
     list.innerHTML = '<p class="archive-empty">No text observations yet.</p>';
     return;
   }
+  // Prune any selected ids that no longer exist so stale selections cannot
+  // survive deletes or member scope changes.
+  const liveIds = new Set(items.map(o => String(o.id)));
+  studioSelectedTextObs.forEach(id => { if (!liveIds.has(id)) studioSelectedTextObs.delete(id); });
   list.innerHTML = items.map(o => {
+    const idStr = String(o.id);
     const body = String(o.body || '');
     const title = String(o.title || '').trim() || body.split('\n')[0].slice(0, 60);
     const date = o.created_at ? String(o.created_at).slice(0, 10) : '';
     const preview = body.length > 220 ? body.slice(0, 220) + '…' : body;
     const src = String(o.source_label || '').trim();
+    const checked = studioSelectedTextObs.has(idStr) ? ' checked' : '';
     return `<div class="fo-card" style="border:1px solid color-mix(in srgb,var(--border) 55%,transparent);border-radius:var(--radius-md);padding:8px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--card) 55%,transparent);">
-      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;">${studioNexusEscape(title)}</div>
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" class="fo-select-checkbox" data-id="${studioNexusEscape(o.id)}" aria-label="Select this text observation to bring to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
+        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;flex:1 1 auto;">${studioNexusEscape(title)}</div>
+      </div>
       <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin:2px 0 6px;">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
       <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;">${studioNexusEscape(preview)}</div>
       <div style="display:flex;gap:8px;margin-top:8px;">
@@ -11505,12 +11526,20 @@ function studioRenderFieldObservations() {
       </div>
     </div>`;
   }).join('');
+  list.querySelectorAll('.fo-select-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = String(cb.dataset.id);
+      if (cb.checked) studioSelectedTextObs.add(id); else studioSelectedTextObs.delete(id);
+      updateArchiveSelectionUI();
+    });
+  });
   list.querySelectorAll('.fo-bring-btn').forEach(btn => {
     btn.addEventListener('click', () => studioBringObservationIntoNexus(btn.dataset.id));
   });
   list.querySelectorAll('.fo-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
   });
+  updateArchiveSelectionUI();
 }
 
 async function studioDeleteFieldObservation(id) {
@@ -11533,12 +11562,22 @@ async function studioDeleteFieldObservation(id) {
 function studioBringObservationIntoNexus(id) {
   const obs = (state.fieldObservations || []).find(o => o.id === id);
   if (!obs) return;
-  if (!currentRoom) {
-    if (typeof showToast === 'function') showToast('Enter a room to bring this into Nexus.');
-    return;
-  }
   const title = String(obs.title || '').trim() || String(obs.body || '').split('\n')[0].slice(0, 60);
   const text = `I want to bring this Field Observation into Nexus:\n\n${title}\n${String(obs.body || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
+  if (studioPopulateNexusInput(text)) {
+    if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
+  }
+}
+
+// Fill the Nexus input with a framed prompt and reveal/focus it — the single
+// trust boundary shared by both the per-card and multi-select hand-offs. It
+// only populates the input: never submits, never calls the AI or /rose-mirror.
+// Returns false (with a toast) when there is no room to bring the text into.
+function studioPopulateNexusInput(text) {
+  if (!currentRoom) {
+    if (typeof showToast === 'function') showToast('Enter a room to bring this into Nexus.');
+    return false;
+  }
   // Reveal the Nexus input without firing the AI opening question (instant=true
   // skips initRoomRose). No message is sent.
   const mirror = document.getElementById('room-mirror');
@@ -11555,7 +11594,49 @@ function studioBringObservationIntoNexus(id) {
     input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; }, 60);
   }
-  if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
+  return true;
+}
+
+// Multi-select hand-off: gather every ticked text observation (in list order)
+// into one framed prompt and populate the Nexus input. Like the single-item
+// path this only fills the input — it never submits or invokes the AI.
+function studioBringSelectedTextToNexus() {
+  const items = (state.fieldObservations || []).filter(o => studioSelectedTextObs.has(String(o.id)));
+  if (!items.length) return;
+  const blocks = items.map((o, i) => {
+    const title = String(o.title || '').trim() || String(o.body || '').split('\n')[0].slice(0, 60);
+    return `${i + 1}. ${title}\n${String(o.body || '')}`;
+  }).join('\n\n');
+  const lead = items.length === 1
+    ? 'I want to bring this Field Observation into Nexus:'
+    : `I want to bring these ${items.length} Field Observations into Nexus:`;
+  const text = `${lead}\n\n${blocks}\n\nHelp me sit with what is here, notice the pattern across them, and choose what wants to become next.`;
+  if (studioPopulateNexusInput(text)) {
+    if (typeof showToast === 'function') {
+      showToast(`Added ${items.length} observation${items.length === 1 ? '' : 's'} to Nexus — edit, then send when ready.`);
+    }
+  }
+}
+
+// Reflect the current text selection into the Archive action layer: reveal the
+// selected-text group, enable/label its button by count, and wire the button
+// once. Enabled only when at least one live text observation is ticked.
+function updateArchiveSelectionUI() {
+  const group = document.getElementById('archive-actions-selected-text');
+  const btn = document.getElementById('archive-bring-selected-text');
+  const liveIds = new Set((state.fieldObservations || []).map(o => String(o.id)));
+  let count = 0;
+  studioSelectedTextObs.forEach(id => { if (liveIds.has(id)) count += 1; });
+  if (group) group.hidden = liveIds.size === 0;
+  if (btn) {
+    btn.disabled = count === 0;
+    btn.setAttribute('aria-disabled', String(count === 0));
+    btn.textContent = count > 0 ? `Bring selected text to Nexus (${count})` : 'Bring selected text to Nexus';
+    if (!btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', () => { if (!btn.disabled) studioBringSelectedTextToNexus(); });
+    }
+  }
 }
 
 // ── Field Observations — multimodal media ───────────────────────────────────
