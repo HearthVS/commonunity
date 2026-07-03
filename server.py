@@ -1401,6 +1401,41 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_field_observations_invite_created "
         "ON field_observations(invite_token, created_at DESC)"
     )
+    # ── Field Observation attachments (multimodal media) ──────────────────
+    # Member-scoped media captured on the central Field Observations surface:
+    # images, audio, and (optionally) documents. Scoped exactly like
+    # field_observations — the pseudonymous cipher_id is the primary member key,
+    # with the signed invite-token cookie as the fallback binding. The raw bytes
+    # live on disk under a per-install media dir with a server-generated random
+    # stored_name (never the client filename), so there is no path-traversal or
+    # collision surface. Nothing here is sent to Nexus or the AI automatically:
+    # media is captured, listed, and previewed only.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS field_observation_media (
+            id TEXT PRIMARY KEY,
+            cipher_id TEXT NOT NULL DEFAULT '',
+            invite_token TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL DEFAULT '',
+            source_label TEXT NOT NULL DEFAULT '',
+            filename TEXT NOT NULL DEFAULT '',
+            stored_name TEXT NOT NULL,
+            content_type TEXT NOT NULL DEFAULT '',
+            media_kind TEXT NOT NULL DEFAULT 'other',
+            byte_size INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observation_media_cipher_created "
+        "ON field_observation_media(cipher_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_field_observation_media_invite_created "
+        "ON field_observation_media(invite_token, created_at DESC)"
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS token_log (
@@ -5006,6 +5041,248 @@ async def delete_field_observation(observation_id: str, req: Request, cipher_id:
             raise HTTPException(status_code=403, detail="forbidden")
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
+
+
+# ── Field Observation media (multimodal attachments) ──────────────────────────
+# The central Field Observations surface accepts images, audio, and documents as
+# first-class observations. Storage mirrors the field_observations trust model:
+# member-scoped by cipher_id (invite-token cookie fallback), no unfiltered read
+# branch, and delete/download only ever match the caller's own rows. Raw bytes
+# are written to a per-install media directory under a server-generated random
+# stored_name — the client filename is metadata only and is never used to build
+# a path, so there is no traversal surface. Nothing here is auto-sent to Nexus or
+# handed to the AI: this iteration captures, lists, previews, and deletes only.
+
+# Accepted upload types, keyed by media_kind. Extend cautiously — every type
+# here is served back to the browser, so keep to inert, previewable media.
+_FO_MEDIA_TYPES: dict[str, str] = {
+    # images
+    "image/png": "image",
+    "image/jpeg": "image",
+    "image/webp": "image",
+    "image/gif": "image",
+    # audio
+    "audio/mpeg": "audio",
+    "audio/mp3": "audio",
+    "audio/wav": "audio",
+    "audio/x-wav": "audio",
+    "audio/ogg": "audio",
+    "audio/webm": "audio",
+    "audio/mp4": "audio",
+    "audio/aac": "audio",
+    # documents
+    "application/pdf": "document",
+}
+_FO_MEDIA_MAX_BYTES = 25 * 1024 * 1024  # 25 MB per file
+
+
+def _fo_media_dir() -> pathlib.Path:
+    """Per-install directory holding Field Observation media bytes. Lives beside
+    the admin DB so it shares the same persistent volume in deployment."""
+    d = _admin_db_path().parent / "field_observation_media"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _fo_media_row_to_public(row: sqlite3.Row) -> dict:
+    """Serialise a media row for the owning member. The invite_token is a
+    per-caller secret binding, not member-facing data, so it is dropped. The
+    on-disk stored_name is withheld too — clients address media only by id."""
+    d = _row_to_dict(row) or {}
+    d.pop("invite_token", None)
+    d.pop("stored_name", None)
+    return d
+
+
+@app.post("/api/studio/field-observations/attachments")
+async def upload_field_observation_media(
+    req: Request,
+    file: UploadFile = File(...),
+    title: str = Form(default=""),
+    source_label: str = Form(default=""),
+    cipher_id: str = Form(default=""),
+):
+    """Capture a multimodal Field Observation (image / audio / document).
+
+    Member-scoped and validated: only whitelisted content types up to 25 MB are
+    accepted, bytes are written under a random server-generated name, and the row
+    is bound to the caller's own cipher_id / invite token."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    content_type = (file.content_type or "").split(";")[0].strip().lower()
+    media_kind = _FO_MEDIA_TYPES.get(content_type)
+    if not media_kind:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Accepted: images (PNG, JPEG, WebP, GIF), "
+                   "audio (MP3, WAV, OGG, M4A, WebM), and PDF documents.",
+        )
+
+    data = await file.read()
+    size = len(data)
+    if size == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if size > _FO_MEDIA_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 25 MB)")
+
+    scope_cipher, invite_token = _fo_scope(req, cipher_id)
+    now = _now_iso()
+    media_id = "fmed_" + secrets.token_hex(16)
+    # stored_name is fully server-generated; the client filename never touches
+    # the filesystem path. This closes path-traversal (../, absolute paths, NUL).
+    stored_name = media_id + _fo_media_ext(content_type)
+    dest = _fo_media_dir() / stored_name
+    # Defence in depth: the resolved path must stay inside the media dir.
+    media_root = _fo_media_dir().resolve()
+    if media_root not in dest.resolve().parents and dest.resolve().parent != media_root:
+        raise HTTPException(status_code=400, detail="invalid storage path")
+    dest.write_bytes(data)
+
+    orig_name = os.path.basename(file.filename or "")[:255]
+    try:
+        with _admin_db() as conn:
+            conn.execute(
+                """
+                INSERT INTO field_observation_media
+                    (id, cipher_id, invite_token, title, source_label, filename,
+                     stored_name, content_type, media_kind, byte_size,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    media_id, scope_cipher, invite_token, title.strip(),
+                    source_label.strip(), orig_name, stored_name, content_type,
+                    media_kind, size, now, now,
+                ),
+            )
+    except Exception:
+        # Do not leave an orphan file if the metadata write fails.
+        dest.unlink(missing_ok=True)
+        raise
+    return {
+        "ok": True,
+        "id": media_id,
+        "media_kind": media_kind,
+        "content_type": content_type,
+        "filename": orig_name,
+        "byte_size": size,
+        "created_at": now,
+    }
+
+
+def _fo_media_ext(content_type: str) -> str:
+    return {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "audio/mpeg": ".mp3",
+        "audio/mp3": ".mp3",
+        "audio/wav": ".wav",
+        "audio/x-wav": ".wav",
+        "audio/ogg": ".ogg",
+        "audio/webm": ".webm",
+        "audio/mp4": ".m4a",
+        "audio/aac": ".aac",
+        "application/pdf": ".pdf",
+    }.get(content_type, ".bin")
+
+
+@app.get("/api/studio/field-observations/attachments")
+async def list_field_observation_media(req: Request, cipher_id: str = "", limit: int = 50):
+    """List the caller's own Field Observation media (most recent first).
+
+    Same isolation contract as the text observations: resolve by cipher_id, else
+    the caller's signed invite-token cookie, else return an empty list. There is
+    no unfiltered branch, so media is never cross-member readable."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    limit = max(1, min(int(limit or 50), 200))
+    with _admin_db() as conn:
+        if scope_cipher:
+            rows = conn.execute(
+                "SELECT * FROM field_observation_media WHERE cipher_id=? AND cipher_id!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (scope_cipher, limit),
+            ).fetchall()
+        elif caller_invite:
+            rows = conn.execute(
+                "SELECT * FROM field_observation_media WHERE invite_token=? AND invite_token!='' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (caller_invite, limit),
+            ).fetchall()
+        else:
+            rows = []
+    return {"attachments": [_fo_media_row_to_public(r) for r in rows]}
+
+
+def _fo_media_owned_row(req: Request, media_id: str, cipher_id: str) -> sqlite3.Row | None:
+    """Fetch a media row only if it belongs to the calling member. Returns None
+    when the row does not exist or is bound to a different member."""
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    with _admin_db() as conn:
+        if scope_cipher:
+            return conn.execute(
+                "SELECT * FROM field_observation_media WHERE id=? AND cipher_id=? AND cipher_id!=''",
+                (media_id, scope_cipher),
+            ).fetchone()
+        if caller_invite:
+            return conn.execute(
+                "SELECT * FROM field_observation_media WHERE id=? AND invite_token=? AND invite_token!=''",
+                (media_id, caller_invite),
+            ).fetchone()
+    return None
+
+
+@app.get("/api/studio/field-observations/attachments/{media_id}/file")
+async def get_field_observation_media_file(media_id: str, req: Request, cipher_id: str = ""):
+    """Stream one of the caller's own media files.
+
+    Access is member-scoped: the row must be bound to the caller's cipher_id or
+    invite-token cookie, so there is no public/unauthenticated file access and no
+    cross-member read even with a guessed id. The file is served from the
+    server-recorded stored_name, never a client-supplied path."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    row = _fo_media_owned_row(req, media_id, cipher_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    stored_name = row["stored_name"]
+    # stored_name was generated by us (media_id + known ext); reject anything
+    # that could escape the media dir as belt-and-braces.
+    if "/" in stored_name or "\\" in stored_name or stored_name in ("", ".", ".."):
+        raise HTTPException(status_code=404, detail="not found")
+    path = _fo_media_dir() / stored_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(
+        path,
+        media_type=row["content_type"] or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{_fo_safe_cd(row["filename"])}"'},
+    )
+
+
+def _fo_safe_cd(name: str) -> str:
+    """Sanitise a filename for a Content-Disposition header (strip quotes/CR/LF)."""
+    return "".join(c for c in (name or "attachment") if c not in '"\r\n')[:255] or "attachment"
+
+
+@app.delete("/api/studio/field-observations/attachments/{media_id}")
+async def delete_field_observation_media(media_id: str, req: Request, cipher_id: str = ""):
+    """Delete one of the caller's own media observations (row + file)."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    row = _fo_media_owned_row(req, media_id, cipher_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    with _admin_db() as conn:
+        conn.execute("DELETE FROM field_observation_media WHERE id=?", (media_id,))
+    stored_name = row["stored_name"]
+    if stored_name and "/" not in stored_name and "\\" not in stored_name:
+        (_fo_media_dir() / stored_name).unlink(missing_ok=True)
     return {"ok": True}
 
 

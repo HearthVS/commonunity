@@ -3796,6 +3796,76 @@ input, textarea { font: inherit; color: inherit; }
   font-weight: 500;
 }
 
+/* ── Field Observations media capture ──────────────────── */
+.fo-media-dropzone {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.fo-media-dropzone:hover,
+.fo-media-dropzone:focus-visible {
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent);
+  outline: none;
+}
+.fo-media-dropzone.is-dragover {
+  border-color: var(--rose-color, #c4b5fd);
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 12%, transparent);
+}
+.fo-media-dropzone-text { font-size: 12px; color: var(--text-muted); }
+.fo-media-dropzone-text u { text-decoration-thickness: 1px; }
+.fo-media-dropzone-hint { font-size: 10px; color: var(--text-faint); opacity: 0.85; }
+
+.fo-media-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.fo-media-card {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+.fo-media-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.fo-media-card-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.4; word-break: break-word; }
+.fo-media-card img {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: var(--radius-sm, 6px);
+  display: block;
+}
+.fo-media-card audio { width: 100%; margin-top: 4px; }
+.fo-media-card-doc {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, var(--text));
+  text-decoration: none;
+}
+.fo-media-card-actions { display: flex; gap: 8px; margin-top: 6px; }
+.fo-media-card-actions button {
+  font-size: 10px;
+  padding: 4px 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.fo-media-card-note { font-size: 10px; color: var(--text-faint); font-style: italic; opacity: 0.8; margin-top: 4px; }
+
 /* ── Toast for placeholder feedback ────────────────────── */
 .concept-toast {
   position: fixed;
@@ -7642,22 +7712,35 @@ input, textarea { font: inherit; color: inherit; }
       <div class="notepad-surface">
         <div class="notepad-header">
   <div style="display:flex;align-items:center;gap:var(--space-2);">
-          <span class="notepad-label">Field Notes</span>
-          <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Notes"><i>i</i></button>
+          <span class="notepad-label">Field Observations</span>
+          <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Observations"><i>i</i></button>
         </div>
           <div class="notepad-actions">
             <button class="voice-btn" id="voice-record-btn" title="Record voice note">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             </button>
-            <button class="notepad-save-btn" id="btn-save-entry" title="Save to Field Notes (⌘↵)">Save to Field Notes <span aria-hidden="true">⌘↵</span></button>
+            <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
           </div>
         </div>
         <textarea class="notepad-textarea" id="workbench-input"
-          placeholder="Write freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save to Field Notes is the Save button above. Saved Field Notes become available to Nexus."></textarea>
+          placeholder="Observe freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save observation is the button above. Saved Field Observations become available to Nexus."></textarea>
         <p class="notepad-nexus-hint" id="notepad-nexus-hint" role="status" aria-live="polite">
-          <strong>Saved.</strong> This Field Note is now available to Nexus for reflection, and for shaping your Living Profile, Personal Home, and Personal OS.
+          <strong>Saved.</strong> This Field Observation is now available to Nexus for reflection, and for shaping your Living Profile, Personal Home, and Personal OS.
         </p>
+        <!-- Multimodal capture: drag-and-drop or pick images / audio / PDFs.
+             Uploaded media is stored member-scoped server-side and listed below
+             as Field Observation cards. It is NOT sent to Nexus automatically —
+             media requires a later processing step. -->
+        <div class="fo-media-dropzone" id="fo-media-dropzone" tabindex="0" role="button"
+             aria-label="Add media observation — drag files here or click to choose">
+          <input type="file" id="fo-media-input" multiple
+                 accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,application/pdf"
+                 style="display:none;">
+          <span class="fo-media-dropzone-text">Drag &amp; drop media here, or <u>choose files</u></span>
+          <span class="fo-media-dropzone-hint">Images, audio, or PDF · up to 25&nbsp;MB · stays private to you, not sent to Nexus</span>
+        </div>
         <div class="notepad-entries">
+          <div id="fo-media-list" class="fo-media-list"></div>
           <div class="workbench-entries" id="workbench-entries"></div>
           <div id="voice-entries" style="display:none;"></div>
         </div>
@@ -7849,12 +7932,12 @@ input, textarea { font: inherit; color: inherit; }
       </div>
       <div class="om-widget-actions">
         <button type="button" class="om-widget-btn is-primary" id="spark-draw">Draw another Spark</button>
-        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Compose in Field Notes</button>
+        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Compose in Field Observations</button>
       </div>
     </div>
   </div>
   <p class="om-widget-foot">
-    Answer in Field Notes. Saved Field Notes become available to Nexus.
+    Answer in Field Observations. Saved Field Observations become available to Nexus.
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
@@ -11130,6 +11213,146 @@ function studioBringObservationIntoNexus(id) {
   if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
 }
 
+// ── Field Observations — multimodal media ───────────────────────────────────
+// Central-surface capture for images, audio, and PDFs. Uploads are member-scoped
+// server-side (mirrors the text observation scoping) and rendered as cards with a
+// safe preview. Media is NEVER sent to Nexus automatically — it is captured,
+// previewed, and deleted only. Bringing media into Nexus is a later step.
+const FO_MEDIA_ACCEPT = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
+  'audio/webm', 'audio/mp4', 'audio/aac', 'application/pdf'
+];
+const FO_MEDIA_MAX_BYTES = 25 * 1024 * 1024;
+
+function foMediaQuery() {
+  const cipherId = foCipherId();
+  return cipherId ? `?cipher_id=${encodeURIComponent(cipherId)}` : '';
+}
+
+function foMediaFileUrl(id) {
+  return `${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(id)}/file${foMediaQuery()}`;
+}
+
+async function studioLoadFieldObservationMedia() {
+  try {
+    const qs = foMediaQuery() ? `${foMediaQuery()}&limit=50` : '?limit=50';
+    const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments${qs}`);
+    if (!res.ok) { state.fieldObservationMedia = []; }
+    else { const data = await res.json(); state.fieldObservationMedia = data.attachments || []; }
+  } catch (_) { state.fieldObservationMedia = []; }
+  studioRenderFieldObservationMedia();
+}
+
+function foFormatBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function studioRenderFieldObservationMedia() {
+  const list = document.getElementById('fo-media-list');
+  if (!list) return;
+  const items = state.fieldObservationMedia || [];
+  list.innerHTML = items.map(m => {
+    const id = studioNexusEscape(m.id);
+    const name = studioNexusEscape(String(m.filename || '').trim() || 'Untitled');
+    const kind = String(m.media_kind || 'other');
+    const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
+    const size = foFormatBytes(m.byte_size);
+    const url = foMediaFileUrl(m.id);
+    let body = '';
+    if (kind === 'image') {
+      body = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
+    } else if (kind === 'audio') {
+      body = `<audio controls preload="none" src="${studioNexusEscape(url)}"></audio>`;
+    } else {
+      body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
+    }
+    return `<div class="fo-media-card">
+      <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+      <div class="fo-media-card-name">${name}</div>
+      ${body}
+      <div class="fo-media-card-note">Captured privately. Not sent to Nexus — bringing media forward is a later step.</div>
+      <div class="fo-media-card-actions">
+        <button type="button" class="fo-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.fo-media-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
+  });
+}
+
+async function studioUploadFieldObservationMedia(files) {
+  const arr = Array.from(files || []);
+  if (!arr.length) return;
+  let uploaded = 0;
+  for (const file of arr) {
+    if (!FO_MEDIA_ACCEPT.includes((file.type || '').toLowerCase())) {
+      if (typeof showToast === 'function') showToast(`Skipped ${file.name} — unsupported type.`);
+      continue;
+    }
+    if (file.size > FO_MEDIA_MAX_BYTES) {
+      if (typeof showToast === 'function') showToast(`Skipped ${file.name} — over 25 MB.`);
+      continue;
+    }
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    fd.append('cipher_id', foCipherId());
+    try {
+      const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('upload failed');
+      uploaded += 1;
+    } catch (_) {
+      if (typeof showToast === 'function') showToast(`Could not upload ${file.name}.`);
+    }
+  }
+  if (uploaded) {
+    await studioLoadFieldObservationMedia();
+    if (typeof showToast === 'function') showToast(uploaded === 1 ? 'Media observation captured.' : `${uploaded} media observations captured.`);
+  }
+}
+
+async function studioDeleteFieldObservationMedia(id) {
+  if (!id) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(id)}${foMediaQuery()}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) throw new Error('delete failed');
+    state.fieldObservationMedia = (state.fieldObservationMedia || []).filter(m => m.id !== id);
+    studioRenderFieldObservationMedia();
+  } catch (_) {
+    if (typeof showToast === 'function') showToast('Could not delete media.');
+  }
+}
+
+function initFieldObservationMedia() {
+  const zone = document.getElementById('fo-media-dropzone');
+  const input = document.getElementById('fo-media-input');
+  if (!zone || !input) return;
+  const openPicker = () => input.click();
+  zone.addEventListener('click', openPicker);
+  zone.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); }
+  });
+  input.addEventListener('change', () => {
+    studioUploadFieldObservationMedia(input.files);
+    input.value = '';
+  });
+  ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); zone.classList.add('is-dragover');
+  }));
+  ['dragleave', 'dragend'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); zone.classList.remove('is-dragover');
+  }));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation(); zone.classList.remove('is-dragover');
+    if (e.dataTransfer && e.dataTransfer.files) studioUploadFieldObservationMedia(e.dataTransfer.files);
+  });
+  studioLoadFieldObservationMedia();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Re-apply after DOMContentLoaded as a safety net in case the
   // contract was written between script parse and DOMContentLoaded,
@@ -11140,6 +11363,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initParticles();
   studioLoadGoldenThread();
   studioLoadFieldObservations();
+  initFieldObservationMedia();
   const foForm = document.getElementById('fo-form');
   if (foForm) foForm.addEventListener('submit', studioCreateFieldObservation);
   initPortalTooltips();
@@ -12629,13 +12853,14 @@ window.saveState = saveState;
 <div class="studio-info-overlay" id="info-notepad-overlay">
   <div class="studio-info-popup">
     <div class="studio-info-popup-header">
-      <span class="studio-info-popup-title">The Notepad</span>
+      <span class="studio-info-popup-title">Field Observations</span>
       <button class="studio-info-popup-close" data-close="info-notepad-overlay">✕</button>
     </div>
     <div class="studio-info-popup-body">
-      <p>This is your primary writing surface — a space for free, unstructured expression. No format required. No audience in mind.</p>
-      <p>Use it for reflections, fragments, questions, observations, intentions, dreams, frustrations, or anything that wants to move through you in this direction. The Notepad receives everything without editing.</p>
+      <p>This is your primary capture surface — a space for free, unstructured observation. No format required. No audience in mind.</p>
+      <p>Use it for reflections, fragments, questions, observations, intentions, dreams, frustrations, or anything that wants to move through you in this direction. Field Observations receive everything without editing.</p>
       <p>When something feels complete or worth keeping, hit Save (⌘↵) to store it as an entry. Entries are private, timestamped, and remain in your Archive for as long as you need them.</p>
+      <p>You can also drag in — or choose — images, audio, and PDFs. Media is captured privately as its own Field Observation, previewed here, and never sent to Nexus automatically. Bringing media forward is a deliberate later step.</p>
       <p>You can also record voice notes using the microphone button — for moments when words come faster than typing, or when the quality of your voice matters as much as the content.</p>
     </div>
   </div>
@@ -13543,9 +13768,9 @@ if (document.readyState === 'loading') {
         try { workbench.setSelectionRange(pos, pos); } catch (_) {}
         setPendingTarget(currentSpark);
         setCollapsed(true);
-        showLocalToast('Spark dropped into Field Notes — for ' + builderFieldLabel(currentSpark) + '.');
+        showLocalToast('Spark dropped into Field Observations — for ' + builderFieldLabel(currentSpark) + '.');
       } else {
-        showLocalToast('Open a room to answer this Spark in Field Notes.');
+        showLocalToast('Open a room to answer this Spark in Field Observations.');
       }
     }
 
