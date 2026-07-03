@@ -4130,6 +4130,59 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--text-faint);
 }
 .archive-actions-note { font-size: 10px; color: var(--text-faint); font-style: italic; line-height: 1.4; margin: 0; opacity: 0.85; }
+.archive-actions-selection { font-size: 10px; color: var(--text-muted); line-height: 1.4; margin: 0; }
+/* Enabled (actionable) buttons: the selection state has made them live. */
+.archive-action-btn:not([disabled]) {
+  cursor: pointer;
+  opacity: 1;
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, var(--border));
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+}
+.archive-action-btn:not([disabled]):hover {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 75%, transparent);
+  background: color-mix(in srgb, var(--rose-color,#c4b5fd) 8%, transparent);
+}
+.archive-action-btn.is-busy { cursor: progress; opacity: 0.7; }
+/* Per-item selection checkbox shown on Archive text/media cards. */
+.fo-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+}
+.fo-select input { accent-color: var(--rose-color,#c4b5fd); cursor: pointer; margin: 0; }
+.fo-select.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.fo-select.is-disabled input { cursor: not-allowed; }
+/* Extracted-text review block on PDF/doc cards. */
+.fo-extract-block {
+  margin-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 55%, transparent);
+  padding-top: 7px;
+}
+.fo-extract-status {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.fo-extract-status.is-error { color: var(--danger, #d98b8b); }
+.fo-extract-text {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 8px;
+}
 
 /* Empty states inside bounded group scrolls — keep them compact so a
    run of "nothing yet" messages doesn't waste vertical space. */
@@ -8009,21 +8062,23 @@ input, textarea { font: inherit; color: inherit; }
                    is explicitly routed through Nexus and never automatic. -->
               <div class="archive-actions-box" id="archive-actions-box" hidden>
                 <div class="archive-actions-title">What do you want to do with these files?</div>
+                <p class="archive-actions-selection" id="archive-selection-summary">Select text observations or PDFs below to act on them.</p>
                 <div class="archive-actions-group">
                   <span class="archive-actions-group-label">Standard tools</span>
                   <div class="archive-actions-row">
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Extract text <span class="soon">soon</span></button>
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
+                    <button type="button" class="archive-action-btn" id="archive-action-transcribe" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
+                    <button type="button" class="archive-action-btn" id="archive-action-extract" disabled aria-disabled="true">Extract text</button>
+                    <button type="button" class="archive-action-btn" id="archive-action-summarize" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
                   </div>
-                  <p class="archive-actions-note">Standard extraction will run on its own — no Nexus required.</p>
+                  <p class="archive-actions-note">Standard extraction runs on its own — no Nexus, no AI. Extracted text is saved to your Archive.</p>
                 </div>
                 <div class="archive-actions-group archive-actions-group--nexus">
-                  <span class="archive-actions-group-label">Deeper interpretation</span>
+                  <span class="archive-actions-group-label">Bring forward</span>
                   <div class="archive-actions-row">
+                    <button type="button" class="archive-action-btn archive-action-btn--nexus" id="archive-action-bring-nexus" disabled aria-disabled="true">Bring selected text to Nexus</button>
                     <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Bring to Nexus for interpretation <span class="soon">soon</span></button>
                   </div>
-                  <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
+                  <p class="archive-actions-note">Bringing text to Nexus only fills the Nexus box for you to edit — nothing is sent and no AI runs until you choose.</p>
                 </div>
               </div>
 
@@ -8731,7 +8786,14 @@ let state = {
   //               and 'foundation.<id>'. Manual values continue to
   //               live on profile.<field>_manual / profile.contact.* /
   //               profile.foundation.* — those are untouched here.
-  livingProfile: { auto: {} }
+  livingProfile: { auto: {} },
+  // Archive processing/selection layer. `fieldObservationExtractions` maps a
+  // media id → its stored standard-extraction result (member-scoped, loaded
+  // from the server). `foSelection` holds the currently-selected Archive items
+  // as keys like "text:<id>" / "media:<id>"; selection is transient client
+  // state and drives the Archive action box. Nothing here is auto-sent to Nexus.
+  fieldObservationExtractions: {},
+  foSelection: []
 };
 
 // Golden-thread / first-name fallback. Kept as the minimized first name only
@@ -11495,8 +11557,11 @@ function studioRenderFieldObservations() {
     const date = o.created_at ? String(o.created_at).slice(0, 10) : '';
     const preview = body.length > 220 ? body.slice(0, 220) + '…' : body;
     const src = String(o.source_label || '').trim();
+    const selKey = 'text:' + o.id;
+    const checked = foIsSelected(selKey) ? ' checked' : '';
     return `<div class="fo-card" style="border:1px solid color-mix(in srgb,var(--border) 55%,transparent);border-radius:var(--radius-md);padding:8px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--card) 55%,transparent);">
-      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;">${studioNexusEscape(title)}</div>
+      <label class="fo-select"><input type="checkbox" class="fo-select-check" data-sel-key="${studioNexusEscape(selKey)}"${checked}> Select</label>
+      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;margin-top:4px;">${studioNexusEscape(title)}</div>
       <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin:2px 0 6px;">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
       <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;">${studioNexusEscape(preview)}</div>
       <div style="display:flex;gap:8px;margin-top:8px;">
@@ -11511,6 +11576,7 @@ function studioRenderFieldObservations() {
   list.querySelectorAll('.fo-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
   });
+  foBindSelectChecks(list);
 }
 
 async function studioDeleteFieldObservation(id) {
@@ -11643,6 +11709,7 @@ function foArchiveMediaCard(m) {
   const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
   const size = foFormatBytes(m.byte_size);
   const url = foMediaFileUrl(m.id);
+  const isPdf = kind === 'document';
   let body = '';
   if (kind === 'image') {
     body = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
@@ -11651,13 +11718,43 @@ function foArchiveMediaCard(m) {
   } else {
     body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
   }
+  const selKey = 'media:' + m.id;
+  const checked = foIsSelected(selKey) ? ' checked' : '';
+  // Selection is offered for every kind, but only PDFs support standard text
+  // extraction today; the action box marks non-applicable actions accordingly.
+  const selectLabel = isPdf ? 'Select' : 'Select (extract soon)';
   return `<div class="fo-media-card">
+    <label class="fo-select"><input type="checkbox" class="fo-select-check" data-sel-key="${studioNexusEscape(selKey)}"${checked}> ${selectLabel}</label>
     <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
     <div class="fo-media-card-name">${name}</div>
     ${body}
+    ${isPdf ? foExtractBlockHtml(m.id) : ''}
     <div class="fo-media-card-actions">
       <button type="button" class="archive-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
     </div>
+  </div>`;
+}
+
+// Render the stored extraction (if any) for a media item as a reviewable block.
+// Reads member-scoped state loaded from the server, so it survives a refresh.
+function foExtractBlockHtml(mediaId) {
+  const ext = (state.fieldObservationExtractions || {})[mediaId];
+  if (!ext) return '';
+  if (ext.status === 'done') {
+    const text = String(ext.text || '');
+    const preview = text.length > 600 ? text.slice(0, 600) + '…' : text;
+    const chars = Number(ext.char_count || text.length) || 0;
+    const pages = Number(ext.page_count || 0) || 0;
+    const meta = `Extracted text · ${chars.toLocaleString()} chars${pages ? ' · ' + pages + ' pages' : ''}`;
+    return `<div class="fo-extract-block">
+      <div class="fo-extract-status">${meta}</div>
+      <div class="fo-extract-text">${studioNexusEscape(preview)}</div>
+    </div>`;
+  }
+  const err = String(ext.error || 'Extraction failed.');
+  return `<div class="fo-extract-block">
+    <div class="fo-extract-status is-error">Could not extract text</div>
+    <div class="fo-extract-text">${studioNexusEscape(err)}</div>
   </div>`;
 }
 
@@ -11690,19 +11787,237 @@ function renderArchiveMedia() {
     el.querySelectorAll('.archive-media-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
     });
+    foBindSelectChecks(el);
   });
   updateArchiveActionsBox();
 }
 
-// Show the "What do you want to do with these files?" action layer only when
-// there is captured material (text or media) to act on.
+// ── Archive selection model ─────────────────────────────────────────────────
+// Selection is transient client state (state.foSelection) holding keys like
+// "text:<id>" / "media:<id>". It drives the Archive action box: which standard
+// tools are applicable and whether text can be brought forward to Nexus. Nothing
+// here contacts Nexus or the AI — the only server calls are the standard,
+// non-AI extraction utility and reads of the caller's own data.
+function foSelectionSet() {
+  if (!Array.isArray(state.foSelection)) state.foSelection = [];
+  return state.foSelection;
+}
+function foIsSelected(key) { return foSelectionSet().indexOf(key) !== -1; }
+function foToggleSelect(key, on) {
+  const sel = foSelectionSet();
+  const i = sel.indexOf(key);
+  if (on && i === -1) sel.push(key);
+  else if (!on && i !== -1) sel.splice(i, 1);
+  updateArchiveActionsBox();
+}
+// Bind change handlers on any freshly-rendered .fo-select-check inputs.
+function foBindSelectChecks(root) {
+  if (!root) return;
+  root.querySelectorAll('.fo-select-check').forEach(cb => {
+    cb.addEventListener('change', () => foToggleSelect(cb.dataset.selKey, cb.checked));
+  });
+}
+// Drop selection keys whose underlying item no longer exists (deleted / not
+// loaded), so a stale key can never leak into an action.
+function foPruneSelection() {
+  const textIds = new Set((state.fieldObservations || []).map(o => 'text:' + o.id));
+  const mediaIds = new Set((state.fieldObservationMedia || []).map(m => 'media:' + m.id));
+  state.foSelection = foSelectionSet().filter(k => textIds.has(k) || mediaIds.has(k));
+}
+// Resolve the current selection into concrete source objects.
+function foSelectedSources() {
+  const sel = foSelectionSet();
+  const texts = (state.fieldObservations || []).filter(o => sel.indexOf('text:' + o.id) !== -1);
+  const media = (state.fieldObservationMedia || []).filter(m => sel.indexOf('media:' + m.id) !== -1);
+  const pdfs = media.filter(m => String(m.media_kind || '') === 'document');
+  const others = media.filter(m => String(m.media_kind || '') !== 'document');
+  return { texts, media, pdfs, others };
+}
+
+// Show the action box when there is captured material, and keep the selection
+// summary + button enablement in sync with the current selection.
 function updateArchiveActionsBox() {
+  foPruneSelection();
   const box = document.getElementById('archive-actions-box');
   if (box) {
     const has = (state.fieldObservations || []).length || (state.fieldObservationMedia || []).length;
     box.hidden = !has;
+    if (has) foRefreshActionState();
   }
   if (typeof updateArchiveCounts === 'function') updateArchiveCounts();
+}
+
+function foExtractionFor(mediaId) {
+  return (state.fieldObservationExtractions || {})[mediaId] || null;
+}
+
+// Compute and apply selection-derived button/summary state. Bound once.
+let foActionsBound = false;
+function foRefreshActionState() {
+  const { texts, pdfs, others } = foSelectedSources();
+  const summary = document.getElementById('archive-selection-summary');
+  const extractBtn = document.getElementById('archive-action-extract');
+  const bringBtn = document.getElementById('archive-action-bring-nexus');
+
+  const total = texts.length + pdfs.length + others.length;
+  if (summary) {
+    if (!total) {
+      summary.textContent = 'Select text observations or PDFs below to act on them.';
+    } else {
+      const parts = [];
+      if (texts.length) parts.push(`${texts.length} text`);
+      if (pdfs.length) parts.push(`${pdfs.length} PDF${pdfs.length > 1 ? 's' : ''}`);
+      if (others.length) parts.push(`${others.length} other`);
+      summary.textContent = `${total} selected · ${parts.join(', ')}`;
+    }
+  }
+  // Extract text applies to selected PDFs only.
+  if (extractBtn) {
+    const on = pdfs.length > 0 && !extractBtn.classList.contains('is-busy');
+    extractBtn.disabled = !on;
+    extractBtn.setAttribute('aria-disabled', String(!on));
+  }
+  // Bring selected text to Nexus: available if any selected text observation, or
+  // any selected PDF that already has a completed extraction.
+  const bringable = texts.length + pdfs.filter(m => {
+    const e = foExtractionFor(m.id); return e && e.status === 'done' && (e.text || '').trim();
+  }).length;
+  if (bringBtn) {
+    const on = bringable > 0;
+    bringBtn.disabled = !on;
+    bringBtn.setAttribute('aria-disabled', String(!on));
+  }
+
+  if (!foActionsBound) {
+    foActionsBound = true;
+    if (extractBtn) extractBtn.addEventListener('click', studioExtractSelectedPdfs);
+    if (bringBtn) bringBtn.addEventListener('click', studioBringSelectedTextToNexus);
+  }
+}
+
+// ── Standard extraction (PDF → text), member-scoped, no AI ───────────────────
+async function studioLoadFieldObservationExtractions() {
+  try {
+    const qs = foMediaQuery() ? `${foMediaQuery()}&limit=500` : '?limit=500';
+    const res = await fetch(`${API_BASE}/api/studio/field-observations/extractions${qs}`);
+    if (!res.ok) { state.fieldObservationExtractions = {}; }
+    else {
+      const data = await res.json();
+      const map = {};
+      (data.extractions || []).forEach(e => { if (e.source_id) map[e.source_id] = e; });
+      state.fieldObservationExtractions = map;
+    }
+  } catch (_) { state.fieldObservationExtractions = {}; }
+  renderArchiveMedia();
+}
+
+// Run standard extraction on each selected PDF. This is a plain utility call:
+// the server uses pypdf, never Nexus or Anthropic. Results are stored member-
+// scoped and rendered inline for review (and survive a refresh).
+async function studioExtractSelectedPdfs() {
+  const { pdfs } = foSelectedSources();
+  if (!pdfs.length) return;
+  const btn = document.getElementById('archive-action-extract');
+  if (btn) { btn.classList.add('is-busy'); btn.disabled = true; }
+  let ok = 0, failed = 0;
+  for (const m of pdfs) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(m.id)}/extract${foMediaQuery()}`,
+        { method: 'POST' }
+      );
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        state.fieldObservationExtractions = state.fieldObservationExtractions || {};
+        state.fieldObservationExtractions[m.id] = data;
+        if (data.status === 'done') ok += 1; else failed += 1;
+      } else {
+        failed += 1;
+        if (typeof showToast === 'function') {
+          showToast(`Could not extract ${String(m.filename || 'PDF')}${data && data.detail ? ' — ' + data.detail : ''}.`);
+        }
+      }
+    } catch (_) { failed += 1; }
+  }
+  if (btn) btn.classList.remove('is-busy');
+  renderArchiveMedia();
+  if (typeof showToast === 'function') {
+    if (ok && !failed) showToast(ok === 1 ? 'Text extracted.' : `Text extracted from ${ok} PDFs.`);
+    else if (ok && failed) showToast(`Extracted ${ok}; ${failed} could not be read.`);
+    else if (!ok && failed) showToast('Could not extract text — see the note on the file.');
+  }
+}
+
+// Bring the selected text forward into Nexus. This is the trust boundary: it
+// only fills and focuses the Nexus input with clearly-framed text. It never
+// submits, and never calls the AI or /rose-mirror. If selected items have no
+// processable text (e.g. an un-extracted or scanned PDF, or an image), it shows
+// clear guidance rather than sending anything.
+function studioBringSelectedTextToNexus() {
+  const { texts, pdfs, others } = foSelectedSources();
+  const blocks = [];
+  const skipped = [];
+
+  texts.forEach(o => {
+    const title = String(o.title || '').trim() || String(o.body || '').split('\n')[0].slice(0, 60);
+    const body = String(o.body || '').trim();
+    if (body) blocks.push(`Field Observation — ${title}\n${body}`);
+    else skipped.push(title || 'an empty observation');
+  });
+  pdfs.forEach(m => {
+    const name = String(m.filename || 'PDF').trim();
+    const e = foExtractionFor(m.id);
+    if (e && e.status === 'done' && (e.text || '').trim()) {
+      blocks.push(`Extracted from PDF — ${name}\n${String(e.text).trim()}`);
+    } else if (e && e.status !== 'done') {
+      skipped.push(`${name} (text could not be extracted)`);
+    } else {
+      skipped.push(`${name} (run "Extract text" first)`);
+    }
+  });
+  others.forEach(m => skipped.push(`${String(m.filename || 'file')} (${m.media_kind}: not supported yet)`));
+
+  if (!blocks.length) {
+    const guide = skipped.length
+      ? `Nothing selected has text ready for Nexus yet. For PDFs, run "Extract text" first — scanned PDFs and images can't be read yet.`
+      : 'Select a text observation or an extracted PDF to bring into Nexus.';
+    if (typeof showToast === 'function') showToast(guide);
+    return;
+  }
+  if (!currentRoom) {
+    if (typeof showToast === 'function') showToast('Enter a room to bring this into Nexus.');
+    return;
+  }
+
+  const framing = blocks.length === 1
+    ? 'I want to bring this Field Observation material into Nexus:'
+    : `I want to bring these ${blocks.length} pieces of Field Observation material into Nexus:`;
+  let text = `${framing}\n\n${blocks.join('\n\n———\n\n')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
+  if (skipped.length) {
+    text += `\n\n(Not included — no readable text yet: ${skipped.join('; ')}.)`;
+  }
+
+  // Reveal the Nexus input without firing the AI opening question (instant=true
+  // skips initRoomRose). No message is sent; no fetch to /rose-mirror.
+  const mirror = document.getElementById('room-mirror');
+  const row = document.getElementById('mirror-input-row');
+  const hint = document.getElementById('nexus-knock-hint');
+  const orbWrap = document.getElementById('nexus-orb-wrap');
+  if (typeof awakenNexus === 'function' && mirror && orbWrap) {
+    awakenNexus(mirror, row, hint, orbWrap, true);
+  }
+  const input = document.getElementById('mirror-input');
+  if (input) {
+    input.value = text;
+    if (mirror) mirror.classList.add('orb-active');
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; }, 60);
+  }
+  if (typeof showToast === 'function') {
+    showToast(skipped.length
+      ? 'Added readable text to Nexus — edit, then send when ready.'
+      : 'Added to Nexus — edit, then send when ready.');
+  }
 }
 
 // Collapse/expand the Archive drawer. This now toggles a class on the
@@ -11793,6 +12108,7 @@ async function studioDeleteFieldObservationMedia(id) {
     const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(id)}${foMediaQuery()}`, { method: 'DELETE' });
     if (!res.ok && res.status !== 404) throw new Error('delete failed');
     state.fieldObservationMedia = (state.fieldObservationMedia || []).filter(m => m.id !== id);
+    if (state.fieldObservationExtractions) delete state.fieldObservationExtractions[id];
     studioRenderFieldObservationMedia();
   } catch (_) {
     if (typeof showToast === 'function') showToast('Could not delete media.');
@@ -11823,6 +12139,7 @@ function initFieldObservationMedia() {
     if (e.dataTransfer && e.dataTransfer.files) studioUploadFieldObservationMedia(e.dataTransfer.files);
   });
   studioLoadFieldObservationMedia();
+  studioLoadFieldObservationExtractions();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
