@@ -10659,6 +10659,11 @@ function saveWorkbenchEntry() {
   }
   renderWorkbenchEntries(currentRoom);
   renderArchive(currentRoom);
+  // Also mirror the text into the server-backed Field Observations store so it
+  // becomes visible/selectable in the Archive text list and available to the
+  // Bring-into-Nexus hand-off. Fire-and-forget; the local save above already
+  // succeeded and drives room history.
+  studioCreateFieldObservation(text);
   // Re-render the builder readiness modal if it's open.
   try {
     if (window.CommonUnity && window.CommonUnity.builder && typeof window.CommonUnity.builder._renderTracks === 'function') {
@@ -11490,6 +11495,30 @@ async function studioLoadFieldObservations() {
     else { const data = await res.json(); state.fieldObservations = data.observations || []; }
   } catch (_) { state.fieldObservations = []; }
   studioRenderFieldObservations();
+}
+
+// Mirror a saved central Field Notes entry into the server-backed Field
+// Observations store so it appears in the Archive text list (and can then be
+// brought into Nexus). The local session save remains authoritative for room
+// history; this is a fire-and-forget mirror. Sacred Mode text never reaches
+// here — saveWorkbenchEntry returns before calling this while Sacred Mode is
+// active — so the privacy contract is preserved. On success the Archive list
+// is refreshed in place (no full page reload).
+async function studioCreateFieldObservation(text, sourceLabel) {
+  const body = String(text || '').trim();
+  if (!body) return;
+  const cipherId = foCipherId();
+  const payload = { body, source_label: sourceLabel || 'Field Notes' };
+  if (cipherId) payload.cipher_id = cipherId;
+  try {
+    const res = await fetch(`${API_BASE}/api/studio/field-observations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return;
+    await studioLoadFieldObservations();
+  } catch (_) { /* local save already succeeded; ignore server hiccup */ }
 }
 
 function studioRenderFieldObservations() {
