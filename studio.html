@@ -12129,10 +12129,14 @@ function studioRenderPreparedField() {
       const metaBits = [meta.label];
       if (meta.origin) metaBits.push(meta.origin);
       if (date) metaBits.push(date);
+      const pid = studioNexusEscape(p.id);
       return `<div class="fo-prepared-item" data-fo-prepared-type="${meta.type}">
         <div class="fo-remembered-card-title">${name}</div>
         <div class="fo-remembered-card-meta">${metaBits.join(' · ')}</div>
         ${foProcessedTextCard(p)}
+        <div class="fo-prepared-item-actions" style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" class="fo-prepared-release-btn" data-id="${pid}" title="Release this prepared text — removes only the prepared text, never your PDF or remembered observation. Cannot be undone." style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Release from Prepared</button>
+        </div>
       </div>`;
     }).join('');
     return `<section class="fo-remembered-section" data-fo-prepared-group="${meta.type}">
@@ -12155,6 +12159,44 @@ function studioRenderPreparedField() {
       if (typeof updateArchiveSelectionUI === 'function') updateArchiveSelectionUI();
     });
   });
+  // Release from Prepared: remove only this derived processed artifact. The
+  // confirm makes the destructive effect explicit, and the copy is clear that
+  // the original PDF and remembered observation are untouched.
+  host.querySelectorAll('.fo-prepared-release-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioReleaseFromPrepared(btn.dataset.id));
+  });
+}
+
+// Release a single prepared artifact (this iteration: extracted PDF text) from
+// Prepared. Deletes ONLY the derived processed row via the member-scoped
+// server route — never the source media or the remembered observation. After a
+// confirm, it drops the artifact from client state, clears any pending Offer
+// selection for it, and re-renders so Prepared state/count update. This touches
+// no browser storage and never calls Nexus, /rose-mirror, or a submit.
+async function studioReleaseFromPrepared(procId) {
+  if (!procId) return;
+  const proceed = (typeof window !== 'undefined' && typeof window.confirm === 'function')
+    ? window.confirm('Release this prepared text from Prepared? This removes only the prepared text — your original PDF and remembered observations stay untouched. This cannot be undone.')
+    : true;
+  if (!proceed) return;
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/studio/field-observations/processed/${encodeURIComponent(procId)}${foMediaQuery()}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok && res.status !== 404) throw new Error('release failed');
+    state.fieldObservationProcessed = (state.fieldObservationProcessed || [])
+      .filter(p => String(p.id) !== String(procId));
+    studioSelectedProcessedText.delete(String(procId));
+    studioRenderPreparedField();
+    // Keep the side Archive PDF card and Remembered view consistent (the PDF's
+    // processed-text card reverts to an Extract-text affordance).
+    if (typeof studioRenderFieldObservationMedia === 'function') studioRenderFieldObservationMedia();
+    if (typeof updateArchiveSelectionUI === 'function') updateArchiveSelectionUI();
+    if (typeof showToast === 'function') showToast('Released from Prepared. Your PDF and observations are untouched.');
+  } catch (_) {
+    if (typeof showToast === 'function') showToast('Could not release this prepared text.');
+  }
 }
 
 async function studioDeleteFieldObservation(id) {
