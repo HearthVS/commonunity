@@ -12376,6 +12376,7 @@ function studioRenderWorkedField() {
       <div class="fo-remembered-card-body">${studioNexusEscape(String(it.excerpt || ''))}</div>
       <div class="fo-remembered-card-actions">
         <button type="button" class="fo-worked-replay-btn" data-idx="${i}">Place in Nexus input again</button>
+        <button type="button" class="fo-worked-release-btn" data-id="${studioNexusEscape(String(it.id || ''))}" data-persisted="${it.persisted ? '1' : '0'}" title="Remove this returned work from the field — this cannot be undone" style="font-size:10px;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Release from Worked</button>
       </div>
     </div>`;
   }).join('');
@@ -12397,6 +12398,47 @@ function studioRenderWorkedField() {
       }
     });
   });
+
+  host.querySelectorAll('.fo-worked-release-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      studioReleaseWorkedItem(btn.dataset.id, btn.dataset.persisted === '1');
+    });
+  });
+}
+
+// Remove a returned item from the Worked field — the explicit, destructive
+// counterpart to "Return to Field". A durable row (persisted) is deleted from
+// the server through the SAME member-scoped Field Observations delete endpoint
+// used for Remembered, then dropped from the Worked server snapshot; a
+// session-only fallback item is simply removed from the in-memory Worked list.
+// Either way it only ever touches Worked state (state.fieldObservationsWorked /
+// state.fieldObservationsWorkedServer) — Remembered observations and media are
+// never affected. It performs no browser-storage write, no /rose-mirror, no
+// submit, and no Nexus call.
+async function studioReleaseWorkedItem(id, persisted) {
+  const wid = String(id || '');
+  if (!wid) return;
+  if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+    const ok = window.confirm('Release this work from the field? It is removed from Worked and cannot be undone. Your Remembered observations are untouched.');
+    if (!ok) return;
+  }
+  if (persisted) {
+    const cipherId = foCipherId();
+    const qs = cipherId ? `?cipher_id=${encodeURIComponent(cipherId)}` : '';
+    try {
+      const res = await fetch(`${API_BASE}/api/studio/field-observations/${encodeURIComponent(wid)}${qs}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 404) throw new Error('release failed');
+    } catch (_) {
+      if (typeof showToast === 'function') showToast('Could not release this work.');
+      return;
+    }
+    state.fieldObservationsWorkedServer = (state.fieldObservationsWorkedServer || []).filter(o => String(o.id) !== wid);
+  } else {
+    state.fieldObservationsWorked = (state.fieldObservationsWorked || []).filter(o => String(o.id) !== wid);
+  }
+  if (typeof studioRenderWorkedField === 'function') studioRenderWorkedField();
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
+  if (typeof showToast === 'function') showToast('Released from Worked.');
 }
 
 // Multi-select hand-off: gather every ticked text observation (in list order)
