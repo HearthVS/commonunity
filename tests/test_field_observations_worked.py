@@ -74,6 +74,27 @@ def test_unknown_type_is_coerced_to_remembered():
     assert r.json()["observation_type"] == "remembered"
 
 
+def test_existing_delete_endpoint_removes_worked_row_only():
+    """Slice 9: the existing member-scoped delete endpoint deletes a durable
+    'worked' row by id and leaves the member's 'remembered' rows intact — no
+    new route needed for releasing Worked material."""
+    cid = "cid_release"
+    client.post(f"/api/studio/field-observations{AUTH}",
+                json={"body": "a remembered note", "cipher_id": cid})
+    worked = client.post(f"/api/studio/field-observations{AUTH}",
+                         json={"body": "returned nexus work", "observation_type": "worked",
+                               "source_label": "Nexus", "cipher_id": cid}).json()
+    worked_id = worked["id"]
+
+    r = client.delete(f"/api/studio/field-observations/{worked_id}{AUTH}&cipher_id={cid}")
+    assert r.status_code == 200, r.text
+
+    remaining = client.get(f"/api/studio/field-observations{AUTH}&cipher_id={cid}").json()["observations"]
+    # The worked row is gone; the remembered row is untouched.
+    assert all(o["id"] != worked_id for o in remaining)
+    assert [o["observation_type"] for o in remaining] == ["remembered"]
+
+
 def test_endpoint_is_access_gated():
     # No invite token / cookie → forbidden, never world-writable.
     r = client.post("/api/studio/field-observations", json={"body": "x"})
