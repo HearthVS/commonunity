@@ -2311,6 +2311,77 @@ input, textarea { font: inherit; color: inherit; }
   gap: var(--space-2);
 }
 
+/* ── Field Observations depth / mode bar ─────────────────────────────
+   Client-side view switcher for the central Field Observations surface.
+   "Now" is the live capture surface (unchanged behaviour). The other
+   modes are lightweight explanatory placeholders for this scaffold. */
+.fo-mode-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: var(--space-2) var(--space-4) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  overflow-x: auto;
+}
+.fo-mode-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
+}
+.fo-mode-btn:hover {
+  color: var(--text-muted, var(--text));
+}
+.fo-mode-btn.active {
+  color: var(--accent-color, var(--setup-accent));
+  border-bottom-color: var(--accent-color, var(--setup-accent));
+}
+.fo-mode-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.fo-mode-panel[hidden] { display: none; }
+.fo-mode-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--text-faint);
+}
+.fo-mode-placeholder-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--text));
+}
+.fo-mode-placeholder-body {
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 46ch;
+}
+.fo-mode-placeholder-note {
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.6;
+  opacity: 0.75;
+  max-width: 46ch;
+}
+
 /* Voice record button — elegant */
 .voice-btn {
   width: 32px; height: 32px;
@@ -8102,6 +8173,18 @@ input, textarea { font: inherit; color: inherit; }
             <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
           </div>
         </div>
+        <!-- Field Observations depth / mode bar. Client-side only; the active
+             mode is persisted to localStorage. "Now" is the live capture
+             surface (unchanged). The others are scaffold placeholders. -->
+        <div class="fo-mode-bar" id="fo-mode-bar" role="tablist" aria-label="Field Observations depth">
+          <button type="button" class="fo-mode-btn active" data-fo-mode="now" role="tab" aria-selected="true">Now</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="remembered" role="tab" aria-selected="false">Remembered</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="prepared" role="tab" aria-selected="false">Prepared</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="offered" role="tab" aria-selected="false">Offered</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="worked" role="tab" aria-selected="false">Worked</button>
+        </div>
+        <!-- NOW — live capture surface (existing behaviour, unchanged) -->
+        <div class="fo-mode-panel" id="fo-panel-now" data-fo-panel="now" role="tabpanel">
         <textarea class="notepad-textarea" id="workbench-input"
           placeholder="Observe freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save observation is the button above. Saved Field Observations become available to Nexus."></textarea>
         <p class="notepad-nexus-hint" id="notepad-nexus-hint" role="status" aria-live="polite">
@@ -8123,6 +8206,43 @@ input, textarea { font: inherit; color: inherit; }
           <div id="fo-media-list" class="fo-media-list"></div>
           <div class="workbench-entries" id="workbench-entries"></div>
           <div id="voice-entries" style="display:none;"></div>
+        </div>
+        </div><!-- /fo-panel-now -->
+
+        <!-- REMEMBERED — scaffold placeholder -->
+        <div class="fo-mode-panel" id="fo-panel-remembered" data-fo-panel="remembered" role="tabpanel" hidden>
+          <div class="fo-mode-placeholder">
+            <span class="fo-mode-placeholder-title">Remembered</span>
+            <p class="fo-mode-placeholder-body">Material held in the field. Everything you have captured stays here with you — nothing is interpreted, nothing moves on its own.</p>
+            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          </div>
+        </div>
+
+        <!-- PREPARED — scaffold placeholder -->
+        <div class="fo-mode-panel" id="fo-panel-prepared" data-fo-panel="prepared" role="tabpanel" hidden>
+          <div class="fo-mode-placeholder">
+            <span class="fo-mode-placeholder-title">Prepared</span>
+            <p class="fo-mode-placeholder-body">Material made readable, not yet interpreted. Extracted and legible — but still yours alone, still waiting.</p>
+            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          </div>
+        </div>
+
+        <!-- OFFERED — scaffold placeholder -->
+        <div class="fo-mode-panel" id="fo-panel-offered" data-fo-panel="offered" role="tabpanel" hidden>
+          <div class="fo-mode-placeholder">
+            <span class="fo-mode-placeholder-title">Offered</span>
+            <p class="fo-mode-placeholder-body">Material intentionally brought forward to Nexus. Bringing something forward is a deliberate act — this is the only material Nexus can work with.</p>
+            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          </div>
+        </div>
+
+        <!-- WORKED — scaffold placeholder -->
+        <div class="fo-mode-panel" id="fo-panel-worked" data-fo-panel="worked" role="tabpanel" hidden>
+          <div class="fo-mode-placeholder">
+            <span class="fo-mode-placeholder-title">Worked</span>
+            <p class="fo-mode-placeholder-body">Reflections and artifacts returned from work with Nexus. What you and Nexus shaped together comes back to rest here in the field.</p>
+            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -20820,6 +20940,44 @@ if (document.readyState === 'loading') {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Send';
     }
+  });
+})();
+</script>
+<script>
+// ── Field Observations depth / mode bar ─────────────────────────────────────
+// Client-side view switcher for the central Field Observations surface.
+// Switching only toggles which panel is visible and persists the choice to
+// localStorage. It never submits, fetches, or sends anything to Nexus.
+(function () {
+  const FO_MODE_KEY = 'fo-mode';
+  const FO_MODES = ['now', 'remembered', 'prepared', 'offered', 'worked'];
+  const bar = document.getElementById('fo-mode-bar');
+  if (!bar) return;
+  const buttons = Array.from(bar.querySelectorAll('.fo-mode-btn'));
+
+  function applyMode(mode) {
+    if (!FO_MODES.includes(mode)) mode = 'now';
+    buttons.forEach((btn) => {
+      const isActive = btn.dataset.foMode === mode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    FO_MODES.forEach((m) => {
+      const panel = document.getElementById('fo-panel-' + m);
+      if (panel) panel.hidden = (m !== mode);
+    });
+  }
+
+  let stored = 'now';
+  try { stored = localStorage.getItem(FO_MODE_KEY) || 'now'; } catch (_) {}
+  applyMode(stored);
+
+  bar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fo-mode-btn');
+    if (!btn) return;
+    const mode = btn.dataset.foMode;
+    applyMode(mode);
+    try { localStorage.setItem(FO_MODE_KEY, mode); } catch (_) {}
   });
 })();
 </script>
