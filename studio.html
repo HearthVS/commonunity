@@ -2483,6 +2483,16 @@ input, textarea { font: inherit; color: inherit; }
   border-color: var(--rose-color, #c4b5fd);
 }
 
+/* Prepared mode — reuses the remembered layout; each item pairs a source label
+   with the existing processed-text card. */
+.fo-prepared-item {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+
 /* Voice record button — elegant */
 .voice-btn {
   width: 32px; height: 32px;
@@ -8327,12 +8337,21 @@ input, textarea { font: inherit; color: inherit; }
           </div>
         </div>
 
-        <!-- PREPARED — scaffold placeholder -->
+        <!-- PREPARED — central prepared-material view. Read-only mirror over the
+             same member-scoped processed-artifact state the side Archive reads
+             (state.fieldObservationProcessed — this iteration: extracted PDF
+             text). It reuses the existing processed-text card, its status
+             labels, and the existing safe Nexus hand-off. Nothing here uploads,
+             extracts, deletes, or sends to Nexus automatically; extraction and
+             management stay in the side Archive. -->
         <div class="fo-mode-panel" id="fo-panel-prepared" data-fo-panel="prepared" role="tabpanel" hidden>
-          <div class="fo-mode-placeholder">
-            <span class="fo-mode-placeholder-title">Prepared</span>
-            <p class="fo-mode-placeholder-body">Material made readable, not yet interpreted. Extracted and legible — but still yours alone, still waiting.</p>
-            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          <div class="fo-remembered">
+            <div class="fo-remembered-intro">
+              <span class="fo-mode-placeholder-title">Prepared material</span>
+              <p class="fo-remembered-lede">Made readable, not yet interpreted. Text drawn out of your PDFs rests here — legible, but still yours alone, still waiting. Extract, retry, and manage stay in the side Archive.</p>
+              <p class="fo-mode-placeholder-note">Nexus only sees what you offer.</p>
+            </div>
+            <div class="fo-remembered-body" id="fo-prepared-body" aria-live="polite"></div>
           </div>
         </div>
 
@@ -11879,6 +11898,52 @@ function studioRenderRememberedField() {
   });
 }
 
+// Central "Prepared" mode view. A read-only layer over already-extracted text
+// artifacts (state.fieldObservationProcessed — this iteration: pdf_text produced
+// by the existing side-Archive extraction step). It reuses the same processed-
+// text card, status labels (done / empty / encrypted / error), and the existing
+// safe Nexus hand-off. It reads from state only — no fetch, no extraction, no
+// delete, and nothing is sent to Nexus automatically; the side Archive stays the
+// authoritative place to extract, retry, and manage.
+function studioRenderPreparedField() {
+  const host = document.getElementById('fo-prepared-body');
+  if (!host) return;
+  const proc = (state.fieldObservationProcessed || [])
+    .filter(p => p.process_type === 'pdf_text');
+  if (!proc.length) {
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing has been prepared yet. Add a PDF in <strong>Now</strong>, then use <strong>Extract text</strong> in the side Archive — the readable text will rest here.</p>';
+    return;
+  }
+  const cards = proc.map(p => {
+    const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(p.source_media_id));
+    const name = studioNexusEscape((media && String(media.filename || '').trim()) || 'Extracted PDF text');
+    const date = p.created_at ? String(p.created_at).slice(0, 10) : '';
+    return `<div class="fo-prepared-item">
+      <div class="fo-remembered-card-title">${name}</div>
+      <div class="fo-remembered-card-meta">PDF${date ? ' · ' + date : ''}</div>
+      ${foProcessedTextCard(p)}
+    </div>`;
+  }).join('');
+  host.innerHTML = `<section class="fo-remembered-section">
+    <h4 class="fo-remembered-section-head">Prepared material <span class="fo-remembered-count">${proc.length}</span></h4>
+    <div class="fo-prepared-list">${cards}</div>
+  </section>`;
+
+  // Reuse the existing safe hand-off + multi-select wiring. The bring button
+  // only populates the Nexus input (never submits or calls the AI); the checkbox
+  // joins the shared "Bring selected text to Nexus" selection.
+  host.querySelectorAll('.fo-processed-bring-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioBringProcessedTextIntoNexus(btn.dataset.id));
+  });
+  host.querySelectorAll('.fo-processed-select').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = String(cb.dataset.id);
+      if (cb.checked) studioSelectedProcessedText.add(id); else studioSelectedProcessedText.delete(id);
+      if (typeof updateArchiveSelectionUI === 'function') updateArchiveSelectionUI();
+    });
+  });
+}
+
 async function studioDeleteFieldObservation(id) {
   if (!id) return;
   const cipherId = foCipherId();
@@ -12084,6 +12149,7 @@ function studioRenderFieldObservationMedia() {
   });
   renderArchiveMedia();
   studioRenderRememberedField();
+  studioRenderPreparedField();
 }
 
 // ── Archive — browse/manage view of captured media, grouped by type ─────────
@@ -21157,6 +21223,11 @@ if (document.readyState === 'loading') {
     // visible. Read-only render only — no fetch, no submit, no Nexus call.
     if (mode === 'remembered' && typeof studioRenderRememberedField === 'function') {
       studioRenderRememberedField();
+    }
+    // Refresh the prepared view from already-loaded processed-artifact state when
+    // it becomes visible. Read-only render only — no fetch, no submit, no Nexus.
+    if (mode === 'prepared' && typeof studioRenderPreparedField === 'function') {
+      studioRenderPreparedField();
     }
   }
 
