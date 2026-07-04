@@ -2382,6 +2382,107 @@ input, textarea { font: inherit; color: inherit; }
   max-width: 46ch;
 }
 
+/* Remembered mode — central read-only mirror of held observations/media. */
+.fo-remembered {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.fo-remembered-intro {
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+}
+.fo-remembered-lede {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  max-width: 52ch;
+}
+.fo-remembered-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.fo-remembered-empty {
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--text-faint);
+  opacity: 0.85;
+}
+.fo-remembered-section-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.fo-remembered-count {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-faint);
+  opacity: 0.7;
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+}
+.fo-remembered-card {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+.fo-remembered-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+.fo-remembered-card-meta {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 2px 0 6px;
+}
+.fo-remembered-card-body {
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.fo-remembered-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.fo-remembered-bring-btn {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 5px 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.fo-remembered-bring-btn:hover {
+  border-color: var(--rose-color, #c4b5fd);
+}
+
 /* Voice record button — elegant */
 .voice-btn {
   width: 32px; height: 32px;
@@ -8209,12 +8310,20 @@ input, textarea { font: inherit; color: inherit; }
         </div>
         </div><!-- /fo-panel-now -->
 
-        <!-- REMEMBERED — scaffold placeholder -->
+        <!-- REMEMBERED — central remembered-field view. Mirrors the same
+             member-scoped observation/media state the side Archive reads
+             (state.fieldObservations / state.fieldObservationMedia). Read-only
+             here plus the existing safe text hand-off; it never uploads,
+             extracts, deletes, or sends anything to Nexus automatically. The
+             side Archive remains the authoritative manage/delete surface. -->
         <div class="fo-mode-panel" id="fo-panel-remembered" data-fo-panel="remembered" role="tabpanel" hidden>
-          <div class="fo-mode-placeholder">
-            <span class="fo-mode-placeholder-title">Remembered</span>
-            <p class="fo-mode-placeholder-body">Material held in the field. Everything you have captured stays here with you — nothing is interpreted, nothing moves on its own.</p>
-            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          <div class="fo-remembered">
+            <div class="fo-remembered-intro">
+              <span class="fo-mode-placeholder-title">Remembered in this field</span>
+              <p class="fo-remembered-lede">What you have already captured stays held here with you — text observations and media, resting in the field. Nothing is interpreted, nothing moves on its own.</p>
+              <p class="fo-mode-placeholder-note">Nexus only ever sees what you offer.</p>
+            </div>
+            <div class="fo-remembered-body" id="fo-remembered-body" aria-live="polite"></div>
           </div>
         </div>
 
@@ -11691,6 +11800,83 @@ function studioRenderFieldObservations() {
     btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
   });
   updateArchiveSelectionUI();
+  studioRenderRememberedField();
+}
+
+// Central "Remembered" mode view. A read-only remembered layer over the same
+// member-scoped state the side Archive reads: saved text observations and
+// captured media (images / audio / PDFs & attachments). It mirrors what is
+// held in the field — the only action offered is the existing, deliberate
+// text hand-off (studioBringObservationIntoNexus, which merely fills the Nexus
+// input). It never uploads, extracts, deletes, or sends anything automatically;
+// managing/deleting stays in the side Archive.
+function studioRenderRememberedField() {
+  const host = document.getElementById('fo-remembered-body');
+  if (!host) return;
+  const textItems = state.fieldObservations || [];
+  const mediaItems = state.fieldObservationMedia || [];
+  if (!textItems.length && !mediaItems.length) {
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing is held here yet. Capture a Field Observation in <strong>Now</strong> — or drop in an image, audio, or PDF — and it will rest here, remembered.</p>';
+    return;
+  }
+
+  const textCards = textItems.map(o => {
+    const body = String(o.body || '');
+    const title = String(o.title || '').trim() || body.split('\n')[0].slice(0, 60);
+    const date = o.created_at ? String(o.created_at).slice(0, 10) : '';
+    const src = String(o.source_label || '').trim();
+    const preview = body.length > 220 ? body.slice(0, 220) + '…' : body;
+    return `<div class="fo-card fo-remembered-card">
+      <div class="fo-remembered-card-title">${studioNexusEscape(title)}</div>
+      <div class="fo-remembered-card-meta">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
+      <div class="fo-remembered-card-body">${studioNexusEscape(preview)}</div>
+      <div class="fo-remembered-card-actions">
+        <button type="button" class="fo-remembered-bring-btn" data-id="${studioNexusEscape(o.id)}">Bring forward to Nexus</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const mediaCard = (m) => {
+    const name = studioNexusEscape(String(m.filename || '').trim() || 'Untitled');
+    const kind = String(m.media_kind || 'other');
+    const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
+    const size = foFormatBytes(m.byte_size);
+    const url = foMediaFileUrl(m.id);
+    let mediaBody;
+    if (kind === 'image') {
+      mediaBody = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
+    } else if (kind === 'audio') {
+      mediaBody = `<audio controls preload="none" src="${studioNexusEscape(url)}"></audio>`;
+    } else {
+      mediaBody = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
+    }
+    return `<div class="fo-media-card">
+      <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+      <div class="fo-media-card-name">${name}</div>
+      ${mediaBody}
+      <div class="fo-media-card-note">Held in the field, offered to no one. Bringing media forward is a later, deliberate step.</div>
+    </div>`;
+  };
+  const mediaCards = mediaItems.map(mediaCard).join('');
+
+  const sections = [];
+  if (textCards) {
+    sections.push(`<section class="fo-remembered-section">
+      <h4 class="fo-remembered-section-head">Text observations <span class="fo-remembered-count">${textItems.length}</span></h4>
+      <div class="fo-remembered-text-list">${textCards}</div>
+    </section>`);
+  }
+  if (mediaCards) {
+    sections.push(`<section class="fo-remembered-section">
+      <h4 class="fo-remembered-section-head">Media <span class="fo-remembered-count">${mediaItems.length}</span></h4>
+      <div class="fo-media-list">${mediaCards}</div>
+    </section>`);
+  }
+  host.innerHTML = sections.join('');
+
+  host.querySelectorAll('.fo-remembered-bring-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioBringObservationIntoNexus(btn.dataset.id));
+  });
 }
 
 async function studioDeleteFieldObservation(id) {
@@ -11897,6 +12083,7 @@ function studioRenderFieldObservationMedia() {
     btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
   });
   renderArchiveMedia();
+  studioRenderRememberedField();
 }
 
 // ── Archive — browse/manage view of captured media, grouped by type ─────────
@@ -20966,6 +21153,11 @@ if (document.readyState === 'loading') {
       const panel = document.getElementById('fo-panel-' + m);
       if (panel) panel.hidden = (m !== mode);
     });
+    // Refresh the remembered mirror from already-loaded state when it becomes
+    // visible. Read-only render only — no fetch, no submit, no Nexus call.
+    if (mode === 'remembered' && typeof studioRenderRememberedField === 'function') {
+      studioRenderRememberedField();
+    }
   }
 
   let stored = 'now';
