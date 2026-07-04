@@ -2418,6 +2418,159 @@ input, textarea { font: inherit; color: inherit; }
 .voice-entry-delete { color: var(--text-faint); font-size: 11px; padding: 1px 4px; cursor: pointer; background: none; border: none; transition: color 0.2s; }
 .voice-entry-delete:hover { color: #f43f5e; }
 
+/* ── Field Observations — depth modes ──────────────────────────
+   The central surface is not a set of files and tools; it is a field
+   you can move through at different depths: what is present Now, what
+   is Remembered, what is Prepared, what is Offered, what has been
+   Worked. Now keeps the existing capture surface; the others surface
+   the same member-scoped state at greater depth. Nothing here sends to
+   Nexus automatically — the human chooses what comes forward. */
+.fo-depth-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.fo-depth-tab {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.fo-depth-tab:hover { color: var(--text); }
+.fo-depth-tab.is-active {
+  color: var(--accent-color, var(--setup-accent));
+  border-bottom-color: var(--accent-color, var(--setup-accent));
+}
+.fo-depth-tab[data-future="1"] { opacity: 0.55; }
+
+.fo-depth-panels { flex: 1; display: flex; min-height: 0; }
+.fo-depth-panel { display: none; flex: 1; min-height: 0; }
+.fo-depth-panel.is-active { display: flex; flex-direction: column; }
+
+.fo-central-head {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+.fo-central-head-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fo-central-head-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.5;
+  font-style: italic;
+  margin-top: 3px;
+}
+.fo-central-scroll { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5); }
+.fo-central-section { margin-bottom: var(--space-5); }
+.fo-central-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-2);
+}
+.fo-central-card {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+.fo-central-card-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.fo-central-card-meta { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin: 2px 0; }
+.fo-central-card-body { font-size: 12px; color: var(--text-faint); line-height: 1.6; white-space: pre-wrap; margin-top: 4px; }
+.fo-central-card-actions { display: flex; gap: 8px; margin-top: 10px; }
+.fo-central-card-actions button,
+.fo-central-offer-btn {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.fo-central-bring-btn,
+.fo-central-offer-btn {
+  border-color: color-mix(in srgb, var(--rose-color,#c4b5fd) 55%, transparent);
+  color: var(--text);
+}
+.fo-central-offer-btn:disabled { opacity: 0.5; cursor: default; }
+.fo-central-footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.fo-central-footer-note { font-size: 10px; color: var(--text-faint); font-style: italic; line-height: 1.4; }
+.fo-future-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  color: var(--text-faint);
+}
+.fo-future-state-title { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.04em; }
+.fo-future-state-body { font-size: 11px; line-height: 1.6; max-width: 320px; font-style: italic; }
+
+/* Compact memory index — the side Archive as orientation, not a file
+   manager. Shows how much sits at each depth and opens the central
+   depth view. Browsing and action happen in the centre. */
+.archive-memory-index { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--space-3); }
+.archive-memory-index-intro { font-size: 10px; color: var(--text-faint); font-style: italic; line-height: 1.5; margin: 0 0 6px; }
+.memory-index-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 6px 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  width: 100%;
+  text-align: left;
+}
+.memory-index-item:hover { border-color: var(--accent-color, var(--setup-accent)); color: var(--text); }
+.memory-index-item.is-active {
+  border-color: var(--accent-color, var(--setup-accent));
+  color: var(--accent-color, var(--setup-accent));
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 8%, transparent);
+}
+.memory-index-item[data-future="1"] { opacity: 0.6; }
+.memory-index-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+.memory-index-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  min-width: 18px;
+  text-align: right;
+}
+
 /* ── Nexus — right panel ──────────────────────────────────── */
 .room-mirror {
   display: flex;
@@ -4076,7 +4229,7 @@ input, textarea { font: inherit; color: inherit; }
 .fo-media-card-note { font-size: 10px; color: var(--text-faint); font-style: italic; opacity: 0.8; margin-top: 4px; }
 
 /* ── Archive action layer ──────────────────────────────────
-   "What do you want to do with these files?" — future
+   "How would you like to meet this material?" — future
    affordances only. Standard tools are generic; the Nexus
    action is visually distinguished as deeper interpretation. */
 .archive-actions-box {
@@ -7966,6 +8119,29 @@ input, textarea { font: inherit; color: inherit; }
 
         <div class="archive-drawer-body" id="archive-drawer-body">
 
+          <!-- Compact memory index — orientation, not a file manager. Shows how
+               much sits at each depth and opens the central Field Observations
+               depth view. Browsing and action happen in the centre. -->
+          <div class="archive-memory-index" id="archive-memory-index">
+            <p class="archive-memory-index-intro">A memory index. Intelligence can help organize the field. You choose what comes forward.</p>
+            <button type="button" class="memory-index-item" data-depth="remembered" title="Open Remembered in the centre">
+              <span class="memory-index-label">Remembered</span>
+              <span class="memory-index-count" id="memory-count-remembered">0</span>
+            </button>
+            <button type="button" class="memory-index-item" data-depth="prepared" title="Open Prepared in the centre">
+              <span class="memory-index-label">Prepared</span>
+              <span class="memory-index-count" id="memory-count-prepared">0</span>
+            </button>
+            <button type="button" class="memory-index-item" data-depth="offered" data-future="1" title="Offered — future layer">
+              <span class="memory-index-label">Offered</span>
+              <span class="memory-index-count" id="memory-count-offered">—</span>
+            </button>
+            <button type="button" class="memory-index-item" data-depth="worked" data-future="1" title="Worked — future layer">
+              <span class="memory-index-label">Worked</span>
+              <span class="memory-index-count" id="memory-count-worked">—</span>
+            </button>
+          </div>
+
           <details class="archive-group" id="archive-grp-compass" open>
             <summary class="archive-group-head">
               <span class="archive-group-chevron" aria-hidden="true"></span>
@@ -8008,7 +8184,7 @@ input, textarea { font: inherit; color: inherit; }
                    generic (they will later run without Nexus); interpretation
                    is explicitly routed through Nexus and never automatic. -->
               <div class="archive-actions-box" id="archive-actions-box" hidden>
-                <div class="archive-actions-title">What do you want to do with these files?</div>
+                <div class="archive-actions-title">How would you like to meet this material?</div>
                 <div class="archive-actions-group archive-actions-group--nexus" id="archive-actions-selected-text" hidden>
                   <span class="archive-actions-group-label">Selected text observations</span>
                   <div class="archive-actions-row">
@@ -8087,42 +8263,107 @@ input, textarea { font: inherit; color: inherit; }
          aria-valuenow="244"
          tabindex="0"></div>
 
-    <!-- Notepad (centre) -->
+    <!-- Notepad (centre) — Field Observations, the general user interface.
+         A field you move through at depth: Now / Remembered / Prepared /
+         Offered / Worked. Now is the existing capture surface; the deeper
+         modes surface the same member-scoped state. Nothing here enters
+         Nexus automatically — the human chooses what comes forward. -->
     <div class="room-workbench">
       <div class="notepad-surface">
-        <div class="notepad-header">
+        <div class="fo-depth-nav" id="fo-depth-nav" role="tablist" aria-label="Field Observations depth">
+          <button type="button" class="fo-depth-tab is-active" data-mode="now" role="tab" aria-selected="true">Now</button>
+          <button type="button" class="fo-depth-tab" data-mode="remembered" role="tab" aria-selected="false">Remembered</button>
+          <button type="button" class="fo-depth-tab" data-mode="prepared" role="tab" aria-selected="false">Prepared</button>
+          <button type="button" class="fo-depth-tab" data-mode="offered" role="tab" aria-selected="false" data-future="1">Offered</button>
+          <button type="button" class="fo-depth-tab" data-mode="worked" role="tab" aria-selected="false" data-future="1">Worked</button>
+        </div>
+
+        <div class="fo-depth-panels" id="fo-depth-panels">
+
+          <!-- NOW — the present field: capture, upload, write. Unchanged. -->
+          <div class="fo-depth-panel is-active" id="fo-panel-now" data-mode="now" role="tabpanel" aria-label="Now">
+            <div class="notepad-header">
   <div style="display:flex;align-items:center;gap:var(--space-2);">
-          <span class="notepad-label">Field Observations</span>
-          <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Observations"><i>i</i></button>
-        </div>
-          <div class="notepad-actions">
-            <button class="voice-btn" id="voice-record-btn" title="Record voice note">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </button>
-            <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
+              <span class="notepad-label">Field Observations · Now</span>
+              <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Observations"><i>i</i></button>
+            </div>
+              <div class="notepad-actions">
+                <button class="voice-btn" id="voice-record-btn" title="Record voice note">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+                <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
+              </div>
+            </div>
+            <textarea class="notepad-textarea" id="workbench-input"
+              placeholder="Observe freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save observation is the button above. Saved Field Observations become available to Nexus."></textarea>
+            <p class="notepad-nexus-hint" id="notepad-nexus-hint" role="status" aria-live="polite">
+              <strong>Saved.</strong> This Field Observation is now available to Nexus for reflection, and for shaping your Living Profile, Personal Home, and Personal OS.
+            </p>
+            <!-- Multimodal capture: drag-and-drop or pick images / audio / PDFs.
+                 Uploaded media is stored member-scoped server-side and listed below
+                 as Field Observation cards. It is NOT sent to Nexus automatically —
+                 media requires a later processing step. -->
+            <div class="fo-media-dropzone" id="fo-media-dropzone" tabindex="0" role="button"
+                 aria-label="Add media observation — drag files here or click to choose">
+              <input type="file" id="fo-media-input" multiple
+                     accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,application/pdf"
+                     style="display:none;">
+              <span class="fo-media-dropzone-text">Drag &amp; drop media here, or <u>choose files</u></span>
+              <span class="fo-media-dropzone-hint">Images, audio, or PDF · up to 25&nbsp;MB · stays private to you, not sent to Nexus</span>
+            </div>
+            <div class="notepad-entries">
+              <div id="fo-media-list" class="fo-media-list"></div>
+              <div class="workbench-entries" id="workbench-entries"></div>
+              <div id="voice-entries" style="display:none;"></div>
+            </div>
           </div>
-        </div>
-        <textarea class="notepad-textarea" id="workbench-input"
-          placeholder="Observe freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save observation is the button above. Saved Field Observations become available to Nexus."></textarea>
-        <p class="notepad-nexus-hint" id="notepad-nexus-hint" role="status" aria-live="polite">
-          <strong>Saved.</strong> This Field Observation is now available to Nexus for reflection, and for shaping your Living Profile, Personal Home, and Personal OS.
-        </p>
-        <!-- Multimodal capture: drag-and-drop or pick images / audio / PDFs.
-             Uploaded media is stored member-scoped server-side and listed below
-             as Field Observation cards. It is NOT sent to Nexus automatically —
-             media requires a later processing step. -->
-        <div class="fo-media-dropzone" id="fo-media-dropzone" tabindex="0" role="button"
-             aria-label="Add media observation — drag files here or click to choose">
-          <input type="file" id="fo-media-input" multiple
-                 accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,application/pdf"
-                 style="display:none;">
-          <span class="fo-media-dropzone-text">Drag &amp; drop media here, or <u>choose files</u></span>
-          <span class="fo-media-dropzone-hint">Images, audio, or PDF · up to 25&nbsp;MB · stays private to you, not sent to Nexus</span>
-        </div>
-        <div class="notepad-entries">
-          <div id="fo-media-list" class="fo-media-list"></div>
-          <div class="workbench-entries" id="workbench-entries"></div>
-          <div id="voice-entries" style="display:none;"></div>
+
+          <!-- REMEMBERED — the deeper remembered field: what you have held.
+               Mirrors the member-scoped Archive state into the centre. -->
+          <div class="fo-depth-panel" id="fo-panel-remembered" data-mode="remembered" role="tabpanel" aria-label="Remembered">
+            <div class="fo-central-head">
+              <div class="fo-central-head-title">Field Observations · Remembered</div>
+              <div class="fo-central-head-sub">The remembered field — what you have held. Intelligence can help organize the field. You choose what comes forward.</div>
+            </div>
+            <div class="fo-central-scroll" id="fo-central-remembered"></div>
+            <div class="fo-central-footer">
+              <button type="button" class="fo-central-offer-btn" disabled aria-disabled="true">Offer to Nexus</button>
+              <span class="fo-central-footer-note">Tick what you want to meet with Nexus. This fills the Nexus input for you to review — nothing is sent automatically.</span>
+            </div>
+          </div>
+
+          <!-- PREPARED — extracted / processed material ready for review.
+               Includes PDF extracted text. Preparation is not interpretation. -->
+          <div class="fo-depth-panel" id="fo-panel-prepared" data-mode="prepared" role="tabpanel" aria-label="Prepared">
+            <div class="fo-central-head">
+              <div class="fo-central-head-title">Field Observations · Prepared</div>
+              <div class="fo-central-head-sub">Prepared material — text extracted from what you remembered. A utility step, not interpretation. Meaning belongs to Nexus, and only when you choose.</div>
+            </div>
+            <div class="fo-central-scroll" id="fo-central-prepared"></div>
+            <div class="fo-central-footer">
+              <button type="button" class="fo-central-offer-btn" disabled aria-disabled="true">Offer to Nexus</button>
+              <span class="fo-central-footer-note">Tick prepared text to bring forward. Populates the Nexus input for your review — nothing is sent automatically.</span>
+            </div>
+          </div>
+
+          <!-- OFFERED — material intentionally offered to Nexus. Future state:
+               offering is not yet tracked as its own layer this pass. -->
+          <div class="fo-depth-panel" id="fo-panel-offered" data-mode="offered" role="tabpanel" aria-label="Offered">
+            <div class="fo-future-state">
+              <div class="fo-future-state-title">Offered</div>
+              <div class="fo-future-state-body">Material you offer to Nexus will gather here, so you can see what you have chosen to bring forward. For now, offer material from Remembered or Prepared — Nexus only ever sees what you offer.</div>
+            </div>
+          </div>
+
+          <!-- WORKED — material reflected on or shaped by Nexus. Future state:
+               no worked layer is tracked yet. -->
+          <div class="fo-depth-panel" id="fo-panel-worked" data-mode="worked" role="tabpanel" aria-label="Worked">
+            <div class="fo-future-state">
+              <div class="fo-future-state-title">Worked</div>
+              <div class="fo-future-state-body">What Nexus has reflected on or helped shape will return to the field here. Reflection and meaning belong to Nexus and require your intent — this layer arrives once that work is remembered.</div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -11571,6 +11812,7 @@ function studioRenderFieldObservations() {
     btn.addEventListener('click', () => studioDeleteFieldObservation(btn.dataset.id));
   });
   updateArchiveSelectionUI();
+  studioSyncDepthViews();
 }
 
 async function studioDeleteFieldObservation(id) {
@@ -11679,12 +11921,23 @@ function updateArchiveSelectionUI() {
   if (btn) {
     btn.disabled = count === 0;
     btn.setAttribute('aria-disabled', String(count === 0));
-    btn.textContent = count > 0 ? `Bring selected text to Nexus (${count})` : 'Bring selected text to Nexus';
+    btn.textContent = count > 0 ? `Offer selected to Nexus (${count})` : 'Offer selected to Nexus';
     if (!btn.dataset.wired) {
       btn.dataset.wired = '1';
       btn.addEventListener('click', () => { if (!btn.disabled) studioBringSelectedTextToNexus(); });
     }
   }
+  // Central depth-view "Offer to Nexus" buttons share the same selection and
+  // the same client-side hand-off — they only populate the Nexus input.
+  document.querySelectorAll('.fo-central-offer-btn').forEach(cb => {
+    cb.disabled = count === 0;
+    cb.setAttribute('aria-disabled', String(count === 0));
+    cb.textContent = count > 0 ? `Offer ${count} to Nexus` : 'Offer to Nexus';
+    if (!cb.dataset.wired) {
+      cb.dataset.wired = '1';
+      cb.addEventListener('click', () => { if (!cb.disabled) studioBringSelectedTextToNexus(); });
+    }
+  });
 }
 
 // ── Field Observations — multimodal media ───────────────────────────────────
@@ -11905,6 +12158,7 @@ function renderArchiveMedia() {
   });
   updateArchiveActionsBox();
   updateArchiveSelectionUI();
+  studioSyncDepthViews();
 }
 
 // Trigger server-side text extraction for a PDF media item, then refresh the
@@ -11947,7 +12201,7 @@ function studioBringProcessedTextIntoNexus(procId) {
   }
 }
 
-// Show the "What do you want to do with these files?" action layer only when
+// Show the "How would you like to meet this material?" action layer only when
 // there is captured material (text or media) to act on.
 function updateArchiveActionsBox() {
   const box = document.getElementById('archive-actions-box');
@@ -12008,6 +12262,159 @@ function updateArchiveCounts() {
 
   const total = foTotal + compassCount + sessionCount;
   setArchiveCount('archive-total-count', total);
+}
+
+// ── Field Observations — depth modes (central) ──────────────────────────────
+// The central surface is a field you move through at depth: Now / Remembered /
+// Prepared / Offered / Worked. Now keeps the existing capture surface. The
+// deeper modes render the SAME member-scoped state the Archive reads — this is
+// a mirror, not a move, so the side Archive keeps working. None of this sends
+// anything to Nexus: bringing/offering only ever populates the Nexus input via
+// the shared studioPopulateNexusInput trust boundary.
+const FO_DEPTH_MODES = ['now', 'remembered', 'prepared', 'offered', 'worked'];
+
+function studioSetDepthMode(mode) {
+  if (FO_DEPTH_MODES.indexOf(mode) === -1) mode = 'now';
+  state.foDepthMode = mode;
+  document.querySelectorAll('.fo-depth-tab').forEach(t => {
+    const on = t.dataset.mode === mode;
+    t.classList.toggle('is-active', on);
+    t.setAttribute('aria-selected', String(on));
+  });
+  document.querySelectorAll('.fo-depth-panel').forEach(p => {
+    p.classList.toggle('is-active', p.dataset.mode === mode);
+  });
+  document.querySelectorAll('.memory-index-item').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.depth === mode);
+  });
+  if (mode === 'remembered') studioRenderRememberedCentral();
+  else if (mode === 'prepared') studioRenderPreparedCentral();
+}
+
+// Central card for a text observation. Mirrors the Archive card but uses the
+// depth-view language ("Bring forward"). Selection shares studioSelectedTextObs
+// with the side Archive so a tick in either place counts once.
+function foCentralTextCard(o) {
+  const idStr = String(o.id);
+  const body = String(o.body || '');
+  const title = String(o.title || '').trim() || body.split('\n')[0].slice(0, 60);
+  const date = o.created_at ? String(o.created_at).slice(0, 10) : '';
+  const preview = body.length > 300 ? body.slice(0, 300) + '…' : body;
+  const src = String(o.source_label || '').trim();
+  const checked = studioSelectedTextObs.has(idStr) ? ' checked' : '';
+  return `<div class="fo-central-card">
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <input type="checkbox" class="fo-central-select-text" data-id="${studioNexusEscape(o.id)}" aria-label="Select this observation to offer to Nexus" style="margin-top:3px;flex:0 0 auto;cursor:pointer;"${checked}>
+      <div style="flex:1 1 auto;">
+        <div class="fo-central-card-title">${studioNexusEscape(title)}</div>
+        <div class="fo-central-card-meta">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
+      </div>
+    </div>
+    <div class="fo-central-card-body">${studioNexusEscape(preview)}</div>
+    <div class="fo-central-card-actions">
+      <button type="button" class="fo-central-bring-btn" data-id="${studioNexusEscape(o.id)}">Bring forward</button>
+      <button type="button" class="fo-central-delete-btn" data-id="${studioNexusEscape(o.id)}">Delete</button>
+    </div>
+  </div>`;
+}
+
+// Render the Remembered depth view: held text observations + captured media.
+// Reuses foArchiveMediaCard so PDFs offer the same Extract / processed preview,
+// which is how remembered material becomes Prepared.
+function studioRenderRememberedCentral() {
+  const el = document.getElementById('fo-central-remembered');
+  if (!el) return;
+  const texts = state.fieldObservations || [];
+  const media = state.fieldObservationMedia || [];
+  let html = '<div class="fo-central-section"><div class="fo-central-section-title">Held observations</div>';
+  html += texts.length
+    ? texts.map(foCentralTextCard).join('')
+    : '<p class="archive-empty">Nothing remembered yet. What you save in Now settles here.</p>';
+  html += '</div><div class="fo-central-section"><div class="fo-central-section-title">Captured media</div>';
+  html += media.length
+    ? media.map(foArchiveMediaCard).join('')
+    : '<p class="archive-empty">No captured media yet.</p>';
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('.fo-central-select-text').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = String(cb.dataset.id);
+      if (cb.checked) studioSelectedTextObs.add(id); else studioSelectedTextObs.delete(id);
+      updateArchiveSelectionUI();
+    });
+  });
+  el.querySelectorAll('.fo-central-bring-btn').forEach(b => b.addEventListener('click', () => studioBringObservationIntoNexus(b.dataset.id)));
+  el.querySelectorAll('.fo-central-delete-btn').forEach(b => b.addEventListener('click', () => studioDeleteFieldObservation(b.dataset.id)));
+  foBindCentralMedia(el);
+  updateArchiveSelectionUI();
+}
+
+// Render the Prepared depth view: extracted-text artifacts (this pass: PDF
+// text) as prepared material. Reuses foProcessedTextCard for the preview,
+// selection, and single Bring-forward — never auto-sends.
+function studioRenderPreparedCentral() {
+  const el = document.getElementById('fo-central-prepared');
+  if (!el) return;
+  const proc = state.fieldObservationProcessed || [];
+  if (!proc.length) {
+    el.innerHTML = '<p class="archive-empty">Nothing prepared yet. Extract text from a PDF in Remembered to prepare it here.</p>';
+    return;
+  }
+  el.innerHTML = proc.map(p => {
+    const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(p.source_media_id));
+    const label = (media && String(media.filename || '').trim()) || 'Extracted text';
+    return `<div class="fo-central-card"><div class="fo-central-card-title">${studioNexusEscape(label)}</div>${foProcessedTextCard(p)}</div>`;
+  }).join('');
+  foBindCentralMedia(el);
+  updateArchiveSelectionUI();
+}
+
+// Wire the shared media/processed handlers within a central container, mirroring
+// renderArchiveMedia's bindings so extraction, delete, and processed-text
+// selection/bring behave identically in the centre.
+function foBindCentralMedia(el) {
+  el.querySelectorAll('.archive-media-delete-btn').forEach(b => b.addEventListener('click', () => studioDeleteFieldObservationMedia(b.dataset.id)));
+  el.querySelectorAll('.fo-extract-btn').forEach(b => b.addEventListener('click', () => studioExtractPdfText(b.dataset.id, b)));
+  el.querySelectorAll('.fo-processed-bring-btn').forEach(b => b.addEventListener('click', () => studioBringProcessedTextIntoNexus(b.dataset.id)));
+  el.querySelectorAll('.fo-processed-select').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = String(cb.dataset.id);
+      if (cb.checked) studioSelectedProcessedText.add(id); else studioSelectedProcessedText.delete(id);
+      updateArchiveSelectionUI();
+    });
+  });
+}
+
+// Keep the central depth views and memory-index counts in sync with the same
+// state the Archive renders. Called by the FO render functions after any load
+// or mutation. Only re-renders the currently visible deep panel.
+function studioSyncDepthViews() {
+  const mode = state.foDepthMode || 'now';
+  if (mode === 'remembered') studioRenderRememberedCentral();
+  else if (mode === 'prepared') studioRenderPreparedCentral();
+  studioUpdateDepthCounts();
+}
+
+function studioUpdateDepthCounts() {
+  const remembered = (state.fieldObservations || []).length + (state.fieldObservationMedia || []).length;
+  const prepared = (state.fieldObservationProcessed || []).filter(p => p.status === 'done').length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('memory-count-remembered', String(remembered));
+  set('memory-count-prepared', String(prepared));
+  // Offered / Worked are future layers this pass — no data tracked yet.
+  set('memory-count-offered', '—');
+  set('memory-count-worked', '—');
+}
+
+function initFieldObservationDepth() {
+  document.querySelectorAll('.fo-depth-tab').forEach(t => {
+    t.addEventListener('click', () => studioSetDepthMode(t.dataset.mode));
+  });
+  document.querySelectorAll('.memory-index-item').forEach(b => {
+    b.addEventListener('click', () => studioSetDepthMode(b.dataset.depth));
+  });
+  studioSetDepthMode('now');
+  studioUpdateDepthCounts();
 }
 
 async function studioUploadFieldObservationMedia(files) {
@@ -12089,6 +12496,7 @@ document.addEventListener('DOMContentLoaded', () => {
   studioLoadGoldenThread();
   studioLoadFieldObservations();
   initFieldObservationMedia();
+  initFieldObservationDepth();
   initArchiveCollapse();
   initPortalTooltips();
   initInfoPopups();
