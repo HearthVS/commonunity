@@ -51,7 +51,10 @@ assert(bar !== null, 'mode bar (#fo-mode-bar) exists');
 
 function btn(mode) { return bar.querySelector(`.fo-mode-btn[data-fo-mode="${mode}"]`); }
 
-['remembered', 'prepared', 'offered'].forEach((mode) => {
+// Worked gained a count badge in Slice 7 (material returned from Nexus is now
+// a real, countable client-side snapshot), so only "Now" (live capture) stays
+// badge-less.
+['remembered', 'prepared', 'offered', 'worked'].forEach((mode) => {
   const badge = bar.querySelector(`.fo-mode-count[data-fo-count="${mode}"]`);
   assert(badge !== null, `${mode} has a count badge span`);
   assert(badge && btn(mode).contains(badge), `${mode} badge is inside its mode button`);
@@ -59,7 +62,7 @@ function btn(mode) { return bar.querySelector(`.fo-mode-btn[data-fo-mode="${mode
   assert(badge && badge.textContent.trim() === '', `${mode} badge starts empty`);
 });
 
-['now', 'worked'].forEach((mode) => {
+['now'].forEach((mode) => {
   assert(bar.querySelector(`.fo-mode-count[data-fo-count="${mode}"]`) === null,
     `${mode} carries no count badge`);
 });
