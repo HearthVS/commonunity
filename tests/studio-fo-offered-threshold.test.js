@@ -1,18 +1,21 @@
 /* Static test: Field Observations depth — Slice 13 (Offered as a threshold).
  *
- * Covers the clarity + controls pass over the central Offered mode:
+ * Covers the clarity + controls pass over the central Offered mode, and the
+ * normalization of Offered to session-only, in-memory state (no browser
+ * storage — matching the Worked model, and the webapp constraint that rejects
+ * localStorage / sessionStorage / indexedDB / cookies for this series):
  *   1. Offered reads as a threshold / review snapshot of intentional hand-offs,
  *      explicitly distinct from Remembered (durable) and Worked (returned) —
- *      not a durable archive or hidden log.
+ *      not a durable archive or hidden log — and clears on reload.
  *   2. A safe, explicit "Release recent offerings" control clears ONLY the
- *      offered snapshot (state.fieldObservationsOffered + its own localStorage
- *      key) and refreshes the Offered render / mode counts. It confirms first,
- *      states it cannot be undone, and no-ops when nothing is offered.
+ *      in-memory offered snapshot (state.fieldObservationsOffered) and refreshes
+ *      the Offered render / mode counts. It confirms first, states it cannot be
+ *      undone, and no-ops when nothing is offered.
  *   3. Clearing never touches Remembered observations/media, Prepared artifacts,
  *      or Worked returns.
- *   4. The re-place action stays explicit (populate-only) and Offered's consent
- *      boundary is preserved: no fetch, no auto-submit, no /rose-mirror, and no
- *      NEW browser storage beyond the pre-existing offered localStorage mirror.
+ *   4. The re-place action stays explicit (populate-only) and the entire Offered
+ *      code path (load / record / render / clear) uses NO browser storage, never
+ *      auto-submits, and never triggers /rose-mirror.
  *
  * Static/DOM assertions over studio.html markup and its inline script; no
  * server required.
@@ -44,10 +47,16 @@ function fail(msg) { console.error('  FAIL ' + msg); failed++; }
 function assert(cond, msg) { cond ? pass(msg) : fail(msg); }
 
 // Extract the relevant function bodies once for scoped checks.
-const renderMatch = src.match(/function studioRenderOfferedField[\s\S]*?\n}/);
-const render = renderMatch ? renderMatch[0] : '';
-const clearMatch = src.match(/function studioClearOffered[\s\S]*?\n}/);
-const clearFn = clearMatch ? clearMatch[0] : '';
+const grab = (name) => (src.match(new RegExp('function ' + name + '[\\s\\S]*?\\n}')) || [''])[0];
+const render = grab('studioRenderOfferedField');
+const clearFn = grab('studioClearOffered');
+const loadFn = grab('studioLoadOffered');
+const recordFn = grab('studioRecordOffered');
+
+// Strip line comments so a comment *mentioning* a boundary (e.g. "no
+// localStorage", "no /rose-mirror") is never mistaken for an actual call.
+const stripComments = (s) => s.replace(/\/\/[^\n]*/g, '');
+const STORAGE_RE = /localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie/;
 
 // ---------------------------------------------------------------------------
 // 1) Offered reads as a threshold snapshot, distinct from Remembered / Worked.
@@ -68,7 +77,8 @@ assert(/remembered/.test(panelText) && /worked/.test(panelText),
   'offered copy names Remembered and Worked to distinguish itself from them');
 assert(/durabl/.test(panelText),
   'offered copy contrasts itself with what is durable');
-// It must not sell itself as a permanent store / archive / log.
+assert(/reload|session/.test(panelText),
+  'offered copy signals it is session-scoped (clears on reload)');
 assert(!/durable archive|permanent (record|archive|log)|hidden log/.test(panelText),
   'offered copy does not present itself as a durable archive / permanent log');
 assert(/nexus only sees what you offer/.test(panelText),
@@ -88,21 +98,18 @@ assert(/studioClearOffered\s*\(/.test(render),
   'the release control click is wired to studioClearOffered()');
 
 assert(clearFn !== '', 'studioClearOffered() is defined');
-// Safe: confirms first and states it cannot be undone; no-ops when empty.
 assert(/window\.confirm/.test(clearFn) && /cannot be undone|undone/.test(clearFn),
   'release confirms with the member and states it cannot be undone');
 assert(/if\s*\(\s*!list\.length\s*\)\s*return/.test(clearFn),
   'release no-ops when nothing has been offered');
 
 // ---------------------------------------------------------------------------
-// 3) Clearing affects ONLY offered state + count, nothing durable.
+// 3) Clearing affects ONLY in-memory offered state + count, nothing durable.
 // ---------------------------------------------------------------------------
 console.log('release affects only offered state + count, never durable state');
 
 assert(/state\.fieldObservationsOffered\s*=\s*\[\]/.test(clearFn),
   'release empties the offered snapshot (state.fieldObservationsOffered = [])');
-assert(/localStorage\.removeItem\(\s*foOfferedKey\(\)\s*\)/.test(clearFn),
-  'release removes only the offered localStorage key (foOfferedKey)');
 assert(/studioRenderOfferedField\s*\(|studioUpdateFoModeCounts\s*\(/.test(clearFn),
   'release refreshes the offered render / mode counts');
 // It must NOT touch Remembered, Prepared, Worked, or media state.
@@ -114,45 +121,51 @@ assert(!/state\.fieldObservationProcessed\b/.test(clearFn),
   'release never touches Prepared (processed) state');
 assert(!/state\.fieldObservationsWorked/.test(clearFn),
   'release never touches Worked state');
-// It only removes storage; it never writes new offered records.
-assert(!/localStorage\.setItem/.test(clearFn),
-  'release only removes storage — it never writes offered records');
 
 // The count updater still reads offered length as client-only state.
-const updater = (src.match(/function studioUpdateFoModeCounts[\s\S]*?\n}/) || [''])[0];
+const updater = grab('studioUpdateFoModeCounts');
 assert(/state\.fieldObservationsOffered\b/.test(updater),
   'the mode-count updater reads offered state so clearing drops its badge');
 
 // ---------------------------------------------------------------------------
-// 4) Re-place stays explicit; consent boundary preserved (no new storage/Nexus).
+// 4) Session-only: the WHOLE offered path uses no browser storage; re-place
+//    stays explicit; no auto-submit and no /rose-mirror.
 // ---------------------------------------------------------------------------
-console.log('re-place stays explicit and the consent boundary holds');
+console.log('offered is session-only (no storage) and preserves the consent boundary');
 
+assert(loadFn !== '' && recordFn !== '', 'load + record bodies are extractable');
+// No foOfferedKey helper / offered storage key survives anywhere in the file.
+assert(!/foOfferedKey/.test(src),
+  'the legacy foOfferedKey() storage-key helper is gone from studio.html');
+assert(!/['"]fo-offered:/.test(src),
+  'no "fo-offered:" storage key literal remains in studio.html');
+
+// Every offered function is storage-free (comments stripped so the explicit
+// "no localStorage" notes do not trip the check).
+[['load', loadFn], ['record', recordFn], ['render', render], ['clear', clearFn]].forEach(([n, body]) => {
+  assert(!STORAGE_RE.test(stripComments(body)),
+    `studio offered ${n} path uses no localStorage / sessionStorage / indexedDB / cookies`);
+});
+// Record and clear both keep offered purely in JS state.
+assert(/state\.fieldObservationsOffered\s*=/.test(recordFn),
+  'record keeps offered material in in-memory state');
+assert(/Array\.isArray\(state\.fieldObservationsOffered\)/.test(loadFn),
+  'load initializes offered from in-memory state (not from storage)');
+
+// Re-place stays an explicit, populate-only action.
 assert(/fo-offered-replay-btn/.test(render) &&
   /Place in Nexus input again|Place in the Nexus input again/.test(render),
   'the re-place action remains an explicit "Place in Nexus input again" button');
-// Replay populates only — it passes no offer metadata and never submits.
 assert(/studioPopulateNexusInput\(String\(item\.text/.test(render),
   're-place routes through studioPopulateNexusInput (populate-only, no offer arg)');
 
-// Neither the render nor the clear path may fetch, submit, or call rose-mirror.
-// Strip line comments first so a comment *mentioning* the boundary (e.g. "no
-// /rose-mirror") is not mistaken for an actual call.
-const stripComments = (s) => s.replace(/\/\/[^\n]*/g, '');
-const renderCode = stripComments(render);
-const clearCode = stripComments(clearFn);
-assert(!/fetch\s*\(/.test(renderCode) && !/fetch\s*\(/.test(clearCode),
-  'neither offered render nor release performs a fetch');
-assert(!/rose-mirror/.test(renderCode) && !/rose-mirror/.test(clearCode),
-  'neither offered render nor release calls /rose-mirror');
-assert(!/\.submit\s*\(/.test(render) && !/\.submit\s*\(/.test(clearFn),
-  'neither offered render nor release auto-submits');
-// No NEW browser storage: the render never writes storage, and clear only
-// removes the pre-existing offered key (never sessionStorage/indexedDB/cookies).
-assert(!/localStorage\.setItem|sessionStorage|indexedDB|document\s*\.\s*cookie/.test(render),
-  'offered render adds no browser storage');
-assert(!/sessionStorage|indexedDB|document\s*\.\s*cookie/.test(clearFn),
-  'release uses no sessionStorage / indexedDB / cookies');
+// No fetch / submit / rose-mirror anywhere in load / record / render / clear.
+[['load', loadFn], ['record', recordFn], ['render', render], ['clear', clearFn]].forEach(([n, body]) => {
+  const code = stripComments(body);
+  assert(!/fetch\s*\(/.test(code), `offered ${n} path performs no fetch`);
+  assert(!/rose-mirror/.test(code), `offered ${n} path never calls /rose-mirror`);
+  assert(!/\.submit\s*\(/.test(code), `offered ${n} path never auto-submits`);
+});
 
 // ---------------------------------------------------------------------------
 console.log('');

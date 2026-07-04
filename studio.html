@@ -8455,23 +8455,24 @@ input, textarea { font: inherit; color: inherit; }
         </div>
 
         <!-- OFFERED — a threshold / review snapshot, not a durable archive. A
-             client-only, bounded list (state.fieldObservationsOffered, mirrored
-             to localStorage on this device) of what a member has deliberately
-             brought forward into the Nexus input via the existing safe hand-off
-             helpers. Distinct from Remembered (durable captures) and Worked
-             (returned material): this only reflects recent intentional hand-offs
-             so they can be reviewed or placed into the Nexus input again. No
-             server state and no Nexus behaviour change: recording, the "place
-             again" action, and the explicit "Release recent offerings" control
-             only touch offered state + its own localStorage key and reuse
-             studioPopulateNexusInput — never submitting, fetching, or calling
-             /rose-mirror, and never touching Remembered, Prepared, Worked, or
-             media. -->
+             session-only, in-memory list (state.fieldObservationsOffered) of
+             what a member has deliberately brought forward into the Nexus input
+             this session via the existing safe hand-off helpers. Like Worked, it
+             uses NO browser storage (no localStorage / sessionStorage /
+             indexedDB / cookies), so recent offerings clear on reload. Distinct
+             from Remembered (durable captures) and Worked (returned material):
+             this only reflects recent intentional hand-offs so they can be
+             reviewed or placed into the Nexus input again. No server state and no
+             Nexus behaviour change: recording, the "place again" action, and the
+             explicit "Release recent offerings" control only touch in-memory
+             offered state and reuse studioPopulateNexusInput — never submitting,
+             fetching, or calling /rose-mirror, and never touching Remembered,
+             Prepared, Worked, or media. -->
         <div class="fo-mode-panel" id="fo-panel-offered" data-fo-panel="offered" role="tabpanel" hidden>
           <div class="fo-remembered">
             <div class="fo-remembered-intro">
               <span class="fo-mode-placeholder-title">Offered</span>
-              <p class="fo-remembered-lede">A threshold — a passing record of what you chose to carry across to Nexus. Unlike Remembered (what rests durably in your field) and Worked (what you bring back), this is a light snapshot of recent hand-offs, kept only on this device so you can look back or place an offering into the Nexus input again.</p>
+              <p class="fo-remembered-lede">A threshold — a passing record of what you chose to carry across to Nexus this session. Unlike Remembered (what rests durably in your field) and Worked (what you bring back), this is a light snapshot of recent hand-offs that clears when you reload, so you can look back or place an offering into the Nexus input again.</p>
               <p class="fo-mode-placeholder-note">Nexus only sees what you offer. Releasing this list clears the review snapshot alone — your remembered observations, prepared material, and worked returns are untouched.</p>
             </div>
             <div class="fo-remembered-body" id="fo-offered-body" aria-live="polite"></div>
@@ -12243,27 +12244,19 @@ function studioUpdateFoModeCounts() {
   });
 }
 
-// ── Offered — recent offered material (client-only) ──────────────────────────
-// A bounded, member-scoped snapshot of the material a member has deliberately
-// brought forward into the Nexus input. Purely for UI continuity: it records
-// what was offered so the Offered view can show recent context and re-place it.
-// It touches only state + localStorage — never a server route, /rose-mirror, or
-// a submit. If localStorage is unavailable it degrades to an in-memory list and
-// otherwise no-ops.
+// ── Offered — recent offered material (session-only, in-memory) ──────────────
+// A bounded, in-memory snapshot of the material a member has deliberately
+// brought forward into the Nexus input this session. Purely for UI continuity:
+// it records what was offered so the Offered view can show recent context and
+// re-place it. Like Worked, it lives ONLY in JS state for the current session:
+// there is intentionally NO browser storage (no localStorage / sessionStorage /
+// indexedDB / cookies), so recent offerings clear on reload — Offered is a
+// threshold, not a durable archive. It touches only in-memory state — never a
+// server route, /rose-mirror, or a submit.
 const FO_OFFERED_MAX = 10;
 
-function foOfferedKey() {
-  const cid = foCipherId();
-  return 'fo-offered:' + (cid || 'anon');
-}
-
 function studioLoadOffered() {
-  let list = [];
-  try {
-    const raw = localStorage.getItem(foOfferedKey());
-    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) list = parsed; }
-  } catch (_) { list = []; }
-  state.fieldObservationsOffered = list.slice(0, FO_OFFERED_MAX);
+  if (!Array.isArray(state.fieldObservationsOffered)) state.fieldObservationsOffered = [];
   return state.fieldObservationsOffered;
 }
 
@@ -12280,31 +12273,28 @@ function studioRecordOffered(offer, text) {
     snippet: snippetSource.length > 220 ? snippetSource.slice(0, 220) + '…' : snippetSource,
     text: body
   };
-  const list = Array.isArray(state.fieldObservationsOffered)
-    ? state.fieldObservationsOffered
-    : studioLoadOffered();
+  const list = studioLoadOffered();
   list.unshift(entry);
   if (list.length > FO_OFFERED_MAX) list.length = FO_OFFERED_MAX;
   state.fieldObservationsOffered = list;
-  try { localStorage.setItem(foOfferedKey(), JSON.stringify(list)); } catch (_) {}
   if (typeof studioRenderOfferedField === 'function') studioRenderOfferedField();
 }
 
 // Explicit, member-initiated release of the Offered review snapshot. Offered is
-// a threshold list, not a durable archive, so clearing it empties ONLY
-// state.fieldObservationsOffered and removes its own localStorage mirror. It
-// never touches Remembered observations/media, Prepared artifacts, or Worked
-// returns, and makes no fetch / submit / rose-mirror / Nexus call. Confirms
-// first (it cannot be undone) and no-ops when nothing has been offered.
+// a threshold list, not a durable archive, so clearing it empties ONLY the
+// in-memory state.fieldObservationsOffered and refreshes the render + count. It
+// touches no browser storage (there is none to touch), never mutates Remembered
+// observations/media, Prepared artifacts, or Worked returns, and makes no fetch
+// / submit / rose-mirror / Nexus call. Confirms first (it cannot be undone) and
+// no-ops when nothing has been offered.
 function studioClearOffered() {
   const list = state.fieldObservationsOffered || [];
   if (!list.length) return;
   const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
-    ? window.confirm('Release the recent offerings shown here? This clears only this review snapshot on this device — your remembered observations, prepared material, and worked returns are untouched. It cannot be undone.')
+    ? window.confirm('Release the recent offerings shown here? This clears only this review snapshot for the current session — your remembered observations, prepared material, and worked returns are untouched. It cannot be undone.')
     : true;
   if (!ok) return;
   state.fieldObservationsOffered = [];
-  try { localStorage.removeItem(foOfferedKey()); } catch (_) {}
   if (typeof studioRenderOfferedField === 'function') studioRenderOfferedField();
   else if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   if (typeof showToast === 'function') showToast('Recent offerings released.');
