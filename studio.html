@@ -2346,6 +2346,28 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--accent-color, var(--setup-accent));
   border-bottom-color: var(--accent-color, var(--setup-accent));
 }
+/* Live count badge — reflects already-loaded client state (remembered /
+   prepared / offered). Purely informational; hidden when the count is zero. */
+.fo-mode-count {
+  display: inline-block;
+  margin-left: 5px;
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 22%, transparent);
+  color: var(--text-muted, var(--text));
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+.fo-mode-count[hidden] { display: none; }
+.fo-mode-btn.active .fo-mode-count {
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+  color: var(--accent-color, var(--setup-accent));
+}
 .fo-mode-panel {
   flex: 1;
   display: flex;
@@ -2417,6 +2439,11 @@ input, textarea { font: inherit; color: inherit; }
   line-height: 1.6;
   color: var(--text-faint);
   opacity: 0.85;
+}
+.fo-worked-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 .fo-remembered-section-head {
   font-size: 10px;
@@ -8289,9 +8316,9 @@ input, textarea { font: inherit; color: inherit; }
              surface (unchanged). The others are scaffold placeholders. -->
         <div class="fo-mode-bar" id="fo-mode-bar" role="tablist" aria-label="Field Observations depth">
           <button type="button" class="fo-mode-btn active" data-fo-mode="now" role="tab" aria-selected="true">Now</button>
-          <button type="button" class="fo-mode-btn" data-fo-mode="remembered" role="tab" aria-selected="false">Remembered</button>
-          <button type="button" class="fo-mode-btn" data-fo-mode="prepared" role="tab" aria-selected="false">Prepared</button>
-          <button type="button" class="fo-mode-btn" data-fo-mode="offered" role="tab" aria-selected="false">Offered</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="remembered" role="tab" aria-selected="false">Remembered<span class="fo-mode-count" data-fo-count="remembered" hidden></span></button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="prepared" role="tab" aria-selected="false">Prepared<span class="fo-mode-count" data-fo-count="prepared" hidden></span></button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="offered" role="tab" aria-selected="false">Offered<span class="fo-mode-count" data-fo-count="offered" hidden></span></button>
           <button type="button" class="fo-mode-btn" data-fo-mode="worked" role="tab" aria-selected="false">Worked</button>
         </div>
         <!-- NOW — live capture surface (existing behaviour, unchanged) -->
@@ -8373,12 +8400,23 @@ input, textarea { font: inherit; color: inherit; }
           </div>
         </div>
 
-        <!-- WORKED — scaffold placeholder -->
+        <!-- WORKED — warm landing state. There is no persisted worked-artifact
+             store yet; returning shaped material to the field is a future step.
+             This panel only explains what will rest here — it reads no state,
+             makes no fetch, and never calls Nexus. -->
         <div class="fo-mode-panel" id="fo-panel-worked" data-fo-panel="worked" role="tabpanel" hidden>
-          <div class="fo-mode-placeholder">
-            <span class="fo-mode-placeholder-title">Worked</span>
-            <p class="fo-mode-placeholder-body">Reflections and artifacts returned from work with Nexus. What you and Nexus shaped together comes back to rest here in the field.</p>
-            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          <div class="fo-remembered">
+            <div class="fo-remembered-intro">
+              <span class="fo-mode-placeholder-title">Worked</span>
+              <p class="fo-remembered-lede">What you and Nexus shape together — reflections, patterns noticed, material made new — is meant to return here and rest in the field alongside what you remembered, prepared, and offered.</p>
+              <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+            </div>
+            <div class="fo-remembered-body">
+              <div class="fo-worked-empty">
+                <p class="fo-remembered-empty">Nothing has returned to the field yet. Once shaped material from your work with Nexus can be brought back, it will settle here — held with you, still yours.</p>
+                <p class="fo-mode-placeholder-note">Returning worked material to the field is a deliberate step you will take, not something that happens on its own.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -11839,6 +11877,7 @@ function studioRenderFieldObservations() {
 // input). It never uploads, extracts, deletes, or sends anything automatically;
 // managing/deleting stays in the side Archive.
 function studioRenderRememberedField() {
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   const host = document.getElementById('fo-remembered-body');
   if (!host) return;
   const textItems = state.fieldObservations || [];
@@ -11915,6 +11954,7 @@ function studioRenderRememberedField() {
 // delete, and nothing is sent to Nexus automatically; the side Archive stays the
 // authoritative place to extract, retry, and manage.
 function studioRenderPreparedField() {
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   const host = document.getElementById('fo-prepared-body');
   if (!host) return;
   const proc = (state.fieldObservationProcessed || [])
@@ -12012,6 +12052,28 @@ function studioPopulateNexusInput(text, offer) {
   return true;
 }
 
+// Refresh the lightweight count badges on the Field Observations mode bar.
+// Reads only already-loaded client state — no fetch, no submit, no Nexus call.
+// A zero count hides its badge. "Now" (live capture) and "Worked" (no persisted
+// store yet) carry no badge.
+function studioUpdateFoModeCounts() {
+  const bar = document.getElementById('fo-mode-bar');
+  if (!bar) return;
+  const remembered = (state.fieldObservations || []).length
+    + (state.fieldObservationMedia || []).length;
+  const prepared = (state.fieldObservationProcessed || [])
+    .filter(p => p.process_type === 'pdf_text').length;
+  const offered = (state.fieldObservationsOffered || []).length;
+  const counts = { remembered, prepared, offered };
+  Object.keys(counts).forEach((mode) => {
+    const badge = bar.querySelector(`.fo-mode-count[data-fo-count="${mode}"]`);
+    if (!badge) return;
+    const n = counts[mode];
+    if (n > 0) { badge.textContent = String(n); badge.hidden = false; }
+    else { badge.textContent = ''; badge.hidden = true; }
+  });
+}
+
 // ── Offered — recent offered material (client-only) ──────────────────────────
 // A bounded, member-scoped snapshot of the material a member has deliberately
 // brought forward into the Nexus input. Purely for UI continuity: it records
@@ -12065,6 +12127,7 @@ function studioRecordOffered(offer, text) {
 // submits, fetches, or calls /rose-mirror. Passing no offer on replay avoids
 // recording a duplicate.
 function studioRenderOfferedField() {
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   const host = document.getElementById('fo-offered-body');
   if (!host) return;
   const items = studioLoadOffered();
@@ -12572,6 +12635,10 @@ document.addEventListener('DOMContentLoaded', () => {
   studioLoadGoldenThread();
   studioLoadFieldObservations();
   initFieldObservationMedia();
+  // Prime the client-side offered snapshot so its mode-bar badge reflects
+  // recent hand-offs on load. Read-only: touches state only, no fetch/submit.
+  if (typeof studioLoadOffered === 'function') studioLoadOffered();
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   initArchiveCollapse();
   initPortalTooltips();
   initInfoPopups();
