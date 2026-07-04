@@ -8454,19 +8454,25 @@ input, textarea { font: inherit; color: inherit; }
           </div>
         </div>
 
-        <!-- OFFERED — recent offered material. A client-only, bounded snapshot
-             (state.fieldObservationsOffered, mirrored to localStorage) of what a
-             member has deliberately brought forward into the Nexus input via the
-             existing safe hand-off helpers. No server state and no Nexus behaviour
-             change: recording and the "place again" action only touch state +
-             localStorage and reuse studioPopulateNexusInput — never submitting,
-             fetching, or calling /rose-mirror. -->
+        <!-- OFFERED — a threshold / review snapshot, not a durable archive. A
+             client-only, bounded list (state.fieldObservationsOffered, mirrored
+             to localStorage on this device) of what a member has deliberately
+             brought forward into the Nexus input via the existing safe hand-off
+             helpers. Distinct from Remembered (durable captures) and Worked
+             (returned material): this only reflects recent intentional hand-offs
+             so they can be reviewed or placed into the Nexus input again. No
+             server state and no Nexus behaviour change: recording, the "place
+             again" action, and the explicit "Release recent offerings" control
+             only touch offered state + its own localStorage key and reuse
+             studioPopulateNexusInput — never submitting, fetching, or calling
+             /rose-mirror, and never touching Remembered, Prepared, Worked, or
+             media. -->
         <div class="fo-mode-panel" id="fo-panel-offered" data-fo-panel="offered" role="tabpanel" hidden>
           <div class="fo-remembered">
             <div class="fo-remembered-intro">
               <span class="fo-mode-placeholder-title">Offered</span>
-              <p class="fo-remembered-lede">Material you have brought forward. Bringing something forward is a deliberate act — this is the only material Nexus can work with.</p>
-              <p class="fo-mode-placeholder-note">Nexus only sees what you offer.</p>
+              <p class="fo-remembered-lede">A threshold — a passing record of what you chose to carry across to Nexus. Unlike Remembered (what rests durably in your field) and Worked (what you bring back), this is a light snapshot of recent hand-offs, kept only on this device so you can look back or place an offering into the Nexus input again.</p>
+              <p class="fo-mode-placeholder-note">Nexus only sees what you offer. Releasing this list clears the review snapshot alone — your remembered observations, prepared material, and worked returns are untouched.</p>
             </div>
             <div class="fo-remembered-body" id="fo-offered-body" aria-live="polite"></div>
           </div>
@@ -12284,6 +12290,26 @@ function studioRecordOffered(offer, text) {
   if (typeof studioRenderOfferedField === 'function') studioRenderOfferedField();
 }
 
+// Explicit, member-initiated release of the Offered review snapshot. Offered is
+// a threshold list, not a durable archive, so clearing it empties ONLY
+// state.fieldObservationsOffered and removes its own localStorage mirror. It
+// never touches Remembered observations/media, Prepared artifacts, or Worked
+// returns, and makes no fetch / submit / rose-mirror / Nexus call. Confirms
+// first (it cannot be undone) and no-ops when nothing has been offered.
+function studioClearOffered() {
+  const list = state.fieldObservationsOffered || [];
+  if (!list.length) return;
+  const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
+    ? window.confirm('Release the recent offerings shown here? This clears only this review snapshot on this device — your remembered observations, prepared material, and worked returns are untouched. It cannot be undone.')
+    : true;
+  if (!ok) return;
+  state.fieldObservationsOffered = [];
+  try { localStorage.removeItem(foOfferedKey()); } catch (_) {}
+  if (typeof studioRenderOfferedField === 'function') studioRenderOfferedField();
+  else if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
+  if (typeof showToast === 'function') showToast('Recent offerings released.');
+}
+
 // Central "Offered" mode view. Read-only render over the client-side offered
 // snapshot (state.fieldObservationsOffered). The single action re-places an
 // item's text into the Nexus input via the shared populate helper — it never
@@ -12295,7 +12321,7 @@ function studioRenderOfferedField() {
   if (!host) return;
   const items = studioLoadOffered();
   if (!items.length) {
-    host.innerHTML = '<p class="fo-remembered-empty">Nothing offered yet. When you bring a Field Observation or prepared text forward to Nexus, a record of it rests here.</p>';
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing offered yet. When you carry a Field Observation or prepared text across to the Nexus input, a light record of it rests here at the threshold — a review snapshot, not a durable archive.</p>';
     return;
   }
   const typeLabel = (t) => t === 'pdf_text' ? 'Prepared text'
@@ -12311,12 +12337,15 @@ function studioRenderOfferedField() {
       <div class="fo-remembered-card-meta">${metaBits.join(' · ')}</div>
       <div class="fo-remembered-card-body">${studioNexusEscape(String(it.snippet || ''))}</div>
       <div class="fo-remembered-card-actions">
-        <button type="button" class="fo-offered-replay-btn" data-idx="${i}">Place in Nexus input again</button>
+        <button type="button" class="fo-offered-replay-btn" data-idx="${i}" title="Place this offering back into the Nexus input — nothing is sent">Place in Nexus input again</button>
       </div>
     </div>`;
   }).join('');
   host.innerHTML = `<section class="fo-remembered-section">
-    <h4 class="fo-remembered-section-head">Recently offered <span class="fo-remembered-count">${items.length}</span></h4>
+    <div class="fo-remembered-section-bar" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);">
+      <h4 class="fo-remembered-section-head" style="margin-bottom:0;">Recently offered <span class="fo-remembered-count">${items.length}</span></h4>
+      <button type="button" class="fo-offered-clear-btn" title="Release this review snapshot — clears only Offered, cannot be undone" style="font-size:10px;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Release recent offerings</button>
+    </div>
     <div class="fo-remembered-text-list">${cards}</div>
   </section>`;
 
@@ -12332,6 +12361,9 @@ function studioRenderOfferedField() {
       }
     });
   });
+
+  const clearBtn = host.querySelector('.fo-offered-clear-btn');
+  if (clearBtn) clearBtn.addEventListener('click', () => { studioClearOffered(); });
 }
 
 // ── Worked — material returned from Nexus (session-only, in-memory) ──────────
