@@ -8355,12 +8355,21 @@ input, textarea { font: inherit; color: inherit; }
           </div>
         </div>
 
-        <!-- OFFERED — scaffold placeholder -->
+        <!-- OFFERED — recent offered material. A client-only, bounded snapshot
+             (state.fieldObservationsOffered, mirrored to localStorage) of what a
+             member has deliberately brought forward into the Nexus input via the
+             existing safe hand-off helpers. No server state and no Nexus behaviour
+             change: recording and the "place again" action only touch state +
+             localStorage and reuse studioPopulateNexusInput — never submitting,
+             fetching, or calling /rose-mirror. -->
         <div class="fo-mode-panel" id="fo-panel-offered" data-fo-panel="offered" role="tabpanel" hidden>
-          <div class="fo-mode-placeholder">
-            <span class="fo-mode-placeholder-title">Offered</span>
-            <p class="fo-mode-placeholder-body">Material intentionally brought forward to Nexus. Bringing something forward is a deliberate act — this is the only material Nexus can work with.</p>
-            <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+          <div class="fo-remembered">
+            <div class="fo-remembered-intro">
+              <span class="fo-mode-placeholder-title">Offered</span>
+              <p class="fo-remembered-lede">Material you have brought forward. Bringing something forward is a deliberate act — this is the only material Nexus can work with.</p>
+              <p class="fo-mode-placeholder-note">Nexus only sees what you offer.</p>
+            </div>
+            <div class="fo-remembered-body" id="fo-offered-body" aria-live="polite"></div>
           </div>
         </div>
 
@@ -11966,7 +11975,7 @@ function studioBringObservationIntoNexus(id) {
   if (!obs) return;
   const title = String(obs.title || '').trim() || String(obs.body || '').split('\n')[0].slice(0, 60);
   const text = `I want to bring this Field Observation into Nexus:\n\n${title}\n${String(obs.body || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
-  if (studioPopulateNexusInput(text)) {
+  if (studioPopulateNexusInput(text, { type: 'observation', title, label: String(obs.source_label || '').trim(), snippet: String(obs.body || '') })) {
     if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
   }
 }
@@ -11975,7 +11984,10 @@ function studioBringObservationIntoNexus(id) {
 // trust boundary shared by both the per-card and multi-select hand-offs. It
 // only populates the input: never submits, never calls the AI or /rose-mirror.
 // Returns false (with a toast) when there is no room to bring the text into.
-function studioPopulateNexusInput(text) {
+// When `offer` metadata is supplied, a lightweight client-side snapshot of the
+// offered material is recorded for the Offered view. Replays pass no offer so
+// that placing something in the input again does not create a duplicate record.
+function studioPopulateNexusInput(text, offer) {
   if (!currentRoom) {
     if (typeof showToast === 'function') showToast('Enter a room to bring this into Nexus.');
     return false;
@@ -11996,7 +12008,104 @@ function studioPopulateNexusInput(text) {
     input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; }, 60);
   }
+  if (offer) studioRecordOffered(offer, text);
   return true;
+}
+
+// ── Offered — recent offered material (client-only) ──────────────────────────
+// A bounded, member-scoped snapshot of the material a member has deliberately
+// brought forward into the Nexus input. Purely for UI continuity: it records
+// what was offered so the Offered view can show recent context and re-place it.
+// It touches only state + localStorage — never a server route, /rose-mirror, or
+// a submit. If localStorage is unavailable it degrades to an in-memory list and
+// otherwise no-ops.
+const FO_OFFERED_MAX = 10;
+
+function foOfferedKey() {
+  const cid = foCipherId();
+  return 'fo-offered:' + (cid || 'anon');
+}
+
+function studioLoadOffered() {
+  let list = [];
+  try {
+    const raw = localStorage.getItem(foOfferedKey());
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) list = parsed; }
+  } catch (_) { list = []; }
+  state.fieldObservationsOffered = list.slice(0, FO_OFFERED_MAX);
+  return state.fieldObservationsOffered;
+}
+
+function studioRecordOffered(offer, text) {
+  if (!offer) return;
+  const body = String(text || '');
+  const snippetSource = String(offer.snippet != null ? offer.snippet : body);
+  const entry = {
+    id: 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    type: String(offer.type || 'text'),
+    label: String(offer.label || ''),
+    title: String(offer.title || ''),
+    date: new Date().toISOString().slice(0, 10),
+    snippet: snippetSource.length > 220 ? snippetSource.slice(0, 220) + '…' : snippetSource,
+    text: body
+  };
+  const list = Array.isArray(state.fieldObservationsOffered)
+    ? state.fieldObservationsOffered
+    : studioLoadOffered();
+  list.unshift(entry);
+  if (list.length > FO_OFFERED_MAX) list.length = FO_OFFERED_MAX;
+  state.fieldObservationsOffered = list;
+  try { localStorage.setItem(foOfferedKey(), JSON.stringify(list)); } catch (_) {}
+  if (typeof studioRenderOfferedField === 'function') studioRenderOfferedField();
+}
+
+// Central "Offered" mode view. Read-only render over the client-side offered
+// snapshot (state.fieldObservationsOffered). The single action re-places an
+// item's text into the Nexus input via the shared populate helper — it never
+// submits, fetches, or calls /rose-mirror. Passing no offer on replay avoids
+// recording a duplicate.
+function studioRenderOfferedField() {
+  const host = document.getElementById('fo-offered-body');
+  if (!host) return;
+  const items = studioLoadOffered();
+  if (!items.length) {
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing offered yet. When you bring a Field Observation or prepared text forward to Nexus, a record of it rests here.</p>';
+    return;
+  }
+  const typeLabel = (t) => t === 'pdf_text' ? 'Prepared text'
+    : t === 'batch' ? 'Batch'
+    : 'Observation';
+  const cards = items.map((it, i) => {
+    const title = studioNexusEscape(String(it.title || it.label || typeLabel(it.type)));
+    const metaBits = [typeLabel(it.type)];
+    if (it.label && it.label !== it.title) metaBits.push(studioNexusEscape(it.label));
+    if (it.date) metaBits.push(studioNexusEscape(it.date));
+    return `<div class="fo-card fo-remembered-card">
+      <div class="fo-remembered-card-title">${title}</div>
+      <div class="fo-remembered-card-meta">${metaBits.join(' · ')}</div>
+      <div class="fo-remembered-card-body">${studioNexusEscape(String(it.snippet || ''))}</div>
+      <div class="fo-remembered-card-actions">
+        <button type="button" class="fo-offered-replay-btn" data-idx="${i}">Place in Nexus input again</button>
+      </div>
+    </div>`;
+  }).join('');
+  host.innerHTML = `<section class="fo-remembered-section">
+    <h4 class="fo-remembered-section-head">Recently offered <span class="fo-remembered-count">${items.length}</span></h4>
+    <div class="fo-remembered-text-list">${cards}</div>
+  </section>`;
+
+  host.querySelectorAll('.fo-offered-replay-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const item = (state.fieldObservationsOffered || [])[idx];
+      if (!item) return;
+      // Replay only re-populates the Nexus input (no offer metadata → no new
+      // record, no submit, no /rose-mirror).
+      if (studioPopulateNexusInput(String(item.text || ''))) {
+        if (typeof showToast === 'function') showToast('Placed in Nexus input — edit, then send when ready.');
+      }
+    });
+  });
 }
 
 // Multi-select hand-off: gather every ticked text observation (in list order)
@@ -12024,7 +12133,8 @@ function studioBringSelectedTextToNexus() {
     ? 'I want to bring this Field Observation into Nexus:'
     : `I want to bring these ${items.length} Field Observations into Nexus:`;
   const text = `${lead}\n\n${blocks}\n\nHelp me sit with what is here, notice the pattern across them, and choose what wants to become next.`;
-  if (studioPopulateNexusInput(text)) {
+  const offerTitle = items.length === 1 ? 'Offered observation' : `${items.length} observations`;
+  if (studioPopulateNexusInput(text, { type: 'batch', title: offerTitle, label: `${items.length} item${items.length === 1 ? '' : 's'}`, snippet: blocks })) {
     if (typeof showToast === 'function') {
       showToast(`Added ${items.length} observation${items.length === 1 ? '' : 's'} to Nexus — edit, then send when ready.`);
     }
@@ -12315,7 +12425,7 @@ function studioBringProcessedTextIntoNexus(procId) {
   const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(proc.source_media_id));
   const label = (media && String(media.filename || '').trim()) || 'Extracted PDF text';
   const text = `I want to bring this extracted text from a Field Observation into Nexus:\n\n${label}\n${String(proc.text || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
-  if (studioPopulateNexusInput(text)) {
+  if (studioPopulateNexusInput(text, { type: 'pdf_text', title: label, label: 'Extracted PDF text', snippet: String(proc.text || '') })) {
     if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
   }
 }
@@ -21228,6 +21338,11 @@ if (document.readyState === 'loading') {
     // it becomes visible. Read-only render only — no fetch, no submit, no Nexus.
     if (mode === 'prepared' && typeof studioRenderPreparedField === 'function') {
       studioRenderPreparedField();
+    }
+    // Refresh the offered view from the client-side offered snapshot when it
+    // becomes visible. Read-only render only — no fetch, no submit, no Nexus.
+    if (mode === 'offered' && typeof studioRenderOfferedField === 'function') {
+      studioRenderOfferedField();
     }
   }
 
