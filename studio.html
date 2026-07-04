@@ -3190,6 +3190,35 @@ input, textarea { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
+/* Return to Field — explicit, human-only bridge from a Nexus response back
+   into Field Observations (Worked mode). Sits beside the knot button. */
+.mirror-return-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  margin-left: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 88%, #fff);
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.mirror-return-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 18%, transparent);
+}
+.mirror-return-btn.returned {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Rose input — elegant */
 .mirror-input-area {
   flex-shrink: 0;
@@ -8319,7 +8348,7 @@ input, textarea { font: inherit; color: inherit; }
           <button type="button" class="fo-mode-btn" data-fo-mode="remembered" role="tab" aria-selected="false">Remembered<span class="fo-mode-count" data-fo-count="remembered" hidden></span></button>
           <button type="button" class="fo-mode-btn" data-fo-mode="prepared" role="tab" aria-selected="false">Prepared<span class="fo-mode-count" data-fo-count="prepared" hidden></span></button>
           <button type="button" class="fo-mode-btn" data-fo-mode="offered" role="tab" aria-selected="false">Offered<span class="fo-mode-count" data-fo-count="offered" hidden></span></button>
-          <button type="button" class="fo-mode-btn" data-fo-mode="worked" role="tab" aria-selected="false">Worked</button>
+          <button type="button" class="fo-mode-btn" data-fo-mode="worked" role="tab" aria-selected="false">Worked<span class="fo-mode-count" data-fo-count="worked" hidden></span></button>
         </div>
         <!-- NOW — live capture surface (existing behaviour, unchanged) -->
         <div class="fo-mode-panel" id="fo-panel-now" data-fo-panel="now" role="tabpanel">
@@ -8400,21 +8429,28 @@ input, textarea { font: inherit; color: inherit; }
           </div>
         </div>
 
-        <!-- WORKED — warm landing state. There is no persisted worked-artifact
-             store yet; returning shaped material to the field is a future step.
-             This panel only explains what will rest here — it reads no state,
-             makes no fetch, and never calls Nexus. -->
+        <!-- WORKED — shaped material a member has deliberately returned from
+             Nexus. Session-only, in-memory list (state.fieldObservationsWorked)
+             of Nexus responses the member chose to bring back via the explicit
+             "Return to Field" action beside each response. There is intentionally
+             NO browser storage (no localStorage / sessionStorage / indexedDB /
+             cookies) and no server persistence yet, so it clears on reload; it
+             is distinct from Remembered/Prepared/Offered. Nothing here uploads,
+             extracts, deletes, submits, fetches, or calls Nexus / rose-mirror
+             automatically; returning is always a deliberate click. The
+             .fo-worked-empty block is the default (zero-item) landing state and
+             is replaced in place by studioRenderWorkedField when items exist. -->
         <div class="fo-mode-panel" id="fo-panel-worked" data-fo-panel="worked" role="tabpanel" hidden>
           <div class="fo-remembered">
             <div class="fo-remembered-intro">
               <span class="fo-mode-placeholder-title">Worked</span>
-              <p class="fo-remembered-lede">What you and Nexus shape together — reflections, patterns noticed, material made new — is meant to return here and rest in the field alongside what you remembered, prepared, and offered.</p>
-              <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer.</p>
+              <p class="fo-remembered-lede">What you and Nexus shape together — reflections, patterns noticed, material made new — returns here only when you choose to bring it back, resting in the field alongside what you remembered, prepared, and offered.</p>
+              <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer. Returned work stays in this working session until a persistent Worked layer is added — it is not sent back to Nexus.</p>
             </div>
-            <div class="fo-remembered-body">
+            <div class="fo-remembered-body" id="fo-worked-body" aria-live="polite">
               <div class="fo-worked-empty">
-                <p class="fo-remembered-empty">Nothing has returned to the field yet. Once shaped material from your work with Nexus can be brought back, it will settle here — held with you, still yours.</p>
-                <p class="fo-mode-placeholder-note">Returning worked material to the field is a deliberate step you will take, not something that happens on its own.</p>
+                <p class="fo-remembered-empty">Nothing has returned to the field yet. When a response from your work with Nexus is worth keeping, use “Return to Field” beside it and it will settle here — held with you, still yours.</p>
+                <p class="fo-mode-placeholder-note">Returning worked material to the field is a deliberate step you take, not something that happens on its own.</p>
               </div>
             </div>
           </div>
@@ -10468,6 +10504,30 @@ function renderMirrorHistory(roomKey) {
 
 const STUDIO_KNOT_SVG = `<svg width="15" height="15" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="15" x2="8.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="15" x2="11.5" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11.5 11 C13 9 14 7 13 5.5 C12 4 10 4 9 5.5 C8 7 9 9.5 11 10.5 C13 11.5 14 10 13.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M8.5 11 C8 10 7.5 9 8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>`;
 
+// Build the explicit "Return to Field" action for a Nexus response. This is the
+// only path that returns Nexus work into Field Observations, and it fires solely
+// on a human click — it records the response into the in-memory Worked session
+// list (studioReturnWorkedToField) and never submits, fetches, writes browser
+// storage, or calls Nexus. Returns a button element to append beside a rose
+// message.
+function studioMakeReturnToFieldBtn(text) {
+  const btn = document.createElement('button');
+  btn.className = 'mirror-return-btn';
+  btn.type = 'button';
+  btn.textContent = 'Return to Field';
+  btn.title = 'Return this work to Field Observations — keeps it in the Worked field for this session';
+  btn.addEventListener('click', () => {
+    if (typeof studioReturnWorkedToField === 'function'
+        && studioReturnWorkedToField(text, { source: 'Nexus' })) {
+      btn.classList.add('returned');
+      btn.textContent = 'Returned to Field ✓';
+      btn.title = 'Held in the Worked field for this session';
+      if (typeof showToast === 'function') showToast('Returned to Field Observations — find it under Worked (this session).');
+    }
+  });
+  return btn;
+}
+
 function appendMirrorMessage(role, text, save = true) {
   const conv = document.getElementById('mirror-conversation');
   document.getElementById('mirror-intro').style.display = 'none';
@@ -10490,6 +10550,8 @@ function appendMirrorMessage(role, text, save = true) {
       await studioSaveGoldenThread(text);
     });
     div.appendChild(gtBtn);
+    // Explicit human-only bridge back into Field Observations (Worked mode).
+    div.appendChild(studioMakeReturnToFieldBtn(text));
   }
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
@@ -10869,6 +10931,8 @@ async function sendMirrorMessage() {
             await studioSaveGoldenThread(text);
           });
           div.appendChild(gtBtn);
+          // Explicit human-only bridge back into Field Observations (Worked mode).
+          div.appendChild(studioMakeReturnToFieldBtn(text));
           conv.scrollTop = conv.scrollHeight;
           return;
         }
@@ -12054,8 +12118,8 @@ function studioPopulateNexusInput(text, offer) {
 
 // Refresh the lightweight count badges on the Field Observations mode bar.
 // Reads only already-loaded client state — no fetch, no submit, no Nexus call.
-// A zero count hides its badge. "Now" (live capture) and "Worked" (no persisted
-// store yet) carry no badge.
+// A zero count hides its badge. "Now" (live capture) carries no badge. "Worked"
+// counts the in-memory session list of material deliberately returned from Nexus.
 function studioUpdateFoModeCounts() {
   const bar = document.getElementById('fo-mode-bar');
   if (!bar) return;
@@ -12064,7 +12128,8 @@ function studioUpdateFoModeCounts() {
   const prepared = (state.fieldObservationProcessed || [])
     .filter(p => p.process_type === 'pdf_text').length;
   const offered = (state.fieldObservationsOffered || []).length;
-  const counts = { remembered, prepared, offered };
+  const worked = (state.fieldObservationsWorked || []).length;
+  const counts = { remembered, prepared, offered, worked };
   Object.keys(counts).forEach((mode) => {
     const badge = bar.querySelector(`.fo-mode-count[data-fo-count="${mode}"]`);
     if (!badge) return;
@@ -12164,6 +12229,101 @@ function studioRenderOfferedField() {
       if (!item) return;
       // Replay only re-populates the Nexus input (no offer metadata → no new
       // record, no submit, no /rose-mirror).
+      if (studioPopulateNexusInput(String(item.text || ''))) {
+        if (typeof showToast === 'function') showToast('Placed in Nexus input — edit, then send when ready.');
+      }
+    });
+  });
+}
+
+// ── Worked — material returned from Nexus (session-only, in-memory) ──────────
+// A bounded, in-memory list of Nexus responses a member has deliberately chosen
+// to bring back into the field via the explicit "Return to Field" action beside
+// each response. It lives ONLY in JS state for the current working session:
+// there is intentionally no browser storage (no localStorage / sessionStorage /
+// indexedDB / cookies) and no server persistence yet, so it clears on reload.
+// It touches only in-memory state — never a server route, /rose-mirror, or a
+// submit — and it is NOT sent back to Nexus. This is distinct from Remembered
+// (captured observations), Prepared (extracted text), and Offered (handed
+// forward): Worked is shaped material coming the other way, back into the field.
+const FO_WORKED_MAX = 20;
+
+function studioLoadWorked() {
+  if (!Array.isArray(state.fieldObservationsWorked)) state.fieldObservationsWorked = [];
+  return state.fieldObservationsWorked;
+}
+
+// Explicit, human-initiated return of a Nexus response into the Worked field.
+// Called only from the "Return to Field" button beside a response — never
+// automatically. It records a lightweight worked entry (title, excerpt, full
+// text, source label, timestamp) into the in-memory session list. It performs
+// no fetch, no submit, no browser storage write, and never calls Nexus.
+function studioReturnWorkedToField(text, opts) {
+  const body = String(text || '').trim();
+  if (!body) return false;
+  const o = opts || {};
+  const firstLine = body.split('\n').map(s => s.trim()).find(Boolean) || '';
+  const title = String(o.title || firstLine.slice(0, 60) || 'Returned from Nexus');
+  const entry = {
+    id: 'wrk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    source: String(o.source || 'Nexus'),
+    title: title,
+    date: new Date().toISOString().slice(0, 10),
+    excerpt: body.length > 280 ? body.slice(0, 280) + '…' : body,
+    text: body
+  };
+  const list = studioLoadWorked();
+  list.unshift(entry);
+  if (list.length > FO_WORKED_MAX) list.length = FO_WORKED_MAX;
+  if (typeof studioRenderWorkedField === 'function') studioRenderWorkedField();
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
+  return true;
+}
+
+// Central "Worked" mode view. Read-only render over the in-memory session list
+// (state.fieldObservationsWorked). It only displays returned material and lets a
+// member re-place a returned item's text into the Nexus input via the shared
+// populate helper — it never submits, fetches, writes storage, or calls Nexus.
+// When the list is empty it restores the warm landing/empty state so the panel
+// never claims material that is not there.
+function studioRenderWorkedField() {
+  if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
+  const host = document.getElementById('fo-worked-body');
+  if (!host) return;
+  const items = studioLoadWorked();
+  if (!items.length) {
+    host.innerHTML = `<div class="fo-worked-empty">
+      <p class="fo-remembered-empty">Nothing has returned to the field yet. When a response from your work with Nexus is worth keeping, use “Return to Field” beside it and it will settle here — held with you, still yours.</p>
+      <p class="fo-mode-placeholder-note">Returning worked material to the field is a deliberate step you take, not something that happens on its own.</p>
+    </div>`;
+    return;
+  }
+  const cards = items.map((it, i) => {
+    const title = studioNexusEscape(String(it.title || 'Returned from Nexus'));
+    const metaBits = [studioNexusEscape(String(it.source || 'Nexus'))];
+    if (it.date) metaBits.push(studioNexusEscape(String(it.date)));
+    return `<div class="fo-card fo-remembered-card">
+      <div class="fo-remembered-card-title">${title}</div>
+      <div class="fo-remembered-card-meta">Returned · ${metaBits.join(' · ')}</div>
+      <div class="fo-remembered-card-body">${studioNexusEscape(String(it.excerpt || ''))}</div>
+      <div class="fo-remembered-card-actions">
+        <button type="button" class="fo-worked-replay-btn" data-idx="${i}">Place in Nexus input again</button>
+      </div>
+    </div>`;
+  }).join('');
+  host.innerHTML = `<section class="fo-remembered-section">
+    <h4 class="fo-remembered-section-head">Returned from Nexus <span class="fo-remembered-count">${items.length}</span></h4>
+    <p class="fo-mode-placeholder-note">Held in this working session only — kept until you reload, when a persistent Worked layer is added it will rest here for good. Never sent back to Nexus.</p>
+    <div class="fo-remembered-text-list">${cards}</div>
+  </section>`;
+
+  host.querySelectorAll('.fo-worked-replay-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const item = (state.fieldObservationsWorked || [])[idx];
+      if (!item) return;
+      // Re-placing only fills the Nexus input (no offer metadata → no new
+      // record, no submit, no AI call).
       if (studioPopulateNexusInput(String(item.text || ''))) {
         if (typeof showToast === 'function') showToast('Placed in Nexus input — edit, then send when ready.');
       }
@@ -12638,6 +12798,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Prime the client-side offered snapshot so its mode-bar badge reflects
   // recent hand-offs on load. Read-only: touches state only, no fetch/submit.
   if (typeof studioLoadOffered === 'function') studioLoadOffered();
+  // Initialise the in-memory Worked session list (material returned from Nexus).
+  // No storage read — it simply ensures the array exists so the badge is correct.
+  if (typeof studioLoadWorked === 'function') studioLoadWorked();
   if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   initArchiveCollapse();
   initPortalTooltips();
@@ -21410,6 +21573,11 @@ if (document.readyState === 'loading') {
     // becomes visible. Read-only render only — no fetch, no submit, no Nexus.
     if (mode === 'offered' && typeof studioRenderOfferedField === 'function') {
       studioRenderOfferedField();
+    }
+    // Refresh the worked view from the client-side worked snapshot when it
+    // becomes visible. Read-only render only — no fetch, no submit, no Nexus.
+    if (mode === 'worked' && typeof studioRenderWorkedField === 'function') {
+      studioRenderWorkedField();
     }
   }
 
