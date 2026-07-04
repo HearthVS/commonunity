@@ -1388,11 +1388,26 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
             title TEXT NOT NULL DEFAULT '',
             body TEXT NOT NULL,
             source_label TEXT NOT NULL DEFAULT '',
+            observation_type TEXT NOT NULL DEFAULT 'remembered',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
         """
     )
+    # observation_type is the depth discriminator for a text observation:
+    #   'remembered' — captured lived material (the default; the historical
+    #                  behavior for every row that predates this column).
+    #   'worked'     — material shaped with Nexus that the member deliberately
+    #                  returned to the field via "Return to Field".
+    # Existing DBs predate the column, and CREATE TABLE IF NOT EXISTS won't add
+    # it, so backfill idempotently. The DEFAULT 'remembered' means every legacy
+    # row keeps its current Remembered behavior with no data migration.
+    _fo_cols = {r[1] for r in conn.execute("PRAGMA table_info(field_observations)").fetchall()}
+    if "observation_type" not in _fo_cols:
+        conn.execute(
+            "ALTER TABLE field_observations "
+            "ADD COLUMN observation_type TEXT NOT NULL DEFAULT 'remembered'"
+        )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_field_observations_cipher_created "
         "ON field_observations(cipher_id, created_at DESC)"
@@ -4971,7 +4986,14 @@ class FieldObservationSaveRequest(BaseModel):
     body: str
     title: str = ""
     source_label: str = ""
+    observation_type: str = "remembered"  # 'remembered' (default) or 'worked'
     cipher_id: str = ""           # pseudonymous OM Cipher member key
+
+
+# The only depth types persisted through this endpoint. Anything else is
+# coerced to 'remembered' so a bad/unknown value can never silently create a
+# hidden class of rows or drop an observation out of every view.
+_FO_OBSERVATION_TYPES = {"remembered", "worked"}
 
 
 def _fo_scope(req: Request, cipher_id: str) -> tuple[str, str]:
@@ -4990,14 +5012,18 @@ async def create_field_observation(request: FieldObservationSaveRequest, req: Re
     if not request.body.strip():
         raise HTTPException(status_code=400, detail="body required")
     cipher_id, invite_token = _fo_scope(req, request.cipher_id)
+    obs_type = request.observation_type.strip().lower()
+    if obs_type not in _FO_OBSERVATION_TYPES:
+        obs_type = "remembered"
     now = _now_iso()
     obs_id = "fobs_" + secrets.token_hex(16)
     with _admin_db() as conn:
         conn.execute(
             """
             INSERT INTO field_observations
-                (id, cipher_id, invite_token, title, body, source_label, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (id, cipher_id, invite_token, title, body, source_label,
+                 observation_type, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 obs_id,
@@ -5006,11 +5032,12 @@ async def create_field_observation(request: FieldObservationSaveRequest, req: Re
                 request.title.strip(),
                 request.body.strip(),
                 request.source_label.strip(),
+                obs_type,
                 now,
                 now,
             ),
         )
-    return {"ok": True, "id": obs_id, "created_at": now}
+    return {"ok": True, "id": obs_id, "created_at": now, "observation_type": obs_type}
 
 
 @app.get("/api/studio/field-observations")

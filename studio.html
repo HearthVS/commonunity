@@ -8430,13 +8430,16 @@ input, textarea { font: inherit; color: inherit; }
         </div>
 
         <!-- WORKED — shaped material a member has deliberately returned from
-             Nexus. Session-only, in-memory list (state.fieldObservationsWorked)
-             of Nexus responses the member chose to bring back via the explicit
-             "Return to Field" action beside each response. There is intentionally
-             NO browser storage (no localStorage / sessionStorage / indexedDB /
-             cookies) and no server persistence yet, so it clears on reload; it
-             is distinct from Remembered/Prepared/Offered. Nothing here uploads,
-             extracts, deletes, submits, fetches, or calls Nexus / rose-mirror
+             Nexus via the explicit "Return to Field" action beside each response.
+             Durable: each returned item is saved through the server-backed Field
+             Observations store as observation_type 'worked' (state.
+             fieldObservationsWorkedServer), so it rests across sessions. If a
+             save cannot reach the server it falls back to an in-memory session
+             list (state.fieldObservationsWorked) that clears on reload. There is
+             intentionally NO browser storage (no localStorage / sessionStorage /
+             indexedDB / cookies). Worked is distinct from Remembered/Prepared/
+             Offered and never appears in Remembered or the side Archive. Nothing
+             here submits, fetches from, or calls Nexus / rose-mirror
              automatically; returning is always a deliberate click. The
              .fo-worked-empty block is the default (zero-item) landing state and
              is replaced in place by studioRenderWorkedField when items exist. -->
@@ -8445,7 +8448,7 @@ input, textarea { font: inherit; color: inherit; }
             <div class="fo-remembered-intro">
               <span class="fo-mode-placeholder-title">Worked</span>
               <p class="fo-remembered-lede">What you and Nexus shape together — reflections, patterns noticed, material made new — returns here only when you choose to bring it back, resting in the field alongside what you remembered, prepared, and offered.</p>
-              <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer. Returned work stays in this working session until a persistent Worked layer is added — it is not sent back to Nexus.</p>
+              <p class="fo-mode-placeholder-note">Nexus only ever sees what you choose to offer. Returned work is saved here in the field and rests with you across sessions — it is never sent back to Nexus.</p>
             </div>
             <div class="fo-remembered-body" id="fo-worked-body" aria-live="polite">
               <div class="fo-worked-empty">
@@ -10506,23 +10509,23 @@ const STUDIO_KNOT_SVG = `<svg width="15" height="15" viewBox="0 0 20 20" fill="n
 
 // Build the explicit "Return to Field" action for a Nexus response. This is the
 // only path that returns Nexus work into Field Observations, and it fires solely
-// on a human click — it records the response into the in-memory Worked session
-// list (studioReturnWorkedToField) and never submits, fetches, writes browser
-// storage, or calls Nexus. Returns a button element to append beside a rose
-// message.
+// on a human click — it saves the response into the server-backed Worked field
+// (studioReturnWorkedToField, observation_type 'worked') and never submits,
+// fetches from, writes browser storage, or calls Nexus. Returns a button element
+// to append beside a rose message.
 function studioMakeReturnToFieldBtn(text) {
   const btn = document.createElement('button');
   btn.className = 'mirror-return-btn';
   btn.type = 'button';
   btn.textContent = 'Return to Field';
-  btn.title = 'Return this work to Field Observations — keeps it in the Worked field for this session';
+  btn.title = 'Return this work to Field Observations — saves it in the Worked field, held with you';
   btn.addEventListener('click', () => {
     if (typeof studioReturnWorkedToField === 'function'
         && studioReturnWorkedToField(text, { source: 'Nexus' })) {
       btn.classList.add('returned');
       btn.textContent = 'Returned to Field ✓';
-      btn.title = 'Held in the Worked field for this session';
-      if (typeof showToast === 'function') showToast('Returned to Field Observations — find it under Worked (this session).');
+      btn.title = 'Held in the Worked field';
+      if (typeof showToast === 'function') showToast('Returned to Field Observations — find it under Worked.');
     }
   });
   return btn;
@@ -11849,13 +11852,22 @@ function foCipherId() {
 
 async function studioLoadFieldObservations() {
   const cipherId = foCipherId();
+  let all = [];
   try {
     const qs = cipherId ? `?cipher_id=${encodeURIComponent(cipherId)}&limit=50` : '?limit=50';
     const res = await fetch(`${API_BASE}/api/studio/field-observations${qs}`);
-    if (!res.ok) { state.fieldObservations = []; }
-    else { const data = await res.json(); state.fieldObservations = data.observations || []; }
-  } catch (_) { state.fieldObservations = []; }
+    if (res.ok) { const data = await res.json(); all = data.observations || []; }
+  } catch (_) { all = []; }
+  // Split by depth type. Remembered (the default, incl. legacy rows with no
+  // observation_type) stays the central held field the Archive and Remembered
+  // view read. Worked rows are material returned from Nexus — they surface only
+  // in the Worked view, never in Remembered or the side Archive, so the two
+  // fields stay distinct.
+  const isWorked = (o) => String(o.observation_type || 'remembered') === 'worked';
+  state.fieldObservations = all.filter(o => !isWorked(o));
+  state.fieldObservationsWorkedServer = all.filter(isWorked);
   studioRenderFieldObservations();
+  if (typeof studioRenderWorkedField === 'function') studioRenderWorkedField();
 }
 
 // Mirror a saved central Field Notes entry into the server-backed Field
@@ -12128,7 +12140,12 @@ function studioUpdateFoModeCounts() {
   const prepared = (state.fieldObservationProcessed || [])
     .filter(p => p.process_type === 'pdf_text').length;
   const offered = (state.fieldObservationsOffered || []).length;
-  const worked = (state.fieldObservationsWorked || []).length;
+  // Worked spans both the server-persisted returned material and any items that
+  // are still only in the session fallback (a save that could not reach the
+  // server). Remembered already excludes Worked because studioLoadFieldObservations
+  // keeps worked rows out of state.fieldObservations.
+  const worked = (state.fieldObservationsWorkedServer || []).length
+    + (state.fieldObservationsWorked || []).length;
   const counts = { remembered, prepared, offered, worked };
   Object.keys(counts).forEach((mode) => {
     const badge = bar.querySelector(`.fo-mode-count[data-fo-count="${mode}"]`);
@@ -12272,12 +12289,63 @@ function studioReturnWorkedToField(text, opts) {
     excerpt: body.length > 280 ? body.slice(0, 280) + '…' : body,
     text: body
   };
+  // Show it immediately from the in-memory session list (guarantees the item
+  // appears and this call returns true for the button state) …
   const list = studioLoadWorked();
   list.unshift(entry);
   if (list.length > FO_WORKED_MAX) list.length = FO_WORKED_MAX;
   if (typeof studioRenderWorkedField === 'function') studioRenderWorkedField();
   if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
+  // … then try to make it durable through the server-backed Field Observations
+  // store as observation_type 'worked'. This is the only persistence; there is
+  // NO browser storage. On success the session copy is dropped and the durable
+  // row takes its place; on failure the session fallback remains (behavior from
+  // PR #109 is preserved). This is a human-initiated write of already-returned
+  // material — it never calls Nexus and never re-submits anything.
+  studioPersistWorkedObservation(body, title, entry);
   return true;
+}
+
+// Fire-and-forget durable write of a returned Worked item. Mirrors
+// studioCreateFieldObservation but tags the row observation_type 'worked' and
+// reconciles the session fallback on success. Never touches Nexus.
+async function studioPersistWorkedObservation(body, title, sessionEntry) {
+  const cipherId = foCipherId();
+  const payload = { body, title, source_label: 'Nexus', observation_type: 'worked' };
+  if (cipherId) payload.cipher_id = cipherId;
+  try {
+    const res = await fetch(`${API_BASE}/api/studio/field-observations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return; // keep the session fallback — nothing was lost
+    // Promote to the durable row: remove the transient session copy, then reload
+    // so the server-backed Worked list (and count) reflect the persisted item.
+    const list = studioLoadWorked();
+    const i = list.indexOf(sessionEntry);
+    if (i >= 0) list.splice(i, 1);
+    await studioLoadFieldObservations();
+  } catch (_) { /* keep the session fallback; it is still held for this session */ }
+}
+
+// Unified newest-first Worked list: durable server-backed rows plus any items
+// still only in the session fallback. Server rows are normalized into the same
+// shape the session entries use so the render/replay path stays uniform.
+function studioAllWorked() {
+  const server = (state.fieldObservationsWorkedServer || []).map(o => {
+    const b = String(o.body || '');
+    return {
+      id: o.id,
+      source: String(o.source_label || 'Nexus'),
+      title: String(o.title || '').trim() || b.split('\n')[0].slice(0, 60) || 'Returned from Nexus',
+      date: o.created_at ? String(o.created_at).slice(0, 10) : '',
+      excerpt: b.length > 280 ? b.slice(0, 280) + '…' : b,
+      text: b,
+      persisted: true
+    };
+  });
+  return studioLoadWorked().concat(server);
 }
 
 // Central "Worked" mode view. Read-only render over the in-memory session list
@@ -12290,7 +12358,7 @@ function studioRenderWorkedField() {
   if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   const host = document.getElementById('fo-worked-body');
   if (!host) return;
-  const items = studioLoadWorked();
+  const items = studioAllWorked();
   if (!items.length) {
     host.innerHTML = `<div class="fo-worked-empty">
       <p class="fo-remembered-empty">Nothing has returned to the field yet. When a response from your work with Nexus is worth keeping, use “Return to Field” beside it and it will settle here — held with you, still yours.</p>
@@ -12313,14 +12381,14 @@ function studioRenderWorkedField() {
   }).join('');
   host.innerHTML = `<section class="fo-remembered-section">
     <h4 class="fo-remembered-section-head">Returned from Nexus <span class="fo-remembered-count">${items.length}</span></h4>
-    <p class="fo-mode-placeholder-note">Held in this working session only — kept until you reload, when a persistent Worked layer is added it will rest here for good. Never sent back to Nexus.</p>
+    <p class="fo-mode-placeholder-note">Held with you in the field — returned work is saved and rests here across sessions. If a save cannot reach the server it is kept for this session only, and never sent back to Nexus.</p>
     <div class="fo-remembered-text-list">${cards}</div>
   </section>`;
 
   host.querySelectorAll('.fo-worked-replay-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx, 10);
-      const item = (state.fieldObservationsWorked || [])[idx];
+      const item = items[idx];
       if (!item) return;
       // Re-placing only fills the Nexus input (no offer metadata → no new
       // record, no submit, no AI call).
