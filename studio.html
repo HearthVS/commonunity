@@ -2365,8 +2365,51 @@ input, textarea { font: inherit; color: inherit; }
 }
 .fo-mode-count[hidden] { display: none; }
 .fo-mode-btn.active .fo-mode-count {
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
-  color: var(--accent-color, var(--setup-accent));
+  background: color-mix(in srgb, var(--fo-mode-tint, var(--accent-color, var(--setup-accent))) 22%, transparent);
+  color: var(--fo-mode-tint, var(--accent-color, var(--setup-accent)));
+}
+
+/* ── Per-mode atmosphere ──────────────────────────────────────────────
+   Each depth mode carries a restrained tint so switching feels like
+   stepping into a slightly different mental space, not a redesign. The
+   selected tab and the surface frame borrow the active mode's --fo-mode-tint;
+   the surface also lifts a barely-there ambient wash keyed to the mode.
+   Hues are low-alpha and contemplative — no loud colour, no neon. */
+.fo-mode-btn[data-fo-mode="now"]        { --fo-mode-tint: var(--accent-color, var(--setup-accent)); }
+.fo-mode-btn[data-fo-mode="remembered"] { --fo-mode-tint: hsl(33 46% 58%); }   /* warm, held/archived */
+.fo-mode-btn[data-fo-mode="prepared"]   { --fo-mode-tint: hsl(202 40% 60%); }  /* clear, liminal review */
+.fo-mode-btn[data-fo-mode="offered"]    { --fo-mode-tint: hsl(44 58% 62%); }   /* brighter threshold */
+.fo-mode-btn[data-fo-mode="worked"]     { --fo-mode-tint: hsl(258 34% 64%); }  /* deep, reflected */
+.fo-mode-btn.active {
+  color: var(--fo-mode-tint, var(--accent-color, var(--setup-accent)));
+  border-bottom-color: var(--fo-mode-tint, var(--accent-color, var(--setup-accent)));
+}
+
+/* The surface picks up the active mode via [data-fo-active-mode], set by the
+   mode switcher. Keep the wash and frame subtle so contrast stays readable. */
+.notepad-surface[data-fo-active-mode="now"]        { --fo-mode-tint: var(--accent-color, var(--setup-accent)); }
+.notepad-surface[data-fo-active-mode="remembered"] { --fo-mode-tint: hsl(33 46% 58%); }
+.notepad-surface[data-fo-active-mode="prepared"]   { --fo-mode-tint: hsl(202 40% 60%); }
+.notepad-surface[data-fo-active-mode="offered"]    { --fo-mode-tint: hsl(44 58% 62%); }
+.notepad-surface[data-fo-active-mode="worked"]     { --fo-mode-tint: hsl(258 34% 64%); }
+.notepad-surface[data-fo-active-mode] .fo-mode-bar {
+  border-bottom-color: color-mix(in srgb, var(--fo-mode-tint) 34%, var(--border));
+}
+/* "Now" is the grounded/neutral home — no ambient wash, keeping the base
+   accent frame. The reflective modes tint the frame border and lift an
+   almost-imperceptible top-lit gradient. Border-color composes with the base
+   shadow stack (hover / focus glow stay intact); no shadow override. */
+.notepad-surface[data-fo-active-mode="remembered"],
+.notepad-surface[data-fo-active-mode="prepared"],
+.notepad-surface[data-fo-active-mode="offered"],
+.notepad-surface[data-fo-active-mode="worked"] {
+  border-color: color-mix(in srgb, var(--fo-mode-tint) 30%, var(--border));
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fo-mode-tint) 7%, transparent) 0%,
+    transparent 160px
+  );
+  transition: background-image var(--transition), border-color var(--transition);
 }
 .fo-mode-panel {
   flex: 1;
@@ -21657,9 +21700,13 @@ if (document.readyState === 'loading') {
   const bar = document.getElementById('fo-mode-bar');
   if (!bar) return;
   const buttons = Array.from(bar.querySelectorAll('.fo-mode-btn'));
+  const surface = bar.closest('.notepad-surface');
 
   function applyMode(mode) {
     if (!FO_MODES.includes(mode)) mode = 'now';
+    // Tint the whole surface for the active mode so its atmosphere shifts.
+    // Purely presentational (CSS-driven); no fetch, submit, or Nexus call.
+    if (surface) surface.setAttribute('data-fo-active-mode', mode);
     buttons.forEach((btn) => {
       const isActive = btn.dataset.foMode === mode;
       btn.classList.toggle('active', isActive);
