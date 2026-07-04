@@ -5554,6 +5554,40 @@ async def get_field_observation_processed(proc_id: str, req: Request, cipher_id:
     return {"processed": _fo_processed_row_to_public(row)}
 
 
+@app.delete("/api/studio/field-observations/processed/{proc_id}")
+async def delete_field_observation_processed(proc_id: str, req: Request, cipher_id: str = ""):
+    """Release one of the caller's own processed artifacts from Prepared.
+
+    Member-scoped exactly like the read routes: the row must be bound to the
+    caller's cipher_id or invite-token cookie, so a member can never release
+    another member's artifact even with a guessed id. Only the derived
+    processed row is removed — the original uploaded media and the remembered
+    observation it derives from are never touched, so this cannot delete source
+    material. Nothing here calls Nexus or the AI."""
+    if not _has_member_access(req):
+        raise HTTPException(status_code=403, detail="forbidden")
+    scope_cipher, caller_invite = _fo_scope(req, cipher_id)
+    with _admin_db() as conn:
+        if scope_cipher:
+            row = conn.execute(
+                "SELECT * FROM field_observation_processed "
+                "WHERE id=? AND cipher_id=? AND cipher_id!=''",
+                (proc_id, scope_cipher),
+            ).fetchone()
+        elif caller_invite:
+            row = conn.execute(
+                "SELECT * FROM field_observation_processed "
+                "WHERE id=? AND invite_token=? AND invite_token!=''",
+                (proc_id, caller_invite),
+            ).fetchone()
+        else:
+            row = None
+        if not row:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute("DELETE FROM field_observation_processed WHERE id=?", (proc_id,))
+    return {"ok": True}
+
+
 # Fields the admin surface is permitted to see. Golden Thread `content` and
 # `note` are the member's personal reflections (they embed Gene Keys / personal
 # material) and are NEVER exposed to admin. `companion` is a first-name and is

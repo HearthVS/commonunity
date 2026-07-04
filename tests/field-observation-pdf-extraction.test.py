@@ -188,4 +188,75 @@ print("\n8. missing media id -> 404")
 ok(extract(fresh_client(), "tokA", "cipher_A", "fmed_does_not_exist").status_code == 404,
    "extract on a non-existent media id -> 404")
 
+# ── Release from Prepared: member-scoped delete of a processed artifact ────────
+# Removes ONLY the derived processed row — never the source media or the
+# remembered observation. Member-scoped exactly like the read routes.
+PROCESSED = "/api/studio/field-observations/processed"
+
+
+def delete_processed(client, token, cipher_id, proc_id):
+    q = {"cipher_id": cipher_id} if cipher_id else {}
+    return client.delete(f"{PROCESSED}/{proc_id}", params=q, cookies=invite_cookie(token))
+
+
+print("\n9. release from Prepared removes only the processed artifact")
+# Fresh source + extraction so this section stands on its own.
+rUp9 = upload(fresh_client(), "tokA", "cipher_A", "release.pdf", "application/pdf", PDF)
+rel_media_id = rUp9.json()["id"]
+rel_proc_id = extract(fresh_client(), "tokA", "cipher_A", rel_media_id).json()["processed"]["id"]
+
+ok(fresh_client().post(f"{PROCESSED}/{rel_proc_id}").status_code in (403, 405),
+   "release path is not a public POST (no unauth mutation)")
+ok(fresh_client().delete(f"{PROCESSED}/{rel_proc_id}").status_code == 403,
+   "release without auth -> 403")
+
+# Cross-member: B cannot release A's artifact even with the exact id.
+ok(delete_processed(fresh_client(), "tokB", "cipher_B", rel_proc_id).status_code == 404,
+   "B cannot release A's artifact by id -> 404")
+ok(fresh_client().get(f"{PROCESSED}/{rel_proc_id}",
+                      params={"cipher_id": "cipher_A"}, cookies=invite_cookie("tokA")).status_code == 200,
+   "A's artifact still present after B's failed release attempt")
+
+# Owner release succeeds and is idempotent-ish (second delete -> 404).
+ok(delete_processed(fresh_client(), "tokA", "cipher_A", rel_proc_id).json().get("ok") is True,
+   "A releases its own artifact -> ok")
+ok(fresh_client().get(f"{PROCESSED}/{rel_proc_id}",
+                      params={"cipher_id": "cipher_A"}, cookies=invite_cookie("tokA")).status_code == 404,
+   "the released artifact is gone")
+ok(delete_processed(fresh_client(), "tokA", "cipher_A", rel_proc_id).status_code == 404,
+   "releasing an already-gone artifact -> 404")
+
+# The original media survives the release — this only touches processed rows.
+rMedia = fresh_client().get(UPLOAD, params={"cipher_id": "cipher_A"}, cookies=invite_cookie("tokA"))
+ok(rel_media_id in {m["id"] for m in rMedia.json()["attachments"]},
+   "the source PDF media is untouched by the release")
+ok(fresh_client().get(f"{UPLOAD}/{rel_media_id}/file",
+                      params={"cipher_id": "cipher_A"}, cookies=invite_cookie("tokA")).status_code == 200,
+   "the source PDF file still streams after the release")
+
+# The remembered text observation is a separate table and is never touched.
+with server._admin_db() as _conn:
+    _obs_before = _conn.execute("SELECT COUNT(*) FROM field_observations").fetchone()[0]
+delete_processed(fresh_client(), "tokA", "cipher_A",
+                 extract(fresh_client(), "tokA", "cipher_A", rel_media_id).json()["processed"]["id"])
+with server._admin_db() as _conn:
+    _obs_after = _conn.execute("SELECT COUNT(*) FROM field_observations").fetchone()[0]
+ok(_obs_before == _obs_after, "releasing a processed artifact never touches field_observations rows")
+
+print("\n10. studio.html Release action targets the processed artifact id, no auto-Nexus/storage")
+STUDIO_HTML = (__import__("pathlib").Path(ROOT) / "studio.html").read_text(encoding="utf-8")
+import re as _re
+_rel_fn = (_re.search(r"async function studioReleaseFromPrepared[\s\S]*?\n}", STUDIO_HTML) or [""])[0]
+ok(bool(_rel_fn), "studioReleaseFromPrepared() is defined")
+ok("Release from Prepared" in STUDIO_HTML, "UI exposes a 'Release from Prepared' action")
+ok("fo-prepared-release-btn" in STUDIO_HTML, "release button is wired in the Prepared tray")
+ok("/field-observations/processed/" in _rel_fn and "method: 'DELETE'" in _rel_fn,
+   "release calls DELETE on the processed artifact route")
+ok("encodeURIComponent(procId)" in _rel_fn, "release targets the processed artifact id")
+ok("confirm(" in _rel_fn, "release confirms before the destructive delete")
+ok(not _re.search(r"rose-mirror|\.submit\s*\(", _rel_fn),
+   "release never calls /rose-mirror and never auto-submits")
+ok(not _re.search(r"localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie", _rel_fn),
+   "release adds no browser storage")
+
 print(f"\n{passed} passed")
