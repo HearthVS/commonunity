@@ -4258,7 +4258,7 @@ input, textarea { font: inherit; color: inherit; }
 .fo-media-card-note { font-size: 10px; color: var(--text-faint); font-style: italic; opacity: 0.8; margin-top: 4px; }
 
 /* ── Archive action layer ──────────────────────────────────
-   "What do you want to do with these files?" — future
+   "How would you like to meet this material?" — future
    affordances only. Standard tools are generic; the Nexus
    action is visually distinguished as deeper interpretation. */
 .archive-actions-box {
@@ -8190,11 +8190,11 @@ input, textarea { font: inherit; color: inherit; }
                    generic (they will later run without Nexus); interpretation
                    is explicitly routed through Nexus and never automatic. -->
               <div class="archive-actions-box" id="archive-actions-box" hidden>
-                <div class="archive-actions-title">What do you want to do with these files?</div>
+                <div class="archive-actions-title">How would you like to meet this material?</div>
                 <div class="archive-actions-group archive-actions-group--nexus" id="archive-actions-selected-text" hidden>
                   <span class="archive-actions-group-label">Selected text observations</span>
                   <div class="archive-actions-row">
-                    <button type="button" class="archive-action-btn archive-action-btn--nexus" id="archive-bring-selected-text" disabled aria-disabled="true">Bring selected text to Nexus</button>
+                    <button type="button" class="archive-action-btn archive-action-btn--nexus" id="archive-bring-selected-text" disabled aria-disabled="true">Offer to Nexus</button>
                   </div>
                   <p class="archive-actions-note">Tick one or more text observations (or extracted PDF text) below, then bring them across. This fills the Nexus input for you to review — nothing is sent automatically.</p>
                 </div>
@@ -8210,7 +8210,7 @@ input, textarea { font: inherit; color: inherit; }
                 <div class="archive-actions-group archive-actions-group--nexus">
                   <span class="archive-actions-group-label">Deeper interpretation</span>
                   <div class="archive-actions-row">
-                    <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Bring to Nexus for interpretation <span class="soon">soon</span></button>
+                    <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Offer to Nexus for interpretation <span class="soon">soon</span></button>
                   </div>
                   <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
                 </div>
@@ -11794,13 +11794,13 @@ function studioRenderFieldObservations() {
     const checked = studioSelectedTextObs.has(idStr) ? ' checked' : '';
     return `<div class="fo-card" style="border:1px solid color-mix(in srgb,var(--border) 55%,transparent);border-radius:var(--radius-md);padding:8px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--card) 55%,transparent);">
       <div style="display:flex;align-items:flex-start;gap:8px;">
-        <input type="checkbox" class="fo-select-checkbox" data-id="${studioNexusEscape(o.id)}" aria-label="Select this text observation to bring to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
+        <input type="checkbox" class="fo-select-checkbox" data-id="${studioNexusEscape(o.id)}" aria-label="Select this text observation to offer to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
         <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;flex:1 1 auto;">${studioNexusEscape(title)}</div>
       </div>
       <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin:2px 0 6px;">${date}${src ? ' · ' + studioNexusEscape(src) : ''}</div>
       <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;">${studioNexusEscape(preview)}</div>
       <div style="display:flex;gap:8px;margin-top:8px;">
-        <button type="button" class="fo-bring-btn" data-id="${studioNexusEscape(o.id)}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring into Nexus</button>
+        <button type="button" class="fo-bring-btn" data-id="${studioNexusEscape(o.id)}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring forward to Nexus</button>
         <button type="button" class="fo-delete-btn" data-id="${studioNexusEscape(o.id)}" title="Delete observation" style="font-size:10px;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Delete</button>
       </div>
     </div>`;
@@ -11931,7 +11931,7 @@ function studioRenderPreparedField() {
 
   // Reuse the existing safe hand-off + multi-select wiring. The bring button
   // only populates the Nexus input (never submits or calls the AI); the checkbox
-  // joins the shared "Bring selected text to Nexus" selection.
+  // joins the shared "Offer to Nexus" selection.
   host.querySelectorAll('.fo-processed-bring-btn').forEach(btn => {
     btn.addEventListener('click', () => studioBringProcessedTextIntoNexus(btn.dataset.id));
   });
@@ -12050,7 +12050,7 @@ function updateArchiveSelectionUI() {
   if (btn) {
     btn.disabled = count === 0;
     btn.setAttribute('aria-disabled', String(count === 0));
-    btn.textContent = count > 0 ? `Bring selected text to Nexus (${count})` : 'Bring selected text to Nexus';
+    btn.textContent = count > 0 ? `Offer to Nexus (${count})` : 'Offer to Nexus';
     if (!btn.dataset.wired) {
       btn.dataset.wired = '1';
       btn.addEventListener('click', () => { if (!btn.disabled) studioBringSelectedTextToNexus(); });
@@ -12203,8 +12203,8 @@ function foArchiveMediaCard(m) {
 }
 
 // Compact, reviewable card for an extracted-text artifact. On success it shows a
-// text preview, a checkbox that joins the existing "Bring selected text to
-// Nexus" multi-select, and a single Bring-into-Nexus button. On empty/encrypted/
+// text preview, a checkbox that joins the existing "Offer to Nexus"
+// multi-select, and a single Bring-forward button. On empty/encrypted/
 // error it shows the stored user-visible message instead. This only ever
 // populates the Nexus input downstream — it never submits or calls the AI.
 function foProcessedTextCard(proc) {
@@ -12213,7 +12213,7 @@ function foProcessedTextCard(proc) {
   if (status !== 'done') {
     const msg = studioNexusEscape(String(proc.error || 'Text could not be extracted.'));
     return `<div class="fo-processed-card fo-processed-card--issue" style="margin-top:8px;border:1px dashed color-mix(in srgb,var(--border) 60%,transparent);border-radius:var(--radius-md);padding:7px 9px;background:color-mix(in srgb,var(--card) 40%,transparent);">
-      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:3px;">Processed text · ${studioNexusEscape(status)}</div>
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:3px;">Prepared text · ${studioNexusEscape(status)}</div>
       <div style="font-size:11px;color:var(--text-faint);line-height:1.5;">${msg}</div>
     </div>`;
   }
@@ -12223,12 +12223,12 @@ function foProcessedTextCard(proc) {
   const chars = text.length;
   return `<div class="fo-processed-card" style="margin-top:8px;border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 40%,transparent);border-radius:var(--radius-md);padding:7px 9px;background:color-mix(in srgb,var(--card) 55%,transparent);">
     <div style="display:flex;align-items:flex-start;gap:8px;">
-      <input type="checkbox" class="fo-processed-select" data-id="${pid}" aria-label="Select this extracted text to bring to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
-      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);flex:1 1 auto;">Extracted text · ${chars.toLocaleString()} chars</div>
+      <input type="checkbox" class="fo-processed-select" data-id="${pid}" aria-label="Select this prepared text to offer to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);flex:1 1 auto;">Prepared text · ${chars.toLocaleString()} chars</div>
     </div>
     <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;margin-top:4px;max-height:140px;overflow:auto;">${studioNexusEscape(preview)}</div>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button type="button" class="fo-processed-bring-btn" data-id="${pid}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring text into Nexus</button>
+      <button type="button" class="fo-processed-bring-btn" data-id="${pid}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring forward to Nexus</button>
     </div>
   </div>`;
 }
@@ -12320,7 +12320,7 @@ function studioBringProcessedTextIntoNexus(procId) {
   }
 }
 
-// Show the "What do you want to do with these files?" action layer only when
+// Show the "How would you like to meet this material?" action layer only when
 // there is captured material (text or media) to act on.
 function updateArchiveActionsBox() {
   const box = document.getElementById('archive-actions-box');
