@@ -5,10 +5,11 @@
  *   1. A "Return to Field" action rendered beside each Nexus response. It is the
  *      ONLY path that returns Nexus work into the field and it fires solely on a
  *      human click — no auto-capture, no /rose-mirror, no submit.
- *   2. A client-only, member-scoped Worked snapshot
- *      (state.fieldObservationsWorked, mirrored to localStorage) that the return
- *      action feeds. It is distinct from Remembered/Prepared/Offered and is NOT
- *      persisted server-side or sent back to Nexus.
+ *   2. A session-only, in-memory Worked list (state.fieldObservationsWorked)
+ *      that the return action feeds. It uses NO browser storage (no
+ *      localStorage / sessionStorage / indexedDB / cookies) and no server
+ *      persistence yet, so it clears on reload. It is distinct from
+ *      Remembered/Prepared/Offered and is NOT sent back to Nexus.
  *   3. The Worked mode gains a live count badge; the Worked panel renders
  *      returned material and otherwise falls back to the warm empty state.
  *
@@ -122,20 +123,26 @@ assert((src.match(/studioMakeReturnToFieldBtn\(text\)/g) || []).length >= 2,
   'return action is attached to Nexus responses in both render paths');
 
 // ---------------------------------------------------------------------------
-// 5) The worked store is client-only (localStorage), never a server/Nexus call.
+// 5) The worked store is session-only in-memory state, never a server/Nexus
+//    call and never browser storage.
 // ---------------------------------------------------------------------------
-console.log('worked store is client-only and never re-sends to Nexus');
+console.log('worked store is session-only in-memory (no browser storage), never re-sends to Nexus');
 
 assert(/function studioReturnWorkedToField\s*\(/.test(src),
   'studioReturnWorkedToField() is defined');
 const returnFnMatch = src.match(/function studioReturnWorkedToField[\s\S]*?\n}/);
 const returnFn = returnFnMatch ? returnFnMatch[0] : '';
-assert(/localStorage\.setItem/.test(returnFn),
-  'returned work is stored client-side via localStorage');
-assert(/state\.fieldObservationsWorked/.test(returnFn),
-  'returned work populates the worked snapshot state');
+assert(/studioLoadWorked\s*\(/.test(returnFn) && /\.unshift\s*\(/.test(returnFn),
+  'returned work is pushed into the in-memory worked session list');
 assert(!/fetch\s*\(|rose-mirror|\.submit\s*\(/.test(returnFn),
   'returning work performs no fetch / submit / rose-mirror (no auto-send to Nexus)');
+
+assert(/function studioLoadWorked\s*\(/.test(src),
+  'studioLoadWorked() is defined');
+const loadFnMatch = src.match(/function studioLoadWorked[\s\S]*?\n}/);
+const loadFn = loadFnMatch ? loadFnMatch[0] : '';
+assert(/state\.fieldObservationsWorked/.test(loadFn),
+  'the worked list is held in in-memory JS state (state.fieldObservationsWorked)');
 
 assert(/function studioRenderWorkedField\s*\(/.test(src),
   'studioRenderWorkedField() render is defined');
@@ -144,9 +151,23 @@ const renderFn = renderMatch ? renderMatch[0] : '';
 assert(!/fetch\s*\(|rose-mirror|mirror-send-btn/.test(renderFn),
   'worked render performs no fetch / submit / rose-mirror');
 
-// Loaded on init and refreshed when the Worked mode is shown.
+// Core webapp constraint: the worked bridge must NOT introduce any browser
+// storage. Assert none of the four new worked functions touch localStorage,
+// sessionStorage, indexedDB, or cookies.
+const STORAGE_RE = /localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie/;
+[
+  ['studioReturnWorkedToField', returnFn],
+  ['studioLoadWorked', loadFn],
+  ['studioRenderWorkedField', renderFn],
+  ['studioMakeReturnToFieldBtn', btnFn],
+].forEach(([name, body]) => {
+  assert(body !== '' && !STORAGE_RE.test(body),
+    `${name}() uses no localStorage / sessionStorage / indexedDB / cookies`);
+});
+
+// Initialised on load and refreshed when the Worked mode is shown.
 assert(/if \(typeof studioLoadWorked === 'function'\) studioLoadWorked\(\);/.test(src),
-  'worked snapshot is primed on load');
+  'worked session list is initialised on load');
 assert(/mode === 'worked'[\s\S]{0,120}studioRenderWorkedField/.test(src),
   'worked render refreshes when its mode becomes visible');
 
