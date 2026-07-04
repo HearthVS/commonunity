@@ -8447,7 +8447,7 @@ input, textarea { font: inherit; color: inherit; }
           <div class="fo-remembered">
             <div class="fo-remembered-intro">
               <span class="fo-mode-placeholder-title">Prepared material</span>
-              <p class="fo-remembered-lede">Made readable, not yet interpreted. Text drawn out of your PDFs rests here — legible, but still yours alone, still waiting. Extract, retry, and manage stay in the side Archive.</p>
+              <p class="fo-remembered-lede">A tray for material you have made readable — reviewed here, grouped by kind, before you offer any of it. Text drawn out of your PDFs rests here now; other captures and transcripts you prepare will join it in time. Extract, retry, and manage stay in the side Archive.</p>
               <p class="fo-mode-placeholder-note">Nexus only sees what you offer.</p>
             </div>
             <div class="fo-remembered-body" id="fo-prepared-body" aria-live="polite"></div>
@@ -12065,9 +12065,36 @@ function studioRenderRememberedField() {
   });
 }
 
-// Central "Prepared" mode view. A read-only layer over already-extracted text
-// artifacts (state.fieldObservationProcessed — this iteration: pdf_text produced
-// by the existing side-Archive extraction step). It reuses the same processed-
+// Known prepared-artifact process types, in display order. Only pdf_text is
+// produced today (by the existing side-Archive PDF extraction step). image_text
+// and audio_transcript are reserved names so that, when those preparation steps
+// exist, their artifacts have a natural home in this tray — they are NOT claimed
+// to work yet and a group only ever renders when real artifacts of that type are
+// present.
+const FO_PREPARED_TYPES = [
+  { type: 'pdf_text',         label: 'Prepared text',    origin: 'from PDF' },
+  { type: 'image_text',       label: 'Image text',       origin: 'from image' },
+  { type: 'audio_transcript', label: 'Audio transcript', origin: 'from audio' },
+];
+
+function foPreparedTypeMeta(type) {
+  return FO_PREPARED_TYPES.find(t => t.type === type)
+    || { type, label: 'Prepared material', origin: '' };
+}
+
+// Cheap client-side word count over already-loaded text — no fetch, no work
+// beyond a whitespace split of text we already hold.
+function foWordCount(text) {
+  const t = String(text || '').trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+// Central "Prepared" mode view — a preparation tray. A read-only layer over
+// already-extracted artifacts (state.fieldObservationProcessed — today: pdf_text
+// produced by the existing side-Archive extraction step). Artifacts are grouped
+// by process type so each kind of prepared material reads as its own tray, and
+// each card surfaces its origin, source filename, timestamp, and character/word
+// count before the member explicitly offers it. It reuses the same processed-
 // text card, status labels (done / empty / encrypted / error), and the existing
 // safe Nexus hand-off. It reads from state only — no fetch, no extraction, no
 // delete, and nothing is sent to Nexus automatically; the side Archive stays the
@@ -12076,28 +12103,39 @@ function studioRenderPreparedField() {
   if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   const host = document.getElementById('fo-prepared-body');
   if (!host) return;
-  const proc = (state.fieldObservationProcessed || [])
-    .filter(p => p.process_type === 'pdf_text');
-  if (!proc.length) {
-    host.innerHTML = '<p class="fo-remembered-empty">Nothing has been prepared yet. Add a PDF in <strong>Now</strong>, then use <strong>Extract text</strong> in the side Archive — the readable text will rest here.</p>';
+  const all = (state.fieldObservationProcessed || [])
+    .filter(p => FO_PREPARED_TYPES.some(t => t.type === p.process_type));
+  if (!all.length) {
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing has been prepared yet. Prepared text — drawn out of the PDFs you add in <strong>Now</strong> with <strong>Extract text</strong> in the side Archive — will rest here for review before you offer any of it. In time, other text captures and transcripts you prepare will gather here too.</p>';
     return;
   }
-  const cards = proc.map(p => {
-    const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(p.source_media_id));
-    const name = studioNexusEscape((media && String(media.filename || '').trim()) || 'Extracted PDF text');
-    const date = p.created_at ? String(p.created_at).slice(0, 10) : '';
-    return `<div class="fo-prepared-item">
-      <div class="fo-remembered-card-title">${name}</div>
-      <div class="fo-remembered-card-meta">PDF${date ? ' · ' + date : ''}</div>
-      ${foProcessedTextCard(p)}
-    </div>`;
+  // One section per process type. Reserved future types stay absent until their
+  // preparation step actually produces an artifact, so nothing here implies a
+  // capability that does not exist yet.
+  const sections = FO_PREPARED_TYPES.map(meta => {
+    const items = all.filter(p => p.process_type === meta.type);
+    if (!items.length) return '';
+    const cards = items.map(p => {
+      const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(p.source_media_id));
+      const name = studioNexusEscape((media && String(media.filename || '').trim()) || meta.label);
+      const date = p.created_at ? String(p.created_at).slice(0, 10) : '';
+      const metaBits = [meta.label];
+      if (meta.origin) metaBits.push(meta.origin);
+      if (date) metaBits.push(date);
+      return `<div class="fo-prepared-item" data-fo-prepared-type="${meta.type}">
+        <div class="fo-remembered-card-title">${name}</div>
+        <div class="fo-remembered-card-meta">${metaBits.join(' · ')}</div>
+        ${foProcessedTextCard(p)}
+      </div>`;
+    }).join('');
+    return `<section class="fo-remembered-section" data-fo-prepared-group="${meta.type}">
+      <h4 class="fo-remembered-section-head">${meta.label} <span class="fo-remembered-count">${items.length}</span></h4>
+      <div class="fo-prepared-list">${cards}</div>
+    </section>`;
   }).join('');
-  host.innerHTML = `<section class="fo-remembered-section">
-    <h4 class="fo-remembered-section-head">Prepared material <span class="fo-remembered-count">${proc.length}</span></h4>
-    <div class="fo-prepared-list">${cards}</div>
-  </section>`;
+  host.innerHTML = sections;
 
-  // Reuse the existing safe hand-off + multi-select wiring. The bring button
+  // Reuse the existing safe hand-off + multi-select wiring. The offer button
   // only populates the Nexus input (never submits or calls the AI); the checkbox
   // joins the shared "Offer to Nexus" selection.
   host.querySelectorAll('.fo-processed-bring-btn').forEach(btn => {
@@ -12181,7 +12219,7 @@ function studioUpdateFoModeCounts() {
   const remembered = (state.fieldObservations || []).length
     + (state.fieldObservationMedia || []).length;
   const prepared = (state.fieldObservationProcessed || [])
-    .filter(p => p.process_type === 'pdf_text').length;
+    .filter(p => ['pdf_text', 'image_text', 'audio_transcript'].includes(p.process_type)).length;
   const offered = (state.fieldObservationsOffered || []).length;
   // Worked spans both the server-persisted returned material and any items that
   // are still only in the session fallback (a save that could not reach the
@@ -12707,14 +12745,15 @@ function foProcessedTextCard(proc) {
   const preview = text.length > 300 ? text.slice(0, 300) + '…' : text;
   const checked = studioSelectedProcessedText.has(String(proc.id)) ? ' checked' : '';
   const chars = text.length;
+  const words = foWordCount(text);
   return `<div class="fo-processed-card" style="margin-top:8px;border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 40%,transparent);border-radius:var(--radius-md);padding:7px 9px;background:color-mix(in srgb,var(--card) 55%,transparent);">
     <div style="display:flex;align-items:flex-start;gap:8px;">
       <input type="checkbox" class="fo-processed-select" data-id="${pid}" aria-label="Select this prepared text to offer to Nexus" style="margin-top:2px;flex:0 0 auto;cursor:pointer;"${checked}>
-      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);flex:1 1 auto;">Prepared text · ${chars.toLocaleString()} chars</div>
+      <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);flex:1 1 auto;">Prepared text · ${words.toLocaleString()} words · ${chars.toLocaleString()} chars</div>
     </div>
     <div style="font-size:11px;color:var(--text-faint);line-height:1.5;white-space:pre-wrap;margin-top:4px;max-height:140px;overflow:auto;">${studioNexusEscape(preview)}</div>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button type="button" class="fo-processed-bring-btn" data-id="${pid}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Bring forward to Nexus</button>
+      <button type="button" class="fo-processed-bring-btn" data-id="${pid}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Offer prepared text to Nexus</button>
     </div>
   </div>`;
 }
