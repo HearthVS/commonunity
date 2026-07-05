@@ -4904,6 +4904,14 @@ input, textarea { font: inherit; color: inherit; }
   border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, transparent);
 }
 
+/* Readiness reflection: the drawn Spark tends a room the seeded-field
+   band still marks Awaiting. Subtle dashed edge so the person sees why
+   this prompt rose, without restyling the tag. */
+.spark-tag.target.is-awaiting {
+  border-style: dashed;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 95%, var(--text));
+}
+
 /* ============================================================
    LIVING PROFILE PREVIEW v0.1
    Modal that renders a structured Living Profile draft from
@@ -15406,13 +15414,26 @@ if (document.readyState === 'loading') {
       return spec.name;
     }
 
+    // Decide whether a Spark's room should read as Awaiting on the
+    // target tag: only at the Studio entrance (no active room) and only
+    // when the seeded-field band still marks that room Awaiting. Pure /
+    // fails safe — an empty `awaiting` list (model unavailable) → false,
+    // so the tag falls back to its normal "For · …" label.
+    function sparkRoomAwaiting(s, activeKey, awaiting) {
+      if (activeKey) return false;
+      if (!s || !awaiting || !awaiting.length) return false;
+      return awaiting.indexOf(s.section) !== -1;
+    }
+
     function renderSpark(s, reanimate) {
       currentSpark = s;
       promptEl.textContent   = s.prompt;
       movementEl.textContent = 'Movement · ' + s.movement;
       arcEl.textContent      = 'Arc · '      + s.arc;
-      targetEl.textContent   = 'For · '      + builderFieldLabel(s);
+      var awaitingHere = sparkRoomAwaiting(s, getActiveRoomKey(), phAwaitingRooms());
+      targetEl.textContent   = 'For · ' + builderFieldLabel(s) + (awaitingHere ? ' · Awaiting' : '');
       targetEl.classList.add('is-builder');
+      targetEl.classList.toggle('is-awaiting', awaitingHere);
       if (metaEl) metaEl.hidden = false;
       if (composeBtn) composeBtn.hidden = false;
       if (reanimate !== false) {
