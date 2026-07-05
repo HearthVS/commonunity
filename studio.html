@@ -8775,7 +8775,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
   </div>
   <p class="om-widget-foot">
-    Answer in Field Observations. Saved Field Observations become available to Nexus.
+    Draw a Spark to keep tending your Personal Home. Answer in Field Observations — saved Field Observations become available to Nexus.
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
@@ -15434,6 +15434,25 @@ if (document.readyState === 'loading') {
       return isFieldSeeded(target);
     }
 
+    // Readiness bias: which of the four rooms the seeded-field model
+    // still marks as Awaiting (section source === 'empty'). Reads the
+    // already-exposed Personal Home preview model — deterministic,
+    // local, no LLM. Returns [] if the model is unavailable so the
+    // draw simply falls back to its normal behaviour.
+    function phAwaitingRooms() {
+      try {
+        if (typeof window.buildPersonalHomePreview !== 'function') return [];
+        var model = window.buildPersonalHomePreview();
+        if (!model || !model.sections) return [];
+        return ['work', 'lens', 'field', 'call'].filter(function (k) {
+          var sec = model.sections[k];
+          return sec && sec.source === 'empty';
+        });
+      } catch (e) {
+        return [];
+      }
+    }
+
     function drawSpark() {
       if (SPARK_LIBRARY.length <= 1) return;
       // Soft preference: if a room is active, prefer Sparks whose
@@ -15444,6 +15463,17 @@ if (document.readyState === 'loading') {
       if (key) {
         var filtered = SPARK_LIBRARY.filter(function (s) { return s.section === key; });
         if (filtered.length >= 2) pool = filtered;
+      } else {
+        // No room active (Studio entrance / Personal Home threshold):
+        // bias the draw toward rooms the readiness band marks as
+        // Awaiting, so the Spark tends what still needs tending and the
+        // loop from readiness → prompt closes. Only narrow when at
+        // least two such Sparks remain, mirroring the guards below.
+        var awaiting = phAwaitingRooms();
+        if (awaiting.length) {
+          var toward = SPARK_LIBRARY.filter(function (s) { return awaiting.indexOf(s.section) !== -1; });
+          if (toward.length >= 2) pool = toward;
+        }
       }
       // Gap preference: within the current pool, prefer Sparks whose
       // builder target is not yet seeded. Only narrow when at least
