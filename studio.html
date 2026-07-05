@@ -4053,6 +4053,10 @@ input, textarea { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .om-widget-room.is-set { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, var(--text-muted)); }
+/* Readiness reflection at room level: the entered room is still marked
+   Awaiting by the seeded-field band. Same signal as the Spark target
+   tag's dashed edge (PR #121), carried onto the room label. */
+.om-widget-room.is-awaiting { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 90%, var(--text)); border-bottom: 1px dashed color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent); }
 .om-widget-toggle {
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
@@ -15388,11 +15392,14 @@ if (document.readyState === 'loading') {
     function refreshRoomLabel() {
       var key = getActiveRoomKey();
       if (key && FOURFOLD[key]) {
-        roomEl.textContent = FOURFOLD[key].name;
+        var awaitingHere = roomAwaiting(key, phAwaitingRooms());
+        roomEl.textContent = FOURFOLD[key].name + (awaitingHere ? ' · Awaiting' : '');
         roomEl.classList.add('is-set');
+        roomEl.classList.toggle('is-awaiting', awaitingHere);
       } else {
         roomEl.textContent = 'In the Studio entrance';
         roomEl.classList.remove('is-set');
+        roomEl.classList.remove('is-awaiting');
       }
       var roomScreen = document.getElementById('screen-room');
       var inRoom = !!(roomScreen && roomScreen.classList.contains('active'));
@@ -15423,6 +15430,17 @@ if (document.readyState === 'loading') {
       if (activeKey) return false;
       if (!s || !awaiting || !awaiting.length) return false;
       return awaiting.indexOf(s.section) !== -1;
+    }
+
+    // Room-level companion to sparkRoomAwaiting: once a room is
+    // entered, does the seeded-field band still mark it Awaiting? This
+    // carries the same signal PR #121 gave the Spark target tag onto
+    // the widget's room label, closing the readiness -> prompt -> room
+    // loop at the point of entry. Pure / fails safe — an empty
+    // `awaiting` list (model unavailable) -> false.
+    function roomAwaiting(key, awaiting) {
+      if (!key || !awaiting || !awaiting.length) return false;
+      return awaiting.indexOf(key) !== -1;
     }
 
     function renderSpark(s, reanimate) {
@@ -21170,6 +21188,11 @@ if (document.readyState === 'loading') {
       FOURFOLD: FOURFOLD,
       // QA helper: resolve a field by id OR by alias.
       findField: findFieldSpec,
+      // QA helpers for the readiness -> room loop: the rooms the
+      // seeded-field band still marks Awaiting, and the pure predicate
+      // the widget's room label uses to reflect that after entry.
+      awaitingRooms: phAwaitingRooms,
+      roomAwaiting: function (key) { return roomAwaiting(key, phAwaitingRooms()); },
       readiness: function () {
         return {
           profile: trackStatus('profile'),
