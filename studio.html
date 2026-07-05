@@ -6045,6 +6045,15 @@ input, textarea { font: inherit; color: inherit; }
    words in place. The trigger reads as tending, never editing/managing;
    the open form seeds from the current room copy and writes back to the
    existing builder capture for the room. */
+.ph-room-tuned {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, var(--text-muted));
+}
+.ph-room-tuned::before { content: '✎ '; opacity: 0.7; }
 .ph-room-tune {
   margin-top: 14px;
 }
@@ -20389,6 +20398,23 @@ if (document.readyState === 'loading') {
       if (typeof saveState === 'function') saveState();
       return true;
     }
+    // Provenance: was this room's live copy last shaped directly in the
+    // Personal Home tune flow (PR #124), rather than seeded from Compass
+    // or answered in Field Observations? Reads the most-recent capture's
+    // builder marker — the same "latest capture wins" rule lpCaptureText
+    // uses — so the signal clears the moment newer content arrives from
+    // another source. Fail-safe: any missing/malformed capture → false.
+    function phRoomTunedInHome(key) {
+      try {
+        var captureId = phRoomCaptureId(key);
+        if (!captureId) return false;
+        var caps = (window.state && window.state.builder && window.state.builder.captures) || {};
+        var arr = caps[captureId];
+        if (!arr || !arr.length) return false;
+        var latest = arr[arr.length - 1];
+        return !!latest && latest.builder === 'personal-home';
+      } catch (_) { return false; }
+    }
     // Room-specific atmosphere copy (eyebrow + closing invitation
     // fallback). Subtle, restrained — sets tone without overstating.
     // Eyebrows are intentionally ordered as a deepening sequence:
@@ -20435,7 +20461,14 @@ if (document.readyState === 'loading') {
       } else if (intro || highlights.length) {
         html += '<p class="ph-room-closing">' + lpEscape(atmos.fallback || '') + '</p>';
       }
-      html += '<div style="margin-top:14px;">' + lpSourceTag(sec.source) + '</div>';
+      html += '<div class="ph-room-source" style="margin-top:14px;">' + lpSourceTag(sec.source);
+      // Subtle provenance: rooms shaped directly in the hOMe tune flow
+      // carry a "Tuned in hOMe" marker alongside the source tag. Clears
+      // automatically when newer content arrives from another source.
+      if (phRoomTunedInHome(key)) {
+        html += '<span class="ph-room-tuned" title="You shaped these words in hOMe">Tuned in hOMe</span>';
+      }
+      html += '</div>';
 
       // Inline tune flow — tend this room's words in place. When open,
       // the form is seeded with the room's current copy and writes back
