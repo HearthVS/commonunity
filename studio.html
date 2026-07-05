@@ -3196,9 +3196,14 @@ input, textarea { font: inherit; color: inherit; }
   opacity: 0.7;
 }
 
-/* Conversation */
+/* Conversation — owns the remaining height in the rose-surface column and is
+   the primary scrollable reading area. The earlier legacy .mirror-conversation
+   rule caps height at 380px; override that here so answers get all the room the
+   panel allows. min-height:0 lets it shrink correctly inside the flex column. */
 .mirror-conversation {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   padding: var(--space-4);
   display: flex;
@@ -3242,6 +3247,8 @@ input, textarea { font: inherit; color: inherit; }
   font-size: var(--text-sm);
   line-height: 1.7;
   max-width: 92%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .mirror-sender { font-size: 9px; color: var(--text-faint); letter-spacing: 0.06em; text-transform: uppercase; padding: 0 var(--space-1); }
 .mirror-message.user .mirror-sender { text-align: right; }
@@ -3323,18 +3330,18 @@ input, textarea { font: inherit; color: inherit; }
 }
 .mirror-input {
   flex: 1;
-  /* Allow longer Nexus replies — was capped at 100px which made
-     anything past a sentence scroll inside a 3-line viewport.
-     User-resizable vertically; min keeps the input compact at
-     rest, max stays under viewport height so the orb above stays
-     visible while dragging. */
+  /* Perplexity-style composer: compact at rest (one line), auto-grows with
+     text via JS up to max-height, then scrolls internally. Kept small so the
+     scrollable answer area above always stays the primary reading space and
+     is never obscured by the composer. */
   background: transparent;
   border: none;
   font-size: var(--text-sm);
   color: var(--text);
-  resize: vertical;
-  min-height: 56px;
-  max-height: 60vh;
+  resize: none;
+  min-height: 40px;
+  max-height: 180px;
+  overflow-y: auto;
   font-family: var(--font-body);
   line-height: 1.6;
   outline: none;
@@ -8847,7 +8854,7 @@ input, textarea { font: inherit; color: inherit; }
       <div class="mirror-input-area nexus-dormant-hidden" id="mirror-input-row">
         <textarea class="mirror-input" id="mirror-input"
           placeholder="enter the nexus…"
-          rows="4"></textarea>
+          rows="1"></textarea>
         <button class="mirror-send" id="mirror-send-btn" title="Send">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
@@ -11083,12 +11090,14 @@ async function sendMirrorMessage() {
   const nexusAction = studioNexusDetectAction(msg);
   if (nexusAction) {
     input.value = '';
+    autoGrowMirrorInput(input);
     appendMirrorMessage('user', msg);
     studioNexusShowActionCard(nexusAction);
     return;
   }
 
   input.value = '';
+  autoGrowMirrorInput(input);
   appendMirrorMessage('user', msg);
   sendBtn.classList.add('loading');
 
@@ -12454,6 +12463,7 @@ function studioPopulateNexusInput(text, offer) {
   const input = document.getElementById('mirror-input');
   if (input) {
     input.value = text;
+    autoGrowMirrorInput(input);
     if (mirror) mirror.classList.add('orb-active');
     input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; }, 60);
@@ -14257,6 +14267,15 @@ function initRoseOrb() {
   // Input focus/blur for active glow (post-awakening)
   input.addEventListener('focus', () => { if (mirror) mirror.classList.add('orb-active'); });
   input.addEventListener('blur',  () => { if (!input.value.trim() && mirror) mirror.classList.remove('orb-active'); });
+  // Auto-grow: compact at rest, grows with text up to CSS max-height, then scrolls.
+  input.addEventListener('input', () => autoGrowMirrorInput(input));
+}
+
+// Resize the Nexus composer to fit its content, capped by its CSS max-height.
+function autoGrowMirrorInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 function awakenNexus(mirror, row, hint, orbWrap, instant = false) {

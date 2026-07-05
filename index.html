@@ -3499,6 +3499,11 @@ body.companion-mode .companion-mode-banner { display: block; }
   resize: none;
   line-height: 1.5;
   font-family: inherit;
+  /* Compact at rest, auto-grows with text (JS) up to max-height, then scrolls —
+     keeps the scrollable answer area above as the primary reading space. */
+  min-height: 40px;
+  max-height: 160px;
+  overflow-y: auto;
 }
 .compass-nexus-send {
   background: var(--btn-primary, #6366f1);
@@ -5350,7 +5355,7 @@ body.companion-mode .companion-mode-banner { display: block; }
         <div class="compass-nexus-intro">Nexus is present.</div>
       </div>
       <div class="compass-nexus-input-row">
-        <textarea class="compass-nexus-input" id="compass-nexus-input" rows="2" placeholder="enter the nexus…"></textarea>
+        <textarea class="compass-nexus-input" id="compass-nexus-input" rows="1" placeholder="enter the nexus…"></textarea>
         <button type="button" class="compass-nexus-send" id="compass-nexus-send" title="Send">Send</button>
       </div>
     </div>
@@ -11160,6 +11165,7 @@ async function sendCompassNexusMessage() {
   const action = compassNexusDetectAction(msg);
   if (action) {
     input.value = '';
+    autoGrowCompassNexusInput(input);
     appendCompassNexusMsg('user', msg);
     compassNexusShowActionCard(action);
     return;
@@ -11171,6 +11177,7 @@ async function sendCompassNexusMessage() {
   }
 
   input.value = '';
+  autoGrowCompassNexusInput(input);
   appendCompassNexusMsg('user', msg);
   sendBtn.classList.add('loading');
 
@@ -11560,6 +11567,15 @@ function initCompassNexus() {
       sendCompassNexusMessage();
     }
   });
+  // Auto-grow: compact at rest, grows with text up to CSS max-height, then scrolls.
+  input?.addEventListener('input', () => autoGrowCompassNexusInput(input));
+}
+
+// Resize the Nexus composer to fit its content, capped by its CSS max-height.
+function autoGrowCompassNexusInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 // Init the new Compass features as soon as the DOM is ready
