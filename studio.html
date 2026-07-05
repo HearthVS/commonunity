@@ -5818,6 +5818,41 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 /* ===== Personal Home v0.3 — threshold + immersive rooms ===== */
+/* Seeded-field readiness band — sits above the hero on the
+   threshold view. Names that the home is already drafted from
+   Compass + Living Profile (never a blank page) and frames Studio
+   Spark + Field Observations as the tending layer. */
+.ph-seed {
+  margin-bottom: var(--space-4);
+  padding: clamp(var(--space-4), 2.5vw, var(--space-5));
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 30%, var(--border));
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--rose-color, #c4b5fd) 9%, transparent), transparent 60%),
+    color-mix(in srgb, var(--input-bg) 24%, transparent);
+}
+.ph-seed-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, var(--text-muted));
+  margin: 0 0 6px;
+}
+.ph-seed-lede {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  max-width: 62ch;
+}
+.ph-seed-chips { margin-top: 10px; }
+.ph-seed-tend {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
 .ph-hero {
   position: relative;
   display: grid;
@@ -20221,6 +20256,54 @@ if (document.readyState === 'loading') {
       return html;
     }
 
+    // Seeded-field readiness — the Personal Home is drafted from
+    // existing sources (Compass points + Living Profile + Field
+    // Observations captures) before the person writes a word. This
+    // band names that seeding at the threshold so the home never
+    // reads as a blank page, and repositions Studio Spark as the
+    // tending / refinement layer for the rooms still awaiting. Pure
+    // read of the already-computed section sources — deterministic,
+    // local, no LLM, no publishing.
+    var PH_SEED_ROOMS = ['work', 'lens', 'field', 'call'];
+    function phSeedReadiness(model) {
+      var drafted = 0, awaiting = 0, fromCompass = 0;
+      PH_SEED_ROOMS.forEach(function (k) {
+        var src = (model.sections[k] && model.sections[k].source) || 'empty';
+        if (src === 'empty') { awaiting += 1; } else { drafted += 1; }
+        if (src === 'compass' || src === 'mixed') { fromCompass += 1; }
+      });
+      var stage;
+      if (drafted === 0)       { stage = 'awaiting-seed'; }
+      else if (awaiting === 0) { stage = 'fully-seeded'; }
+      else                     { stage = 'seeded'; }
+      return {
+        drafted: drafted, awaiting: awaiting, total: PH_SEED_ROOMS.length,
+        fromCompass: fromCompass, stage: stage
+      };
+    }
+
+    function phRenderSeedReadiness(model) {
+      var r = phSeedReadiness(model);
+      var lede;
+      if (r.stage === 'awaiting-seed') {
+        lede = 'Your four rooms are ready to be seeded. Bring in your Compass points and Living Profile, then tend each room with Studio Spark — this is a living field, never a blank page.';
+      } else if (r.stage === 'fully-seeded') {
+        lede = 'All ' + r.total + ' rooms are already drafted from your Compass points and Living Profile — you are stepping into a living field, not a blank page. Studio Spark is how you tend and deepen them in your own voice.';
+      } else {
+        lede = r.drafted + ' of ' + r.total + ' rooms are already drafted from your Compass points and Living Profile — a living field, not a blank page. Studio Spark is how you tend the ' + r.awaiting + ' still awaiting.';
+      }
+      var chips =
+        '<span class="lp-coverage-chip is-compass">Seeded from Compass · ' + r.fromCompass + ' / ' + r.total + '</span>' +
+        '<span class="lp-coverage-chip is-captured">Rooms drafted · ' + r.drafted + ' / ' + r.total + '</span>' +
+        '<span class="lp-coverage-chip is-empty">Awaiting your tending · ' + r.awaiting + ' / ' + r.total + '</span>';
+      return '<section class="ph-seed is-' + r.stage + '" aria-label="Seeded field readiness">' +
+        '<p class="ph-seed-eyebrow">You are stepping into a seeded field</p>' +
+        '<p class="ph-seed-lede">' + lpEscape(lede) + '</p>' +
+        '<div class="ph-seed-chips lp-coverage">' + chips + '</div>' +
+        '<p class="ph-seed-tend">Draw a Spark from the Oṁ Field for a room still awaiting, then answer it in Field Observations. Compass and your Living Profile seed the home; Studio Spark and Field Observations tend it.</p>' +
+      '</section>';
+    }
+
     function phRenderThreshold(model) {
       var hero = model.sections.hero;
       var heading = hero.heading || model.name || 'Welcome home';
@@ -20255,7 +20338,8 @@ if (document.readyState === 'loading') {
           '</div>' +
         '</div>';
       }
-      var html = '<section class="ph-hero" aria-label="Home threshold">' +
+      var html = phRenderSeedReadiness(model) +
+        '<section class="ph-hero" aria-label="Home threshold">' +
         phSlotHtml +
         '<div class="ph-hero-text">' +
           '<p class="ph-hero-eyebrow">Personal Home · threshold</p>' +
