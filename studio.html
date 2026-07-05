@@ -5865,6 +5865,18 @@ input, textarea { font: inherit; color: inherit; }
   line-height: 1.6;
   max-width: 62ch;
 }
+.ph-seed-milestone {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 22%, var(--border));
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+.ph-seed.is-fully-seeded .ph-seed-milestone {
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, var(--text));
+}
 .ph-hero {
   position: relative;
   display: grid;
@@ -20361,6 +20373,16 @@ if (document.readyState === 'loading') {
       } else {
         lede = r.drafted + ' of ' + r.total + ' rooms are already drafted from your Compass points and Living Profile — a living field, not a blank page. Studio Spark is how you tend the ' + r.awaiting + ' still awaiting.';
       }
+      // Milestone framing: Personal Home is the *first* major creation in
+      // Studio, not the whole of it. Once it is living, Studio stays open as
+      // the wider space for building other expressions, and Home keeps
+      // updating as they are added.
+      var milestone;
+      if (r.stage === 'fully-seeded') {
+        milestone = 'Personal Home is your first major creation in Studio — and it is now living. It keeps updating as you add services, offers, writings, missions and projects, while Studio stays open as the wider space where you go on creating from the self now emerging.';
+      } else {
+        milestone = 'Personal Home is your first major creation in Studio. Once it is living it keeps updating as you add services, offers, writings, missions and projects — and Studio stays open as the wider space where you go on creating from the self now emerging.';
+      }
       var chips =
         '<span class="lp-coverage-chip is-compass">Seeded from Compass · ' + r.fromCompass + ' / ' + r.total + '</span>' +
         '<span class="lp-coverage-chip is-captured">Rooms drafted · ' + r.drafted + ' / ' + r.total + '</span>' +
@@ -20370,6 +20392,7 @@ if (document.readyState === 'loading') {
         '<p class="ph-seed-lede">' + lpEscape(lede) + '</p>' +
         '<div class="ph-seed-chips lp-coverage">' + chips + '</div>' +
         '<p class="ph-seed-tend">Draw a Spark from the Oṁ Field for a room still awaiting, then answer it in Field Observations. Compass and your Living Profile seed the home; Studio Spark and Field Observations tend it.</p>' +
+        '<p class="ph-seed-milestone">' + lpEscape(milestone) + '</p>' +
       '</section>';
     }
 
