@@ -6041,6 +6041,103 @@ input, textarea { font: inherit; color: inherit; }
   border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   padding-top: 12px;
 }
+/* Inline per-room tune flow — a subtle, conscious way to tend a room's
+   words in place. The trigger reads as tending, never editing/managing;
+   the open form seeds from the current room copy and writes back to the
+   existing builder capture for the room. */
+.ph-room-tune {
+  margin-top: 14px;
+}
+.ph-room-tune-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--input-bg) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.ph-room-tune-btn:hover,
+.ph-room-tune-btn:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--border));
+  background: color-mix(in srgb, var(--input-bg) 65%, transparent);
+}
+.ph-room-tune-btn::before { content: '✎'; opacity: 0.7; }
+.ph-room-tune-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ph-room-tune-label {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.ph-room-tune-field {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: var(--text);
+  background: color-mix(in srgb, var(--input-bg) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 10px;
+}
+.ph-room-tune-field:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, var(--border));
+}
+.ph-room-tune-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ph-room-tune-save,
+.ph-room-tune-cancel {
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ph-room-tune-save {
+  color: var(--bg, #14121a);
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 82%, var(--text));
+  border: 1px solid transparent;
+}
+.ph-room-tune-save:hover,
+.ph-room-tune-save:focus-visible {
+  background: var(--rose-color, #c4b5fd);
+}
+.ph-room-tune-cancel {
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.ph-room-tune-cancel:hover,
+.ph-room-tune-cancel:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 100%, transparent);
+}
+.ph-room-tune-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.85;
+  line-height: 1.5;
+}
 .ph-room-aside-v3 {
   position: relative;
   display: flex;
@@ -20255,8 +20352,42 @@ if (document.readyState === 'loading') {
     // Call) loads on demand into the same panel. State is local —
     // no routing, no publishing.
     var phActiveRoom = 'home';
+    // Which room, if any, currently has its inline tune editor open.
+    // Local view state only — never persisted.
+    var phRoomEditing = null;
     function phRoomFullName(key) {
       return { work: 'The Work', lens: 'The Lens', field: 'The Field', call: 'The Call' }[key] || '';
+    }
+    // The existing builder capture id each room's copy is drafted from
+    // and written back to. Matches the Studio Spark targets
+    // (site-work / site-lens / site-field / site-call) so a tuned room
+    // and a Spark-answered room share one source of truth.
+    function phRoomCaptureId(key) {
+      return { work: 'site-work', lens: 'site-lens', field: 'site-field', call: 'site-call' }[key] || '';
+    }
+    // Write a tuned room's copy back through the existing builder
+    // capture path — the same shape Field Observations / Studio Spark
+    // use ({at, prompt, excerpt, builder}) — so lpCaptureText picks it
+    // up as the most-recent capture on the next preview render. Persists
+    // through saveState(); no new data model, no backend call.
+    function phWriteRoomCapture(key, text) {
+      var captureId = phRoomCaptureId(key);
+      if (!captureId) return false;
+      var clean = String(text == null ? '' : text).trim();
+      if (!clean) return false;
+      var st = window.state;
+      if (!st) return false;
+      if (!st.builder) st.builder = { captures: {}, osMeta: { projectActive: false, notesActive: false, reviewRhythm: '' } };
+      if (!st.builder.captures) st.builder.captures = {};
+      if (!st.builder.captures[captureId]) st.builder.captures[captureId] = [];
+      st.builder.captures[captureId].push({
+        at: new Date().toISOString(),
+        prompt: 'Tuned in place from Personal Home · ' + (phRoomFullName(key) || key),
+        excerpt: clean.slice(0, 600),
+        builder: 'personal-home'
+      });
+      if (typeof saveState === 'function') saveState();
+      return true;
     }
     // Room-specific atmosphere copy (eyebrow + closing invitation
     // fallback). Subtle, restrained — sets tone without overstating.
@@ -20305,6 +20436,36 @@ if (document.readyState === 'loading') {
         html += '<p class="ph-room-closing">' + lpEscape(atmos.fallback || '') + '</p>';
       }
       html += '<div style="margin-top:14px;">' + lpSourceTag(sec.source) + '</div>';
+
+      // Inline tune flow — tend this room's words in place. When open,
+      // the form is seeded with the room's current copy and writes back
+      // to the room's existing builder capture on save. Cancel leaves
+      // state untouched.
+      if (phRoomEditing === key) {
+        var seedText = intro || '';
+        var fieldId = 'ph-room-tune-field-' + key;
+        html += '<form class="ph-room-tune-form" data-ph-tune-form="' + key + '" novalidate>' +
+          '<label class="ph-room-tune-label" for="' + fieldId + '">' +
+            'Tune ' + lpEscape(label) + ' — shape these words in your own voice' +
+          '</label>' +
+          '<textarea class="ph-room-tune-field" id="' + fieldId + '" name="' + fieldId + '" ' +
+            'data-ph-tune-input="' + key + '" rows="6" ' +
+            'aria-describedby="' + fieldId + '-hint">' + lpEscape(seedText) + '</textarea>' +
+          '<p class="ph-room-tune-hint" id="' + fieldId + '-hint">' +
+            'Refined words are held with your Field Observations for this room and re-seed the home. Nothing is published.' +
+          '</p>' +
+          '<div class="ph-room-tune-actions">' +
+            '<button type="submit" class="ph-room-tune-save" data-ph-tune-save="' + key + '">Save changes</button>' +
+            '<button type="button" class="ph-room-tune-cancel" data-ph-tune-cancel="' + key + '">Cancel</button>' +
+          '</div>' +
+        '</form>';
+      } else {
+        html += '<div class="ph-room-tune">' +
+          '<button type="button" class="ph-room-tune-btn" data-ph-tune-open="' + key + '" ' +
+            'aria-label="Tune ' + lpEscape(label) + ' in place">Tune this room</button>' +
+        '</div>';
+      }
+
       // Studio Window strip filtered to this room — shows up to
       // 2-4 of the user's Studio Window images tagged for the room.
       var roomWindowHtml = '';
@@ -20575,10 +20736,49 @@ if (document.readyState === 'loading') {
         function (btn) {
           btn.addEventListener('click', function () {
             phActiveRoom = btn.getAttribute('data-ph-room') || 'home';
+            phRoomEditing = null;
             renderWebsitePreview();
           });
         }
       );
+
+      // Wire inline room tune flow — open / save / cancel. Save writes
+      // through the existing builder capture path and re-renders so the
+      // preview reads the freshly-tuned copy; cancel leaves state as-is.
+      Array.prototype.forEach.call(
+        wpBody.querySelectorAll('[data-ph-tune-open]'),
+        function (btn) {
+          btn.addEventListener('click', function () {
+            phRoomEditing = btn.getAttribute('data-ph-tune-open');
+            renderWebsitePreview();
+            var field = wpBody.querySelector('[data-ph-tune-input="' + phRoomEditing + '"]');
+            if (field) { field.focus(); field.setSelectionRange(field.value.length, field.value.length); }
+          });
+        }
+      );
+      var tuneForm = wpBody.querySelector('[data-ph-tune-form]');
+      if (tuneForm) {
+        var tuneKey = tuneForm.getAttribute('data-ph-tune-form');
+        tuneForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var field = wpBody.querySelector('[data-ph-tune-input="' + tuneKey + '"]');
+          var wrote = field ? phWriteRoomCapture(tuneKey, field.value) : false;
+          phRoomEditing = null;
+          renderWebsitePreview();
+          if (typeof showToast === 'function') {
+            showToast(wrote ? 'Room tuned — the home re-seeds from your words' : 'Nothing to tune yet');
+          }
+        });
+        var cancelBtn = wpBody.querySelector('[data-ph-tune-cancel="' + tuneKey + '"]');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function () {
+            phRoomEditing = null;
+            renderWebsitePreview();
+            var reopen = wpBody.querySelector('[data-ph-tune-open="' + tuneKey + '"]');
+            if (reopen) reopen.focus();
+          });
+        }
+      }
 
       // Wire profile image upload + remove controls on the threshold.
       if (typeof window.wireProfileImageControls === 'function') {
@@ -20592,6 +20792,7 @@ if (document.readyState === 'loading') {
     function openWebsitePreview() {
       if (!wpModal) return;
       phActiveRoom = 'home';
+      phRoomEditing = null;
       renderWebsitePreview();
       if (modal && modal.classList.contains('is-open')) modal.classList.remove('is-open');
       wpModal.classList.add('is-open');
