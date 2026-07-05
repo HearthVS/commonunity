@@ -3196,6 +3196,85 @@ input, textarea { font: inherit; color: inherit; }
   opacity: 0.7;
 }
 
+/* ── Nexus context disclosure ───────────────────────────────────
+   The ceremonial orb + context writings are heavy vertical chrome.
+   A disclosure toggle lets them collapse into a slim one-line rail so
+   the conversation owns the reading/writing space, while the sigil and
+   "what Nexus knows" stay one click away. */
+.nexus-context-toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 30%, transparent);
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 85%, var(--text-faint));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.nexus-context-toggle:hover {
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 14%, transparent);
+  border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, transparent);
+}
+.nexus-context-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, transparent);
+  outline-offset: 2px;
+}
+.nexus-context-chevron { transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); }
+/* Expanded (default): chevron points up (collapse hint). Collapsed: points down. */
+.rose-orb-header:not(.is-collapsed) .nexus-context-chevron { transform: rotate(180deg); }
+
+/* ── Collapsed compact rail ─────────────────────────────────── */
+.rose-orb-header.is-collapsed {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 40px var(--space-2) var(--space-4);
+}
+.rose-orb-header.is-collapsed .rose-orb-wrap {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.rose-orb-header.is-collapsed .rose-orb-svg {
+  width: 26px;
+  height: 26px;
+}
+.rose-orb-header.is-collapsed .rose-orb-ring,
+.rose-orb-header.is-collapsed .rose-orb-ring-2,
+.rose-orb-header.is-collapsed .nexus-hold-ring { display: none; }
+.rose-orb-header.is-collapsed .rose-orb-wrap::before { inset: -4px; }
+.rose-orb-header.is-collapsed .nexus-knock-hint,
+.rose-orb-header.is-collapsed #nexus-memory-display,
+.rose-orb-header.is-collapsed #nexus-session-stats { display: none !important; }
+.rose-orb-header.is-collapsed .rose-gk-context {
+  text-align: left;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* When collapsed with no GK line yet, show a quiet identity summary. */
+.rose-orb-header.is-collapsed .rose-gk-context:empty::before {
+  content: 'Nexus context';
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 9px;
+  opacity: 0.8;
+}
+.rose-orb-header.is-collapsed::after { left: 0; right: 0; }
+
 /* Conversation — owns the remaining height in the rose-surface column and is
    the primary scrollable reading area. The earlier legacy .mirror-conversation
    rule caps height at 380px; override that here so answers get all the room the
@@ -8774,8 +8853,15 @@ input, textarea { font: inherit; color: inherit; }
         </div>
       </div>
 
-      <!-- Orb area — centred below header -->
-      <div class="rose-orb-header">
+      <!-- Orb area — centred below header. Collapsible: full ceremonial
+           identity when dormant/empty, compact single-line rail once a
+           conversation is under way so answers get the vertical room. -->
+      <div class="rose-orb-header" id="nexus-context-header">
+        <button type="button" class="nexus-context-toggle" id="nexus-context-toggle"
+                aria-expanded="true" aria-controls="nexus-context-header"
+                aria-label="Collapse Nexus context" title="Show / hide Nexus context">
+          <svg class="nexus-context-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <div class="rose-orb-wrap nexus-orb-dormant" id="nexus-orb-wrap" title="Hold to open the Nexus">
           <div class="rose-orb-ring-2"></div>
           <div class="rose-orb-ring"></div>
@@ -14172,11 +14258,18 @@ function initRoseOrb() {
 
   if (!mirror || !input || !orbWrap) return;
 
+  // Wire the context disclosure toggle (idempotent).
+  initNexusContextToggle();
+
   // If already awakened this session, skip ritual
   if (nexusAwakened) {
     awakenNexus(mirror, row, hint, orbWrap, true);
     return;
   }
+
+  // Dormant / empty room — keep the full ceremonial identity expanded as the
+  // invitation to knock.
+  setNexusContextCollapsed(false);
 
   // Hold-to-awaken: 1.8 seconds
   const HOLD_MS = 1800;
@@ -14278,6 +14371,30 @@ function autoGrowMirrorInput(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
+// Collapse or expand the ceremonial context header (orb + writings). Collapsed
+// gives the conversation the vertical room; expanded restores the full sigil,
+// "what Nexus knows", and session stats. Keeps ARIA in sync for keyboard users.
+function setNexusContextCollapsed(collapsed) {
+  const header = document.getElementById('nexus-context-header');
+  const toggle = document.getElementById('nexus-context-toggle');
+  if (!header) return;
+  header.classList.toggle('is-collapsed', collapsed);
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    toggle.setAttribute('aria-label', collapsed ? 'Show Nexus context' : 'Collapse Nexus context');
+  }
+}
+
+function initNexusContextToggle() {
+  const toggle = document.getElementById('nexus-context-toggle');
+  const header = document.getElementById('nexus-context-header');
+  if (!toggle || !header || toggle._wired) return;
+  toggle._wired = true;
+  toggle.addEventListener('click', () => {
+    setNexusContextCollapsed(!header.classList.contains('is-collapsed'));
+  });
+}
+
 function awakenNexus(mirror, row, hint, orbWrap, instant = false) {
   nexusAwakened = true;
   orbWrap.classList.remove('holding', 'nexus-orb-dormant');
@@ -14285,6 +14402,9 @@ function awakenNexus(mirror, row, hint, orbWrap, instant = false) {
   if (hint) hint.classList.add('hidden');
   if (row)  { row.classList.remove('nexus-dormant-hidden'); row.classList.add('nexus-awakened'); }
   if (mirror) mirror.classList.add('orb-active');
+  // A conversation is now under way — collapse the ceremonial chrome so the
+  // transcript and composer own the space.
+  setNexusContextCollapsed(true);
   setTimeout(() => {
     const input = document.getElementById('mirror-input');
     if (input) input.focus();
@@ -14551,6 +14671,8 @@ function nexusNewProject() {
   if (orbWrap) {
     orbWrap.classList.add('nexus-orb-dormant');
   }
+  // Fresh project — restore the full ceremonial identity.
+  setNexusContextCollapsed(false);
   window.nexusAwakened = false;
 
   // Fire a fresh opening message
