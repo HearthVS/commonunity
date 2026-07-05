@@ -2411,6 +2411,45 @@ input, textarea { font: inherit; color: inherit; }
   );
   transition: background-image var(--transition), border-color var(--transition);
 }
+
+/* ── Final polish: calmer mode transitions & keyboard-coherent focus ──────
+   Presentational-only refinements (no behaviour change). The active tab lifts
+   a faint tint underglow, keyboard focus borrows the mode's own --fo-mode-tint
+   so tabbing feels part of the atmosphere rather than a stock outline, and the
+   incoming panel settles in with a brief fade instead of a hard file-manager
+   swap — reinforcing "stepping deeper into the field" over "changing tabs".
+   No JS, storage, fetch, or Nexus path is touched. */
+.fo-mode-btn {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color var(--transition), border-color var(--transition),
+              text-shadow var(--transition), background-color var(--transition);
+}
+.fo-mode-btn.active {
+  text-shadow: 0 0 12px color-mix(in srgb,
+    var(--fo-mode-tint, var(--accent-color, var(--setup-accent))) 38%, transparent);
+}
+.fo-mode-btn:focus-visible {
+  outline: none;
+  color: var(--fo-mode-tint, var(--accent-color, var(--setup-accent)));
+  background-color: color-mix(in srgb,
+    var(--fo-mode-tint, var(--accent-color, var(--setup-accent))) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb,
+    var(--fo-mode-tint, var(--accent-color, var(--setup-accent))) 45%, transparent);
+}
+
+/* The incoming panel settles in gently when it becomes the active view. The
+   [hidden] toggle is driven by the existing mode switcher — CSS only, no JS. */
+.fo-mode-panel:not([hidden]) {
+  animation: fo-panel-settle var(--transition) ease both;
+}
+@keyframes fo-panel-settle {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fo-mode-panel:not([hidden]) { animation: none; }
+}
+
 .fo-mode-panel {
   flex: 1;
   display: flex;
