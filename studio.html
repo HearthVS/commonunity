@@ -8766,7 +8766,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
     <div id="living-profile-body"></div>
     <p class="builder-footnote" id="living-profile-foot">
-      Drafted locally from Compass import + Field Notes captures.
+      Drafted locally from Compass import + Field Observations captures.
       The doorway into your wider Personal Home — that is Level 2.
     </p>
   </div>
@@ -8835,7 +8835,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
     <div id="website-preview-body"></div>
     <p class="builder-footnote" id="website-preview-foot">
-      Drafted locally from Compass import + Field Notes captures.
+      Drafted locally from Compass import + Field Observations captures.
       Preview only — nothing published.
     </p>
   </div>
@@ -11931,7 +11931,7 @@ async function studioCreateFieldObservation(text, sourceLabel) {
   const body = String(text || '').trim();
   if (!body) return;
   const cipherId = foCipherId();
-  const payload = { body, source_label: sourceLabel || 'Field Notes' };
+  const payload = { body, source_label: sourceLabel || 'Field Observations' };
   if (cipherId) payload.cipher_id = cipherId;
   try {
     const res = await fetch(`${API_BASE}/api/studio/field-observations`, {
@@ -14566,7 +14566,7 @@ window.saveState = saveState;
       <button class="studio-info-popup-close" data-close="info-living-profile-overlay">✕</button>
     </div>
     <div class="studio-info-popup-body">
-      <p>Level 1 · Threshold. A minimum viable digital self — the threshold card others meet you through. Drafted locally from your Compass material and Field Notes.</p>
+      <p>Level 1 · Threshold. A minimum viable digital self — the threshold card others meet you through. Drafted locally from your Compass material and Field Observations.</p>
       <p>The Living Profile holds three layers: a <strong>foundation</strong> (the cosmic ground you stand on — birth, place, design), a <strong>compass</strong> (The Work, Lens, Field, Call), and a <strong>doorway</strong> (how others might engage).</p>
       <p>Nothing here is published. Honesty over performance — this is the trust architecture.</p>
     </div>
@@ -15086,7 +15086,7 @@ if (document.readyState === 'loading') {
       name: 'Personal OS',
       level: 3,
       tagline: 'Level 3 · Expanded home · inner studio for becoming',
-      lede: 'The inner studio where you create, learn, serve, and co-emerge with AI — supporting products, services, skills, radiance, clearer purpose, capacity, and reach. Technology serving human emergence, not replacement. Unlocks when Living Profile and Personal Home are ready, a project is alive, Field Notes are flowing, and a review rhythm is chosen.',
+      lede: 'The inner studio where you create, learn, serve, and co-emerge with AI — supporting products, services, skills, radiance, clearer purpose, capacity, and reach. Technology serving human emergence, not replacement. Unlocks when Living Profile and Personal Home are ready, a project is alive, Field Observations are flowing, and a review rhythm is chosen.',
       // Top-level OS criteria gate L3. The richer foundation fields
       // below (`foundation`) describe the inner studio shape itself
       // — they are surfaced as a roadmap in the readiness modal and
@@ -15097,7 +15097,7 @@ if (document.readyState === 'loading') {
         { id: 'profile-ready',  label: 'Profile ready for review',                 test: function (s) { return s.profile.status === 'Ready for review' || s.profile.status === 'Ready to publish' || s.profile.status === 'Published'; } },
         { id: 'website-ready',  label: 'Personal Home ready for review',           test: function (s) { return s.website.status === 'Ready for review' || s.website.status === 'Ready to publish' || s.website.status === 'Published'; } },
         { id: 'project-active', label: 'At least one active project or offering',  test: function (s) { return s.osMeta.projectActive; } },
-        { id: 'notes-active',   label: 'Field Notes archive active',               test: function (s) { return s.osMeta.notesActive; } },
+        { id: 'notes-active',   label: 'Field Observations archive active',        test: function (s) { return s.osMeta.notesActive; } },
         { id: 'review-rhythm',  label: 'Review rhythm selected',                   test: function (s) { return !!s.osMeta.reviewRhythm; } }
       ],
       // Foundation fields describe the inner studio shape. Optional —
@@ -16728,8 +16728,8 @@ if (document.readyState === 'loading') {
     function lpSourceTag(source) {
       var label = {
         compass:  'From Compass',
-        captured: 'From Field Notes',
-        mixed:    'Compass + Field Notes',
+        captured: 'From Field Observations',
+        mixed:    'Compass + Field Observations',
         empty:    'Awaiting source'
       }[source] || '';
       var cls = {
@@ -20302,9 +20302,9 @@ if (document.readyState === 'loading') {
       // Source notes — subtle row, collapsed by default.
       var coverageChips =
         '<span class="lp-coverage-chip is-compass">From Compass · ' + (c.compass + c.mixed) + ' / ' + c.total + '</span>' +
-        '<span class="lp-coverage-chip is-captured">From Field Notes · ' + (c.captured + c.mixed) + ' / ' + c.total + '</span>' +
+        '<span class="lp-coverage-chip is-captured">From Field Observations · ' + (c.captured + c.mixed) + ' / ' + c.total + '</span>' +
         '<span class="lp-coverage-chip is-empty">Awaiting · ' + c.empty + ' / ' + c.total + '</span>';
-      var sourceLine = 'Preview only, not published · drafted from Compass points (Work / Lens / Field / Call) + Field Notes captures' +
+      var sourceLine = 'Preview only, not published · drafted from Compass points (Work / Lens / Field / Call) + Field Observations captures' +
         (model.transcripts.count ? ' · ' + model.transcripts.count + ' transcript' +
           (model.transcripts.count === 1 ? '' : 's') : '') + '.';
       html += '<div class="lp-source-row" style="margin-top:var(--space-3);">' +
