@@ -5422,6 +5422,145 @@ def _fo_extract_pdf_text(data: bytes) -> dict:
                 "error": f"Could not read this PDF ({str(e)[:120]})."}
 
 
+# Anthropic vision accepts exactly these image media types. Our upload whitelist
+# is a superset (it also allows gif), so map/validate before sending.
+_FO_VISION_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+
+# Prompt for turning an uploaded image into reviewable text. It leads with
+# verbatim OCR (the member's likely intent for a photo of notes / a whiteboard /
+# a document) and follows with a short factual description so a photo with no
+# text still yields something useful to sit with. It never interprets, advises,
+# or speaks in the member's voice — this is preparation, not the Nexus reading.
+_FO_IMAGE_PROMPT = (
+    "You are preparing an uploaded image into plain reviewable text for its "
+    "owner. Do two things, in this order:\n"
+    "1. TRANSCRIPTION — transcribe every piece of legible text in the image "
+    "verbatim, preserving line breaks and reading order. If there is no legible "
+    "text, write 'No legible text.'\n"
+    "2. DESCRIPTION — in 1–3 plain sentences, describe what the image shows "
+    "(setting, subjects, notable details).\n"
+    "Return only those two labelled sections. Do not interpret, advise, "
+    "summarise meaning, or speak as the person. Be faithful to what is visible."
+)
+
+# Cap image text like PDF text so a dense scan can't bloat a row.
+_FO_IMAGE_MAX_CHARS = _FO_PROCESSED_MAX_CHARS
+
+
+def _fo_describe_image(data: bytes, content_type: str) -> dict:
+    """Turn image bytes into reviewable text (OCR + short description) via the
+    existing Anthropic vision model. Never raises for content/credential
+    problems: returns {status, text, error} so the outcome can be stored as an
+    artifact and shown to the member. status is one of:
+      done         — text produced (transcription + description)
+      unavailable   — no ANTHROPIC_API_KEY configured (actionable message)
+      error         — the model call failed or returned nothing
+    Nothing here is auto-sent to Nexus; the member offers it forward deliberately.
+    """
+    if not data:
+        return {"status": "error", "text": "",
+                "error": "This image appears to be empty."}
+    ctype = (content_type or "").split(";")[0].strip().lower()
+    if ctype not in _FO_VISION_MEDIA_TYPES:
+        return {"status": "error", "text": "",
+                "error": "This image format can't be read for text. Try PNG, "
+                         "JPEG, WebP, or GIF."}
+    if not os.getenv("ANTHROPIC_API_KEY", "").strip():
+        return {"status": "unavailable", "text": "",
+                "error": "Image reading needs the ANTHROPIC_API_KEY to be "
+                         "configured on the server. Ask your host to set it, "
+                         "then try again."}
+    try:
+        import base64
+        b64 = base64.standard_b64encode(data).decode("ascii")
+        resp = client.messages.create(
+            model=_NEXUS_MODEL,
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {
+                        "type": "base64", "media_type": ctype, "data": b64}},
+                    {"type": "text", "text": _FO_IMAGE_PROMPT},
+                ],
+            }],
+        )
+        parts = [b.text for b in (resp.content or []) if getattr(b, "type", "") == "text"]
+        text = "\n".join(p for p in parts if p).strip()
+        if not text:
+            return {"status": "error", "text": "",
+                    "error": "The image reader returned nothing. Please try again."}
+        if len(text) > _FO_IMAGE_MAX_CHARS:
+            text = text[:_FO_IMAGE_MAX_CHARS]
+        return {"status": "done", "text": text, "error": ""}
+    except Exception as e:
+        return {"status": "error", "text": "",
+                "error": f"Could not read this image ({str(e)[:120]})."}
+
+
+# Audio transcription provider. Claude has no audio input, so this uses an
+# OpenAI-compatible Whisper transcription endpoint when configured. Everything is
+# read from env so a deployer opts in without code changes:
+#   OPENAI_API_KEY            — required to enable transcription
+#   OPENAI_TRANSCRIBE_MODEL   — model name (default: whisper-1)
+#   OPENAI_BASE_URL           — API base (default: https://api.openai.com/v1)
+_FO_AUDIO_MODEL_ENV = "OPENAI_TRANSCRIBE_MODEL"
+_FO_AUDIO_KEY_ENV = "OPENAI_API_KEY"
+_FO_AUDIO_BASE_ENV = "OPENAI_BASE_URL"
+_FO_AUDIO_MAX_CHARS = _FO_PROCESSED_MAX_CHARS
+
+
+def _fo_transcribe_audio(data: bytes, content_type: str, filename: str) -> dict:
+    """Transcribe audio bytes to text via a configured OpenAI-compatible Whisper
+    endpoint. Never raises for content/credential problems: returns
+    {status, text, error} so the outcome is stored as an artifact and shown to
+    the member. status is one of:
+      done         — a transcript was produced
+      unavailable   — no OPENAI_API_KEY configured (actionable message naming it)
+      error         — the provider call failed
+    Nothing here is auto-sent to Nexus; the member offers it forward deliberately.
+    """
+    if not data:
+        return {"status": "error", "text": "",
+                "error": "This audio file appears to be empty."}
+    api_key = os.getenv(_FO_AUDIO_KEY_ENV, "").strip()
+    if not api_key:
+        return {"status": "unavailable", "text": "",
+                "error": "Audio transcription is not configured on this server "
+                         "yet. It needs an OPENAI_API_KEY (a Whisper-compatible "
+                         "transcription key) to be set. Everything else — "
+                         "capture, review, and offering to Nexus — already "
+                         "works; only the transcription step is waiting on that "
+                         "key."}
+    model = os.getenv(_FO_AUDIO_MODEL_ENV, "").strip() or "whisper-1"
+    base = (os.getenv(_FO_AUDIO_BASE_ENV, "").strip() or "https://api.openai.com/v1").rstrip("/")
+    upload_name = os.path.basename(filename or "").strip() or "audio"
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{base}/audio/transcriptions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            files={"file": (upload_name, data, content_type or "application/octet-stream")},
+            data={"model": model, "response_format": "text"},
+            timeout=180.0,
+        )
+        if resp.status_code != 200:
+            detail = (resp.text or "").strip()[:160]
+            return {"status": "error", "text": "",
+                    "error": f"Transcription provider returned {resp.status_code}. {detail}".strip()}
+        text = (resp.text or "").strip()
+        if not text:
+            return {"status": "error", "text": "",
+                    "error": "The transcription came back empty. The audio may "
+                             "be silent or unsupported."}
+        if len(text) > _FO_AUDIO_MAX_CHARS:
+            text = text[:_FO_AUDIO_MAX_CHARS]
+        return {"status": "done", "text": text, "error": ""}
+    except Exception as e:
+        return {"status": "error", "text": "",
+                "error": f"Could not reach the transcription provider ({str(e)[:120]})."}
+
+
 def _fo_processed_row_to_public(row: sqlite3.Row) -> dict:
     """Serialise a processed artifact for the owning member. The invite_token is
     a per-caller secret binding, not member-facing data, so it is dropped."""
@@ -5430,27 +5569,48 @@ def _fo_processed_row_to_public(row: sqlite3.Row) -> dict:
     return d
 
 
+# Maps an uploaded media kind to the preparation it supports and the
+# process_type its artifact is stored under. Keeping this in one place means the
+# extract route, the retry/replace logic, and the tests all agree on what each
+# kind produces. PDF text and image reading run on infrastructure that already
+# ships (pypdf, the Anthropic vision model); audio transcription runs when an
+# OpenAI-compatible key is configured and otherwise stores an honest,
+# actionable "unavailable" artifact rather than pretending to succeed.
+_FO_PROCESS_FOR_KIND: dict[str, str] = {
+    "document": "pdf_text",
+    "image": "image_text",
+    "audio": "audio_transcript",
+}
+
+
 @app.post("/api/studio/field-observations/attachments/{media_id}/extract")
 async def extract_field_observation_media(media_id: str, req: Request, cipher_id: str = ""):
-    """Extract text from one of the caller's own PDF media items.
+    """Prepare reviewable text from one of the caller's own media items.
 
     Member-scoped: the source media row must belong to the caller (cipher_id or
-    invite-token cookie), so extraction can never be triggered against another
-    member's media even with a guessed id. Only PDF media is supported; anything
-    else is rejected. The result (including graceful empty/encrypted/error
-    outcomes) is stored as a processed artifact linked to the source media and
-    returned. Re-running replaces the prior artifact (retry). Nothing is sent to
-    Nexus or the AI here."""
+    invite-token cookie), so preparation can never be triggered against another
+    member's media even with a guessed id. Dispatches by media kind:
+      document (PDF) -> extracted text        (process_type pdf_text)
+      image          -> OCR + description      (process_type image_text)
+      audio          -> transcription          (process_type audio_transcript)
+    The result — including graceful empty / encrypted / unavailable / error
+    outcomes — is stored as a processed artifact linked to the source media and
+    returned. Re-running replaces the prior artifact of the same type (retry).
+    Nothing is sent to Nexus or offered to the AI here; the member brings
+    prepared text forward deliberately, client-side."""
     if not _has_member_access(req):
         raise HTTPException(status_code=403, detail="forbidden")
     row = _fo_media_owned_row(req, media_id, cipher_id)
     if not row:
         raise HTTPException(status_code=404, detail="not found")
     content_type = (row["content_type"] or "").split(";")[0].strip().lower()
-    if content_type != "application/pdf" or row["media_kind"] != "document":
+    media_kind = row["media_kind"]
+    process_type = _FO_PROCESS_FOR_KIND.get(media_kind)
+    if not process_type:
         raise HTTPException(
             status_code=400,
-            detail="Text extraction is only supported for PDF documents.",
+            detail="Preparation is only supported for PDF documents, images, "
+                   "and audio.",
         )
     stored_name = row["stored_name"]
     if "/" in stored_name or "\\" in stored_name or stored_name in ("", ".", ".."):
@@ -5459,7 +5619,13 @@ async def extract_field_observation_media(media_id: str, req: Request, cipher_id
     if not path.exists():
         raise HTTPException(status_code=404, detail="not found")
 
-    result = _fo_extract_pdf_text(path.read_bytes())
+    data = path.read_bytes()
+    if process_type == "pdf_text":
+        result = _fo_extract_pdf_text(data)
+    elif process_type == "image_text":
+        result = _fo_describe_image(data, content_type)
+    else:  # audio_transcript
+        result = _fo_transcribe_audio(data, content_type, row["filename"])
 
     scope_cipher, invite_token = _fo_scope(req, cipher_id)
     now = _now_iso()
@@ -5469,18 +5635,18 @@ async def extract_field_observation_media(media_id: str, req: Request, cipher_id
         # retry cleanly replaces it rather than accumulating stale rows.
         conn.execute(
             "DELETE FROM field_observation_processed "
-            "WHERE source_media_id=? AND process_type='pdf_text'",
-            (media_id,),
+            "WHERE source_media_id=? AND process_type=?",
+            (media_id, process_type),
         )
         conn.execute(
             """
             INSERT INTO field_observation_processed
                 (id, cipher_id, invite_token, source_media_id, process_type,
                  status, text, error, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'pdf_text', ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                proc_id, scope_cipher, invite_token, media_id,
+                proc_id, scope_cipher, invite_token, media_id, process_type,
                 result["status"], result["text"], result["error"], now, now,
             ),
         )

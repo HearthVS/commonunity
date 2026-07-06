@@ -8659,19 +8659,11 @@ input, textarea { font: inherit; color: inherit; }
                 </div>
                 <div class="archive-actions-group">
                   <span class="archive-actions-group-label">Standard tools</span>
-                  <div class="archive-actions-row">
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Transcribe audio <span class="soon">soon</span></button>
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Extract text <span class="soon">soon</span></button>
-                    <button type="button" class="archive-action-btn" disabled aria-disabled="true">Summarize <span class="soon">soon</span></button>
-                  </div>
-                  <p class="archive-actions-note">Standard extraction will run on its own — no Nexus required.</p>
+                  <p class="archive-actions-note">Preparation runs on each media card, above and here in the Archive: <strong>Extract text</strong> from a PDF, <strong>Describe / OCR image</strong>, or <strong>Transcribe audio</strong>. It runs on its own — no Nexus required — and the prepared text rests in Prepared for you to review.</p>
                 </div>
                 <div class="archive-actions-group archive-actions-group--nexus">
                   <span class="archive-actions-group-label">Deeper interpretation</span>
-                  <div class="archive-actions-row">
-                    <button type="button" class="archive-action-btn archive-action-btn--nexus" disabled aria-disabled="true">Offer to Nexus for interpretation <span class="soon">soon</span></button>
-                  </div>
-                  <p class="archive-actions-note">Interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
+                  <p class="archive-actions-note">Once text is prepared, tick it and <strong>Offer to Nexus</strong> — interpretation is routed through Nexus, and only when you choose. Nothing is sent automatically.</p>
                 </div>
               </div>
 
@@ -12519,7 +12511,7 @@ function studioRenderRememberedField() {
       mediaBody = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
     }
     return `<div class="fo-media-card">
-      <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+      <div class="fo-media-card-meta"><span>${studioNexusEscape(foHumanKind(kind, m.content_type))} · ${date} · ${size}</span></div>
       <div class="fo-media-card-name">${name}</div>
       ${mediaBody}
       <div class="fo-media-card-note">Held in the field, offered to no one. Bringing media forward is a later, deliberate step.</div>
@@ -12547,12 +12539,10 @@ function studioRenderRememberedField() {
   });
 }
 
-// Known prepared-artifact process types, in display order. Only pdf_text is
-// produced today (by the existing side-Archive PDF extraction step). image_text
-// and audio_transcript are reserved names so that, when those preparation steps
-// exist, their artifacts have a natural home in this tray — they are NOT claimed
-// to work yet and a group only ever renders when real artifacts of that type are
-// present.
+// Known prepared-artifact process types, in display order. Each is produced by a
+// preparation action on a media card: pdf_text (PDF text extraction), image_text
+// (image OCR + description), and audio_transcript (audio transcription). A group
+// only ever renders when real artifacts of that type are present.
 const FO_PREPARED_TYPES = [
   { type: 'pdf_text',         label: 'Prepared text',    origin: 'from PDF' },
   { type: 'image_text',       label: 'Image text',       origin: 'from image' },
@@ -12588,7 +12578,7 @@ function studioRenderPreparedField() {
   const all = (state.fieldObservationProcessed || [])
     .filter(p => FO_PREPARED_TYPES.some(t => t.type === p.process_type));
   if (!all.length) {
-    host.innerHTML = '<p class="fo-remembered-empty">Nothing has been prepared yet. Prepared text — drawn out of the PDFs you add in <strong>Now</strong> with <strong>Extract text</strong> in the side Archive — will rest here for review before you offer any of it. In time, other text captures and transcripts you prepare will gather here too.</p>';
+    host.innerHTML = '<p class="fo-remembered-empty">Nothing has been prepared yet. Prepared text — drawn out of the media you capture in <strong>Now</strong> with <strong>Extract text</strong> from a PDF, <strong>Describe / OCR image</strong>, or <strong>Transcribe audio</strong> — will rest here for review before you offer any of it.</p>';
     return;
   }
   // One section per process type. Reserved future types stay absent until their
@@ -13165,11 +13155,72 @@ async function studioLoadFieldObservationProcessed() {
   } catch (_) { state.fieldObservationProcessed = []; }
 }
 
-// Most recent pdf_text artifact for a given source media id, or null.
+// Most recent processed artifact for a given source media id, or null. Each
+// media yields at most one artifact (one process type per kind), so the first
+// match is the current one regardless of type (pdf_text / image_text /
+// audio_transcript).
 function foProcessedForMedia(mediaId) {
   const items = (state.fieldObservationProcessed || [])
-    .filter(p => String(p.source_media_id) === String(mediaId) && p.process_type === 'pdf_text');
+    .filter(p => String(p.source_media_id) === String(mediaId));
   return items.length ? items[0] : null;
+}
+
+// Humanised media-kind label for display. Keeps raw storage tokens
+// (document/doc/image/audio) out of the member-facing surface.
+function foHumanKind(kind, contentType) {
+  const k = String(kind || '').toLowerCase();
+  const ct = String(contentType || '').toLowerCase();
+  if (k === 'image') return 'Image';
+  if (k === 'audio') return 'Audio';
+  if (k === 'document' || k === 'doc' || ct === 'application/pdf') return 'PDF';
+  return 'File';
+}
+
+// Per-kind preparation config: which process type a card produces, and the
+// button copy for each state. Returns null for kinds with no preparation step.
+// PDF and image run on infrastructure that already ships; audio runs when the
+// server has a transcription key configured (otherwise the artifact carries an
+// honest, actionable "unavailable" message — the action is still offered so the
+// path is real, not a dead end).
+function foPrepareConfig(kind, contentType) {
+  const k = String(kind || '').toLowerCase();
+  const ct = String(contentType || '').toLowerCase();
+  if (k === 'image') {
+    return { processType: 'image_text', idle: 'Describe / OCR image',
+             busy: 'Reading…', retry: 'Retry reading', redo: 'Re-read image',
+             failToast: 'Could not read this image.' };
+  }
+  if (k === 'audio') {
+    return { processType: 'audio_transcript', idle: 'Transcribe audio',
+             busy: 'Transcribing…', retry: 'Retry transcription',
+             redo: 'Re-transcribe', failToast: 'Could not transcribe this audio.' };
+  }
+  if (k === 'document' || k === 'doc' || ct === 'application/pdf') {
+    return { processType: 'pdf_text', idle: 'Extract text',
+             busy: 'Extracting…', retry: 'Retry extraction', redo: 'Re-extract',
+             failToast: 'Could not extract text from this PDF.' };
+  }
+  return null;
+}
+
+// Build the prepare button HTML for a media card given its current artifact
+// state. Shared by the central capture surface and the Archive drawer so both
+// offer the same affordance. Returns '' for kinds with no preparation step.
+function foPrepareButtonHtml(mediaId, kind, contentType) {
+  const cfg = foPrepareConfig(kind, contentType);
+  if (!cfg) return '';
+  const id = studioNexusEscape(mediaId);
+  const proc = foProcessedForMedia(mediaId);
+  const status = proc ? String(proc.status || '') : '';
+  let label, faint;
+  if (!proc) { label = cfg.idle; faint = false; }
+  else if (status !== 'done') { label = cfg.retry; faint = false; }
+  else { label = cfg.redo; faint = true; }
+  const border = faint
+    ? 'color-mix(in srgb,var(--border) 55%,transparent)'
+    : 'color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent)';
+  const color = faint ? 'var(--text-faint)' : 'var(--text)';
+  return `<button type="button" class="fo-prepare-btn" data-id="${id}" data-kind="${studioNexusEscape(kind)}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid ${border};background:none;color:${color};cursor:pointer;">${studioNexusEscape(label)}</button>`;
 }
 
 function foFormatBytes(n) {
@@ -13187,6 +13238,7 @@ function studioRenderFieldObservationMedia() {
     const id = studioNexusEscape(m.id);
     const name = studioNexusEscape(String(m.filename || '').trim() || 'Untitled');
     const kind = String(m.media_kind || 'other');
+    const humanKind = studioNexusEscape(foHumanKind(kind, m.content_type));
     const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
     const size = foFormatBytes(m.byte_size);
     const url = foMediaFileUrl(m.id);
@@ -13198,18 +13250,40 @@ function studioRenderFieldObservationMedia() {
     } else {
       body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
     }
+    // The prepare affordance lives directly on the central card — the member can
+    // transcribe audio, read an image, or extract PDF text without opening the
+    // Archive. Once prepared, a reviewable text card appears here too. Nothing is
+    // auto-sent to Nexus; offering prepared text forward stays a deliberate step.
+    const prepareBtn = foPrepareButtonHtml(m.id, kind, m.content_type);
+    const proc = prepareBtn ? foProcessedForMedia(m.id) : null;
+    const processedCard = proc ? foProcessedTextCard(proc) : '';
     return `<div class="fo-media-card">
-      <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+      <div class="fo-media-card-meta"><span>${humanKind} · ${date} · ${size}</span></div>
       <div class="fo-media-card-name">${name}</div>
       ${body}
       <div class="fo-media-card-note">Captured privately. Not sent to Nexus — bringing media forward is a later step.</div>
       <div class="fo-media-card-actions">
+        ${prepareBtn}
         <button type="button" class="fo-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
       </div>
+      ${processedCard}
     </div>`;
   }).join('');
   list.querySelectorAll('.fo-media-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
+  });
+  list.querySelectorAll('.fo-prepare-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioPrepareMedia(btn.dataset.id, btn.dataset.kind, btn));
+  });
+  list.querySelectorAll('.fo-processed-bring-btn').forEach(btn => {
+    btn.addEventListener('click', () => studioBringProcessedTextIntoNexus(btn.dataset.id));
+  });
+  list.querySelectorAll('.fo-processed-select').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const cbid = String(cb.dataset.id);
+      if (cb.checked) studioSelectedProcessedText.add(cbid); else studioSelectedProcessedText.delete(cbid);
+      if (typeof updateArchiveSelectionUI === 'function') updateArchiveSelectionUI();
+    });
   });
   renderArchiveMedia();
   studioRenderRememberedField();
@@ -13225,11 +13299,10 @@ function foArchiveMediaCard(m) {
   const id = studioNexusEscape(m.id);
   const name = studioNexusEscape(String(m.filename || '').trim() || 'Untitled');
   const kind = String(m.media_kind || 'other');
+  const humanKind = studioNexusEscape(foHumanKind(kind, m.content_type));
   const date = m.created_at ? String(m.created_at).slice(0, 10) : '';
   const size = foFormatBytes(m.byte_size);
   const url = foMediaFileUrl(m.id);
-  const isPdf = kind === 'doc' || kind === 'document' ||
-    String(m.content_type || '').toLowerCase() === 'application/pdf';
   let body = '';
   if (kind === 'image') {
     body = `<img src="${studioNexusEscape(url)}" alt="${name}" loading="lazy">`;
@@ -13238,28 +13311,18 @@ function foArchiveMediaCard(m) {
   } else {
     body = `<a class="fo-media-card-doc" href="${studioNexusEscape(url)}" target="_blank" rel="noopener">Open ${name}</a>`;
   }
-  // PDF cards get an Extract text affordance and — once extracted — a compact,
-  // reviewable processed-text card. Nothing here is auto-sent to Nexus.
-  let extractBtn = '';
-  let processedCard = '';
-  if (isPdf) {
-    const proc = foProcessedForMedia(m.id);
-    const status = proc ? String(proc.status || '') : '';
-    if (!proc) {
-      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Extract text</button>`;
-    } else if (status !== 'done') {
-      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--rose-color,#c4b5fd) 55%,transparent);background:none;color:var(--text);cursor:pointer;">Retry extraction</button>`;
-    } else {
-      extractBtn = `<button type="button" class="fo-extract-btn" data-id="${id}" style="font-size:10px;letter-spacing:0.05em;padding:5px 9px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--border) 55%,transparent);background:none;color:var(--text-faint);cursor:pointer;">Re-extract</button>`;
-    }
-    if (proc) processedCard = foProcessedTextCard(proc);
-  }
+  // Every preparable kind (PDF / image / audio) gets a prepare affordance and —
+  // once prepared — a compact, reviewable processed-text card. Nothing here is
+  // auto-sent to Nexus; the member offers prepared text forward deliberately.
+  const prepareBtn = foPrepareButtonHtml(m.id, kind, m.content_type);
+  const proc = prepareBtn ? foProcessedForMedia(m.id) : null;
+  const processedCard = proc ? foProcessedTextCard(proc) : '';
   return `<div class="fo-media-card">
-    <div class="fo-media-card-meta"><span>${kind} · ${date} · ${size}</span></div>
+    <div class="fo-media-card-meta"><span>${humanKind} · ${date} · ${size}</span></div>
     <div class="fo-media-card-name">${name}</div>
     ${body}
     <div class="fo-media-card-actions">
-      ${extractBtn}
+      ${prepareBtn}
       <button type="button" class="archive-media-delete-btn" data-id="${id}" title="Delete media observation">Delete</button>
     </div>
     ${processedCard}
@@ -13327,6 +13390,9 @@ function renderArchiveMedia() {
     el.querySelectorAll('.archive-media-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => studioDeleteFieldObservationMedia(btn.dataset.id));
     });
+    el.querySelectorAll('.fo-prepare-btn').forEach(btn => {
+      btn.addEventListener('click', () => studioPrepareMedia(btn.dataset.id, btn.dataset.kind, btn));
+    });
     el.querySelectorAll('.fo-extract-btn').forEach(btn => {
       btn.addEventListener('click', () => studioExtractPdfText(btn.dataset.id, btn));
     });
@@ -13345,30 +13411,38 @@ function renderArchiveMedia() {
   updateArchiveSelectionUI();
 }
 
-// Trigger server-side text extraction for a PDF media item, then refresh the
-// processed artifacts and re-render. Member-scoped server-side. This only
-// derives and stores text — it never sends anything to Nexus or the AI.
-async function studioExtractPdfText(mediaId, btn) {
+// Trigger server-side preparation for a media item (PDF text extraction, image
+// OCR/description, or audio transcription — the server dispatches by kind), then
+// refresh the processed artifacts and re-render. Member-scoped server-side. This
+// only derives and stores text — it never sends anything to Nexus or the AI.
+async function studioPrepareMedia(mediaId, kind, btn) {
   if (!mediaId) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Extracting…'; }
+  const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(mediaId));
+  const cfg = foPrepareConfig(kind || (media && media.media_kind), media && media.content_type);
+  if (btn) { btn.disabled = true; btn.textContent = (cfg && cfg.busy) || 'Preparing…'; }
   try {
     const res = await fetch(
       `${API_BASE}/api/studio/field-observations/attachments/${encodeURIComponent(mediaId)}/extract${foMediaQuery()}`,
       { method: 'POST' }
     );
-    if (!res.ok) throw new Error('extract failed');
+    if (!res.ok) throw new Error('prepare failed');
     const data = await res.json();
     const proc = data.processed || {};
     await studioLoadFieldObservationProcessed();
     studioRenderFieldObservationMedia();
     if (typeof showToast === 'function') {
-      if (proc.status === 'done') showToast('Text extracted — review it under the PDF.');
-      else showToast(String(proc.error || 'Could not extract text from this PDF.'));
+      if (proc.status === 'done') showToast('Prepared — review it below, then offer when ready.');
+      else showToast(String(proc.error || (cfg && cfg.failToast) || 'Could not prepare this media.'));
     }
   } catch (_) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Extract text'; }
-    if (typeof showToast === 'function') showToast('Could not extract text from this PDF.');
+    if (btn) { btn.disabled = false; btn.textContent = (cfg && cfg.idle) || 'Prepare'; }
+    if (typeof showToast === 'function') showToast((cfg && cfg.failToast) || 'Could not prepare this media.');
   }
+}
+
+// Back-compat alias — earlier code and tests referred to PDF extraction by name.
+function studioExtractPdfText(mediaId, btn) {
+  return studioPrepareMedia(mediaId, 'document', btn);
 }
 
 // Bring a single extracted-text artifact forward into Nexus. Like every other
@@ -13378,9 +13452,11 @@ function studioBringProcessedTextIntoNexus(procId) {
   const proc = (state.fieldObservationProcessed || []).find(p => String(p.id) === String(procId));
   if (!proc || proc.status !== 'done') return;
   const media = (state.fieldObservationMedia || []).find(m => String(m.id) === String(proc.source_media_id));
-  const label = (media && String(media.filename || '').trim()) || 'Extracted PDF text';
-  const text = `I want to bring this extracted text from a Field Observation into Nexus:\n\n${label}\n${String(proc.text || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
-  if (studioPopulateNexusInput(text, { type: 'pdf_text', title: label, label: 'Extracted PDF text', snippet: String(proc.text || '') })) {
+  const meta = foPreparedTypeMeta(String(proc.process_type || 'pdf_text'));
+  const kindLabel = meta.label || 'Prepared text';
+  const label = (media && String(media.filename || '').trim()) || kindLabel;
+  const text = `I want to bring this ${kindLabel.toLowerCase()} from a Field Observation into Nexus:\n\n${label}\n${String(proc.text || '')}\n\nHelp me sit with what is here, notice the pattern, and choose what wants to become next.`;
+  if (studioPopulateNexusInput(text, { type: String(proc.process_type || 'pdf_text'), title: label, label: kindLabel, snippet: String(proc.text || '') })) {
     if (typeof showToast === 'function') showToast('Added to Nexus — edit, then send when ready.');
   }
 }
