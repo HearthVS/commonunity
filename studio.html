@@ -14657,26 +14657,38 @@ function nexusNewProject() {
   updateContextBar();
   updateSessionStats();
 
-  // Re-show dormant state
+  // A fresh project must still have a writing area. Keep the composer awake —
+  // visible, focusable, and compact — rather than dropping back to the dormant
+  // knock ritual, which hid the composer and left the room with no way to
+  // write (the New Project regression). The ceremonial context expands to mark
+  // the fresh start, and the composer stays available beneath it.
   const mirror = document.getElementById('room-mirror');
-  if (mirror) {
-    mirror.classList.remove('orb-active');
-  }
+  if (mirror) mirror.classList.remove('orb-active');
+
   const row = document.getElementById('mirror-input-row');
   if (row) {
-    row.classList.remove('nexus-awakened');
-    row.classList.add('nexus-dormant-hidden');
+    row.classList.remove('nexus-dormant-hidden');
+    row.classList.add('nexus-awakened');
   }
   const orbWrap = document.getElementById('nexus-orb-wrap');
-  if (orbWrap) {
-    orbWrap.classList.add('nexus-orb-dormant');
-  }
-  // Fresh project — restore the full ceremonial identity.
-  setNexusContextCollapsed(false);
-  window.nexusAwakened = false;
+  if (orbWrap) orbWrap.classList.remove('nexus-orb-dormant', 'holding');
 
-  // Fire a fresh opening message
-  setTimeout(() => { initRoomRose(currentRoom); }, 300);
+  const input = document.getElementById('mirror-input');
+  if (input) {
+    input.value = '';
+    autoGrowMirrorInput(input); // reset to the compact one-line rest height
+  }
+
+  // Fresh project — restore the full ceremonial identity above the composer.
+  setNexusContextCollapsed(false);
+  nexusAwakened = true;
+
+  // Fire a fresh opening message, then place the cursor in the composer so
+  // the person can begin writing immediately.
+  setTimeout(() => {
+    initRoomRose(currentRoom);
+    document.getElementById('mirror-input')?.focus();
+  }, 300);
 }
 
 // ── Progressive context loading ───────────────────────────────
