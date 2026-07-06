@@ -80,13 +80,18 @@ test('default compose button no longer says Field Observations', () => {
 });
 
 test('sparkComposeLabel returns hOMe-native copy for website Sparks', () => {
-  const fn = slice('function sparkComposeLabel(', 400);
-  assert.match(fn, /builder === 'website'/,
-    'label is chosen from the Spark builder target');
-  assert.match(fn, /Shape this hOMe/);
-  assert.match(fn, /Tune this hOMe/);
-  // Non-hOMe Sparks (profile / os) keep the compose-into-FO copy.
-  assert.match(fn, /Compose in Field Observations/);
+  const fn = slice('function sparkComposeLabel(', 200);
+  // The label is now driven by the MUSE_PROJECTS project-native action
+  // (via sparkProjectActionLabel), with the Field Observations copy as
+  // the self-directed fallback — no inline builder branch.
+  assert.match(fn, /sparkProjectActionLabel\(spark\)/,
+    'label is chosen from the Spark project (MUSE_PROJECTS)');
+  assert.match(fn, /Compose in Field Observations/,
+    'non-hOMe Sparks (profile / os) keep the compose-into-FO copy');
+  // The hOMe-native CTA copy lives in the MUSE_PROJECTS website entry.
+  const project = slice('var MUSE_PROJECTS = {', 900);
+  assert.match(project, /Shape this hOMe/);
+  assert.match(project, /Tune this hOMe/);
 });
 
 test('renderSpark applies the dynamic compose label', () => {
@@ -97,12 +102,19 @@ test('renderSpark applies the dynamic compose label', () => {
 
 test('compose toast for hOMe Sparks leads with shaping hOMe, FO secondary', () => {
   const fn = slice('function composeInFieldNotes(', 1200);
-  assert.match(fn, /builder === 'website'/,
-    'toast branches on the hOMe/website target');
-  assert.match(fn, /Shaping your hOMe/,
-    'hOMe toast leads with shaping the hOMe project');
-  assert.match(fn, /also rests in Field Observations/i,
-    'hOMe toast keeps Field Observations as a subtle secondary');
+  // Toast branches on whether the Spark shapes a hOMe project, and its
+  // copy is composed from the MUSE_PROJECTS helpers rather than inline
+  // literals (PR #137 refactor).
+  assert.match(fn, /sparkIsHome\(currentSpark\)/,
+    'toast branches on the hOMe project target');
+  assert.match(fn, /'Shaping your ' \+ sparkProjectLabel\(currentSpark\)/,
+    'hOMe toast leads with shaping the project (hOMe)');
+  assert.match(fn, /sparkProjectSecondary\(currentSpark\)/,
+    'hOMe toast keeps the project secondary (Field Observations) copy');
+  // The secondary copy itself still names Field Observations.
+  const project = slice('var MUSE_PROJECTS = {', 900);
+  assert.match(project, /also rests in Field Observations/i,
+    'Field Observations survives as a subtle secondary in the project entry');
 });
 
 // ── 3) Capture still routes to state.builder.captures[target] ──────────
