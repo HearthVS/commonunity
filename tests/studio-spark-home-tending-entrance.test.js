@@ -175,8 +175,8 @@ const footRe = /<p class="om-widget-foot">[\s\S]*?<\/p>/;
 const footMatch = src.match(footRe);
 const foot = footMatch ? footMatch[0] : '';
 assert(/stUdio Muse/.test(foot), 'foot copy still names Spark as the stUdio Muse');
-assert(/shape your hOMe directly/.test(foot),
-  'foot copy states hOMe Sparks shape hOMe directly (builder-native primary)');
+assert(/build your hOMe draft/.test(foot),
+  'foot copy states hOMe Sparks build the hOMe draft (explicit outcome)');
 assert(/Field Observations/.test(foot), 'foot copy still points to Field Observations');
 assert(/Nexus/.test(foot), 'foot copy preserves the Nexus availability note');
 // The old repeated explainer copy is gone from the foot.

@@ -117,23 +117,29 @@ test('Spark is never called the builder itself', () => {
 test('foot copy carries muse framing and keeps the secondary FO path', () => {
   const foot = slice('<p class="om-widget-foot">', 600);
   assert.match(foot, /stUdio Muse/, 'foot names Spark as the stUdio Muse');
-  assert.match(foot, /shape your hOMe directly/i,
-    'foot states hOMe Sparks shape hOMe directly (builder-native primary)');
+  assert.match(foot, /build your hOMe draft/i,
+    'foot states hOMe Sparks build the hOMe draft (explicit outcome)');
   // Field Observations remains, but as a secondary ("also rest").
   assert.match(foot, /also rest in Field Observations/i,
     'Field Observations survives as a subtle secondary, not the headline');
   assert.match(foot, /Nexus/, 'Nexus availability note preserved');
+  // A direct route to the destination the answers build.
+  assert.match(foot, /View hOMe draft/,
+    'foot offers a direct link to the hOMe draft preview');
 });
 
 // ── 2) Builder-native primary CTA for hOMe/website Sparks ──────────────
-test('default compose button no longer says Field Observations', () => {
+test('default compose button uses explicit outcome copy, not Field Observations or vague "Shape"', () => {
   const btn = slice('id="spark-compose"', 120);
   assert.doesNotMatch(btn, /Field Observations/,
     'the primary CTA default must not read as a Field Observations detour');
-  assert.match(btn, /Shape this hOMe/, 'default CTA is builder-native');
+  assert.doesNotMatch(btn, /Shape this hOMe/,
+    'the vague "Shape this hOMe" copy is no longer the primary CTA');
+  assert.match(btn, /Add answer to hOMe draft/,
+    'default CTA states the outcome (adds the answer to the hOMe draft)');
 });
 
-test('sparkComposeLabel returns hOMe-native copy for website Sparks', () => {
+test('sparkComposeLabel returns explicit hOMe-draft copy for website Sparks', () => {
   const fn = slice('function sparkComposeLabel(', 200);
   // The label is now driven by the MUSE_PROJECTS project-native action
   // (via sparkProjectActionLabel), with the Field Observations copy as
@@ -142,10 +148,12 @@ test('sparkComposeLabel returns hOMe-native copy for website Sparks', () => {
     'label is chosen from the Spark project (MUSE_PROJECTS)');
   assert.match(fn, /Compose in Field Observations/,
     'non-hOMe Sparks (profile / os) keep the compose-into-FO copy');
-  // The hOMe-native CTA copy lives in the MUSE_PROJECTS website entry.
-  const project = slice('var MUSE_PROJECTS = {', 900);
-  assert.match(project, /Shape this hOMe/);
-  assert.match(project, /Tune this hOMe/);
+  // The hOMe outcome CTA copy lives in the MUSE_PROJECTS website entry.
+  const project = slice('var MUSE_PROJECTS = {', 1100);
+  assert.match(project, /Add answer to hOMe draft/);
+  assert.match(project, /Update your hOMe draft/);
+  assert.doesNotMatch(project, /Shape this hOMe/,
+    'the vague "Shape this hOMe" label is gone from the project entry');
 });
 
 test('renderSpark applies the dynamic compose label', () => {
@@ -154,21 +162,21 @@ test('renderSpark applies the dynamic compose label', () => {
     'renderSpark must set the compose CTA from sparkComposeLabel');
 });
 
-test('compose toast for hOMe Sparks leads with shaping hOMe, FO secondary', () => {
+test('compose toast for hOMe Sparks names the hOMe-draft outcome, FO secondary', () => {
   const fn = slice('function composeInFieldNotes(', 1200);
   // Toast branches on whether the Spark shapes a hOMe project, and its
   // copy is composed from the MUSE_PROJECTS helpers rather than inline
   // literals (PR #137 refactor).
   assert.match(fn, /sparkIsHome\(currentSpark\)/,
     'toast branches on the hOMe project target');
-  assert.match(fn, /'Shaping your ' \+ sparkProjectLabel\(currentSpark\)/,
-    'hOMe toast leads with shaping the project (hOMe)');
+  assert.match(fn, /added to your ' \+ sparkProjectLabel\(currentSpark\) \+ ' draft/,
+    'hOMe toast states the answer is added to the hOMe draft');
   assert.match(fn, /sparkProjectSecondary\(currentSpark\)/,
     'hOMe toast keeps the project secondary (Field Observations) copy');
-  // The secondary copy itself still names Field Observations.
-  const project = slice('var MUSE_PROJECTS = {', 900);
-  assert.match(project, /also rests in Field Observations/i,
-    'Field Observations survives as a subtle secondary in the project entry');
+  // The secondary copy itself honestly names Field Observations as source material.
+  const project = slice('var MUSE_PROJECTS = {', 1100);
+  assert.match(project, /source material in Field Observations/i,
+    'Field Observations survives as an honest secondary in the project entry');
 });
 
 // ── 3) Capture still routes to state.builder.captures[target] ──────────
