@@ -4298,6 +4298,55 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--text-faint);
   font-weight: 600;
 }
+/* Threshold framing — Studio Spark as the front door into Studio tending.
+   Sits at the top of the expanded widget body; hidden when collapsed via
+   the shared .om-widget-body rule. */
+.spark-threshold {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 22%, transparent);
+}
+.spark-threshold-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, var(--text-muted));
+  margin: 0;
+}
+.spark-threshold-lede {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+.spark-orient {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.spark-orient-item {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-faint);
+  padding-left: 9px;
+  border-left: 2px solid var(--tile-color, var(--rose-color, #c4b5fd));
+}
+.spark-orient-item.is-work  { --tile-color: var(--work); }
+.spark-orient-item.is-lens  { --tile-color: var(--lens); }
+.spark-orient-item.is-field { --tile-color: var(--field); }
+.spark-orient-item.is-call  { --tile-color: var(--call); }
+.spark-orient-name {
+  font-weight: 600;
+  color: var(--tile-color, var(--text-muted));
+  margin-right: 5px;
+}
 .spark-prompt-row {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
   font-size: clamp(15px, 1.4vw, 17px);
@@ -8972,6 +9021,21 @@ input, textarea { font: inherit; color: inherit; }
     <span class="om-widget-room" id="om-widget-room">—</span>
   </div>
   <div class="om-widget-body" id="om-widget-body">
+    <!-- Threshold framing: Studio Spark is the front door into Studio
+         tending, not a standalone feature. It names Personal Home as the
+         first creation/milestone inside Studio, seeded from Compass +
+         Living Profile (+ palette) rather than blank, and shows the four
+         orientations of tending (Work / Lens / Field / Call). -->
+    <div class="spark-threshold">
+      <p class="spark-threshold-eyebrow">Your Studio threshold · what wants attention now?</p>
+      <p class="spark-threshold-lede">Personal Home is your first creation in Studio — seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to tend it, then keep creating as Studio stays open around you.</p>
+      <ul class="spark-orient" aria-label="Four orientations of tending">
+        <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
+        <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
+        <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
+        <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
+      </ul>
+    </div>
     <div class="om-widget-disc-wrap">
       <button type="button" class="om-disc" id="om-disc"
               aria-label="Touch the Oṁ Field to draw a Spark">
@@ -8998,7 +9062,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
   </div>
   <p class="om-widget-foot">
-    Draw a Spark to keep tending your Personal Home. Answer in Field Observations — saved Field Observations become available to Nexus.
+    Draw a Spark to keep tending your Personal Home — your first milestone in Studio, and a living workspace you go on creating in. Answer in Field Observations — saved Field Observations become available to Nexus.
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
