@@ -35,24 +35,52 @@ function slice(anchor, len) {
 }
 
 // ── 1) Muse framing + hOMe-as-first-project ───────────────────────────
+// The full Muse orientation copy now lives inside a collapsed
+// `<details class="spark-about">` disclosure (density pass). The
+// framing is still present — just behind progressive disclosure — while
+// the eyebrow stays visible in the primary state.
 test('threshold copy positions Spark as the stUdio Muse', () => {
-  const block = slice('<div class="spark-threshold">', 900);
+  const block = slice('<div class="spark-threshold">', 1400);
   assert.match(block, /muse of stUdio/i,
-    'threshold lede names Spark as the creative muse of stUdio');
+    'threshold copy names Spark as the creative muse of stUdio');
   assert.match(block, /stUdio Muse/,
     'threshold eyebrow carries the stUdio Muse framing');
 });
 
+test('the long Muse paragraph is behind a collapsed disclosure, not primary', () => {
+  const block = slice('<div class="spark-threshold">', 1400);
+  assert.match(block, /<details class="spark-about">/,
+    'a disclosure exists to hold the orientation copy');
+  // The disclosure is collapsed by default (no open attribute) so
+  // repeated users are not shown the full explainer on every draw.
+  assert.match(block, /<details class="spark-about">\s*<summary/,
+    'the disclosure is collapsed by default');
+  // The long lede lives inside the disclosure, not as primary copy.
+  const about = slice('<details class="spark-about">', 700);
+  assert.match(about, /class="spark-threshold-lede"/,
+    'the long Muse lede is inside the disclosure');
+  assert.match(about, /creative muse of stUdio/,
+    'the full Muse paragraph is inside the disclosure');
+});
+
 test('threshold copy frames hOMe as the first project/creation', () => {
-  const block = slice('<div class="spark-threshold">', 900);
-  assert.match(block, /hOMe is the first project/i,
+  const about = slice('<details class="spark-about">', 700);
+  assert.match(about, /hOMe is the first project/i,
     'copy names hOMe as the first project Spark helps shape');
   // Preserve the existing #119/#120 milestone contract.
-  assert.match(block, /first creation in Studio/);
+  assert.match(about, /first creation in Studio/);
+});
+
+test('a compact one-line room legend remains in the primary state', () => {
+  const line = slice('<p class="spark-orient-line"', 300);
+  ['Work', 'Lens', 'Field', 'Call'].forEach(function (room) {
+    assert.match(line, new RegExp('>' + room + '<'),
+      'compact legend names the "' + room + '" room');
+  });
 });
 
 test('Spark is never called the builder itself', () => {
-  const block = slice('<div class="spark-threshold">', 900);
+  const block = slice('<div class="spark-threshold">', 1400);
   const foot = slice('<p class="om-widget-foot">', 600);
   [block, foot].forEach(function (s) {
     assert.doesNotMatch(s, /Spark is the builder/i,
