@@ -6050,6 +6050,76 @@ input, textarea { font: inherit; color: inherit; }
 .ph-seed.is-fully-seeded .ph-seed-milestone {
   color: color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, var(--text));
 }
+/* Studio project identity header — one shared identity for the Muse
+   layer and the hOMe preview. Sits at the very top of the preview,
+   above the seeded-field band + threshold. Draft/preview only. */
+.studio-project-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: clamp(var(--space-4), 2.5vw, var(--space-5));
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, var(--border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--rose-color, #c4b5fd) 12%, transparent), transparent 60%),
+    color-mix(in srgb, var(--input-bg) 30%, transparent);
+}
+.studio-project-id { min-width: 0; }
+.studio-project-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 85%, var(--text-muted));
+  margin: 0 0 6px;
+}
+.studio-project-name {
+  font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  color: var(--text);
+  margin: 0;
+}
+.studio-project-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  max-width: 58ch;
+}
+.studio-project-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+@media (max-width: 720px) { .studio-project-meta { align-items: flex-start; } }
+.studio-project-status,
+.studio-project-readiness {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.studio-project-status {
+  color: var(--text-muted);
+  border: 1px dashed color-mix(in srgb, var(--rose-color, #c4b5fd) 45%, var(--border));
+}
+.studio-project-readiness {
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--rose-color, #c4b5fd) 35%, var(--border));
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
+}
+.studio-project-readiness.is-fully-seeded {
+  color: color-mix(in srgb, var(--field, #86d4b1) 55%, var(--text));
+  border-color: color-mix(in srgb, var(--field, #86d4b1) 45%, var(--border));
+}
 .ph-hero {
   position: relative;
   display: grid;
@@ -15881,6 +15951,47 @@ if (document.readyState === 'loading') {
     var p = sparkProject(spark);
     return (p && p.secondary) || '';
   }
+  // Resolve a Muse project by its stable namespace key (e.g. 'home'),
+  // decoupled from the internal builder key. Returns the entry or null.
+  function museProjectByKey(projectKey) {
+    if (!projectKey) return null;
+    for (var k in MUSE_PROJECTS) {
+      if (Object.prototype.hasOwnProperty.call(MUSE_PROJECTS, k) &&
+          MUSE_PROJECTS[k].project === projectKey) {
+        return MUSE_PROJECTS[k];
+      }
+    }
+    return null;
+  }
+  // User-facing label for a project key (e.g. 'home' -> 'hOMe'), or ''.
+  function studioProjectLabel(projectKey) {
+    var p = museProjectByKey(projectKey);
+    return p ? p.label : '';
+  }
+  // Pure content model for a Studio project identity header — one shared
+  // identity for the Muse layer and the project's own preview. `seed` is
+  // the phSeedReadiness result (or null). Returns display strings only;
+  // no copy is derived from the raw builder key, and this stays a draft
+  // (preview-only) surface. Returns null for unknown projects.
+  function studioProjectHeaderModel(projectKey, seed) {
+    var p = museProjectByKey(projectKey);
+    if (!p) return null;
+    var stage   = (seed && seed.stage) || 'awaiting-seed';
+    var drafted = seed ? seed.drafted : 0;
+    var total   = seed ? seed.total   : 0;
+    return {
+      project: p.project,
+      label:   p.label,
+      eyebrow: 'stUdio project · shaped with Spark, your Muse',
+      note:    p.label + ' is your first stUdio project — the first creation ' +
+               'path in the studio. Spark, the Muse of stUdio, helps you shape ' +
+               'it, room by room.',
+      status:  'Preview · draft — not published',
+      stage:   stage,
+      readinessLabel: total ? (drafted + ' / ' + total + ' rooms drafted')
+                            : 'Awaiting your first room'
+    };
+  }
   // <MUSE_PROJECTS_END>
 
   function go() {
@@ -21259,6 +21370,11 @@ if (document.readyState === 'loading') {
       }
       var html = '';
 
+      // Shared Studio project identity — the Muse layer and this preview
+      // read the same project (hOMe). Sits above the seeded-field band +
+      // threshold; draft/preview only, no new surface.
+      html += renderStudioProjectHeader('home', model);
+
       // Room navigation tabs (v0.3 pill row).
       var tabs = [
         { key: 'home',  label: 'Home',       eye: 'Threshold' },
@@ -21401,6 +21517,44 @@ if (document.readyState === 'loading') {
       }
     }
 
+    // Studio project identity header. Wraps the pure header model
+    // (studioProjectHeaderModel) with readiness from phSeedReadiness so the
+    // Muse layer and this preview share one project identity. Returns '' for
+    // unknown projects, so it fails safe if a future key isn't wired yet.
+    function renderStudioProjectHeader(projectKey, model) {
+      var seed = null;
+      try {
+        if (model && typeof phSeedReadiness === 'function') seed = phSeedReadiness(model);
+      } catch (_) { /* header should never break the preview */ }
+      var h = studioProjectHeaderModel(projectKey, seed);
+      if (!h) return '';
+      return '<section class="studio-project-header" data-studio-project="' + lpEscape(h.project) + '" aria-label="Studio project identity">' +
+        '<div class="studio-project-id">' +
+          '<p class="studio-project-eyebrow">' + lpEscape(h.eyebrow) + '</p>' +
+          '<h3 class="studio-project-name">' + lpEscape(h.label) + '</h3>' +
+          '<p class="studio-project-note">' + lpEscape(h.note) + '</p>' +
+        '</div>' +
+        '<div class="studio-project-meta">' +
+          '<span class="studio-project-status" title="A working draft — not yet published">' + lpEscape(h.status) + '</span>' +
+          '<span class="studio-project-readiness is-' + lpEscape(h.stage) + '">' + lpEscape(h.readinessLabel) + '</span>' +
+        '</div>' +
+      '</section>';
+    }
+
+    // Open a Studio project by its namespace key. hOMe (and any
+    // website-backed project) routes into the existing Personal Home
+    // preview — one shared work surface, never a second page. Returns
+    // true when a surface was opened, false for unknown projects.
+    function openStudioProject(projectKey) {
+      var p = museProjectByKey(projectKey);
+      if (!p) return false;
+      if (p.builder === 'website' && typeof openWebsitePreview === 'function') {
+        openWebsitePreview();
+        return true;
+      }
+      return false;
+    }
+
     function openWebsitePreview() {
       if (!wpModal) return;
       phActiveRoom = 'home';
@@ -21424,6 +21578,8 @@ if (document.readyState === 'loading') {
     });
     window.openWebsitePreview = openWebsitePreview;
     window.buildWebsitePreview = buildWebsitePreview;
+    // Project-aware open path: 'home' routes to the Personal Home preview.
+    window.openStudioProject = openStudioProject;
     // v0.2 reframing: Personal Home aliases (compass points home).
     // Existing globals preserved for backward compatibility.
     window.openPersonalHome        = openWebsitePreview;
@@ -22030,6 +22186,14 @@ if (document.readyState === 'loading') {
       sparkProjectLabel:       sparkProjectLabel,
       sparkProjectActionLabel: sparkProjectActionLabel,
       sparkIsHome:             sparkIsHome,
+      // Project identity/read-path layer — one shared identity for the
+      // Muse layer and a project's own preview. hOMe is the first project.
+      museProjectByKey:         museProjectByKey,
+      studioProjectLabel:       studioProjectLabel,
+      studioProjectHeaderModel: studioProjectHeaderModel,
+      renderStudioProjectHeader: renderStudioProjectHeader,
+      // Open a project by key ('home' → existing Personal Home preview).
+      openStudioProject:        openStudioProject,
       // QA helper: resolve a field by id OR by alias.
       findField: findFieldSpec,
       // QA helpers for the readiness -> room loop: the rooms the
