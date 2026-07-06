@@ -9076,8 +9076,8 @@ input, textarea { font: inherit; color: inherit; }
          Living Profile (+ palette) rather than blank, and shows the four
          orientations of tending (Work / Lens / Field / Call). -->
     <div class="spark-threshold">
-      <p class="spark-threshold-eyebrow">Your Studio threshold · what wants attention now?</p>
-      <p class="spark-threshold-lede">Personal Home is your first creation in Studio — seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to tend it, then keep creating as Studio stays open around you.</p>
+      <p class="spark-threshold-eyebrow">Your stUdio Muse · what wants to be created now?</p>
+      <p class="spark-threshold-lede">Spark is the creative muse of stUdio — generative, provocative, attuned to the self now emerging through you. Your hOMe is the first project it helps you shape: your first creation in Studio, seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to shape it, then keep creating as Studio stays open around you.</p>
       <ul class="spark-orient" aria-label="Four orientations of tending">
         <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
         <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
@@ -9110,12 +9110,12 @@ input, textarea { font: inherit; color: inherit; }
       </details>
       <div class="om-widget-actions">
         <button type="button" class="om-widget-btn is-primary" id="spark-draw">Draw another Spark</button>
-        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Compose in Field Observations</button>
+        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Shape this hOMe</button>
       </div>
     </div>
   </div>
   <p class="om-widget-foot">
-    Draw a Spark to keep tending your Personal Home — your first milestone in Studio, and a living workspace you go on creating in. Answer in Field Observations — saved Field Observations become available to Nexus.
+    Spark is your stUdio Muse. Draw one to keep tending your Personal Home — your first milestone in Studio, and a living workspace you go on creating in. hOMe Sparks shape your hOMe directly; answers also rest in Field Observations and become available to Nexus.
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
@@ -16013,6 +16013,18 @@ if (document.readyState === 'loading') {
       return String(arc || '').replace(/\s*→\s*/g, ' to ');
     }
 
+    // Primary-action copy for the Spark. hOMe/website-targeted Sparks read
+    // as builder-native — they shape the hOMe project directly rather than
+    // routing the user off into a Field Observations detour (the answer is
+    // still captured there under the hood; that stays a subtle secondary).
+    // Non-hOMe Sparks (Living Profile / Personal OS) keep the compose copy.
+    function sparkComposeLabel(spark) {
+      if (spark && spark.builder === 'website') {
+        return spark.section === 'field' ? 'Tune this hOMe' : 'Shape this hOMe';
+      }
+      return 'Compose in Field Observations';
+    }
+
     // Decide whether a Spark's room should read as Awaiting on the
     // target tag: only at the Studio entrance (no active room) and only
     // when the seeded-field band still marks that room Awaiting. Pure /
@@ -16051,7 +16063,10 @@ if (document.readyState === 'loading') {
         routingBodyEl.textContent = builderFieldLabel(s) + ' · ' + s.section + ' · ' + s.target;
         routingEl.hidden = false;
       }
-      if (composeBtn) composeBtn.hidden = false;
+      if (composeBtn) {
+        composeBtn.hidden = false;
+        composeBtn.textContent = sparkComposeLabel(s);
+      }
       if (reanimate !== false) {
         promptEl.classList.remove('is-emitting');
         void promptEl.offsetWidth;
@@ -16202,9 +16217,17 @@ if (document.readyState === 'loading') {
         try { workbench.setSelectionRange(pos, pos); } catch (_) {}
         setPendingTarget(currentSpark);
         setCollapsed(true);
-        showLocalToast('Spark dropped into Field Observations — for ' + builderFieldLabel(currentSpark) + '.');
+        if (currentSpark.builder === 'website') {
+          // hOMe-native framing: this shapes the hOMe project directly.
+          // Field Observations stays a subtle secondary, not the headline.
+          showLocalToast('Shaping your hOMe · ' + sparkTargetCue(currentSpark) + ' — answer below. It also rests in Field Observations.');
+        } else {
+          showLocalToast('Spark dropped into Field Observations — for ' + builderFieldLabel(currentSpark) + '.');
+        }
       } else {
-        showLocalToast('Open a room to answer this Spark in Field Observations.');
+        showLocalToast(currentSpark.builder === 'website'
+          ? 'Open a room to shape your hOMe with this Spark.'
+          : 'Open a room to answer this Spark in Field Observations.');
       }
     }
 
@@ -20747,19 +20770,23 @@ if (document.readyState === 'loading') {
       var personName = lpResolveDisplayName(rawName, profile, transcriptsRawText(cd));
 
       // ── Threshold / hero ───────────────────────────────────
-      // Prefer captured "threshold" + lens web heading; fall back to
-      // work web heading, then person name.
-      var capThreshold = lpCaptureText('threshold');
+      // The "threshold" capture is the hero *heading* (its field label is
+      // "Threshold · heading"); the "home-threshold-intro" capture is the
+      // orienting paragraph beneath it. Prefer each capture for its own
+      // slot, then fall back to compass web copy, then the person name.
+      var capThreshold      = lpCaptureText('threshold');
+      var capThresholdIntro = lpCaptureText('home-threshold-intro');
       var heroHeading = lpFirst(
-        capThreshold && '',
+        capThreshold,
         pl.web_heading, pw.web_heading, pf.web_heading, pc.web_heading,
         personName ? personName : ''
       );
       var heroIntroCompass = lpFirst(pl.web_intro, pw.web_intro, pl.summary, pw.summary);
+      var heroCaptured = !!(capThreshold || capThresholdIntro);
       var hero = {
         heading: heroHeading ? lpTrim(heroHeading, 140) : (personName || ''),
-        intro:   capThreshold || (heroIntroCompass ? lpTrim(heroIntroCompass, 480) : ''),
-        source:  capThreshold ? (heroIntroCompass ? 'mixed' : 'captured')
+        intro:   capThresholdIntro || (heroIntroCompass ? lpTrim(heroIntroCompass, 480) : ''),
+        source:  heroCaptured ? (heroIntroCompass ? 'mixed' : 'captured')
                               : (heroIntroCompass || heroHeading ? 'compass' : 'empty')
       };
 
