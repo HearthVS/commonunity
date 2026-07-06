@@ -4350,6 +4350,50 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--tile-color, var(--text-muted));
   margin-right: 5px;
 }
+/* Progressive disclosure for the Muse orientation copy. Collapsed by
+   default so repeated draws are not buried under the full explainer;
+   the lede + four-orientation legend live inside on demand. */
+.spark-about {
+  margin: 0;
+}
+.spark-about-summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--text-muted));
+  padding: 2px 0;
+}
+.spark-about-summary::-webkit-details-marker { display: none; }
+.spark-about-summary::before {
+  content: '+ ';
+  opacity: 0.7;
+}
+.spark-about[open] .spark-about-summary::before { content: '– '; }
+.spark-about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+}
+/* Compact one-line room legend kept in the primary state — the four
+   room concepts stay visible without the repeated descriptive block. */
+.spark-orient-line {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin: 0;
+}
+.spark-orient-tag {
+  font-weight: 600;
+  color: var(--tile-color, var(--text-muted));
+}
+.spark-orient-tag.is-work  { --tile-color: var(--work); }
+.spark-orient-tag.is-lens  { --tile-color: var(--lens); }
+.spark-orient-tag.is-field { --tile-color: var(--field); }
+.spark-orient-tag.is-call  { --tile-color: var(--call); }
 .spark-prompt-row {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
   font-size: clamp(15px, 1.4vw, 17px);
@@ -9145,13 +9189,23 @@ input, textarea { font: inherit; color: inherit; }
          orientations of tending (Work / Lens / Field / Call). -->
     <div class="spark-threshold">
       <p class="spark-threshold-eyebrow">Your stUdio Muse · what wants to be created now?</p>
-      <p class="spark-threshold-lede">Spark is the creative muse of stUdio — generative, provocative, attuned to the self now emerging through you. Your hOMe is the first project it helps you shape: your first creation in Studio, seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to shape it, then keep creating as Studio stays open around you.</p>
-      <ul class="spark-orient" aria-label="Four orientations of tending">
-        <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
-        <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
-        <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
-        <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
-      </ul>
+      <!-- Progressive disclosure: the full Muse orientation copy (lede +
+           the four tending orientations) is meaningful for a first visitor
+           but repeats on every draw, so it rests in a collapsed disclosure
+           that stays out of the primary card real-estate. -->
+      <details class="spark-about">
+        <summary class="spark-about-summary">About Spark Muse · how this shapes hOMe</summary>
+        <div class="spark-about-body">
+          <p class="spark-threshold-lede">Spark is the creative muse of stUdio — generative, provocative, attuned to the self now emerging through you. Your hOMe is the first project it helps you shape: your first creation in Studio, seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to shape it, then keep creating as Studio stays open around you.</p>
+          <ul class="spark-orient" aria-label="Four orientations of tending">
+            <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
+            <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
+            <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
+            <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
+          </ul>
+        </div>
+      </details>
+      <p class="spark-orient-line" aria-label="Rooms: Work, Lens, Field, Call">Rooms: <span class="spark-orient-tag is-work">Work</span> · <span class="spark-orient-tag is-lens">Lens</span> · <span class="spark-orient-tag is-field">Field</span> · <span class="spark-orient-tag is-call">Call</span></p>
     </div>
     <div class="om-widget-disc-wrap">
       <button type="button" class="om-disc" id="om-disc"
@@ -9181,7 +9235,7 @@ input, textarea { font: inherit; color: inherit; }
     </div>
   </div>
   <p class="om-widget-foot">
-    Spark is your stUdio Muse. Draw one to keep tending your Personal Home — your first milestone in Studio, and a living workspace you go on creating in. hOMe Sparks shape your hOMe directly; answers also rest in Field Observations and become available to Nexus.
+    Spark is your stUdio Muse — answers shape your hOMe directly and also rest in Field Observations, available to Nexus.
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
