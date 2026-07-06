@@ -15817,6 +15817,72 @@ if (document.readyState === 'loading') {
     { id: 'sp-site-threshold-intro', movement: 'Attention',     arc: 'Shadow → Gift',  section: 'work',  builder: 'website', target: 'home-threshold-intro',  prompt: 'After the threshold heading, the orienting paragraph. Two or three sentences that welcome a visitor in.' }
   ];
 
+  // ============================================================
+  // MUSE PROJECTS — Spark is the reusable creative Muse of stUdio.
+  // A "project" is a target a Muse Spark helps a person intend,
+  // design, and manifest. hOMe (the Personal Home builder, internal
+  // builder key "website") is the first reference project. Sparks
+  // whose builder is NOT a project (Living Profile, Personal OS)
+  // are self-directed Muse prompts and keep the compose-in-Field-
+  // Observations flow.
+  //
+  // This lightweight map + helpers replace scattered
+  // `builder === 'website'` checks so future project types
+  // (offerings, writings, missions) slot in by adding one entry
+  // here — no CTA logic elsewhere needs touching. The map keys on
+  // the internal builder key but exposes a *separate* stable
+  // `project` namespace, so the abstraction is intentionally more
+  // than a rename of the builder string.
+  // <MUSE_PROJECTS_START> — extracted verbatim by tests/muse-projects.test.mjs
+  var MUSE_PROJECTS = {
+    website: {
+      builder: 'website',   // internal builder key (unchanged, back-compat)
+      project: 'home',      // stable project namespace for the Muse layer
+      label:   'hOMe',      // user-facing project name
+      // Primary, builder-native action copy. A Spark tending an
+      // already-shaped room ("field" section) tunes it; anything
+      // else shapes the home. Preserves the PR #135 CTA copy.
+      action: function (spark) {
+        return spark && spark.section === 'field' ? 'Tune this hOMe' : 'Shape this hOMe';
+      },
+      // Subtle secondary: the answer is still kept as source
+      // material, but this stays a footnote, never the headline.
+      secondary: 'It also rests in Field Observations.'
+    }
+  };
+
+  // The Muse project a Spark shapes, or null for self-directed
+  // (profile / OS) Muse prompts. Fails safe on missing metadata.
+  function sparkProject(spark) {
+    if (!spark || !spark.builder) return null;
+    return MUSE_PROJECTS[spark.builder] || null;
+  }
+  // Stable project-namespace key (e.g. 'home'), or null.
+  function sparkProjectKey(spark) {
+    var p = sparkProject(spark);
+    return p ? p.project : null;
+  }
+  // Convenience predicate for the first reference project.
+  function sparkIsHome(spark) {
+    return sparkProjectKey(spark) === 'home';
+  }
+  // User-facing project label (e.g. 'hOMe'), or '' when self-directed.
+  function sparkProjectLabel(spark) {
+    var p = sparkProject(spark);
+    return p ? p.label : '';
+  }
+  // Primary project-native action copy, or '' when self-directed.
+  function sparkProjectActionLabel(spark) {
+    var p = sparkProject(spark);
+    return p ? p.action(spark) : '';
+  }
+  // Subtle secondary/source-material copy, or '' when none.
+  function sparkProjectSecondary(spark) {
+    var p = sparkProject(spark);
+    return (p && p.secondary) || '';
+  }
+  // <MUSE_PROJECTS_END>
+
   function go() {
     var widget = document.getElementById('om-widget');
     var disc   = document.getElementById('om-disc');
@@ -16013,16 +16079,15 @@ if (document.readyState === 'loading') {
       return String(arc || '').replace(/\s*→\s*/g, ' to ');
     }
 
-    // Primary-action copy for the Spark. hOMe/website-targeted Sparks read
-    // as builder-native — they shape the hOMe project directly rather than
-    // routing the user off into a Field Observations detour (the answer is
-    // still captured there under the hood; that stays a subtle secondary).
-    // Non-hOMe Sparks (Living Profile / Personal OS) keep the compose copy.
+    // Primary-action copy for the Spark. Project-native Sparks (hOMe is
+    // the first project) read as builder-native — they shape the project
+    // directly rather than routing the user off into a Field Observations
+    // detour (the answer is still captured there under the hood; that
+    // stays a subtle secondary). Self-directed Sparks (Living Profile /
+    // Personal OS) keep the compose copy. Driven by MUSE_PROJECTS so new
+    // project types get builder-native CTAs for free.
     function sparkComposeLabel(spark) {
-      if (spark && spark.builder === 'website') {
-        return spark.section === 'field' ? 'Tune this hOMe' : 'Shape this hOMe';
-      }
-      return 'Compose in Field Observations';
+      return sparkProjectActionLabel(spark) || 'Compose in Field Observations';
     }
 
     // Decide whether a Spark's room should read as Awaiting on the
@@ -16217,16 +16282,17 @@ if (document.readyState === 'loading') {
         try { workbench.setSelectionRange(pos, pos); } catch (_) {}
         setPendingTarget(currentSpark);
         setCollapsed(true);
-        if (currentSpark.builder === 'website') {
-          // hOMe-native framing: this shapes the hOMe project directly.
+        if (sparkIsHome(currentSpark)) {
+          // Project-native framing: this shapes the hOMe project directly.
           // Field Observations stays a subtle secondary, not the headline.
-          showLocalToast('Shaping your hOMe · ' + sparkTargetCue(currentSpark) + ' — answer below. It also rests in Field Observations.');
+          var secondary = sparkProjectSecondary(currentSpark);
+          showLocalToast('Shaping your ' + sparkProjectLabel(currentSpark) + ' · ' + sparkTargetCue(currentSpark) + ' — answer below.' + (secondary ? ' ' + secondary : ''));
         } else {
           showLocalToast('Spark dropped into Field Observations — for ' + builderFieldLabel(currentSpark) + '.');
         }
       } else {
-        showLocalToast(currentSpark.builder === 'website'
-          ? 'Open a room to shape your hOMe with this Spark.'
+        showLocalToast(sparkIsHome(currentSpark)
+          ? 'Open a room to shape your ' + sparkProjectLabel(currentSpark) + ' with this Spark.'
           : 'Open a room to answer this Spark in Field Observations.');
       }
     }
@@ -21956,6 +22022,14 @@ if (document.readyState === 'loading') {
       STANDARD: BUILDER_STANDARD,
       SPARKS:   SPARK_LIBRARY,
       FOURFOLD: FOURFOLD,
+      // Muse project layer — Spark as the reusable creative Muse of
+      // stUdio; hOMe is the first reference project. Exposed for QA and
+      // future project-aware surfaces. Read-only by convention.
+      MUSE_PROJECTS:           MUSE_PROJECTS,
+      sparkProjectKey:         sparkProjectKey,
+      sparkProjectLabel:       sparkProjectLabel,
+      sparkProjectActionLabel: sparkProjectActionLabel,
+      sparkIsHome:             sparkIsHome,
       // QA helper: resolve a field by id OR by alias.
       findField: findFieldSpec,
       // QA helpers for the readiness -> room loop: the rooms the
