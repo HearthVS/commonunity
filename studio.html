@@ -3934,7 +3934,13 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 
-/* ── Info buttons ───────────────────────────────────────────── */
+/* ── Info buttons ───────────────────────────────────────────────
+   Site-wide standard for guidance/help affordances: a glowing info (i)
+   that signals an expandable help/context surface. Pair it with a
+   [data-info="…"] target opening the shared .studio-info-overlay popup.
+   Prefer reusing this over bespoke "+ About …" text disclosures so the
+   cue reads consistently everywhere. Keyboard-operable (real <button>,
+   aria-label), with a visible focus ring below. ───────────────────── */
 .studio-info-btn {
   width: 18px; height: 18px;
   border-radius: 50%;
@@ -3962,6 +3968,12 @@ input, textarea { font: inherit; color: inherit; }
   background: color-mix(in srgb, var(--rose-color,#c4b5fd) 20%, transparent);
   animation: none;
   box-shadow: 0 0 14px color-mix(in srgb, var(--rose-color,#c4b5fd) 50%, transparent);
+  opacity: 1;
+}
+.studio-info-btn:focus-visible {
+  outline: 2px solid var(--rose-color, #c4b5fd);
+  outline-offset: 2px;
+  animation: none;
   opacity: 1;
 }
 
@@ -4350,33 +4362,27 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--tile-color, var(--text-muted));
   margin-right: 5px;
 }
-/* Progressive disclosure for the Muse orientation copy. Collapsed by
-   default so repeated draws are not buried under the full explainer;
-   the lede + four-orientation legend live inside on demand. */
-.spark-about {
-  margin: 0;
-}
-.spark-about-summary {
-  cursor: pointer;
-  list-style: none;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--text-muted));
-  padding: 2px 0;
-}
-.spark-about-summary::-webkit-details-marker { display: none; }
-.spark-about-summary::before {
-  content: '+ ';
-  opacity: 0.7;
-}
-.spark-about[open] .spark-about-summary::before { content: '– '; }
-.spark-about-body {
+/* Guidance cue for the Muse orientation copy. The full explainer (lede +
+   four-orientation legend) now opens on demand in the shared info popup via
+   the standard glowing info (i); the primary state keeps only a compact,
+   newcomer-friendly cue so repeated draws are never buried under the copy. */
+.spark-guide-cue {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  padding-top: 6px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.spark-guide-cue-lead {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 65%, var(--text-muted));
+}
+.spark-guide-cue-text {
+  color: var(--text-faint);
 }
 /* Compact one-line room legend kept in the primary state — the four
    room concepts stay visible without the repeated descriptive block. */
@@ -9189,22 +9195,19 @@ input, textarea { font: inherit; color: inherit; }
          orientations of tending (Work / Lens / Field / Call). -->
     <div class="spark-threshold">
       <p class="spark-threshold-eyebrow">Your stUdio Muse · what wants to be created now?</p>
-      <!-- Progressive disclosure: the full Muse orientation copy (lede +
-           the four tending orientations) is meaningful for a first visitor
-           but repeats on every draw, so it rests in a collapsed disclosure
-           that stays out of the primary card real-estate. -->
-      <details class="spark-about">
-        <summary class="spark-about-summary">About Spark Muse · how this shapes hOMe</summary>
-        <div class="spark-about-body">
-          <p class="spark-threshold-lede">Spark is the creative muse of stUdio — generative, provocative, attuned to the self now emerging through you. Your hOMe is the first project it helps you shape: your first creation in Studio, seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to shape it, then keep creating as Studio stays open around you.</p>
-          <ul class="spark-orient" aria-label="Four orientations of tending">
-            <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
-            <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
-            <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
-            <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
-          </ul>
-        </div>
-      </details>
+      <!-- Guidance affordance: the glowing info (i) is the site-wide standard
+           for expandable help/context (see .studio-info-btn). It replaces the
+           weak text disclosure that used to lead this row so newcomers get a
+           recognizable, consistent cue while the full orientation copy stays
+           out of the primary card, opening on demand in the shared info popup. -->
+      <p class="spark-guide-cue">
+        <span class="spark-guide-cue-lead">New here?</span>
+        <span class="spark-guide-cue-text">How Spark shapes hOMe</span>
+        <button type="button" class="studio-info-btn spark-muse-info-btn"
+                data-info="info-spark-muse-overlay"
+                aria-label="About Spark Muse — how this shapes hOMe"
+                title="About Spark Muse · how this shapes hOMe"><i>i</i></button>
+      </p>
       <p class="spark-orient-line" aria-label="Rooms: Work, Lens, Field, Call">Rooms: <span class="spark-orient-tag is-work">Work</span> · <span class="spark-orient-tag is-lens">Lens</span> · <span class="spark-orient-tag is-field">Field</span> · <span class="spark-orient-tag is-call">Call</span></p>
     </div>
     <div class="om-widget-disc-wrap">
@@ -12233,6 +12236,13 @@ function initInfoPopups() {
     if (e.target.classList.contains('studio-info-overlay')) {
       e.target.classList.remove('open');
     }
+  });
+  // Escape closes any open guidance popup — keyboard parity with the X /
+  // backdrop close paths for the standard info affordance.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.studio-info-overlay.open')
+      .forEach((o) => o.classList.remove('open'));
   });
 }
 
@@ -15312,6 +15322,29 @@ window.saveState = saveState;
       <p>To activate it, hold your attention on the centre until it opens. What you bring to that threshold — a word, a question, or simply your presence — is what it first responds to.</p>
       <p>Nexus remembers what you share within a session. It speaks from the frequency of this direction, not from a general position. In The Work it asks about what finds you. In The Field it asks about what sustains you. In The Call it asks about what wants to move through you.</p>
       <p>You do not consult it. You meet it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Spark Muse guidance overlay — holds the full orientation copy (lede +
+     the four tending orientations) that used to live in the leading text
+     disclosure. Reached through the standard glowing info (i) so Spark
+     guidance shares the same discoverable affordance as the rest of the
+     site, without re-densifying the primary Spark panel. -->
+<div class="studio-info-overlay" id="info-spark-muse-overlay">
+  <div class="studio-info-popup">
+    <div class="studio-info-popup-header">
+      <span class="studio-info-popup-title">Spark Muse · how this shapes hOMe</span>
+      <button class="studio-info-popup-close" data-close="info-spark-muse-overlay">✕</button>
+    </div>
+    <div class="studio-info-popup-body">
+      <p class="spark-threshold-lede">Spark is the creative muse of stUdio — generative, provocative, attuned to the self now emerging through you. Your hOMe is the first project it helps you shape: your first creation in Studio, seeded from your Compass, Living Profile and palette, never a blank page. Draw a Spark to shape it, then keep creating as Studio stays open around you.</p>
+      <ul class="spark-orient" aria-label="Four orientations of tending">
+        <li class="spark-orient-item is-work"><span class="spark-orient-name">Work</span><span class="spark-orient-desc">shape structure, sections and rooms.</span></li>
+        <li class="spark-orient-item is-lens"><span class="spark-orient-name">Lens</span><span class="spark-orient-desc">refine voice, meaning and resonance.</span></li>
+        <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
+        <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
+      </ul>
     </div>
   </div>
 </div>

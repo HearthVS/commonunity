@@ -35,40 +35,66 @@ function slice(anchor, len) {
 }
 
 // ── 1) Muse framing + hOMe-as-first-project ───────────────────────────
-// The full Muse orientation copy now lives inside a collapsed
-// `<details class="spark-about">` disclosure (density pass). The
-// framing is still present — just behind progressive disclosure — while
-// the eyebrow stays visible in the primary state.
+// The full Muse orientation copy now opens on demand behind the site's
+// standard glowing info (i) affordance (.studio-info-btn +
+// .studio-info-overlay), replacing the weak "+ About Spark Muse" text
+// disclosure. The stUdio Muse framing eyebrow stays in the primary state.
 test('threshold copy positions Spark as the stUdio Muse', () => {
-  const block = slice('<div class="spark-threshold">', 1400);
-  assert.match(block, /muse of stUdio/i,
-    'threshold copy names Spark as the creative muse of stUdio');
+  const block = slice('<div class="spark-threshold">', 1200);
   assert.match(block, /stUdio Muse/,
     'threshold eyebrow carries the stUdio Muse framing');
+  // The full muse-of-stUdio copy now lives in the guidance overlay.
+  const overlay = slice('id="info-spark-muse-overlay"', 1200);
+  assert.match(overlay, /muse of stUdio/i,
+    'guidance overlay names Spark as the creative muse of stUdio');
 });
 
-test('the long Muse paragraph is behind a collapsed disclosure, not primary', () => {
-  const block = slice('<div class="spark-threshold">', 1400);
-  assert.match(block, /<details class="spark-about">/,
-    'a disclosure exists to hold the orientation copy');
-  // The disclosure is collapsed by default (no open attribute) so
-  // repeated users are not shown the full explainer on every draw.
-  assert.match(block, /<details class="spark-about">\s*<summary/,
-    'the disclosure is collapsed by default');
-  // The long lede lives inside the disclosure, not as primary copy.
-  const about = slice('<details class="spark-about">', 700);
-  assert.match(about, /class="spark-threshold-lede"/,
-    'the long Muse lede is inside the disclosure');
-  assert.match(about, /creative muse of stUdio/,
-    'the full Muse paragraph is inside the disclosure');
+test('the guidance uses the standard glowing info affordance, not "+ About" text', () => {
+  const block = slice('<div class="spark-threshold">', 1200);
+  // The weak text disclosure is gone from the primary markup…
+  assert.doesNotMatch(block, /<details class="spark-about">/,
+    'the old spark-about <details> disclosure is removed');
+  assert.doesNotMatch(html, /\+ About Spark Muse/,
+    'no literal "+ About Spark Muse" text row remains in the markup');
+  // …replaced by the standard glowing info (i) button targeting the shared
+  // popup, so Spark guidance reads consistently with the rest of the site.
+  assert.match(block, /class="studio-info-btn spark-muse-info-btn"/,
+    'primary state uses the standard glowing info (i) affordance');
+  assert.match(block, /data-info="info-spark-muse-overlay"/,
+    'the info button opens the Spark Muse guidance overlay');
+  // Accessible: real button semantics via aria-label, keyboard-operable.
+  assert.match(block, /aria-label="About Spark Muse[^"]*"/,
+    'the info affordance carries an accessible label');
+  // A newcomer-friendly cue invites expansion without re-densifying copy.
+  assert.match(block, /class="spark-guide-cue"/,
+    'a compact newcomer guidance cue wraps the affordance');
+  assert.match(block, /New here\?/,
+    'the cue carries newcomer-friendly microcopy');
+});
+
+test('the long Muse copy lives in the collapsed guidance overlay, not primary', () => {
+  const block = slice('<div class="spark-threshold">', 1200);
+  // The long lede is not primary repeated real-estate.
+  assert.doesNotMatch(block, /creative muse of stUdio/,
+    'the full Muse paragraph is not primary visible copy');
+  // The overlay is collapsed by default (no `open` class) so repeated
+  // users are not shown the full explainer on every draw.
+  const overlay = slice('<div class="studio-info-overlay" id="info-spark-muse-overlay">', 200);
+  assert.doesNotMatch(overlay, /class="studio-info-overlay open"/,
+    'the guidance overlay is collapsed (not open) by default');
+  const overlayBody = slice('id="info-spark-muse-overlay"', 1200);
+  assert.match(overlayBody, /class="spark-threshold-lede"/,
+    'the long Muse lede lives inside the guidance overlay');
+  assert.match(overlayBody, /creative muse of stUdio/,
+    'the full Muse paragraph is inside the overlay');
 });
 
 test('threshold copy frames hOMe as the first project/creation', () => {
-  const about = slice('<details class="spark-about">', 700);
-  assert.match(about, /hOMe is the first project/i,
+  const overlay = slice('id="info-spark-muse-overlay"', 1200);
+  assert.match(overlay, /hOMe is the first project/i,
     'copy names hOMe as the first project Spark helps shape');
   // Preserve the existing #119/#120 milestone contract.
-  assert.match(about, /first creation in Studio/);
+  assert.match(overlay, /first creation in Studio/);
 });
 
 test('a compact one-line room legend remains in the primary state', () => {
