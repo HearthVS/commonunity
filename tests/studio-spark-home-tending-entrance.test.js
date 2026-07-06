@@ -57,6 +57,16 @@ assert(css !== null && /--rose-color/.test(css[1]),
 assert(/\.spark-orient-item\.is-work\s*\{[^}]*--work/.test(src),
   'orientation items reuse the shared room color tokens (--work etc.)');
 
+// Layout: the threshold sits full-width at the top of the widget body, so the
+// disc + content row below keeps its width. Without this the flex-row body lays
+// threshold | disc | content out in three columns, squeezing #spark-prompt into
+// a sliver that wraps one word per line and overflows the card.
+assert(css !== null && /flex-basis:\s*100%/.test(css[1]),
+  '.spark-threshold spans the full first row (flex-basis: 100%)');
+const bodyCss = src.match(/\.om-widget-body\s*\{([^}]*)\}/);
+assert(bodyCss !== null && /flex-wrap:\s*wrap/.test(bodyCss[1]),
+  '.om-widget-body wraps so disc + content drop below the threshold');
+
 // ---------------------------------------------------------------------------
 // 2) Home-as-first-milestone + seeding + ongoing Studio copy.
 // ---------------------------------------------------------------------------
