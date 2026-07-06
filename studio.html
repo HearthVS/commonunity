@@ -4051,11 +4051,12 @@ input, textarea { font: inherit; color: inherit; }
    THE Oṁ FIELD — persistent global widget
    Lives on top of every Studio screen (entrance + room). Default
    state is a compact pill-card docked to the top-right; expanded
-   state shows the Oṁ disc, the current Spark prompt, metadata
-   tags (Movement / Arc / For), and actions (Draw another Spark,
-   Compose in Field Notes). The widget is the same DOM node on
-   every screen — when the active room changes, the "For" target
-   updates from the room context.
+   state shows the Oṁ disc, the current Spark prompt, user-facing
+   guidance pills (Focus / Tending / Tends), a collapsed "Spark
+   details" disclosure for internal routing, and actions (Draw
+   another Spark, Compose in Field Notes). The widget is the same
+   DOM node on every screen — when the active room changes, the
+   "Tends" cue updates from the room context.
    ============================================================ */
 .om-widget {
   position: fixed;
@@ -4379,11 +4380,46 @@ input, textarea { font: inherit; color: inherit; }
   border: 1px solid color-mix(in srgb, var(--text-faint) 40%, transparent);
   padding: 2px 7px;
   border-radius: 999px;
-  white-space: nowrap;
+  /* Wrap safely inside the Spark panel — a long "For · …" label must
+     never overrun the card edge at narrow widths. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
 }
 .spark-tag.movement { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, var(--text-muted)); border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, transparent); }
 .spark-tag.arc      { color: var(--text-muted); }
 .spark-tag.target   { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, var(--text-muted)); }
+
+/* Progressive disclosure for the internal routing metadata (builder
+   track + target field id + section). Kept out of the primary card so
+   the visible pills stay user-facing; available for debugging/control
+   behind a secondary, collapsed details element. */
+.spark-routing {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.spark-routing[hidden] { display: none; }
+.spark-routing-summary {
+  cursor: pointer;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 9px;
+  color: var(--text-faint);
+  opacity: 0.7;
+  list-style: none;
+}
+.spark-routing-summary::-webkit-details-marker { display: none; }
+.spark-routing-body {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 .om-widget-actions {
   display: flex;
@@ -9021,7 +9057,7 @@ input, textarea { font: inherit; color: inherit; }
      THE Oṁ FIELD — persistent global widget
      Lives at the document level, fixed-positioned, visible on
      every Studio screen (entrance + room). The active room
-     populates the "For ·" tag so Sparks become room-aware.
+     populates the "Tends ·" cue so Sparks become room-aware.
      Compose in Field Notes drops the prompt into the existing
      #workbench-input notepad on the room screen, then focuses it.
      ============================================================ -->
@@ -9064,10 +9100,14 @@ input, textarea { font: inherit; color: inherit; }
       <span class="spark-rise">A question rises from the field</span>
       <p class="spark-prompt-row" id="spark-prompt">Touch the Oṁ Field to draw a Spark.</p>
       <div class="spark-meta" id="spark-meta" hidden>
-        <span class="spark-tag movement" id="spark-movement">Movement · —</span>
-        <span class="spark-tag arc"      id="spark-arc">Arc · —</span>
-        <span class="spark-tag target"   id="spark-target">For · —</span>
+        <span class="spark-tag movement" id="spark-movement">Focus · —</span>
+        <span class="spark-tag arc"      id="spark-arc">Tending · —</span>
+        <span class="spark-tag target"   id="spark-target">Tends · —</span>
       </div>
+      <details class="spark-routing" id="spark-routing" hidden>
+        <summary class="spark-routing-summary">Spark details</summary>
+        <p class="spark-routing-body" id="spark-routing-body"></p>
+      </details>
       <div class="om-widget-actions">
         <button type="button" class="om-widget-btn is-primary" id="spark-draw">Draw another Spark</button>
         <button type="button" class="om-widget-btn" id="spark-compose" hidden>Compose in Field Observations</button>
@@ -15785,6 +15825,8 @@ if (document.readyState === 'loading') {
     var movementEl = document.getElementById('spark-movement');
     var arcEl      = document.getElementById('spark-arc');
     var targetEl   = document.getElementById('spark-target');
+    var routingEl     = document.getElementById('spark-routing');
+    var routingBodyEl = document.getElementById('spark-routing-body');
     var roomEl     = document.getElementById('om-widget-room');
     var drawBtn    = document.getElementById('spark-draw');
     var composeBtn = document.getElementById('spark-compose');
@@ -15948,6 +15990,29 @@ if (document.readyState === 'loading') {
       return spec.name;
     }
 
+    // A concise, user-facing cue for what a Spark tends — just the field
+    // label, without the internal builder-track prefix (that lives in the
+    // routing details). Keeps the primary "Tends · …" pill short and
+    // wrapping-safe instead of the long "Personal Home · Threshold · …".
+    function sparkTargetCue(spark) {
+      var spec = BUILDER_STANDARD[spark.builder];
+      if (spec && spec.fields) {
+        var f = spec.fields.find(function (x) { return x.id === spark.target; });
+        if (f) return f.label;
+      }
+      if (spec && spec.criteria) {
+        var c = spec.criteria.find(function (x) { return x.id === spark.target; });
+        if (c) return c.label;
+      }
+      return spec ? spec.name : (spark.target || '');
+    }
+
+    // Human-readable transformation arc: the raw data uses an arrow glyph
+    // ("Shadow → Gift") that reads as internal notation; spell it out.
+    function humanArc(arc) {
+      return String(arc || '').replace(/\s*→\s*/g, ' to ');
+    }
+
     // Decide whether a Spark's room should read as Awaiting on the
     // target tag: only at the Studio entrance (no active room) and only
     // when the seeded-field band still marks that room Awaiting. Pure /
@@ -15973,13 +16038,19 @@ if (document.readyState === 'loading') {
     function renderSpark(s, reanimate) {
       currentSpark = s;
       promptEl.textContent   = s.prompt;
-      movementEl.textContent = 'Movement · ' + s.movement;
-      arcEl.textContent      = 'Arc · '      + s.arc;
+      movementEl.textContent = 'Focus · ' + s.movement;
+      arcEl.textContent      = 'Tending · ' + humanArc(s.arc);
       var awaitingHere = sparkRoomAwaiting(s, getActiveRoomKey(), phAwaitingRooms());
-      targetEl.textContent   = 'For · ' + builderFieldLabel(s) + (awaitingHere ? ' · Awaiting' : '');
+      targetEl.textContent   = 'Tends · ' + sparkTargetCue(s) + (awaitingHere ? ' · Awaiting' : '');
       targetEl.classList.add('is-builder');
       targetEl.classList.toggle('is-awaiting', awaitingHere);
       if (metaEl) metaEl.hidden = false;
+      // Full internal routing (builder track + section + target id) stays
+      // behind progressive disclosure, not in the primary pills.
+      if (routingEl && routingBodyEl) {
+        routingBodyEl.textContent = builderFieldLabel(s) + ' · ' + s.section + ' · ' + s.target;
+        routingEl.hidden = false;
+      }
       if (composeBtn) composeBtn.hidden = false;
       if (reanimate !== false) {
         promptEl.classList.remove('is-emitting');
