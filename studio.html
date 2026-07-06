@@ -4388,8 +4388,6 @@ input, textarea { font: inherit; color: inherit; }
   max-width: 100%;
   min-width: 0;
 }
-.spark-tag.movement { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 80%, var(--text-muted)); border-color: color-mix(in srgb, var(--rose-color, #c4b5fd) 40%, transparent); }
-.spark-tag.arc      { color: var(--text-muted); }
 .spark-tag.target   { color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, var(--text-muted)); }
 
 /* Progressive disclosure for the internal routing metadata (builder
@@ -9170,9 +9168,7 @@ input, textarea { font: inherit; color: inherit; }
       <span class="spark-rise">A question rises from the field</span>
       <p class="spark-prompt-row" id="spark-prompt">Touch the Oṁ Field to draw a Spark.</p>
       <div class="spark-meta" id="spark-meta" hidden>
-        <span class="spark-tag movement" id="spark-movement">Focus · —</span>
-        <span class="spark-tag arc"      id="spark-arc">Tending · —</span>
-        <span class="spark-tag target"   id="spark-target">Tends · —</span>
+        <span class="spark-tag target"   id="spark-target">For your hOMe · —</span>
       </div>
       <details class="spark-routing" id="spark-routing" hidden>
         <summary class="spark-routing-summary">Spark details</summary>
@@ -15999,8 +15995,6 @@ if (document.readyState === 'loading') {
     var disc   = document.getElementById('om-disc');
     var promptEl = document.getElementById('spark-prompt');
     var metaEl   = document.getElementById('spark-meta');
-    var movementEl = document.getElementById('spark-movement');
-    var arcEl      = document.getElementById('spark-arc');
     var targetEl   = document.getElementById('spark-target');
     var routingEl     = document.getElementById('spark-routing');
     var routingBodyEl = document.getElementById('spark-routing-body');
@@ -16184,6 +16178,18 @@ if (document.readyState === 'loading') {
       return spec ? spec.name : (spark.target || '');
     }
 
+    // The single primary cue shown on the Spark card. Leads with the
+    // project the Spark shapes so a creator/new user reads *why this
+    // helps* — "For your hOMe · Role constellation" — instead of the old
+    // abstract taxonomy pills (Focus/Tending/Tends). Self-directed Sparks
+    // (Living Profile / Personal OS) have no project, so they read
+    // "Shapes · …". Movement/arc taxonomy now lives only in Spark details.
+    function sparkPrimaryCue(spark) {
+      var label = sparkProjectLabel(spark);
+      var cue = sparkTargetCue(spark);
+      return label ? ('For your ' + label + ' · ' + cue) : ('Shapes · ' + cue);
+    }
+
     // Human-readable transformation arc: the raw data uses an arrow glyph
     // ("Shadow → Gift") that reads as internal notation; spell it out.
     function humanArc(arc) {
@@ -16226,17 +16232,19 @@ if (document.readyState === 'loading') {
     function renderSpark(s, reanimate) {
       currentSpark = s;
       promptEl.textContent   = s.prompt;
-      movementEl.textContent = 'Focus · ' + s.movement;
-      arcEl.textContent      = 'Tending · ' + humanArc(s.arc);
       var awaitingHere = sparkRoomAwaiting(s, getActiveRoomKey(), phAwaitingRooms());
-      targetEl.textContent   = 'Tends · ' + sparkTargetCue(s) + (awaitingHere ? ' · Awaiting' : '');
+      // One plain-language cue leads the card ("For your hOMe · …"), not
+      // the old Focus/Tending/Tends taxonomy pills.
+      targetEl.textContent   = sparkPrimaryCue(s) + (awaitingHere ? ' · Awaiting' : '');
       targetEl.classList.add('is-builder');
       targetEl.classList.toggle('is-awaiting', awaitingHere);
       if (metaEl) metaEl.hidden = false;
-      // Full internal routing (builder track + section + target id) stays
-      // behind progressive disclosure, not in the primary pills.
+      // Full internal routing (builder track + section + target id) plus
+      // the movement/arc taxonomy stays behind progressive disclosure,
+      // never as a primary pill.
       if (routingEl && routingBodyEl) {
-        routingBodyEl.textContent = builderFieldLabel(s) + ' · ' + s.section + ' · ' + s.target;
+        routingBodyEl.textContent = builderFieldLabel(s) + ' · ' + s.section + ' · ' + s.target
+          + ' · ' + s.movement + ' · ' + humanArc(s.arc);
         routingEl.hidden = false;
       }
       if (composeBtn) {
