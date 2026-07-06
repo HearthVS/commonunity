@@ -6379,6 +6379,25 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 /* ============================================================
+   hOMe preview — OM Cipher palette role atmosphere.
+   phApplyPaletteRoles() sets --ph-* role/theme tokens and marks
+   the card [data-ph-palette="active"]; it also re-binds
+   --rose-color and --work/--lens/--field/--call to cipher-derived
+   values, so the existing hero, room tabs, doorways and accents
+   inherit the person's palette with no further rules. This block
+   only adds the card-level surface / border / glow atmosphere,
+   giving the preview a grounded, personal frame. Text stays on
+   the accessible --text tokens; without a completed OM Cipher the
+   attribute is absent and the neutral default preview is unchanged.
+   ============================================================ */
+#website-preview-card[data-ph-palette="active"] {
+  background:
+    radial-gradient(140% 110% at 0% 0%, var(--ph-glow, transparent), transparent 58%),
+    var(--ph-surface, var(--card));
+  border-color: var(--ph-border, var(--border));
+}
+
+/* ============================================================
    v0.3 visual polish — depth, hover/focus, reduced motion
    ============================================================ */
 
@@ -12157,6 +12176,97 @@ function initOmCipherPalette() {
   if (fieldTint) rootEl.style.setProperty('--room-cipher-tint-field', fieldTint);
   if (callTint)  rootEl.style.setProperty('--room-cipher-tint-call',  callTint);
 }
+
+// ── hOMe preview palette role system ─────────────────────────────────────────
+// The OM Cipher gives three source colours (primary / secondary / seasonal
+// accent). Scattered raw usage of those three tokens is what made the hOMe
+// preview diverge from cOMpass: cOMpass derives a full themed layer from them
+// while the preview leant on static room defaults. phDerivePaletteTheme maps
+// the three sources onto three stable ROLES and derives a fuller, coherent
+// preview theme from them:
+//
+//   Root       ← secondary  · grounding / base atmosphere / surfaces / depth
+//   Expression ← primary    · primary accent, actions, active states, hero
+//   Radiance   ← accent     · glow, gradient, soft/alive emphasis
+//
+// Everything else (surface, elevated surface, border, accent-hover, glow,
+// gradient and the four per-room highlights) is derived from those roles with
+// deterministic color-mix expressions. Text stays on the accessible
+// --text / --text-muted tokens; the palette only tints surfaces, borders,
+// accents and glow, so contrast never regresses. The per-room blend rule
+// mirrors initOmCipherPalette's --room-cipher-tint-* exactly (in role terms),
+// keeping the two layers consistent. Pure and side-effect free so it can be
+// unit-tested; returns null when no source colour is present.
+function phDerivePaletteTheme(sources) {
+  sources = sources || {};
+  const primary   = sources.primary   || '';
+  const secondary = sources.secondary || '';
+  const accent    = sources.accent    || '';
+  if (!primary && !secondary && !accent) return null;
+  // Resolve the three roles with graceful fallback so a partial palette still
+  // yields a complete, non-empty theme.
+  const expression = primary   || secondary || accent;
+  const root       = secondary || primary   || accent;
+  const radiance   = accent    || secondary || primary;
+  function mix(a, b, aPct) {
+    return `color-mix(in srgb, ${a} ${aPct}%, ${b} ${100 - aPct}%)`;
+  }
+  return {
+    '--ph-root':             root,
+    '--ph-expression':       expression,
+    '--ph-radiance':         radiance,
+    '--ph-surface':          `color-mix(in srgb, var(--card) 90%, ${root} 10%)`,
+    '--ph-surface-elevated': `color-mix(in srgb, var(--card) 82%, ${expression} 18%)`,
+    '--ph-border':           `color-mix(in srgb, var(--border) 58%, ${expression} 42%)`,
+    '--ph-accent':           expression,
+    '--ph-accent-hover':     `color-mix(in srgb, ${expression} 78%, var(--text) 22%)`,
+    '--ph-glow':             `color-mix(in srgb, ${radiance} 40%, transparent)`,
+    '--ph-gradient':         `radial-gradient(circle at 0% 0%, color-mix(in srgb, ${radiance} 26%, transparent), transparent 60%)`,
+    // Per-room highlights — same weighting as --room-cipher-tint-* so tabs,
+    // borders, room gradients and bullets inherit the palette while staying
+    // distinct room to room.
+    '--work':  mix(expression, radiance, 65),
+    '--lens':  mix(root, expression, 70),
+    '--field': mix(root, radiance, 60),
+    '--call':  mix(expression, root, 70),
+    // Personal accent token the preview hero + controls already read.
+    '--rose-color': expression,
+  };
+}
+if (typeof window !== 'undefined') window.phDerivePaletteTheme = phDerivePaletteTheme;
+
+// List of tokens phApplyPaletteRoles owns, so it can fully clear them when a
+// palette is absent and never leave a half-applied theme on the card.
+const PH_PALETTE_TOKENS = [
+  '--ph-root', '--ph-expression', '--ph-radiance', '--ph-surface',
+  '--ph-surface-elevated', '--ph-border', '--ph-accent', '--ph-accent-hover',
+  '--ph-glow', '--ph-gradient', '--work', '--lens', '--field', '--call',
+  '--rose-color'
+];
+
+// Apply the derived palette theme, scoped to the hOMe preview card element, so
+// the person's OM Cipher palette visibly flows through the whole preview
+// (hero, room tabs, room accents, glow) without touching the rest of the
+// Studio shell. Reads the same completed contract as initOmCipherPalette.
+function phApplyPaletteRoles(cardEl) {
+  if (!cardEl) return false;
+  const contract = readOmCipherContract();
+  const palette  = (contract && contract.om_cipher && contract.om_cipher.palette) || {};
+  const theme = phDerivePaletteTheme({
+    primary:   palette.primary || '',
+    secondary: palette.secondary || '',
+    accent:    palette.seasonal_accent || palette.accent || '',
+  });
+  if (!theme) {
+    PH_PALETTE_TOKENS.forEach(function (t) { cardEl.style.removeProperty(t); });
+    delete cardEl.dataset.phPalette;
+    return false;
+  }
+  Object.keys(theme).forEach(function (t) { cardEl.style.setProperty(t, theme[t]); });
+  cardEl.dataset.phPalette = 'active';
+  return true;
+}
+if (typeof window !== 'undefined') window.phApplyPaletteRoles = phApplyPaletteRoles;
 
 // Apply the cipher palette as early as possible. The inline script
 // runs inside <body>, so document.documentElement already exists —
@@ -20899,6 +21009,12 @@ if (document.readyState === 'loading') {
       var model = buildWebsitePreview();
       var c = model.counts;
       var card = document.getElementById('website-preview-card');
+      // Translate the OM Cipher palette into stable roles and apply the
+      // derived theme scoped to this card, so the preview inherits the
+      // person's colours coherently (no-op when no completed contract).
+      if (typeof phApplyPaletteRoles === 'function') {
+        try { phApplyPaletteRoles(card); } catch (_) { /* never break preview */ }
+      }
       var html = '';
 
       // Room navigation tabs (v0.3 pill row).
