@@ -87,8 +87,8 @@ const footMatch = src.match(footRe);
 assert(footMatch !== null, 'om-widget-foot paragraph isolated');
 const foot = footMatch ? footMatch[0] : '';
 
-assert(/shape your hOMe directly/.test(foot),
-  'foot copy frames Sparks as shaping the hOMe directly');
+assert(/build your hOMe draft/.test(foot),
+  'foot copy frames Sparks as building the hOMe draft (explicit outcome)');
 assert(/Field Observations/.test(foot), 'foot copy still points to Field Observations');
 assert(/Nexus/.test(foot), 'foot copy preserves the Nexus availability note');
 assert(!/(folder|file manager|upload a file|browse files|directory)/i.test(foot),

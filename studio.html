@@ -4469,6 +4469,41 @@ input, textarea { font: inherit; color: inherit; }
   word-break: break-word;
 }
 
+/* Compact path/progress cue for project (hOMe) Sparks. One quiet line
+   that orients a new user — "where am I / why keep going" — without
+   re-densifying the panel. Hidden for self-directed Sparks. */
+.spark-path-cue {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 55%, var(--text-muted));
+  overflow-wrap: anywhere;
+}
+.spark-path-cue[hidden] { display: none; }
+
+/* Plain-language relationship map inside the Spark Muse guidance overlay.
+   Explains how Spark / hOMe draft / Field Observations / Nexus connect. */
+.spark-relate-title {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.spark-relate {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.spark-relate li { margin: 2px 0; }
+.spark-relate-path {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--rose-color, #c4b5fd) 60%, var(--text-muted));
+}
+
 .om-widget-actions {
   display: flex;
   flex-wrap: wrap;
@@ -9227,18 +9262,23 @@ input, textarea { font: inherit; color: inherit; }
       <div class="spark-meta" id="spark-meta" hidden>
         <span class="spark-tag target"   id="spark-target">For your hOMe · —</span>
       </div>
+      <!-- Compact orientation cue for project (hOMe) Sparks: tells a new
+           user where they are on the path and why to keep answering,
+           without re-densifying the panel. Hidden for self-directed Sparks. -->
+      <p class="spark-path-cue" id="spark-path-cue" hidden></p>
       <details class="spark-routing" id="spark-routing" hidden>
         <summary class="spark-routing-summary">Spark details</summary>
         <p class="spark-routing-body" id="spark-routing-body"></p>
       </details>
       <div class="om-widget-actions">
         <button type="button" class="om-widget-btn is-primary" id="spark-draw">Draw another Spark</button>
-        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Shape this hOMe</button>
+        <button type="button" class="om-widget-btn" id="spark-compose" hidden>Add answer to hOMe draft</button>
       </div>
     </div>
   </div>
   <p class="om-widget-foot">
-    Spark is your stUdio Muse — answers shape your hOMe directly and also rest in Field Observations, available to Nexus.
+    Spark is your stUdio Muse — answers build your hOMe draft and also rest in Field Observations, available to Nexus.
+    <button type="button" class="builder-review-link" id="builder-home-open">View hOMe draft</button>
     <button type="button" class="builder-review-link" id="builder-review-open">Open Studio Path</button>
   </p>
 </aside>
@@ -15345,6 +15385,16 @@ window.saveState = saveState;
         <li class="spark-orient-item is-field"><span class="spark-orient-name">Field</span><span class="spark-orient-desc">draw from observations, lived material and notes.</span></li>
         <li class="spark-orient-item is-call"><span class="spark-orient-name">Call</span><span class="spark-orient-desc">clarify invitation, audience and purpose.</span></li>
       </ul>
+      <!-- Plain-language map of how the four pieces relate, so a new user
+           can see the whole path rather than four disconnected words. -->
+      <p class="spark-relate-title">How it fits together</p>
+      <ul class="spark-relate" aria-label="How Spark, Field Observations, Nexus and hOMe relate">
+        <li><strong>Spark</strong> prompts gather your creative answers.</li>
+        <li>Each answer is added to your <strong>hOMe draft</strong> — your first stUdio project.</li>
+        <li>Answers are also kept in <strong>Field Observations</strong> as source material.</li>
+        <li><strong>Nexus</strong> can deepen that material and return worked insight.</li>
+      </ul>
+      <p class="spark-relate-path">The path: Answer Sparks → Review your hOMe draft → Publish.</p>
     </div>
   </div>
 </div>
@@ -15992,15 +16042,23 @@ if (document.readyState === 'loading') {
       builder: 'website',   // internal builder key (unchanged, back-compat)
       project: 'home',      // stable project namespace for the Muse layer
       label:   'hOMe',      // user-facing project name
-      // Primary, builder-native action copy. A Spark tending an
-      // already-shaped room ("field" section) tunes it; anything
-      // else shapes the home. Preserves the PR #135 CTA copy.
+      // Primary action copy states the outcome plainly: answering the
+      // Spark adds material to the hOMe draft. A Spark tending an
+      // already-shaped room ("field" section) updates that draft; anything
+      // else adds a fresh answer. Explicit outcome language replaces the
+      // old vague label so a new user knows what the click does.
       action: function (spark) {
-        return spark && spark.section === 'field' ? 'Tune this hOMe' : 'Shape this hOMe';
+        return spark && spark.section === 'field'
+          ? 'Update your hOMe draft'
+          : 'Add answer to hOMe draft';
       },
-      // Subtle secondary: the answer is still kept as source
-      // material, but this stays a footnote, never the headline.
-      secondary: 'It also rests in Field Observations.'
+      // Honest secondary: the answer feeds the hOMe draft AND is kept as
+      // source material in Field Observations. Both happen, so we say both
+      // rather than implying it only writes to one place.
+      secondary: 'Kept as source material in Field Observations too.',
+      // Compact path cue for the panel — answers "where am I / why keep
+      // going?" without a paragraph. Steps mirror the draft → publish arc.
+      path: 'hOMe path: Answer Sparks → Review draft → Publish'
     }
   };
 
@@ -16033,6 +16091,12 @@ if (document.readyState === 'loading') {
   function sparkProjectSecondary(spark) {
     var p = sparkProject(spark);
     return (p && p.secondary) || '';
+  }
+  // Compact path/progress cue for a project Spark (e.g. the hOMe path),
+  // or '' when self-directed. Keeps the "where am I" cue data-driven.
+  function sparkProjectPath(spark) {
+    var p = sparkProject(spark);
+    return (p && p.path) || '';
   }
   // Resolve a Muse project by its stable namespace key (e.g. 'home'),
   // decoupled from the internal builder key. Returns the entry or null.
@@ -16085,6 +16149,7 @@ if (document.readyState === 'loading') {
     var targetEl   = document.getElementById('spark-target');
     var routingEl     = document.getElementById('spark-routing');
     var routingBodyEl = document.getElementById('spark-routing-body');
+    var pathCueEl     = document.getElementById('spark-path-cue');
     var roomEl     = document.getElementById('om-widget-room');
     var drawBtn    = document.getElementById('spark-draw');
     var composeBtn = document.getElementById('spark-compose');
@@ -16093,6 +16158,7 @@ if (document.readyState === 'loading') {
     var saveBtn    = document.getElementById('btn-save-entry');
     var workbench  = document.getElementById('workbench-input');
     var reviewLink = document.getElementById('builder-review-open');
+    var homeLink   = document.getElementById('builder-home-open');
     var modal      = document.getElementById('builder-modal');
     var modalClose = document.getElementById('builder-modal-close');
     var tracksEl   = document.getElementById('builder-tracks');
@@ -16338,6 +16404,14 @@ if (document.readyState === 'loading') {
         composeBtn.hidden = false;
         composeBtn.textContent = sparkComposeLabel(s);
       }
+      // Show the compact path cue only for project (hOMe) Sparks, so a
+      // new user reads where they are on the path; self-directed Sparks
+      // (Living Profile / Personal OS) keep the panel uncluttered.
+      if (pathCueEl) {
+        var pathText = sparkProjectPath(s);
+        pathCueEl.textContent = pathText;
+        pathCueEl.hidden = !pathText;
+      }
       if (reanimate !== false) {
         promptEl.classList.remove('is-emitting');
         void promptEl.offsetWidth;
@@ -16489,10 +16563,11 @@ if (document.readyState === 'loading') {
         setPendingTarget(currentSpark);
         setCollapsed(true);
         if (sparkIsHome(currentSpark)) {
-          // Project-native framing: this shapes the hOMe project directly.
-          // Field Observations stays a subtle secondary, not the headline.
+          // Explicit outcome framing: the answer below is added to the hOMe
+          // draft. Field Observations stays an honest secondary — the answer
+          // is kept there as source material too, so we name both.
           var secondary = sparkProjectSecondary(currentSpark);
-          showLocalToast('Shaping your ' + sparkProjectLabel(currentSpark) + ' · ' + sparkTargetCue(currentSpark) + ' — answer below.' + (secondary ? ' ' + secondary : ''));
+          showLocalToast('Answer below — added to your ' + sparkProjectLabel(currentSpark) + ' draft · ' + sparkTargetCue(currentSpark) + '.' + (secondary ? ' ' + secondary : ''));
         } else {
           showLocalToast('Spark dropped into Field Observations — for ' + builderFieldLabel(currentSpark) + '.');
         }
@@ -22121,6 +22196,13 @@ if (document.readyState === 'loading') {
     }
 
     if (reviewLink) reviewLink.addEventListener('click', openModal);
+    // Direct route to the hOMe draft preview, so the destination the Spark
+    // answers build is reachable from the same panel. Falls back to the
+    // Studio Path modal if the project preview isn't wired.
+    if (homeLink) homeLink.addEventListener('click', function () {
+      if (typeof window.openStudioProject === 'function' && window.openStudioProject('home')) return;
+      openModal();
+    });
     if (modalClose) modalClose.addEventListener('click', closeModal);
     if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', function (e) {
@@ -22280,6 +22362,7 @@ if (document.readyState === 'loading') {
       sparkProjectKey:         sparkProjectKey,
       sparkProjectLabel:       sparkProjectLabel,
       sparkProjectActionLabel: sparkProjectActionLabel,
+      sparkProjectPath:        sparkProjectPath,
       sparkIsHome:             sparkIsHome,
       // Project identity/read-path layer — one shared identity for the
       // Muse layer and a project's own preview. hOMe is the first project.

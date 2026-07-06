@@ -45,7 +45,8 @@ const museSrc = html.slice(bodyStart, endIdx);
 const loadMuse = new Function(
   museSrc +
   '\nreturn { MUSE_PROJECTS, sparkProject, sparkProjectKey, sparkIsHome,' +
-  ' sparkProjectLabel, sparkProjectActionLabel, sparkProjectSecondary };'
+  ' sparkProjectLabel, sparkProjectActionLabel, sparkProjectSecondary,' +
+  ' sparkProjectPath };'
 );
 const M = loadMuse();
 
@@ -64,18 +65,33 @@ test('website Sparks map to the hOMe project namespace', () => {
   assert.equal(M.sparkProjectLabel(homeThresholdSpark), 'hOMe');
 });
 
-// Primary CTA is builder/project-native, not Field Observations.
-test('primary CTA is project-native (Shape / Tune this hOMe)', () => {
-  assert.equal(M.sparkProjectActionLabel(homeThresholdSpark), 'Shape this hOMe');
-  assert.equal(M.sparkProjectActionLabel(homeFieldSpark), 'Tune this hOMe');
-  // The project action must never route the primary path to Field Observations.
+// Primary CTA is explicit outcome language (adds to the hOMe draft), not
+// the vague "Shape this hOMe" and not a Field Observations detour.
+test('primary CTA states the outcome (Add answer to / Update your hOMe draft)', () => {
+  assert.equal(M.sparkProjectActionLabel(homeThresholdSpark), 'Add answer to hOMe draft');
+  assert.equal(M.sparkProjectActionLabel(homeFieldSpark), 'Update your hOMe draft');
+  // The vague copy is gone from the primary action.
+  assert.doesNotMatch(M.sparkProjectActionLabel(homeThresholdSpark), /Shape this hOMe/);
+  // The primary action names the hOMe draft outcome…
+  assert.match(M.sparkProjectActionLabel(homeThresholdSpark), /hOMe draft/);
+  // …and never routes the primary path to Field Observations.
   assert.doesNotMatch(M.sparkProjectActionLabel(homeThresholdSpark), /Field Observation/i);
 });
 
-// Field Observations remains a subtle secondary, not the headline.
-test('secondary copy keeps Field Observations as a footnote', () => {
+// Field Observations remains a subtle secondary, and now honestly names
+// that the answer is kept there as source material (both places, no lie).
+test('secondary copy keeps Field Observations as an honest footnote', () => {
   assert.match(M.sparkProjectSecondary(homeThresholdSpark), /Field Observations/);
+  assert.match(M.sparkProjectSecondary(homeThresholdSpark), /source material/i);
   assert.equal(M.sparkProjectSecondary(profileSpark), '');
+});
+
+// A compact path cue orients the user (where am I / why keep going) for
+// the hOMe project, and stays empty for self-directed Sparks.
+test('project exposes a compact path cue for hOMe, none for self-directed', () => {
+  assert.match(M.sparkProjectPath(homeThresholdSpark), /Answer Sparks/);
+  assert.match(M.sparkProjectPath(homeThresholdSpark), /Publish/);
+  assert.equal(M.sparkProjectPath(profileSpark), '');
 });
 
 // Profile / OS Sparks keep non-hOMe behavior.
