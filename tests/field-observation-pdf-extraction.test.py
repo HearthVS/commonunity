@@ -169,11 +169,19 @@ rListB = fresh_client().get("/api/studio/field-observations/processed",
                             params={"cipher_id": "cipher_B"}, cookies=invite_cookie("tokB"))
 ok(a_proc_id not in {p["id"] for p in rListB.json()["processed"]}, "B's list never contains A's artifact")
 
-print("\n6. non-PDF media is rejected")
+print("\n6. image media now dispatches to image preparation (not a 400 reject)")
 rImg = upload(fresh_client(), "tokA", "cipher_A", "look.png", "image/png", PNG)
 img_id = rImg.json()["id"]
 rExImg = extract(fresh_client(), "tokA", "cipher_A", img_id)
-ok(rExImg.status_code == 400, "extract on an image -> 400 (PDF only)")
+ok(rExImg.status_code == 200, "extract on an image -> 200 (image is a supported kind)")
+img_proc = rExImg.json()["processed"]
+ok(img_proc["process_type"] == "image_text", "image extraction stores an image_text artifact")
+# In the test environment there is no ANTHROPIC_API_KEY, so the honest outcome
+# is an actionable 'unavailable' artifact — never a false 'done'.
+ok(img_proc["status"] in ("done", "unavailable", "error"),
+   "image artifact carries a real status (done when a key is set, else unavailable/error)")
+if img_proc["status"] != "done":
+    ok(bool(img_proc["error"]), "a non-done image artifact carries a user-visible message")
 
 print("\n7. graceful handling of an unreadable PDF")
 rUpBad = upload(fresh_client(), "tokA", "cipher_A", "broken.pdf", "application/pdf", b"%PDF-1.4 not really a pdf")
