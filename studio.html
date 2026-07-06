@@ -16407,8 +16407,17 @@ if (document.readyState === 'loading') {
       // Show the compact path cue only for project (hOMe) Sparks, so a
       // new user reads where they are on the path; self-directed Sparks
       // (Living Profile / Personal OS) keep the panel uncluttered.
+      // Concrete progress makes the path feel like movement, not a loop:
+      // append "N of 4 rooms drafted" derived live from the seeded-field
+      // model. Recomputed on every render, so the next draw after a saved
+      // answer reflects the new count (the compose flow collapses the panel
+      // rather than re-rendering it, so the update lands on the next Spark).
       if (pathCueEl) {
         var pathText = sparkProjectPath(s);
+        if (pathText) {
+          var progress = phProgressLabel();
+          if (progress) pathText += ' · ' + progress;
+        }
         pathCueEl.textContent = pathText;
         pathCueEl.hidden = !pathText;
       }
@@ -16448,6 +16457,39 @@ if (document.readyState === 'loading') {
       } catch (e) {
         return [];
       }
+    }
+
+    // Concrete draft progress for the hOMe path cue: how many of the four
+    // rooms already carry drafted content. Reads the same exposed preview
+    // model as phAwaitingRooms and applies the same coverage rule as
+    // phSeedReadiness (a room counts as drafted when its section source is
+    // anything other than 'empty' — captured or mixed). Deterministic,
+    // local, no LLM. Returns null when the model is unavailable so callers
+    // fall back to the plain path text.
+    function phDraftProgress() {
+      try {
+        if (typeof window.buildPersonalHomePreview !== 'function') return null;
+        var model = window.buildPersonalHomePreview();
+        if (!model || !model.sections) return null;
+        var rooms = ['work', 'lens', 'field', 'call'];
+        var drafted = rooms.filter(function (k) {
+          var sec = model.sections[k];
+          return sec && sec.source && sec.source !== 'empty';
+        }).length;
+        return { drafted: drafted, total: rooms.length };
+      } catch (e) {
+        return null;
+      }
+    }
+    // Concise, motivating progress suffix for the hOMe path cue. Empty when
+    // the model is unavailable (cue falls back to the plain path). When no
+    // room is drafted yet we nudge toward the first room rather than an
+    // ambiguous "0" alone.
+    function phProgressLabel() {
+      var p = phDraftProgress();
+      if (!p) return '';
+      if (!p.drafted) return '0 of ' + p.total + ' rooms drafted · start with one room';
+      return p.drafted + ' of ' + p.total + ' rooms drafted';
     }
 
     function drawSpark() {

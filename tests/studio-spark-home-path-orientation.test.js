@@ -64,7 +64,7 @@ test('the path cue text answers "where am I / why keep going"', () => {
 });
 
 test('renderSpark shows the path cue only for project (hOMe) Sparks', () => {
-  const render = slice('function renderSpark(', 1600);
+  const render = slice('function renderSpark(', 2600);
   assert.match(render, /sparkProjectPath\(s\)/,
     'renderSpark reads the compact path cue from the Spark project');
   assert.match(render, /pathCueEl\.hidden = !pathText/,
