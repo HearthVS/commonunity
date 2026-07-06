@@ -13437,9 +13437,13 @@ function initStudioSacredMode() {
   const controls = document.createElement('div');
   controls.className = 'sacred-controls';
   controls.id = 'sacred-controls-field-notes';
-  // Place controls directly under the textarea.
-  if (textarea.nextSibling) surface.insertBefore(controls, textarea.nextSibling);
-  else surface.appendChild(controls);
+  // Place controls directly under the textarea. The textarea lives inside the
+  // Field Observations "Now" panel (#fo-panel-now), so insert relative to its
+  // actual parent — inserting into the outer .notepad-surface with a reference
+  // node that belongs to the panel throws NotFoundError and aborts wiring.
+  const controlsParent = textarea.parentNode || surface;
+  if (textarea.nextSibling) controlsParent.insertBefore(controls, textarea.nextSibling);
+  else controlsParent.appendChild(controls);
 
   window.CommonUnitySacred.attach({
     surfaceId: 'studio:field-notes',

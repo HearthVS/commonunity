@@ -234,6 +234,16 @@ ok('attaches Field Notes with surfaceId studio:field-notes',
 ok('saveWorkbenchEntry refuses to write entries while sacred',
    /CommonUnitySacred\.isActive\('studio:field-notes'\)/.test(studioSrc) &&
    /function saveWorkbenchEntry/.test(studioSrc));
+// Regression: the Field Observations depth interface nests #workbench-input
+// inside #fo-panel-now, so its nextSibling belongs to the panel, not the outer
+// .notepad-surface. Inserting the sacred controls into `surface` with that
+// reference node throws NotFoundError and aborts attach() — leaving a dead
+// toggle. The controls must be inserted relative to the textarea's own parent.
+ok('sacred controls insert relative to the textarea parent (not the outer surface)',
+   /const controlsParent = textarea\.parentNode/.test(studioSrc) &&
+   /controlsParent\.insertBefore\(controls, textarea\.nextSibling\)/.test(studioSrc));
+ok('no longer inserts controls into .notepad-surface with a panel-scoped reference node',
+   !/surface\.insertBefore\(controls, textarea\.nextSibling\)/.test(studioSrc));
 
 console.log('\n12. label / control parity — both surfaces use the SAME module copy');
 // Neither host hardcodes the toggle label or builds its own control; both call
