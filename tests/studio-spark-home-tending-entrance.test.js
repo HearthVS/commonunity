@@ -8,16 +8,18 @@
  * rather than blank, and presents Work / Lens / Field / Call as the
  * four orientations of *tending* (not file/task categories).
  *
- * Density pass (progressive disclosure) — the full Muse orientation copy
- * (lede + four descriptive orientations) is valuable for a first visitor
- * but repeats on every draw, so it now lives inside a collapsed
- * `<details class="spark-about">` disclosure. The primary state keeps a
- * compact one-line room legend instead of the descriptive block.
+ * Density pass + standardized guidance affordance — the full Muse
+ * orientation copy (lede + four descriptive orientations) is valuable for a
+ * first visitor but repeats on every draw, so it now opens on demand behind
+ * the site's standard glowing info (i) affordance (.studio-info-btn +
+ * #info-spark-muse-overlay), replacing the weak "+ About Spark Muse" text
+ * disclosure. The primary state keeps a compact one-line room legend plus a
+ * newcomer-friendly cue instead of the descriptive block.
  *
  * Covers:
  *   1. A .spark-threshold framing block exists with an eyebrow, and the
- *      orientation copy (lede + legend) lives behind the collapsed
- *      .spark-about disclosure — not as primary repeated real-estate.
+ *      orientation copy (lede + legend) lives behind the collapsed guidance
+ *      overlay reached via the glowing info (i) — not as primary real-estate.
  *   2. Copy names Home as the first creation/milestone in Studio, the
  *      Compass + Living Profile + palette seeding, and Studio as the
  *      ongoing workspace beyond Home (inside the disclosure).
@@ -47,10 +49,10 @@ function assert(cond, msg) { cond ? pass(msg) : fail(msg); }
 // ---------------------------------------------------------------------------
 // 1) Threshold framing block + collapsed orientation disclosure.
 // ---------------------------------------------------------------------------
-console.log('spark-threshold framing block exists with a collapsed About disclosure');
+console.log('spark-threshold framing block exists with the standard glowing info affordance');
 
 // The threshold block spans from its opening div to the disc wrap that
-// follows it — this captures the eyebrow, the disclosure and the compact
+// follows it — this captures the eyebrow, the guidance cue and the compact
 // room legend without depending on inner </div> nesting.
 const blockRe = /<div class="spark-threshold">[\s\S]*?<div class="om-widget-disc-wrap">/;
 const blockMatch = src.match(blockRe);
@@ -59,15 +61,27 @@ const block = blockMatch ? blockMatch[0] : '';
 
 assert(/class="spark-threshold-eyebrow"/.test(block), 'threshold eyebrow present in primary state');
 
-// The long lede + descriptive legend are behind progressive disclosure.
-assert(/<details class="spark-about">/.test(block),
-  'orientation copy lives inside a .spark-about disclosure');
-assert(/class="spark-about-summary"/.test(block),
-  'disclosure exposes a summary for first-visitor orientation');
-// The disclosure defaults collapsed (no `open` attribute) so repeated
+// The orientation copy is reached through the site-standard glowing info
+// (i) affordance, not a weak "+ About Spark Muse" text disclosure.
+assert(!/<details class="spark-about">/.test(block),
+  'the old spark-about <details> disclosure is removed');
+assert(!/\+ About Spark Muse/.test(src),
+  'no literal "+ About Spark Muse" text row remains in the markup');
+assert(/class="studio-info-btn spark-muse-info-btn"/.test(block),
+  'primary state uses the standard glowing info (i) affordance');
+assert(/data-info="info-spark-muse-overlay"/.test(block),
+  'the info button opens the Spark Muse guidance overlay');
+assert(/aria-label="About Spark Muse[^"]*"/.test(block),
+  'the info affordance carries an accessible label (keyboard-operable button)');
+// Newcomer-friendly, compact cue that invites expansion without re-densifying.
+assert(/class="spark-guide-cue"/.test(block), 'a compact newcomer guidance cue is present');
+assert(/New here\?/.test(block), 'the cue carries newcomer-friendly microcopy');
+// The guidance overlay is collapsed by default (no `open` class) so repeated
 // users are not shown the full explainer on every draw.
-assert(/<details class="spark-about">\s*<summary/.test(block),
-  'the About disclosure is collapsed by default (no open attribute)');
+assert(/<div class="studio-info-overlay" id="info-spark-muse-overlay">/.test(src),
+  'the Spark Muse guidance overlay exists');
+assert(!/<div class="studio-info-overlay open" id="info-spark-muse-overlay">/.test(src),
+  'the guidance overlay is collapsed (not open) by default');
 
 const cssRe = /\.spark-threshold\s*\{([^}]*)\}/;
 const css = src.match(cssRe);
@@ -92,13 +106,13 @@ assert(bodyCss !== null && /flex-wrap:\s*wrap/.test(bodyCss[1]),
 // ---------------------------------------------------------------------------
 console.log('orientation copy frames Home as first Studio creation, seeded, Studio ongoing');
 
-const aboutRe = /<details class="spark-about">[\s\S]*?<\/details>/;
-const aboutMatch = block.match(aboutRe);
-assert(aboutMatch !== null, '.spark-about disclosure block isolated');
+const aboutRe = /<div class="studio-info-overlay" id="info-spark-muse-overlay">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/;
+const aboutMatch = src.match(aboutRe);
+assert(aboutMatch !== null, 'Spark Muse guidance overlay block isolated');
 const about = aboutMatch ? aboutMatch[0] : '';
 
 assert(/class="spark-threshold-lede"/.test(about),
-  'the long Muse lede lives inside the disclosure, not the primary card');
+  'the long Muse lede lives inside the guidance overlay, not the primary card');
 assert(/first creation in Studio/.test(about),
   'copy names Personal Home as the first creation in Studio');
 assert(/Compass, Living Profile and palette/.test(about),
@@ -108,9 +122,8 @@ assert(/never a blank page/.test(about),
 assert(/Studio stays open/.test(about),
   'copy frames Studio as staying open / ongoing beyond Home');
 
-// The long lede must NOT be primary (outside-the-disclosure) copy.
-const primaryOnly = block.replace(aboutRe, '');
-assert(!/creative muse of stUdio/.test(primaryOnly),
+// The long lede must NOT be primary (in the .spark-threshold) copy.
+assert(!/creative muse of stUdio/.test(block),
   'the full Muse paragraph is not primary visible copy');
 
 // ---------------------------------------------------------------------------
@@ -134,7 +147,7 @@ const orient = orientMatch ? orientMatch[0] : '';
 });
 
 // The descriptive legend is NOT a large repeated block in the primary state.
-assert(!/class="spark-orient-item/.test(primaryOnly),
+assert(!/class="spark-orient-item/.test(block),
   'the descriptive orientation legend is not repeated in the primary state');
 
 // A compact one-line room legend keeps the four concepts visible.
