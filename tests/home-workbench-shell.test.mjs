@@ -371,4 +371,108 @@ test('Workbench does not expose any branded internal terms in visible copy', () 
   }
 });
 
+// ── Polish + mobile behaviour ───────────────────────────────────────
+console.log('\nPolish + mobile behaviour');
+
+test('mobile tab bar renders the three Workbench panels (Rooms / Shape / Preview)', () => {
+  // The mobile tab bar lets a phone user swap between the three
+  // columns one at a time. It must ship as a role=tablist in the DOM
+  // and expose the three named tabs.
+  assert.match(html,
+    /<nav class="hw-mobile-tabs" role="tablist"[^>]*aria-label="Workbench panels"/,
+    'mobile tab bar must be a role=tablist with an accessible label');
+  assert.match(html, /data-hw-mobile-tab="rooms"[^>]*role="tab"[^>]*>Rooms</,
+    'Rooms mobile tab must exist and be a role=tab');
+  assert.match(html, /data-hw-mobile-tab="work"[^>]*role="tab"[^>]*>Shape</,
+    'Shape (work) mobile tab must exist — the public-facing label');
+  assert.match(html, /data-hw-mobile-tab="preview"[^>]*role="tab"[^>]*>Preview</,
+    'Preview mobile tab must exist and be a role=tab');
+});
+
+test('Workbench declares its media queries at the END of the CSS block', () => {
+  // Regression: a duplicate media-query pair earlier in the block used
+  // to fight the .hw-mobile-tabs { display: none } base rule declared
+  // later in the same file. The mobile tabs stayed hidden on phones as
+  // a result. Keep exactly one Workbench-scoped set of media queries,
+  // and keep them AT THE END so they win on source order.
+  const cssStart = html.indexOf('HOME_WORKBENCH_CSS_START');
+  const cssEnd = html.indexOf('HOME_WORKBENCH_CSS_END');
+  assert.ok(cssStart !== -1 && cssEnd > cssStart, 'CSS sentinel block must exist');
+  const cssBlock = html.slice(cssStart, cssEnd);
+
+  // Should have exactly one @media (max-width: 1120px) and one
+  // @media (max-width: 720px) inside the Workbench CSS block.
+  const c1120 = (cssBlock.match(/@media \(max-width: 1120px\)/g) || []).length;
+  const c720 = (cssBlock.match(/@media \(max-width: 720px\)/g) || []).length;
+  assert.equal(c1120, 1,
+    'exactly ONE @media (max-width: 1120px) rule must live inside the ' +
+    'Workbench CSS block (found ' + c1120 + ')');
+  assert.equal(c720, 1,
+    'exactly ONE @media (max-width: 720px) rule must live inside the ' +
+    'Workbench CSS block (found ' + c720 + ')');
+
+  // The 720px media query must appear AFTER the base .hw-mobile-tabs
+  // declaration so its `display: flex` overrides `display: none`.
+  const baseDeclIdx = cssBlock.indexOf('.hw-mobile-tabs {');
+  const mediaIdx = cssBlock.indexOf('@media (max-width: 720px)');
+  assert.ok(baseDeclIdx !== -1 && mediaIdx !== -1,
+    'both base .hw-mobile-tabs rule and the 720px media query must exist');
+  assert.ok(mediaIdx > baseDeclIdx,
+    'the mobile media query must be declared AFTER the base ' +
+    '.hw-mobile-tabs rule so its display:flex wins on source order');
+});
+
+test('Workbench wires Cmd+S (or Ctrl+S) to save the active room', () => {
+  // Keyboard shortcut: save-on-Cmd+S is the muscle-memory power move.
+  // The handler must live inside the Workbench block and route to the
+  // same save function used by the button.
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /metaKey|ctrlKey/, 'save shortcut must check meta/ctrl key');
+  assert.match(wbSrc, /key\s*===?\s*['"]s['"]|key\.toLowerCase\(\)\s*===?\s*['"]s['"]/i,
+    'save shortcut must listen for the "s" key');
+  assert.match(wbSrc, /phWorkbenchSaveActiveSection\(\)/,
+    'save shortcut must call phWorkbenchSaveActiveSection');
+});
+
+test('Workbench wires an autosave-on-blur handler for the draft body', () => {
+  // When the user tabs away from the textarea, the draft should
+  // persist without them explicitly clicking Save. This is the safety
+  // net that keeps voice from getting lost on a phone.
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // Uses delegated 'focusout' on the root so a single listener covers
+  // the body textarea without wiring per-element blur handlers.
+  assert.match(wbSrc, /addEventListener\(\s*['"]focusout['"]/,
+    'Workbench must attach a focusout listener for autosave-on-blur');
+  assert.match(wbSrc,
+    /focusout[\s\S]{0,600}home-workbench-body[\s\S]{0,400}phWorkbenchSaveActiveSection/,
+    'the focusout autosave must fire ONLY for the #home-workbench-body ' +
+    'element and route through phWorkbenchSaveActiveSection');
+});
+
+test('rooms sidebar shows an "Unsaved" pill on the active room when dirty', () => {
+  // Renderer: the room card includes an .hw-room-unsaved span, and the
+  // CSS reveals it only for the active card when the root carries the
+  // is-dirty class. This is the visible "you have unsaved changes"
+  // signal on the rooms list.
+  assert.match(html, /<span class="hw-room-unsaved"[^>]*>Unsaved<\/span>/,
+    'each rendered room card must include an .hw-room-unsaved span');
+  assert.match(html,
+    /\.home-workbench\.is-dirty \.hw-room-card\.is-active \.hw-room-unsaved/,
+    'the Unsaved pill must only surface when root is is-dirty AND card is active');
+});
+
+test('phWorkbenchSyncDirty helper is defined and toggles the is-dirty root class', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /function phWorkbenchSyncDirty\(/,
+    'phWorkbenchSyncDirty must be defined inside the Workbench JS block');
+  assert.match(wbSrc, /is-dirty/,
+    'phWorkbenchSyncDirty must reference the is-dirty root class');
+});
+
 console.log('\n' + passed + ' checks passed.');

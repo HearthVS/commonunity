@@ -8744,6 +8744,33 @@ body.hw-open { overflow: hidden; }
   grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
   min-height: 0;
 }
+
+/* Mobile tab bar (only visible under 720px — see @media below). Sits
+   directly under the topbar. Defined BEFORE the media queries so the
+   media rules that flip it to display:flex win by cascade order. */
+.hw-mobile-tabs {
+  display: none;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+}
+.hw-mobile-tab {
+  flex: 1 1 0;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #9aa3b2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.hw-mobile-tab.is-active {
+  color: var(--text, #eef1f7);
+  border-bottom-color: color-mix(in srgb, var(--accent, #a48cff) 80%, transparent);
+}
 .home-workbench.is-preview-collapsed .hw-body {
   grid-template-columns: 260px minmax(0, 1fr) 0;
 }
@@ -8754,20 +8781,6 @@ body.hw-open { overflow: hidden; }
 .home-workbench.is-preview-fullscreen .hw-rooms-col,
 .home-workbench.is-preview-fullscreen .hw-work-col { display: none; }
 
-@media (max-width: 1120px) {
-  .hw-body { grid-template-columns: 220px minmax(0, 1fr); }
-  .hw-preview-col { display: none; }
-  .home-workbench.is-preview-open .hw-body { grid-template-columns: 0 0 minmax(0, 1fr); }
-  .home-workbench.is-preview-open .hw-rooms-col,
-  .home-workbench.is-preview-open .hw-work-col { display: none; }
-  .home-workbench.is-preview-open .hw-preview-col { display: flex; }
-}
-@media (max-width: 720px) {
-  .hw-body { grid-template-columns: minmax(0, 1fr); }
-  .hw-rooms-col { display: none; }
-  .home-workbench.is-rooms-open .hw-rooms-col { display: flex; }
-  .home-workbench.is-rooms-open .hw-work-col { display: none; }
-}
 
 /* Rooms sidebar. */
 .hw-rooms-col {
@@ -8808,6 +8821,17 @@ body.hw-open { overflow: hidden; }
 .hw-room-card-dot.is-captured { background: #6bd6a8; }
 .hw-room-card-dot.is-mixed    { background: #a48cff; }
 .hw-room-card-dot.is-empty    { background: color-mix(in srgb, var(--border, #2a2f3a) 80%, transparent); }
+/* Unsaved marker on the active room card. */
+.hw-room-card .hw-room-unsaved {
+  display: none;
+  margin-left: auto;
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent, #a48cff) 90%, var(--text, #eef1f7));
+  padding: 2px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 40%, transparent);
+}
+.home-workbench.is-dirty .hw-room-card.is-active .hw-room-unsaved { display: inline-flex; align-items: center; }
 .hw-rooms-footnote {
   margin-top: auto;
   padding: 12px 18px 18px;
@@ -8881,11 +8905,25 @@ body.hw-open { overflow: hidden; }
 .hw-work-muse-body em { color: var(--text-muted, #9aa3b2); font-style: italic; }
 
 .hw-work-actions {
+  /* Sticky at the bottom of the work column so Save & tune is always
+     reachable, even when the body is long. */
+  position: sticky; bottom: 0; z-index: 2;
   display: flex; align-items: center; gap: 10px;
   padding: 12px 24px;
   border-top: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
-  background: color-mix(in srgb, var(--input-bg, #14171d) 30%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   flex-wrap: wrap;
+}
+/* When there are unsaved changes, the Save button pulses gently. */
+.home-workbench.is-dirty .hw-work-save {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a48cff) 25%, transparent);
+  animation: hw-save-pulse 2.4s ease-in-out infinite;
+}
+@keyframes hw-save-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a48cff) 22%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #a48cff) 10%, transparent); }
 }
 .hw-work-save {
   background: var(--text, #eef1f7); color: var(--bg, #0b1120);
@@ -9047,6 +9085,35 @@ body.hw-open { overflow: hidden; }
 .hw-entry-cta-primary .hw-entry-dot {
   width: 10px; height: 10px;
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #a48cff) 85%, transparent);
+}
+
+/* Responsive breakpoints — declared AT THE END so they cascade after
+   all base rules and win on source order. */
+@media (max-width: 1120px) {
+  .hw-body { grid-template-columns: 220px minmax(0, 1fr) 0; }
+  .hw-preview-col { display: none; }
+  .home-workbench.is-preview-open .hw-body { grid-template-columns: 0 0 minmax(0, 1fr); }
+  .home-workbench.is-preview-open .hw-rooms-col,
+  .home-workbench.is-preview-open .hw-work-col { display: none; }
+  .home-workbench.is-preview-open .hw-preview-col { display: flex; }
+}
+@media (max-width: 720px) {
+  .hw-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
+  .hw-mobile-tabs { display: flex; }
+  .hw-rooms-col, .hw-work-col, .hw-preview-col {
+    grid-column: 1 / -1; grid-row: 1;
+    display: none;
+    border-right: 0;
+  }
+  .home-workbench.is-mobile-tab-work .hw-work-col,
+  .home-workbench:not(.is-mobile-tab-rooms):not(.is-mobile-tab-preview) .hw-work-col { display: flex; }
+  .home-workbench.is-mobile-tab-rooms .hw-rooms-col { display: flex; }
+  .home-workbench.is-mobile-tab-preview .hw-preview-col { display: flex; }
+  .hw-topbar { padding: 10px 14px; gap: 10px; }
+  .hw-topbar-title { font-size: 16px; }
+  .hw-topbar-progress { flex: 1 1 100%; max-width: none; order: 3; }
+  .hw-topbar-actions .hw-topbar-btn { display: none; }
+  .hw-work-head, .hw-work-body { padding-left: 16px; padding-right: 16px; }
 }
 /* ── hOMe Workbench (HOME_WORKBENCH_CSS_END) ─────────────────────────── */
 </style>
@@ -10266,6 +10333,15 @@ body.hw-open { overflow: hidden; }
       <button type="button" class="hw-topbar-close" id="home-workbench-close" aria-label="Close hOMe Workbench">×</button>
     </div>
   </div>
+
+  <!-- Mobile-only tab bar (revealed by @media (max-width: 720px)). Lets
+       members swap between the three columns one at a time on small
+       screens so nothing overlaps. -->
+  <nav class="hw-mobile-tabs" role="tablist" aria-label="Workbench panels">
+    <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="rooms" role="tab" aria-selected="false">Rooms</button>
+    <button type="button" class="hw-mobile-tab is-active" data-hw-mobile-tab="work" role="tab" aria-selected="true">Shape</button>
+    <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="preview" role="tab" aria-selected="false">Preview</button>
+  </nav>
 
   <div class="hw-body">
     <!-- Rooms sidebar -->
@@ -22833,6 +22909,7 @@ if (document.readyState === 'loading') {
             '<span class="hw-room-card-meta">' +
               '<span class="hw-room-card-dot ' + srcClass + '" aria-hidden="true"></span>' +
               hwEscape(status) +
+              '<span class="hw-room-unsaved" aria-hidden="true">Unsaved</span>' +
             '</span>' +
           '</button>' +
         '</li>';
@@ -22883,10 +22960,12 @@ if (document.readyState === 'loading') {
         if (lbl) lbl.addEventListener('input', function () {
           phWorkbenchState.draftLabel = lbl.value;
           phWorkbenchState.dirty = true;
+          phWorkbenchSyncDirty();
         });
         if (txt) txt.addEventListener('input', function () {
           phWorkbenchState.draftBody = txt.value;
           phWorkbenchState.dirty = true;
+          phWorkbenchSyncDirty();
         });
       }
       if (actions) actions.hidden = false;
@@ -22959,6 +23038,15 @@ if (document.readyState === 'loading') {
       phWorkbenchRenderRooms(model);
       phWorkbenchRenderWorkColumn(model);
       phWorkbenchRefreshPreview();
+      phWorkbenchSyncDirty();
+    }
+
+    // Mirror phWorkbenchState.dirty onto the root's class list so the
+    // CSS "unsaved" pill + Save-button pulse reflect the true state.
+    function phWorkbenchSyncDirty() {
+      var root = document.getElementById('home-workbench');
+      if (!root) return;
+      root.classList.toggle('is-dirty', !!phWorkbenchState.dirty);
     }
 
     // Save the active room's body through the existing capture path.
@@ -23014,6 +23102,7 @@ if (document.readyState === 'loading') {
       var glue = current ? (current.endsWith('.') || current.endsWith('!') || current.endsWith('?') ? '\n\n' : '\n\n') : '';
       phWorkbenchState.draftBody = current + glue + item.excerpt;
       phWorkbenchState.dirty = true;
+      phWorkbenchSyncDirty();
       // Re-render only the work column (leave preview stable until Save).
       var body = document.getElementById('home-workbench-work-body');
       if (body && typeof buildWebsitePreview === 'function') {
@@ -23138,11 +23227,85 @@ if (document.readyState === 'loading') {
       var fsBtn = document.getElementById('home-workbench-preview-fullscreen');
       if (fsBtn) fsBtn.addEventListener('click', function () {
         phWorkbenchState.previewFullscreen = !phWorkbenchState.previewFullscreen;
+        // Entering fullscreen implies preview must be visible: force the
+        // collapsed flag off so the fullscreen preview column paints.
+        if (phWorkbenchState.previewFullscreen && phWorkbenchState.previewCollapsed) {
+          phWorkbenchState.previewCollapsed = false;
+          root.classList.remove('is-preview-collapsed');
+          if (toggleBtn) {
+            toggleBtn.textContent = 'Hide preview';
+            toggleBtn.setAttribute('aria-pressed', 'true');
+          }
+        }
         root.classList.toggle('is-preview-fullscreen', phWorkbenchState.previewFullscreen);
         fsBtn.textContent = phWorkbenchState.previewFullscreen ? 'Return to Workbench' : 'Preview as visitor';
         fsBtn.setAttribute('aria-pressed', phWorkbenchState.previewFullscreen ? 'true' : 'false');
         // Ensure preview is up to date on entry.
         phWorkbenchRefreshPreview();
+      });
+
+      // Mobile column tabs (only visible < 720px). Setting the class on
+      // the root swaps which of the three columns is displayed.
+      var mobileTabs = root.querySelectorAll('[data-hw-mobile-tab]');
+      function setMobileTab(name) {
+        root.classList.remove('is-mobile-tab-rooms', 'is-mobile-tab-work', 'is-mobile-tab-preview');
+        root.classList.add('is-mobile-tab-' + name);
+        for (var i = 0; i < mobileTabs.length; i++) {
+          var tabEl = mobileTabs[i];
+          var isMe = tabEl.getAttribute('data-hw-mobile-tab') === name;
+          tabEl.classList.toggle('is-active', isMe);
+          tabEl.setAttribute('aria-selected', isMe ? 'true' : 'false');
+        }
+        // Repaint the preview when switching TO it so we don't show an
+        // out-of-date render.
+        if (name === 'preview') phWorkbenchRefreshPreview();
+      }
+      for (var mi = 0; mi < mobileTabs.length; mi++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            setMobileTab(btn.getAttribute('data-hw-mobile-tab'));
+          });
+        })(mobileTabs[mi]);
+      }
+      // Default mobile tab is "work" so opening the Workbench lands
+      // directly on the editor — no extra tap needed.
+      root.classList.add('is-mobile-tab-work');
+
+      // Keyboard shortcuts inside the Workbench:
+      //   Cmd/Ctrl+S — Save the active section (never triggers a browser
+      //                  save; preventDefault is unconditional).
+      //   Cmd/Ctrl+ArrowUp / ArrowDown — move between rooms.
+      root.addEventListener('keydown', function (e) {
+        if (!phWorkbenchState.open) return;
+        var meta = e.metaKey || e.ctrlKey;
+        if (meta && (e.key === 's' || e.key === 'S')) {
+          e.preventDefault();
+          var wrote = phWorkbenchSaveActiveSection();
+          phWorkbenchToast(wrote ? 'Saved — preview updated' : 'Nothing to save yet');
+          return;
+        }
+        if (meta && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+          e.preventDefault();
+          var idx = HW_ROOM_KEYS.indexOf(phWorkbenchState.activeRoom);
+          if (idx === -1) idx = 0;
+          var delta = e.key === 'ArrowDown' ? 1 : -1;
+          var next = (idx + delta + HW_ROOM_KEYS.length) % HW_ROOM_KEYS.length;
+          phWorkbenchState.activeRoom = HW_ROOM_KEYS[next];
+          phWorkbenchState.dirty = false;
+          phWorkbenchRefreshAll();
+        }
+      });
+
+      // Autosave on blur: if the body textarea loses focus while dirty,
+      // persist the draft. Silent — no toast, so it doesn't feel noisy.
+      root.addEventListener('focusout', function (e) {
+        if (!phWorkbenchState.dirty) return;
+        var t = e.target;
+        if (!t || t.id !== 'home-workbench-body') return;
+        // The related target may be the Save button — skip autosave in
+        // that case; the click handler already covers it.
+        if (e.relatedTarget && e.relatedTarget.id === 'home-workbench-save') return;
+        phWorkbenchSaveActiveSection();
       });
 
       // Source drawer collapse.
