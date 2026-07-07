@@ -6297,6 +6297,16 @@ input, textarea { font: inherit; color: inherit; }
   --phpub-line: color-mix(in srgb, var(--phpub-expression) 16%, var(--phpub-root));
   --phpub-accent: var(--phpub-radiance);
   --phpub-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Visual-identity defaults — overridden by the data-tone / data-density /
+     data-motion / data-type attributes the renderer sets from
+     model.visualIdentity. These keep the render sensible when no identity is
+     present, so the surface degrades gracefully to the calm, grounded look. */
+  --phpub-space: 1;             /* density → how much the sections breathe */
+  --phpub-type-scale: 1;        /* type direction → display type size */
+  --phpub-tracking: -0.015em;   /* type direction → display letter-spacing */
+  --phpub-motion-dur: 15s;      /* motion → atmosphere breath pace */
+  --phpub-halo-1: 34%;          /* tone → halo core intensity */
+  --phpub-halo-2: 12%;          /* tone → halo falloff intensity */
   position: relative;
   color: var(--phpub-expression);
   background: var(--phpub-surface);
@@ -6318,10 +6328,10 @@ input, textarea { font: inherit; color: inherit; }
 .phpub-halo {
   top: -20%; left: 50%; width: 70%; aspect-ratio: 1; transform: translateX(-50%);
   background: radial-gradient(circle at 50% 50%,
-    color-mix(in srgb, var(--phpub-accent) 34%, transparent) 0%,
-    color-mix(in srgb, var(--phpub-accent) 12%, transparent) 34%, transparent 68%);
+    color-mix(in srgb, var(--phpub-accent) var(--phpub-halo-1, 34%), transparent) 0%,
+    color-mix(in srgb, var(--phpub-accent) var(--phpub-halo-2, 12%), transparent) 34%, transparent 68%);
   filter: blur(10px); border-radius: 50%;
-  animation: phpub-breathe 15s var(--phpub-ease) infinite;
+  animation: phpub-breathe var(--phpub-motion-dur, 15s) var(--phpub-ease) infinite;
 }
 .phpub-grain {
   inset: 0; opacity: 0.5; mix-blend-mode: multiply;
@@ -6342,8 +6352,9 @@ input, textarea { font: inherit; color: inherit; }
 }
 .phpub-hero-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; letter-spacing: -0.015em; line-height: 1.06;
-  font-size: clamp(32px, 5.4vw, 58px); margin: 0 auto 18px; max-width: 20ch;
+  font-weight: 500; letter-spacing: var(--phpub-tracking, -0.015em); line-height: 1.06;
+  font-size: calc(clamp(32px, 5.4vw, 58px) * var(--phpub-type-scale, 1));
+  margin: 0 auto 18px; max-width: 20ch;
   color: var(--phpub-expression);
 }
 .phpub-hero-lede {
@@ -6409,7 +6420,7 @@ input, textarea { font: inherit; color: inherit; }
 .phpub-index-note { font-size: 12px; color: var(--phpub-ink-muted); }
 
 .phpub-rooms {
-  display: grid; gap: clamp(20px, 3vw, 36px);
+  display: grid; gap: calc(clamp(20px, 3vw, 36px) * var(--phpub-space, 1));
   padding: 0 clamp(16px, 4vw, 40px); max-width: 1000px; margin: 0 auto;
 }
 /* Per-room accents: each room mixes the palette radiance toward a distinct
@@ -6420,18 +6431,34 @@ input, textarea { font: inherit; color: inherit; }
 .phpub-room.s-3 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 66%, #6f8f5f); }
 .phpub-room.s-4 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 92%, #b8631a); }
 .phpub-room {
+  /* Per-room treatment (position-keyed, never the internal dimension name):
+     the renderer sets --phpub-room-accent from the treatment's palette role
+     and data-intensity from that room's content weight. */
+  --phpub-room-accent: var(--phpub-accent);
+  --phpub-room-glow: 12%;
+  --phpub-room-edge: 3px;
   position: relative; overflow: hidden;
-  padding: clamp(24px, 3.4vw, 40px);
+  padding: calc(clamp(24px, 3.4vw, 40px) * var(--phpub-space, 1));
   border-radius: 16px;
   border: 1px solid var(--phpub-line);
-  border-top: 3px solid var(--phpub-accent);
+  border-top: var(--phpub-room-edge, 3px) solid var(--phpub-accent);
   background: var(--phpub-surface-2);
   scroll-margin-top: 24px;
 }
+/* Intensity → strength of the room's accent edge + corner glow. */
+.phpub-room[data-intensity="soft"]   { --phpub-room-glow: 8%;  --phpub-room-edge: 2px; }
+.phpub-room[data-intensity="medium"] { --phpub-room-glow: 14%; --phpub-room-edge: 3px; }
+.phpub-room[data-intensity="bold"]   { --phpub-room-glow: 22%; --phpub-room-edge: 4px; }
 .phpub-room::before {
   content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background: radial-gradient(ellipse 60% 55% at 92% 0%,
-    color-mix(in srgb, var(--phpub-accent) 12%, transparent), transparent 66%);
+    color-mix(in srgb, var(--phpub-room-accent) var(--phpub-room-glow, 12%), transparent), transparent 66%);
+}
+/* Decorative per-room motif glyph — aria-hidden, carries no text/language. */
+.phpub-room-glyph {
+  position: absolute; top: 16px; right: 20px; z-index: 1;
+  font-size: 22px; line-height: 1; opacity: 0.55; pointer-events: none;
+  color: color-mix(in srgb, var(--phpub-room-accent) 66%, var(--phpub-ink-muted));
 }
 .phpub-room > * { position: relative; z-index: 1; }
 .phpub-room-head { display: flex; align-items: baseline; gap: 16px; margin: 0 0 16px; }
@@ -6441,7 +6468,8 @@ input, textarea { font: inherit; color: inherit; }
 }
 .phpub-room-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; font-size: clamp(24px, 2.9vw, 34px); line-height: 1.08;
+  font-weight: 500; letter-spacing: var(--phpub-tracking, -0.015em);
+  font-size: calc(clamp(24px, 2.9vw, 34px) * var(--phpub-type-scale, 1)); line-height: 1.08;
   margin: 0; color: var(--phpub-expression);
 }
 .phpub-room-kicker { margin: 6px 0 0; font-size: 13px; color: var(--phpub-ink-muted); }
@@ -6532,6 +6560,38 @@ input, textarea { font: inherit; color: inherit; }
   .phpub-halo, .phpub-scrollcue::before { animation: none !important; }
   .phpub-btn, .phpub-index a { transition: none !important; }
 }
+
+/* ── Model-driven visual identity ────────────────────────────────────
+   phRenderPublicHome sets data-tone / data-density / data-motion / data-type
+   on the .phpub root from model.visualIdentity. These declarative hooks tune
+   the render — spacing, display type, atmosphere pace, accent intensity — so a
+   home is personalised by its own model rather than statically styled. All
+   values are public-safe; none name an internal system. */
+
+/* Density → how airy or full the rooms sit. */
+.phpub[data-density="sparse"]   { --phpub-space: 1.2; }
+.phpub[data-density="balanced"] { --phpub-space: 1; }
+.phpub[data-density="rich"]     { --phpub-space: 0.86; }
+
+/* Type direction → display type size + tracking. */
+.phpub[data-type="editorial"]  { --phpub-type-scale: 1.06; --phpub-tracking: -0.022em; }
+.phpub[data-type="modern"]     { --phpub-type-scale: 0.95; --phpub-tracking: 0.006em; }
+.phpub[data-type="grounded"]   { --phpub-type-scale: 1;    --phpub-tracking: -0.012em; }
+.phpub[data-type="expressive"] { --phpub-type-scale: 1.12; --phpub-tracking: -0.028em; }
+
+/* Motion → pace of the breathing atmosphere; "still" holds it. */
+.phpub[data-motion="subtle"] { --phpub-motion-dur: 20s; }
+.phpub[data-motion="alive"]  { --phpub-motion-dur: 11s; }
+.phpub[data-motion="still"] .phpub-halo,
+.phpub[data-motion="still"] .phpub-scrollcue::before,
+.phpub[data-motion="still"] .phpub-invitation .phpub-halo { animation: none; }
+
+/* Tone → intensity of the luminous accent/halo mix. */
+.phpub[data-tone="warm"]     { --phpub-halo-1: 34%; --phpub-halo-2: 12%; }
+.phpub[data-tone="grounded"] { --phpub-halo-1: 24%; --phpub-halo-2: 9%; }
+.phpub[data-tone="luminous"] { --phpub-halo-1: 44%; --phpub-halo-2: 16%; }
+.phpub[data-tone="clear"]    { --phpub-halo-1: 20%; --phpub-halo-2: 8%; }
+.phpub[data-tone="vivid"]    { --phpub-halo-1: 52%; --phpub-halo-2: 18%; }
 
 .ph-rooms-nav.is-v3 {
   grid-template-columns: repeat(5, 1fr);
@@ -22371,6 +22431,45 @@ if (document.readyState === 'loading') {
         if (vars.length) styleAttr = ' style="' + esc(vars.join(';')) + '"';
       }
 
+      // Visual identity → declarative, public-safe render hooks. The model's
+      // visualIdentity (PR #152) carries tone / density / motion / typeDirection
+      // and per-room treatments, all derived deterministically from the same
+      // source and vetted public-safe. Consumed here as data-* attributes on the
+      // root (which the scoped .phpub CSS reads to tune spacing, display type,
+      // atmosphere pace and accent intensity) and per-room treatment hooks below.
+      // Fallbacks keep the render calm + grounded when no identity is present.
+      var vi = (model.visualIdentity && typeof model.visualIdentity === 'object') ? model.visualIdentity : {};
+      function viPick(value, allowed, dflt) {
+        return (typeof value === 'string' && allowed.indexOf(value) !== -1) ? value : dflt;
+      }
+      var viTone    = viPick(vi.tone,          ['warm', 'grounded', 'luminous', 'clear', 'vivid'], 'grounded');
+      var viDensity = viPick(vi.density,       ['sparse', 'balanced', 'rich'], 'balanced');
+      var viMotion  = viPick(vi.motion,        ['still', 'subtle', 'alive'], 'subtle');
+      var viType    = viPick(vi.typeDirection, ['editorial', 'modern', 'grounded', 'expressive'], 'grounded');
+      var viMotifs  = Array.isArray(vi.motifs) ? vi.motifs : [];
+      var viAttrs = ' data-tone="' + esc(viTone) + '"' +
+                    ' data-density="' + esc(viDensity) + '"' +
+                    ' data-motion="' + esc(viMotion) + '"' +
+                    ' data-type="' + esc(viType) + '"' +
+                    (viMotifs[0] ? ' data-motif="' + esc(viMotifs[0]) + '"' : '');
+
+      // Per-room treatments, aligned by position (never the internal dimension
+      // name). Each maps a palette role → --phpub-room-accent, an intensity, and
+      // a decorative motif + glyph. Guarded so missing/short lists degrade.
+      var roomTreatments = Array.isArray(vi.roomTreatments) ? vi.roomTreatments : [];
+      function roomTreatmentAttrs(i) {
+        var t = (roomTreatments[i] && typeof roomTreatments[i] === 'object') ? roomTreatments[i] : {};
+        var role = viPick(t.accent, ['root', 'expression', 'radiance'], 'radiance');
+        var intensity = viPick(t.intensity, ['soft', 'medium', 'bold'], 'medium');
+        var motif = (typeof t.motif === 'string') ? t.motif : '';
+        return {
+          attrs: ' data-intensity="' + esc(intensity) + '"' +
+                 (motif ? ' data-motif="' + esc(motif) + '"' : '') +
+                 ' style="--phpub-room-accent:var(--phpub-' + role + ')"',
+          glyph: (typeof t.glyph === 'string' && t.glyph) ? t.glyph : ''
+        };
+      }
+
       // Room anchor ids come from position, never the raw dimension key.
       function roomId(i) { return 'phpub-room-' + (i + 1); }
 
@@ -22379,7 +22478,7 @@ if (document.readyState === 'loading') {
       var atmos = '<div class="phpub-atmos" aria-hidden="true">' +
         '<span class="phpub-halo"></span><span class="phpub-grain"></span></div>';
 
-      var html = '<div class="phpub" data-phpub="visitor"' + styleAttr + '>';
+      var html = '<div class="phpub" data-phpub="visitor"' + viAttrs + styleAttr + '>';
 
       // ── Threshold / hero — person-first ──────────────────────────────
       var heroHeading = esc(hero.heading || name);
@@ -22414,8 +22513,11 @@ if (document.readyState === 'loading') {
         var label   = esc(room.label || room.heading || '');
         var heading = esc(room.heading || room.label || '');
         var eyebrow = esc(room.eyebrow || '');
+        var treat   = roomTreatmentAttrs(i);
         html += '<section class="phpub-room s-' + (i + 1) + '" id="' + roomId(i) + '"' +
+          treat.attrs +
           (label ? ' aria-label="' + label + '"' : '') + '>' +
+          (treat.glyph ? '<span class="phpub-room-glyph" aria-hidden="true">' + esc(treat.glyph) + '</span>' : '') +
           '<div class="phpub-room-head">' +
             '<span class="phpub-room-idx" aria-hidden="true">' + pad2(i + 1) + '</span>' +
             '<div class="phpub-room-titles">' +
