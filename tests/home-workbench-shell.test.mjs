@@ -475,4 +475,116 @@ test('phWorkbenchSyncDirty helper is defined and toggles the is-dirty root class
     'phWorkbenchSyncDirty must reference the is-dirty root class');
 });
 
+// -----------------------------------------------------------------------------
+// Digit presence — cycling seven-segment creative helper
+// -----------------------------------------------------------------------------
+// Digit is the always-visible making partner. It doesn't rest on any fixed
+// value; instead a seven-segment glyph cycles through characters, and the
+// cycle speed carries its state (resting → idle → attending → listening →
+// thinking → offering → held). These tests lock the presence contract:
+// the glyph exists in all three placements, the state machine is wired,
+// and the copy speaks in Digit's first-person voice.
+
+test('Digit CSS declares the glyph + all three placements', () => {
+  assert.match(html, /\.digit-glyph\b/, 'must define .digit-glyph base class');
+  assert.match(html, /\.hw-digit-card\b/, 'must define the .hw-digit-card wrapper');
+  assert.match(html, /\.hw-topbar-digit\b/, 'must define the topbar Digit chip');
+  assert.match(html, /\.hw-entry-digit\b/, 'must define the entrance-rail Digit slot');
+  assert.match(html, /--digit-tint/, 'must expose --digit-tint for theme overrides');
+});
+
+test('Digit CSS declares every state class', () => {
+  const states = ['is-resting', 'is-idle', 'is-attending', 'is-listening', 'is-thinking', 'is-offering', 'is-held'];
+  for (const s of states) {
+    assert.ok(html.includes('.digit-glyph.' + s) || html.includes(s),
+      'Digit CSS must declare state class: ' + s);
+  }
+});
+
+test('Digit topbar chip is anchored inside the Workbench topbar', () => {
+  assert.match(html, /id="home-workbench-digit-topbar"/,
+    'topbar must contain the Digit chip element');
+  assert.match(html, /data-digit-glyph="topbar"/,
+    'topbar Digit chip must carry data-digit-glyph="topbar"');
+});
+
+test('Digit entrance-rail glyph is rendered inside the Open hOMe Workbench CTA', () => {
+  assert.match(html, /data-digit-glyph="entrance"/,
+    'entrance rail CTA must contain a data-digit-glyph="entrance" glyph');
+});
+
+test('Digit card replaces the Muse card in the Workbench body', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /phWorkbenchDigitHtml/,
+    'phWorkbenchDigitHtml must be defined (replacing phWorkbenchMuseHtml)');
+  assert.match(wbSrc, /data-digit-glyph="card"/,
+    'the Digit card must contain a data-digit-glyph="card" glyph slot');
+  assert.match(wbSrc, /hw-digit-card/,
+    'the Digit card wrapper must use the hw-digit-card class');
+});
+
+test('Digit copy speaks in first-person, quiet voice', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // Digit speaks as "I" / "I'll" / "I'm" — never as a third-party "Muse"
+  // labeling the human. This is the presence contract for the voice.
+  // JS source strings escape apostrophes as \', so match both raw and escaped forms.
+  const firstPersonHits = (wbSrc.match(/\bI(\\?')(ll|m|d)\b|\bI\s+(hold|listen|notice|can)\b/g) || []).length;
+  assert.ok(firstPersonHits >= 1,
+    'Digit prompts must include at least one first-person phrase (I\'ll / I\'m / I hold / I listen / I notice)');
+});
+
+test('Digit JS exposes the state machine + segment map on window', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /DIGIT_SEG_MAP\b/,
+    'DIGIT_SEG_MAP (character → lit-segments) must be defined');
+  assert.match(wbSrc, /DIGIT_SVG\b/,
+    'DIGIT_SVG (seven-segment SVG template) must be defined');
+  assert.match(wbSrc, /window\.phDigitSetState\s*=/,
+    'phDigitSetState must be exposed on window for external callers');
+  assert.match(wbSrc, /window\.phDigitMountAll\s*=/,
+    'phDigitMountAll must be exposed on window');
+});
+
+test('Digit state machine covers all seven states', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const states = ['resting', 'idle', 'attending', 'listening', 'thinking', 'offering', 'held'];
+  for (const s of states) {
+    // States appear either as quoted strings (phDigitSetState('idle')) or as
+    // object keys (idle: 800). Accept either.
+    const quoted  = wbSrc.includes("'" + s + "'") || wbSrc.includes('"' + s + '"');
+    const asKey   = new RegExp('\\b' + s + '\\s*:').test(wbSrc);
+    assert.ok(quoted || asKey,
+      'DIGIT_SPEED / state machine must reference state: ' + s);
+  }
+});
+
+test('Digit is wired into open / close / save / focus / blur events', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // open → idle
+  assert.match(wbSrc, /phDigitSetState\(\s*['"]idle['"]/,
+    'openHomeWorkbench must transition Digit to idle');
+  // close → resting
+  assert.match(wbSrc, /phDigitSetState\(\s*['"]resting['"]/,
+    'closeHomeWorkbench must transition Digit back to resting');
+  // save → held
+  assert.match(wbSrc, /phDigitSetState\(\s*['"]held['"]/,
+    'phWorkbenchSaveActiveSection must transition Digit to held on save');
+  // focus → attending
+  assert.match(wbSrc, /phDigitSetState\(\s*['"]attending['"]/,
+    'focusin on the workbench body must transition Digit to attending');
+  // keydown → listening
+  assert.match(wbSrc, /phDigitSetState\(\s*['"]listening['"]/,
+    'keydown on the workbench body must transition Digit to listening');
+});
+
 console.log('\n' + passed + ' checks passed.');

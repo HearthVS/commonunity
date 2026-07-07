@@ -9115,6 +9115,114 @@ body.hw-open { overflow: hidden; }
   .hw-topbar-actions .hw-topbar-btn { display: none; }
   .hw-work-head, .hw-work-body { padding-left: 16px; padding-right: 16px; }
 }
+
+/* ── Digit — the cycling seven-segment presence ─────────────────────────
+   Digit is the always-on creative helper in the Workbench. The glyph is
+   an inline SVG of a single seven-segment character. Segments are opacity
+   animated: unlit segments stay very faintly visible (ghost baseline) so
+   the figure-8 is *always* there, and lit segments glow in the hOMe
+   accent color.
+
+   The visible character cycles continuously. Cycle SPEED carries state
+   (resting slowest → thinking fastest). The character never rests on a
+   fixed value — Digit isn't a value, it's a process. JS toggles a state
+   class on `.digit-glyph`; the character swap is JS-driven (setInterval),
+   and CSS just handles segment styling, ghost baseline, and the "held"
+   pause tone.
+
+   Segment naming: a=top, b=upper-right, c=lower-right, d=bottom,
+                   e=lower-left, f=upper-left, g=middle. */
+
+.digit-glyph {
+  display: inline-block;
+  position: relative;
+  width: 20px; height: 32px;
+  vertical-align: middle;
+  color: var(--accent, #a48cff);
+  /* Digit's tone is a warm hOMe amber — the same family as the room
+     numbers in the visitor preview ("01 What I make"). This keeps Digit
+     legible on the dark builder chrome and honest to the hOMe palette.
+     Members can override via --digit-lit on the workbench root if a
+     future theme wants to tint Digit personally. */
+  --digit-lit: var(--digit-tint, #e2a24a);
+  --digit-ghost: color-mix(in srgb, var(--digit-lit) 12%, transparent);
+  --digit-lit-glow: color-mix(in srgb, var(--digit-lit) 60%, transparent);
+  filter: drop-shadow(0 0 4px var(--digit-lit-glow));
+  transition: filter 400ms ease;
+}
+.digit-glyph--sm { width: 15px; height: 24px; }
+.digit-glyph--md { width: 22px; height: 36px; }
+.digit-glyph--lg { width: 30px; height: 48px; }
+
+/* All segments carry the ghost baseline. Lit segments override to full
+   opacity via the .is-lit class set by JS. */
+.digit-glyph svg { display: block; width: 100%; height: 100%; }
+.digit-glyph .seg {
+  fill: var(--digit-ghost);
+  transition: fill 120ms ease-out;
+}
+.digit-glyph .seg.is-lit {
+  fill: var(--digit-lit);
+}
+
+/* State: held (a "witnessed" beat after save). Dim glow, warmer tone. */
+.digit-glyph.is-held {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--digit-lit) 80%, transparent));
+}
+/* State: offering — Digit has produced something. Brief bloom. */
+.digit-glyph.is-offering {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--digit-lit) 90%, transparent));
+}
+/* State: resting — extra dim. */
+.digit-glyph.is-resting {
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--digit-lit) 30%, transparent));
+  opacity: 0.75;
+}
+
+/* Digit's home inside the room work column (replaces the muse block). */
+.hw-digit-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 30%, var(--border, #2a2f3a));
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 6%, transparent);
+}
+.hw-digit-card-glyph {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.hw-digit-card-copy { flex: 1 1 auto; min-width: 0; }
+.hw-digit-card-eye {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent, #a48cff) 85%, var(--text-muted, #9aa3b2));
+  margin: 0 0 4px;
+}
+.hw-digit-card-body {
+  font-size: 13px; color: var(--text, #eef1f7); line-height: 1.55; margin: 0;
+}
+.hw-digit-card-body em { color: var(--text-muted, #9aa3b2); font-style: italic; }
+
+/* Digit in the topbar — small, always visible next to the Workbench title. */
+.hw-topbar-digit {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-left: 12px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 22%, transparent);
+  background: color-mix(in srgb, var(--accent, #a48cff) 4%, transparent);
+}
+.hw-topbar-digit-label {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+
+/* Digit on the entrance rail CTA — small, cycling at resting speed to
+   invite the member in. Placed before the label so it reads left-to-right
+   like: [Digit] Open hOMe Workbench. */
+.hw-entry-digit {
+  display: inline-flex;
+  margin-right: 2px;
+}
 /* ── hOMe Workbench (HOME_WORKBENCH_CSS_END) ─────────────────────────── */
 </style>
 </head>
@@ -9261,6 +9369,11 @@ body.hw-open { overflow: hidden; }
          inside the Studio Path panel as a transitional fallback. -->
     <button type="button" class="hw-entry-cta hw-entry-cta-primary" id="home-workbench-open-entrance">
       <span class="hw-entry-dot" aria-hidden="true"></span>
+      <!-- Digit is present even at the door — slow resting cycle here as an
+           implicit invitation. It picks up to idle once the Workbench opens. -->
+      <span class="hw-entry-digit" aria-hidden="true">
+        <span class="digit-glyph digit-glyph--sm" data-digit-glyph="entrance"></span>
+      </span>
       Open hOMe Workbench
     </button>
 
@@ -10310,6 +10423,13 @@ body.hw-open { overflow: hidden; }
         <p class="hw-topbar-eyebrow">Workbench · hOMe</p>
         <h2 class="hw-topbar-title" id="home-workbench-title">Your <em>hOMe</em> in the making</h2>
       </div>
+      <!-- Digit — the always-present creative helper. Cycling seven-segment
+           glyph mounted by phDigitMount() when the Workbench opens. -->
+      <span class="hw-topbar-digit" id="home-workbench-digit-topbar"
+            aria-label="Digit — your creative helper" title="Digit — always here while you build">
+        <span class="digit-glyph digit-glyph--sm" data-digit-glyph="topbar" aria-hidden="true"></span>
+        <span class="hw-topbar-digit-label">Digit</span>
+      </span>
       <span class="hw-topbar-status" id="home-workbench-status">
         <span class="hw-status-dot" aria-hidden="true"></span>
         <span id="home-workbench-status-label">Draft</span>
@@ -22674,6 +22794,296 @@ if (document.readyState === 'loading') {
     }
 
     // <HOME_WORKBENCH_JS_START>
+
+    // ─────────────────────────────────────────────────────────────
+    // Digit — the cycling seven-segment presence
+    // ─────────────────────────────────────────────────────────────
+    // Digit is the always-present creative helper. It never rests on a
+    // fixed value — cycle SPEED carries state. The name defaults to
+    // "Digit" and members will (in a follow-up PR) be able to rename it.
+    //
+    // Design brief captured in the design conversation:
+    //   • Cycle SPEED, not brightness, communicates state.
+    //   • Base cycle is sequential (rhythmic, reassuring).
+    //   • Thinking cycle is random (alive, unpredictable — real work).
+    //   • Digit does not perform selfhood. Silence is presence too.
+    //   • R2 register: competent-within-domain, humble outside it,
+    //     small in scope, deep in loyalty. Never overreaches.
+    //
+    // States (name : cycle interval ms : mode)
+    //   resting   : 1600 : sequential (60s+ inactivity, dimmer)
+    //   idle      :  800 : sequential (Workbench open, no focus)
+    //   attending :  400 : sequential (textarea focused, no typing)
+    //   listening :  250 : sequential (typing in textarea)
+    //   thinking  :   90 : random     (Digit is computing a verb)
+    //   offering  :  hold : —         (brief bloom on a char after work)
+    //   held      :  hold : —         (post-save witnessed beat on "_")
+    //
+    // The glyph is inline SVG with seven segments (a top, b upper-right,
+    // c lower-right, d bottom, e lower-left, f upper-left, g middle).
+    // Every character maps to a set of lit segments; unlit segments stay
+    // faintly visible via CSS (the "ghost baseline").
+    var DIGIT_SEG_MAP = {
+      '0': ['a','b','c','d','e','f'],
+      '1': ['b','c'],
+      '2': ['a','b','g','e','d'],
+      '3': ['a','b','g','c','d'],
+      '4': ['f','g','b','c'],
+      '5': ['a','f','g','c','d'],
+      '6': ['a','f','g','e','c','d'],
+      '7': ['a','b','c'],
+      '8': ['a','b','c','d','e','f','g'],
+      '9': ['a','b','c','d','f','g'],
+      // Letters that render cleanly in seven-segment. Used later for the
+      // "spell Digit's name" idle animation.
+      'A': ['a','b','c','e','f','g'],
+      'b': ['c','d','e','f','g'],
+      'C': ['a','d','e','f'],
+      'c': ['d','e','g'],
+      'd': ['b','c','d','e','g'],
+      'E': ['a','d','e','f','g'],
+      'F': ['a','e','f','g'],
+      'H': ['b','c','e','f','g'],
+      'h': ['c','e','f','g'],
+      'I': ['b','c'],
+      'i': ['c'],
+      'J': ['b','c','d','e'],
+      'L': ['d','e','f'],
+      'n': ['c','e','g'],
+      'O': ['a','b','c','d','e','f'],
+      'o': ['c','d','e','g'],
+      'P': ['a','b','e','f','g'],
+      'q': ['a','b','c','f','g'],
+      'r': ['e','g'],
+      'S': ['a','f','g','c','d'],
+      't': ['d','e','f','g'],
+      'U': ['b','c','d','e','f'],
+      'u': ['c','d','e'],
+      'y': ['b','c','d','f','g'],
+      '_': ['d'],
+      '-': ['g'],
+      ' ': []
+    };
+
+    // The seven-segment SVG. Rendered once per mount; JS toggles .is-lit
+    // on each <path data-seg="…"> to swap the visible character.
+    // Viewbox 20×32 — same aspect the CSS reserves.
+    var DIGIT_SVG = (
+      '<svg viewBox="0 0 20 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        // a — top
+        '<path class="seg" data-seg="a" d="M3 2 L17 2 L15 4 L5 4 Z"/>' +
+        // b — upper right
+        '<path class="seg" data-seg="b" d="M18 3 L18 15 L16 13 L16 5 Z"/>' +
+        // c — lower right
+        '<path class="seg" data-seg="c" d="M18 17 L18 29 L16 27 L16 19 Z"/>' +
+        // d — bottom
+        '<path class="seg" data-seg="d" d="M3 30 L17 30 L15 28 L5 28 Z"/>' +
+        // e — lower left
+        '<path class="seg" data-seg="e" d="M2 17 L2 29 L4 27 L4 19 Z"/>' +
+        // f — upper left
+        '<path class="seg" data-seg="f" d="M2 3 L2 15 L4 13 L4 5 Z"/>' +
+        // g — middle
+        '<path class="seg" data-seg="g" d="M3 16 L5 14 L15 14 L17 16 L15 18 L5 18 Z"/>' +
+      '</svg>'
+    );
+
+    // All Digit glyph instances currently mounted in the DOM. The
+    // controller drives them together so every glyph in the UI stays in
+    // lockstep — Digit is one being, expressed in multiple places.
+    var DIGIT_INSTANCES = [];
+    var DIGIT_STATE = 'idle';
+    var DIGIT_HOLD_CHAR = null;   // when non-null, override cycle with this char
+    var DIGIT_HOLD_UNTIL = 0;     // ms timestamp; hold expires and cycling resumes
+    var DIGIT_IDLE_TIMER = null;
+    var DIGIT_TICK_TIMER = null;
+    var DIGIT_SEQ_INDEX = 0;      // sequential position 0..9
+    var DIGIT_ACTIVITY_TS = Date.now();
+
+    var DIGIT_SPEED = {
+      resting:   1600,
+      idle:       800,
+      attending:  400,
+      listening:  250,
+      thinking:    90
+    };
+    var DIGIT_RANDOM_STATES = { thinking: true };
+
+    function digitLitSegments(ch) {
+      return DIGIT_SEG_MAP[ch] || DIGIT_SEG_MAP[String(ch).toUpperCase()] || [];
+    }
+
+    function digitApplyChar(instance, ch) {
+      var lit = digitLitSegments(ch);
+      var segs = instance.el.querySelectorAll('path.seg');
+      for (var i = 0; i < segs.length; i++) {
+        var name = segs[i].getAttribute('data-seg');
+        if (lit.indexOf(name) !== -1) {
+          segs[i].classList.add('is-lit');
+        } else {
+          segs[i].classList.remove('is-lit');
+        }
+      }
+      instance.ch = ch;
+    }
+
+    function digitPickNextChar() {
+      if (DIGIT_HOLD_CHAR && Date.now() < DIGIT_HOLD_UNTIL) {
+        return DIGIT_HOLD_CHAR;
+      }
+      if (DIGIT_HOLD_CHAR && Date.now() >= DIGIT_HOLD_UNTIL) {
+        DIGIT_HOLD_CHAR = null; // hold expired
+      }
+      if (DIGIT_RANDOM_STATES[DIGIT_STATE]) {
+        return String(Math.floor(Math.random() * 10));
+      }
+      DIGIT_SEQ_INDEX = (DIGIT_SEQ_INDEX + 1) % 10;
+      return String(DIGIT_SEQ_INDEX);
+    }
+
+    function digitTick() {
+      var ch = digitPickNextChar();
+      for (var i = 0; i < DIGIT_INSTANCES.length; i++) {
+        digitApplyChar(DIGIT_INSTANCES[i], ch);
+      }
+    }
+
+    function digitRestartTicker() {
+      // No-op in non-browser envs (tests). setInterval may be stubbed to
+      // return nothing, leaving Node.js with dangling timers.
+      if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+      if (typeof setInterval !== 'function') return;
+      if (DIGIT_TICK_TIMER) {
+        clearInterval(DIGIT_TICK_TIMER);
+        DIGIT_TICK_TIMER = null;
+      }
+      var interval = DIGIT_SPEED[DIGIT_STATE] || DIGIT_SPEED.idle;
+      DIGIT_TICK_TIMER = setInterval(digitTick, interval);
+    }
+
+    function digitApplyStateClass() {
+      var stateClasses = ['is-resting','is-idle','is-attending','is-listening','is-thinking','is-offering','is-held'];
+      for (var i = 0; i < DIGIT_INSTANCES.length; i++) {
+        var el = DIGIT_INSTANCES[i].el;
+        stateClasses.forEach(function (cls) { el.classList.remove(cls); });
+        el.classList.add('is-' + DIGIT_STATE);
+      }
+    }
+
+    // Public setter. Guards against transient noise (e.g. brief blur
+    // during a save click) by using a small debounce for downgrade
+    // transitions from listening→attending→idle.
+    function phDigitSetState(next) {
+      if (!DIGIT_SPEED[next] && next !== 'offering' && next !== 'held') return;
+      DIGIT_STATE = next;
+      DIGIT_ACTIVITY_TS = Date.now();
+      // Skip DOM/timer work in non-browser envs.
+      if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+      digitApplyStateClass();
+      if (next === 'offering' || next === 'held') {
+        // These are hold-tones: pause cycling on a specific char for a beat.
+        DIGIT_HOLD_CHAR = (next === 'held') ? '_' : '8';
+        DIGIT_HOLD_UNTIL = Date.now() + (next === 'held' ? 500 : 400);
+        // Apply immediately so the beat is felt.
+        for (var i = 0; i < DIGIT_INSTANCES.length; i++) {
+          digitApplyChar(DIGIT_INSTANCES[i], DIGIT_HOLD_CHAR);
+        }
+        // After the hold, return to idle. Ticker keeps running at idle
+        // speed so the next tick past HOLD_UNTIL resumes cycling.
+        setTimeout(function () {
+          if (DIGIT_STATE === 'offering' || DIGIT_STATE === 'held') {
+            DIGIT_STATE = 'idle';
+            digitApplyStateClass();
+            digitRestartTicker();
+          }
+        }, next === 'held' ? 500 : 400);
+        return;
+      }
+      digitRestartTicker();
+    }
+
+    // Idle-timeout: after 60s of no state-changing activity, ease to resting.
+    function digitBumpActivity() {
+      DIGIT_ACTIVITY_TS = Date.now();
+      if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+      if (typeof setTimeout !== 'function') return;
+      if (DIGIT_IDLE_TIMER) clearTimeout(DIGIT_IDLE_TIMER);
+      DIGIT_IDLE_TIMER = setTimeout(function () {
+        if (DIGIT_STATE === 'idle' || DIGIT_STATE === 'attending') {
+          phDigitSetState('resting');
+        }
+      }, 60000);
+    }
+
+    // Mount a glyph into a container element. Idempotent — if a glyph is
+    // already mounted the same DOM node, we just re-register it.
+    function phDigitMountAt(container) {
+      if (!container) return null;
+      // Guard for non-browser test envs.
+      if (typeof document === 'undefined' || !document.contains) return null;
+      if (!container.classList || !container.classList.contains('digit-glyph')) {
+        // Container isn't the glyph host itself; find one inside.
+        var inner = container.querySelector('.digit-glyph');
+        if (!inner) return null;
+        container = inner;
+      }
+      if (container.getAttribute('data-digit-mounted') === '1') {
+        // Already mounted; ensure it's in the instances list.
+        var already = DIGIT_INSTANCES.some(function (i) { return i.el === container; });
+        if (!already) DIGIT_INSTANCES.push({ el: container, ch: null });
+        return container;
+      }
+      container.innerHTML = DIGIT_SVG;
+      container.setAttribute('data-digit-mounted', '1');
+      DIGIT_INSTANCES.push({ el: container, ch: null });
+      // Apply current state class + current char immediately so the glyph
+      // never flashes empty.
+      var stateClasses = ['is-resting','is-idle','is-attending','is-listening','is-thinking','is-offering','is-held'];
+      stateClasses.forEach(function (cls) { container.classList.remove(cls); });
+      container.classList.add('is-' + DIGIT_STATE);
+      digitApplyChar({ el: container }, String(DIGIT_SEQ_INDEX));
+      return container;
+    }
+
+    // Sweep the DOM for any unmounted glyph hosts (data-digit-glyph
+    // markers) and mount each. Called on Workbench open and after any
+    // render that could have replaced glyph DOM (room switch re-renders
+    // the Digit card).
+    function phDigitMountAll() {
+      // Guard for non-browser test envs where document lacks a real DOM.
+      if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+      var nodes = document.querySelectorAll('[data-digit-glyph]');
+      for (var i = 0; i < nodes.length; i++) {
+        phDigitMountAt(nodes[i]);
+      }
+      // Drop instances whose DOM node has been detached (e.g. after a
+      // room re-render replaced the card wholesale).
+      DIGIT_INSTANCES = DIGIT_INSTANCES.filter(function (inst) {
+        return inst.el && document.contains(inst.el);
+      });
+      // Ensure the ticker is running.
+      if (!DIGIT_TICK_TIMER) digitRestartTicker();
+    }
+
+    // Bootstrap the ticker even before the Workbench opens so the
+    // entrance-rail glyph is cycling from the moment Studio loads.
+    // Runs on next tick to let sibling DOM boot first.
+    function phDigitBootstrap() {
+      // Discover entrance-rail glyph on boot; more will be mounted as
+      // the Workbench opens.
+      phDigitMountAll();
+      DIGIT_STATE = 'resting'; // entrance rail is a "slow invitation"
+      digitApplyStateClass();
+      digitRestartTicker();
+    }
+
+    // Expose the mount + setState hooks so open/close/save flows can
+    // drive Digit's state.
+    if (typeof window !== 'undefined') {
+      window.phDigitMountAll = phDigitMountAll;
+      window.phDigitSetState = phDigitSetState;
+      window.phDigitBootstrap = phDigitBootstrap;
+    }
+
     // ─────────────────────────────────────────────────────────────
     // hOMe Workbench — the primary hOMe work surface
     // ─────────────────────────────────────────────────────────────
@@ -22713,24 +23123,29 @@ if (document.readyState === 'loading') {
     // prompts that help the person shape the section in their own
     // voice. These are BUILDER-only strings; they never appear in the
     // preview column (phRenderPublicHome does not read them).
-    var HW_MUSE_PROMPTS = {
+    // Digit's per-room presence. Copy is in Digit's voice — quiet,
+    // first-person, apprentice-toned. Digit rarely says "I" and never
+    // performs selfhood. It just names what's here and gets out of the way.
+    var HW_DIGIT_PROMPTS = {
       work: {
-        eyebrow: 'Muse · what I make',
-        body:    'What is the shape of your work right now? Name one or two things a stranger could actually meet — a craft, an offer, a piece you\'d gladly be found through.'
+        eyebrow: 'Digit · what I make',
+        body:    'Name one or two things a stranger could actually meet — a craft, an offer, a piece you\'d gladly be found through. I\'ll hold the draft as you write.'
       },
       lens: {
-        eyebrow: 'Muse · how I perceive',
-        body:    'How do you read the world? Not just what you see — what patterns, questions, or ways of noticing are yours. One or two sentences, in your own voice.'
+        eyebrow: 'Digit · how I perceive',
+        body:    'How do you read the world — what patterns, questions, or ways of noticing are yours? One or two honest sentences. I\'m listening.'
       },
       field: {
-        eyebrow: 'Muse · what keeps me alive',
-        body:    'What sustains you — practices, places, people, rhythms? Name what actually keeps the light on. Concrete beats abstract.'
+        eyebrow: 'Digit · what keeps me alive',
+        body:    'What sustains you — practices, places, people, rhythms? Concrete beats abstract. Try naming one, then another.'
       },
       call: {
-        eyebrow: 'Muse · what I\'m here for',
+        eyebrow: 'Digit · what I\'m here for',
         body:    'What is asking through you? Where would you like to be reached, joined, or supported? A single honest sentence is enough.'
       }
     };
+    // Backwards-compatible alias so any older reference still resolves.
+    var HW_MUSE_PROMPTS = HW_DIGIT_PROMPTS;
 
     // Public-safe source-drawer group labels. "cOMpass" and "Field
     // Observations" are internal builder terms — allowed here because
@@ -22853,14 +23268,25 @@ if (document.readyState === 'loading') {
       return out;
     }
 
-    // Compose the Muse block for the active room. Returns HTML.
-    function phWorkbenchMuseHtml(key) {
-      var prompt = HW_MUSE_PROMPTS[key] || HW_MUSE_PROMPTS.work;
-      return '<div class="hw-work-muse" role="note">' +
-        '<p class="hw-work-muse-eye">' + hwEscape(prompt.eyebrow) + '</p>' +
-        '<p class="hw-work-muse-body">' + hwEscape(prompt.body) + '</p>' +
+    // Compose the Digit card for the active room. Digit's cycling
+    // seven-segment glyph mounts inside .hw-digit-card-glyph via
+    // phDigitMount() after render. The card is Digit's home in the
+    // room — the place its presence is most vivid.
+    function phWorkbenchDigitHtml(key) {
+      var prompt = HW_DIGIT_PROMPTS[key] || HW_DIGIT_PROMPTS.work;
+      return '<div class="hw-digit-card" role="note" aria-label="Digit — your creative helper for this room">' +
+        '<span class="hw-digit-card-glyph" aria-hidden="true">' +
+          '<span class="digit-glyph digit-glyph--md" data-digit-glyph="card"></span>' +
+        '</span>' +
+        '<div class="hw-digit-card-copy">' +
+          '<p class="hw-digit-card-eye">' + hwEscape(prompt.eyebrow) + '</p>' +
+          '<p class="hw-digit-card-body">' + hwEscape(prompt.body) + '</p>' +
+        '</div>' +
       '</div>';
     }
+    // Backwards-compatible alias — older call sites (and legacy tests)
+    // still resolve to the same output.
+    var phWorkbenchMuseHtml = phWorkbenchDigitHtml;
 
     // Compose the source drawer body from grouped source items.
     function phWorkbenchSourceHtml(items) {
@@ -23039,6 +23465,10 @@ if (document.readyState === 'loading') {
       phWorkbenchRenderWorkColumn(model);
       phWorkbenchRefreshPreview();
       phWorkbenchSyncDirty();
+      // Any of the render functions may have replaced Digit's glyph
+      // DOM (Digit card gets re-rendered on room switch). Re-sweep to
+      // mount fresh hosts. Idempotent when nothing changed.
+      if (typeof phDigitMountAll === 'function') phDigitMountAll();
     }
 
     // Mirror phWorkbenchState.dirty onto the root's class list so the
@@ -23086,6 +23516,9 @@ if (document.readyState === 'loading') {
 
       phWorkbenchState.dirty = false;
       phWorkbenchRefreshAll();
+      // Digit witnessed the save. Brief "held" beat (underscore hold),
+      // then Digit returns to idle cycling.
+      if (typeof phDigitSetState === 'function') phDigitSetState('held');
       return wroteBody || wroteLabel;
     }
 
@@ -23144,6 +23577,13 @@ if (document.readyState === 'loading') {
         oldModal.classList.remove('is-open');
       }
       phWorkbenchRefreshAll();
+      // Digit steps up from resting (entrance-rail cycle) to idle the
+      // moment the member crosses the threshold. phWorkbenchRefreshAll
+      // will have re-rendered the Digit card; sweep to mount any new
+      // glyph hosts and drive state.
+      phDigitMountAll();
+      phDigitSetState('idle');
+      digitBumpActivity();
     }
 
     function closeHomeWorkbench() {
@@ -23153,6 +23593,8 @@ if (document.readyState === 'loading') {
       root.hidden = true;
       document.body.classList.remove('hw-open');
       phWorkbenchState.open = false;
+      // Digit returns to its resting cycle at the door.
+      phDigitSetState('resting');
     }
 
     // One-time DOM wiring — called from the same DOMContentLoaded pass
@@ -23299,13 +23741,37 @@ if (document.readyState === 'loading') {
       // Autosave on blur: if the body textarea loses focus while dirty,
       // persist the draft. Silent — no toast, so it doesn't feel noisy.
       root.addEventListener('focusout', function (e) {
-        if (!phWorkbenchState.dirty) return;
         var t = e.target;
+        // Digit steps back down to idle when focus leaves the textarea.
+        if (t && t.id === 'home-workbench-body' && typeof phDigitSetState === 'function') {
+          phDigitSetState('idle');
+          digitBumpActivity();
+        }
+        if (!phWorkbenchState.dirty) return;
         if (!t || t.id !== 'home-workbench-body') return;
         // The related target may be the Save button — skip autosave in
         // that case; the click handler already covers it.
         if (e.relatedTarget && e.relatedTarget.id === 'home-workbench-save') return;
         phWorkbenchSaveActiveSection();
+      });
+
+      // Digit state — focus + typing.
+      // Focus on the body textarea = attending. First keydown after
+      // focus = listening (the difference in cycle speed is Digit's
+      // way of "leaning in" as you actually start writing).
+      root.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (t && t.id === 'home-workbench-body' && typeof phDigitSetState === 'function') {
+          phDigitSetState('attending');
+          digitBumpActivity();
+        }
+      });
+      root.addEventListener('keydown', function (e) {
+        var t = e.target;
+        if (t && t.id === 'home-workbench-body' && typeof phDigitSetState === 'function') {
+          if (DIGIT_STATE !== 'listening') phDigitSetState('listening');
+          digitBumpActivity();
+        }
       });
 
       // Source drawer collapse.
@@ -23328,13 +23794,18 @@ if (document.readyState === 'loading') {
     }
 
     // Wire on next tick — the rest of Studio's DOM boot runs first.
+    // Also boot Digit so the entrance-rail glyph is cycling immediately.
     if (typeof document !== 'undefined') {
+      var runBoot = function () {
+        wireHomeWorkbench();
+        try { phDigitBootstrap(); } catch (_) { /* boot is best-effort */ }
+      };
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', wireHomeWorkbench);
+        document.addEventListener('DOMContentLoaded', runBoot);
       } else {
         // wireHomeWorkbench is defined above; call it after the current
         // script executes so all sibling helpers are ready.
-        window.setTimeout(wireHomeWorkbench, 0);
+        window.setTimeout(runBoot, 0);
       }
     }
     // <HOME_WORKBENCH_JS_END>
