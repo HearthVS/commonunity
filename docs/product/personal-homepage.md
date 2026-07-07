@@ -43,12 +43,78 @@ The Personal Home Page renders the member's Om Cipher in `full` mode via the can
 - Sigil render hooks exist; visual is still v0 OM-badge — to be replaced with Om Cipher v1.
 - **Primary builder entry: the hOMe Workbench** (`#home-workbench` in `studio.html`).
   A dedicated, full-viewport work surface that combines the four rooms,
-  contextual Muse guidance, source material with functional pull-in,
+  contextual **Digit** guidance, source material with functional pull-in,
   and a live visitor preview column. The old "Preview Personal Home"
   modal remains reachable as a transitional read-only fallback
   (`#home-workbench-open-legacy-modal`) but is no longer the way
   members shape their hOMe. See `docs/home-design-grammar.md` §8
   (preview overlay pattern).
+
+## Digit — the making partner
+
+**Digit** is the member's always-visible creative helper inside the hOMe
+Workbench. It is the *doer* — quiet, competent, small in scope, deep in
+loyalty. The archetype is R2-D2 / C-3PO: capable within its domain,
+humble outside it, never overreaching.
+
+Digit is deliberately distinct from **Nexus**. Nexus is contemplative
+depth-dialogue; Digit is active making. They don't compete because they
+don't operate in the same register.
+
+### Visual signature: cycling seven-segment glyph
+
+Digit never rests on a fixed value. Its presence is a **cycling
+seven-segment display** — the classic calculator/clock glyph — that
+rotates through characters continuously. Digit is a *process*, not a
+number. Members may rename their own Digit in a follow-up ceremony; the
+default name is Digit, and the seven-segment glyph carries the identity
+regardless of the chosen name.
+
+### Speed = state
+
+Cycle speed carries Digit's current state:
+
+| State       | Interval | When                                   |
+| ----------- | -------- | -------------------------------------- |
+| `resting`   | 1600 ms  | Workbench closed / long idle           |
+| `idle`      | 800 ms   | Workbench open, no active focus        |
+| `attending` | 400 ms   | Focus lands in the body                |
+| `listening` | 250 ms   | Member is actively typing              |
+| `thinking`  | 90 ms    | Digit is processing (random sequence)  |
+| `offering`  | brief    | A suggestion has landed                |
+| `held`      | brief    | A save just committed                  |
+
+Base cycles are **sequential** (rhythmic, reassuring). `thinking`
+switches to a **random** cycle (alive, unpredictable). Colour is the
+warm hOMe amber `#e2a24a`, overridable via `--digit-tint`.
+
+### Placement
+
+Whenever the Workbench is open, Digit is visible in three places:
+
+1. **Topbar chip** (`~20×32px`) — persistent presence, always cycling.
+2. **Digit card** (`~22×36px`) — inside the work column, next to the
+   contextual prompt for the active room.
+3. **Entrance-rail CTA** (`~15×24px`) — inside the "Open hOMe Workbench"
+   button before entry, so Digit greets the member on approach.
+
+### Voice
+
+Digit speaks in **first person**, quietly. Never as a third party
+labelling the member. Examples:
+
+- "I'll hold the draft as you write."
+- "I'm listening."
+- "Concrete beats abstract. Try naming one, then another."
+
+### Scope of the presence PR
+
+The first Digit PR ships **presence only** — no verbs, no backend, no
+naming ceremony. If Digit doesn't feel alive silent, no AI wiring will
+save the relationship. Follow-up PRs will add: (1) name-your-Digit
+ceremony with a "spell name" animation, (2) a verb row (Tighten /
+What's missing / Reflect) backed by `/api/digit/act`, (3) optional
+personality tuning.
 
 ## Open work
 
