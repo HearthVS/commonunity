@@ -16141,6 +16141,167 @@ if (document.readyState === 'loading') {
   }
   // <MUSE_PROJECTS_END>
 
+  // ── Public hOMe language firewall ─────────────────────────
+  // Roadmap item #1 from docs/home-design-grammar.md ("Codify the
+  // language firewall"). CommonUnity's internal meaning-and-source
+  // engine may use branded/process language in stUdio, but the public
+  // hOMe render/publish output must never surface it. This is a
+  // reusable, dependency-free guard: given rendered public text (or a
+  // public model object), it reports any internal terms, fixed taxonomy
+  // labels, or provenance/source patterns that leaked through.
+  //
+  // Design constraints (per the grammar): match branded/internal phrases
+  // and the fixed Work/Lens/Field/Call *taxonomy* pattern, NOT ordinary
+  // lowercase words — "work", "field", and "call" are legitimate public
+  // copy. So the four dimension words are only flagged when they appear
+  // as an exact section label or chained together as a fixed taxonomy.
+  //
+  // No publish backend exists yet, so this does not block anything by
+  // itself; it is exposed on window.CommonUnity.builder and surfaced as a
+  // non-blocking "public copy needs review" readiness cue, ready to become
+  // a hard publish blocker when the publish path lands.
+  // <HOME_LANGUAGE_FIREWALL_START> — extracted verbatim by tests/home-language-firewall.test.mjs
+  var HOME_FIREWALL = (function () {
+    // Branded / internal terms that must never appear in public copy.
+    // Word-boundary + case-insensitive. These are distinctive enough that
+    // matching them plainly does not swallow ordinary personal writing.
+    var BRANDED = [
+      { term: 'Living Profile',    re: /\bLiving Profile\b/i },
+      { term: 'Field Observations', re: /\bField Observations?\b/i },
+      { term: 'Compass',           re: /\bCompass\b/i },
+      { term: 'Nexus',             re: /\bNexus\b/i },
+      { term: 'Spark',             re: /\bSparks?\b/i },
+      { term: 'OM Cipher',         re: /\bOM[\s-]?Cipher\b/i }
+    ];
+
+    // The four hidden dimensions. Legitimate as ordinary words, so they
+    // are ONLY caught (a) as an exact UI label, or (b) chained together as
+    // a fixed taxonomy like "Work / Lens / Field / Call".
+    var DIMENSION_WORDS = ['work', 'lens', 'field', 'call'];
+    var TAXONOMY_CHAIN = /\b(work|lens|field|call)\b(?:\s*[\/|»·•–—-]\s*\b(?:work|lens|field|call)\b){2,}/i;
+
+    // Provenance / source / origin metadata patterns — "this came from X
+    // system" language the visitor must never see.
+    var PROVENANCE = [
+      { term: 'sourced from',    re: /\bsourced from\b/i },
+      { term: 'source:',         re: /\bsource\s*:/i },
+      { term: 'provenance',      re: /\bprovenance\b/i },
+      { term: 'confidence',      re: /\bconfidence\s*(?:score|level|:|\d)/i },
+      { term: 'came from',       re: /\b(?:this|it|content|answer)\s+(?:content\s+)?came from\b/i },
+      { term: 'origin:',         re: /\borigin\s*:/i },
+      { term: 'data-source',     re: /\bdata-source\b/i }
+    ];
+
+    // Keys whose *value* is a user-facing label/heading — an exact
+    // dimension word here means the raw taxonomy leaked as a section name.
+    var LABEL_KEYS = /^(label|heading|title|name|section|sectionLabel|eyebrow|caption|tab|nav)$/i;
+
+    function snippet(text, index, len) {
+      var pad = 24;
+      var start = Math.max(0, index - pad);
+      var end = Math.min(text.length, index + len + pad);
+      var s = text.slice(start, end).replace(/\s+/g, ' ').trim();
+      return (start > 0 ? '…' : '') + s + (end < text.length ? '…' : '');
+    }
+
+    // Scan a plain string for branded terms, taxonomy chains, and
+    // provenance patterns. Pushes structured violations onto `out`.
+    function scanText(text, location, out) {
+      if (typeof text !== 'string' || !text) return;
+      var groups = [
+        { list: BRANDED,    type: 'branded' },
+        { list: PROVENANCE, type: 'provenance' }
+      ];
+      for (var g = 0; g < groups.length; g++) {
+        var list = groups[g].list;
+        for (var i = 0; i < list.length; i++) {
+          var m = list[i].re.exec(text);
+          if (m) {
+            out.push({
+              term: list[i].term,
+              type: groups[g].type,
+              match: m[0],
+              context: snippet(text, m.index, m[0].length),
+              location: location || 'text'
+            });
+          }
+        }
+      }
+      var tm = TAXONOMY_CHAIN.exec(text);
+      if (tm) {
+        out.push({
+          term: 'Work/Lens/Field/Call',
+          type: 'taxonomy',
+          match: tm[0],
+          context: snippet(text, tm.index, tm[0].length),
+          location: location || 'text'
+        });
+      }
+    }
+
+    // Flag an exact dimension word used as a UI label.
+    function scanLabel(value, location, out) {
+      if (typeof value !== 'string') return;
+      var norm = value.trim().toLowerCase();
+      if (DIMENSION_WORDS.indexOf(norm) !== -1) {
+        out.push({
+          term: value.trim(),
+          type: 'taxonomy-label',
+          match: value.trim(),
+          context: value.trim(),
+          location: location || 'label'
+        });
+      }
+    }
+
+    // Recursively walk strings/arrays/objects, gathering violations.
+    function walk(node, path, out, isLabel) {
+      if (node == null) return;
+      if (typeof node === 'string') {
+        scanText(node, path || 'text', out);
+        if (isLabel) scanLabel(node, path || 'label', out);
+        return;
+      }
+      if (Array.isArray(node)) {
+        for (var i = 0; i < node.length; i++) {
+          walk(node[i], (path || '') + '[' + i + ']', out, isLabel);
+        }
+        return;
+      }
+      if (typeof node === 'object') {
+        for (var key in node) {
+          if (!Object.prototype.hasOwnProperty.call(node, key)) continue;
+          var childPath = path ? path + '.' + key : key;
+          walk(node[key], childPath, out, LABEL_KEYS.test(key));
+        }
+      }
+    }
+
+    // Public API: validate rendered public hOMe text or a public model.
+    // Returns { ok, violations }. `violations` is [] when clean.
+    function validate(input) {
+      var out = [];
+      walk(input, '', out, false);
+      return { ok: out.length === 0, violations: out };
+    }
+
+    return {
+      validate: validate,
+      // Exposed for tests / future tuning; do not mutate at runtime.
+      BRANDED: BRANDED,
+      PROVENANCE: PROVENANCE,
+      DIMENSION_WORDS: DIMENSION_WORDS,
+      TAXONOMY_CHAIN: TAXONOMY_CHAIN
+    };
+  })();
+
+  // Validate rendered public hOMe language. Accepts a string of rendered
+  // public copy, or a public model object/array. Returns { ok, violations }.
+  function validatePublicHomeLanguage(modelOrText) {
+    return HOME_FIREWALL.validate(modelOrText);
+  }
+  // <HOME_LANGUAGE_FIREWALL_END>
+
   function go() {
     var widget = document.getElementById('om-widget');
     var disc   = document.getElementById('om-disc');
@@ -22427,6 +22588,25 @@ if (document.readyState === 'loading') {
           website: trackStatus('website'),
           os:      osStatus()
         };
+      },
+      // Public hOMe language firewall — docs/home-design-grammar.md
+      // roadmap #1. Reusable, non-blocking guard: given rendered public
+      // copy (string) or a public model object/array, returns
+      // { ok, violations } describing any internal/branded terms, fixed
+      // Work/Lens/Field/Call taxonomy, or provenance/source patterns that
+      // leaked into visitor-facing output. No publish backend exists yet,
+      // so this blocks nothing on its own; it is the seed for the future
+      // pre-publish blocker. Note: the current stUdio preview intentionally
+      // carries builder chrome, so we do NOT auto-scan it here — callers
+      // pass the true public render (or model) they want validated.
+      validatePublicHomeLanguage: validatePublicHomeLanguage,
+      homeLanguageFirewall:       validatePublicHomeLanguage,
+      // Convenience: a short human status for a readiness surface. Pass the
+      // public copy/model to review; returns a warning string when the
+      // firewall finds leaks, or '' when clean. Non-blocking by design.
+      publicCopyReviewLabel: function (modelOrText) {
+        var r = validatePublicHomeLanguage(modelOrText);
+        return r.ok ? '' : 'Public copy needs review';
       },
       // QA / debug helpers — non-destructive
       get pending() { return readPendingTarget(); },
