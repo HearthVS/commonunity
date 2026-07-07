@@ -22906,13 +22906,103 @@ if (document.readyState === 'loading') {
       listening:  250,
       thinking:    90
     };
+
+    // -------------------------------------------------------------------
+    // Digit character vocabularies
+    // -------------------------------------------------------------------
+    // The first Digit pass cycled 0→1→2→3… sequentially, which read as
+    // a countdown clock: predictable, mechanical, humourless. Playfulness
+    // lives in *unpredictability with rhythm* — the eye shouldn't be able
+    // to guess the next character, but the pacing should still breathe.
+    //
+    // Each state gets a small, hand-picked alphabet drawn from digits,
+    // seven-segment-friendly letters, and quiet punctuation. Characters
+    // that look ambiguous (0/O, S/5, 1/I, 2/Z) are used only once per
+    // vocabulary so nothing looks accidentally repeated.
+    //
+    // 'resting'   — dozing. Lots of blanks and dashes, rare soft letters.
+    // 'idle'      — the everyday face. Digits + letters + a little
+    //               punctuation. This is what members see most.
+    // 'attending' — alert but relaxed. Mostly digits, a few letters.
+    // 'listening' — locked in. Pure digits, quick, no punctuation.
+    // 'thinking'  — random digits fast (existing behaviour).
+    var DIGIT_VOCAB = {
+      resting:   [' ',' ',' ',' ',' ','-','_','-','_','o','c','r','u',' '],
+      idle:      ['0','1','2','3','4','5','6','7','8','9',
+                  'A','b','C','d','E','F','H','L','n','o','P','r','t','U','y',
+                  '-','_',' '],
+      attending: ['0','1','2','3','4','5','6','7','8','9',
+                  'A','b','d','H','n','o','r','t','y'],
+      listening: ['0','1','2','3','4','5','6','7','8','9'],
+      thinking:  ['0','1','2','3','4','5','6','7','8','9']
+    };
+
+    // Micro-beat cadence: after every N "live" ticks, drop a quiet frame
+    // (blank or dash) so the eye feels a tiny breath. N is drawn fresh
+    // in the 3–6 range so the beat itself is unpredictable.
+    var DIGIT_MICROBEAT_MIN = 3;
+    var DIGIT_MICROBEAT_MAX = 6;
+    var DIGIT_MICROBEAT_QUIET = [' ', '-', '_'];
+    var DIGIT_MICROBEAT_COUNTDOWN = digitPickMicrobeatN();
+
+    // Rare single-segment wink — like R2 blinking. One of the seven
+    // segments lights alone for a single frame. Kept rare (~2%) so it
+    // reads as personality, not glitch.
+    var DIGIT_WINK_CHANCE = 0.02;
+    var DIGIT_WINK_SEGS = ['a','b','c','d','e','f','g'];
+
+    // States that ignore the alphabet order and pick fully at random.
+    // 'thinking' is the loud version; 'idle' and 'attending' also shuffle
+    // (see digitPickNextChar) but at a rhythmic tempo.
     var DIGIT_RANDOM_STATES = { thinking: true };
+
+    // Interval jitter: real breathing isn't metronomic. Each tick's delay
+    // is scaled by (1 + rand ∈ [-JITTER, +JITTER]) so cycles feel alive.
+    // 'thinking' skips jitter — the whole point of thinking is speed.
+    var DIGIT_JITTER = 0.15;
+
+    // Reduced-motion honour: on prefers-reduced-motion: reduce we slow
+    // every state and disable jitter/winks. Digit still shows character
+    // (character comes from vocabulary, not motion), just quietly.
+    function digitPrefersReducedMotion() {
+      if (typeof window === 'undefined' || !window.matchMedia) return false;
+      try {
+        var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        return !!(mq && mq.matches);
+      } catch (err) { return false; }
+    }
+
+    function digitPickMicrobeatN() {
+      var span = DIGIT_MICROBEAT_MAX - DIGIT_MICROBEAT_MIN + 1;
+      return DIGIT_MICROBEAT_MIN + Math.floor(Math.random() * span);
+    }
 
     function digitLitSegments(ch) {
       return DIGIT_SEG_MAP[ch] || DIGIT_SEG_MAP[String(ch).toUpperCase()] || [];
     }
 
+    // A one-frame wink: light exactly one segment. Returns a synthetic
+    // "character" object handled by digitApplyChar's wink branch.
+    function digitPickWink() {
+      var seg = DIGIT_WINK_SEGS[Math.floor(Math.random() * DIGIT_WINK_SEGS.length)];
+      return { wink: seg };
+    }
+
     function digitApplyChar(instance, ch) {
+      // Wink frame: light exactly one segment.
+      if (ch && typeof ch === 'object' && ch.wink) {
+        var winkSegs = instance.el.querySelectorAll('path.seg');
+        for (var w = 0; w < winkSegs.length; w++) {
+          var wname = winkSegs[w].getAttribute('data-seg');
+          if (wname === ch.wink) {
+            winkSegs[w].classList.add('is-lit');
+          } else {
+            winkSegs[w].classList.remove('is-lit');
+          }
+        }
+        instance.ch = ch;
+        return;
+      }
       var lit = digitLitSegments(ch);
       var segs = instance.el.querySelectorAll('path.seg');
       for (var i = 0; i < segs.length; i++) {
@@ -22926,18 +23016,52 @@ if (document.readyState === 'loading') {
       instance.ch = ch;
     }
 
+    // Pick the next character for the current state. Order matters:
+    //   1. Active hold (offering/held) always wins.
+    //   2. Micro-beat countdown drops a quiet frame if elapsed.
+    //   3. Rare wink chance.
+    //   4. Otherwise: pick a random entry from the state's vocabulary,
+    //      avoiding an immediate repeat of the last character so nothing
+    //      looks stuck.
     function digitPickNextChar() {
       if (DIGIT_HOLD_CHAR && Date.now() < DIGIT_HOLD_UNTIL) {
         return DIGIT_HOLD_CHAR;
       }
       if (DIGIT_HOLD_CHAR && Date.now() >= DIGIT_HOLD_UNTIL) {
-        DIGIT_HOLD_CHAR = null; // hold expired
+        DIGIT_HOLD_CHAR = null;
       }
-      if (DIGIT_RANDOM_STATES[DIGIT_STATE]) {
-        return String(Math.floor(Math.random() * 10));
+
+      var reduce = digitPrefersReducedMotion();
+
+      // Micro-beat quiet frame. Skipped in reduced-motion (we don't want
+      // extra visual events) and skipped in 'thinking' (thinking is a
+      // continuous burst, breaths would break the feel).
+      if (!reduce && DIGIT_STATE !== 'thinking') {
+        DIGIT_MICROBEAT_COUNTDOWN--;
+        if (DIGIT_MICROBEAT_COUNTDOWN <= 0) {
+          DIGIT_MICROBEAT_COUNTDOWN = digitPickMicrobeatN();
+          return DIGIT_MICROBEAT_QUIET[Math.floor(Math.random() * DIGIT_MICROBEAT_QUIET.length)];
+        }
       }
-      DIGIT_SEQ_INDEX = (DIGIT_SEQ_INDEX + 1) % 10;
-      return String(DIGIT_SEQ_INDEX);
+
+      // Rare wink — disabled in reduced-motion and during thinking.
+      if (!reduce && DIGIT_STATE !== 'thinking' && DIGIT_STATE !== 'listening') {
+        if (Math.random() < DIGIT_WINK_CHANCE) {
+          return digitPickWink();
+        }
+      }
+
+      // Vocabulary pick. Avoid immediate repeats so the eye never sees
+      // "same character twice" and misreads it as frozen.
+      var vocab = DIGIT_VOCAB[DIGIT_STATE] || DIGIT_VOCAB.idle;
+      if (!vocab || !vocab.length) return ' ';
+      var pick = vocab[Math.floor(Math.random() * vocab.length)];
+      if (DIGIT_INSTANCES.length && DIGIT_INSTANCES[0].ch === pick && vocab.length > 1) {
+        // Try once more; second pick doesn't recurse.
+        var alt = vocab[Math.floor(Math.random() * vocab.length)];
+        if (alt !== pick) pick = alt;
+      }
+      return pick;
     }
 
     function digitTick() {
@@ -22947,17 +23071,35 @@ if (document.readyState === 'loading') {
       }
     }
 
+    // Interval with jitter. Reduced-motion disables jitter and slows the
+    // whole cadence 2× so the presence stays visible but quiet.
+    function digitNextInterval() {
+      var base = DIGIT_SPEED[DIGIT_STATE] || DIGIT_SPEED.idle;
+      var reduce = digitPrefersReducedMotion();
+      if (reduce) return base * 2;
+      if (DIGIT_STATE === 'thinking') return base; // thinking is a clean burst
+      var jitter = 1 + ((Math.random() * 2 - 1) * DIGIT_JITTER);
+      return Math.max(40, Math.round(base * jitter));
+    }
+
+    // Self-scheduling ticker via setTimeout — lets each tick pick its own
+    // jittered interval. setInterval couldn't do that.
     function digitRestartTicker() {
-      // No-op in non-browser envs (tests). setInterval may be stubbed to
+      // No-op in non-browser envs (tests). setTimeout may be stubbed to
       // return nothing, leaving Node.js with dangling timers.
       if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
-      if (typeof setInterval !== 'function') return;
+      if (typeof setTimeout !== 'function') return;
       if (DIGIT_TICK_TIMER) {
-        clearInterval(DIGIT_TICK_TIMER);
+        clearTimeout(DIGIT_TICK_TIMER);
         DIGIT_TICK_TIMER = null;
       }
-      var interval = DIGIT_SPEED[DIGIT_STATE] || DIGIT_SPEED.idle;
-      DIGIT_TICK_TIMER = setInterval(digitTick, interval);
+      function schedule() {
+        DIGIT_TICK_TIMER = setTimeout(function () {
+          digitTick();
+          schedule();
+        }, digitNextInterval());
+      }
+      schedule();
     }
 
     function digitApplyStateClass() {
@@ -22979,23 +23121,51 @@ if (document.readyState === 'loading') {
       // Skip DOM/timer work in non-browser envs.
       if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
       digitApplyStateClass();
-      if (next === 'offering' || next === 'held') {
-        // These are hold-tones: pause cycling on a specific char for a beat.
-        DIGIT_HOLD_CHAR = (next === 'held') ? '_' : '8';
-        DIGIT_HOLD_UNTIL = Date.now() + (next === 'held' ? 500 : 400);
-        // Apply immediately so the beat is felt.
-        for (var i = 0; i < DIGIT_INSTANCES.length; i++) {
-          digitApplyChar(DIGIT_INSTANCES[i], DIGIT_HOLD_CHAR);
+      if (next === 'offering') {
+        // Offering blooms briefly on '8' (all segments lit) — a small
+        // "here it is" gesture. Then eases back to idle.
+        DIGIT_HOLD_CHAR = '8';
+        DIGIT_HOLD_UNTIL = Date.now() + 400;
+        for (var oi = 0; oi < DIGIT_INSTANCES.length; oi++) {
+          digitApplyChar(DIGIT_INSTANCES[oi], DIGIT_HOLD_CHAR);
         }
-        // After the hold, return to idle. Ticker keeps running at idle
-        // speed so the next tick past HOLD_UNTIL resumes cycling.
         setTimeout(function () {
-          if (DIGIT_STATE === 'offering' || DIGIT_STATE === 'held') {
+          if (DIGIT_STATE === 'offering') {
             DIGIT_STATE = 'idle';
             digitApplyStateClass();
             digitRestartTicker();
           }
-        }, next === 'held' ? 500 : 400);
+        }, 400);
+        return;
+      }
+      if (next === 'held') {
+        // 'held' fires right after a save. Instead of freezing on '_',
+        // Digit does a small satisfied three-beat count: 1 → 2 → 3 → back
+        // to idle. This is the *one* place sequential belongs — it reads
+        // as "got it, filed it" rather than a countdown. Sequential is
+        // never used for ambient cycling.
+        if (DIGIT_TICK_TIMER && typeof clearTimeout === 'function') {
+          clearTimeout(DIGIT_TICK_TIMER);
+          DIGIT_TICK_TIMER = null;
+        }
+        var heldSeq = ['1', '2', '3'];
+        var heldStep = 0;
+        var stepMs = 140;
+        function heldTick() {
+          if (DIGIT_STATE !== 'held') return; // state moved on
+          if (heldStep >= heldSeq.length) {
+            DIGIT_STATE = 'idle';
+            digitApplyStateClass();
+            digitRestartTicker();
+            return;
+          }
+          for (var hi = 0; hi < DIGIT_INSTANCES.length; hi++) {
+            digitApplyChar(DIGIT_INSTANCES[hi], heldSeq[heldStep]);
+          }
+          heldStep++;
+          setTimeout(heldTick, stepMs);
+        }
+        heldTick();
         return;
       }
       digitRestartTicker();
