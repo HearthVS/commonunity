@@ -6288,10 +6288,16 @@ input, textarea { font: inherit; color: inherit; }
   --phpub-root: #f6f1e7;        /* warm paper surface (fallback) */
   --phpub-expression: #211e18;  /* warm ink (fallback) */
   --phpub-radiance: #c07a22;    /* honey / lamp-light accent (fallback) */
-  /* Derived surfaces: a lifted paper and a recessed band, tinted by root. */
+  /* Derived surfaces: a lifted paper and a recessed band, tinted by root.
+     The lifted band + recess also carry a faint tone wash (--phpub-tone-tint,
+     0% by default) toward the radiance accent, so warmer tones read warmer
+     without touching ink contrast. */
+  --phpub-tone-tint: 0%;
   --phpub-surface: color-mix(in srgb, var(--phpub-root) 100%, #fff 0%);
-  --phpub-surface-2: color-mix(in srgb, var(--phpub-root) 86%, #fff 14%);
-  --phpub-sink: color-mix(in srgb, var(--phpub-root) 90%, var(--phpub-expression) 8%);
+  --phpub-surface-2: color-mix(in srgb, var(--phpub-radiance) var(--phpub-tone-tint, 0%),
+    color-mix(in srgb, var(--phpub-root) 86%, #fff 14%));
+  --phpub-sink: color-mix(in srgb, var(--phpub-radiance) var(--phpub-tone-tint, 0%),
+    color-mix(in srgb, var(--phpub-root) 90%, var(--phpub-expression) 8%));
   --phpub-ink-soft: color-mix(in srgb, var(--phpub-expression) 72%, var(--phpub-root));
   --phpub-ink-muted: color-mix(in srgb, var(--phpub-expression) 52%, var(--phpub-root));
   --phpub-line: color-mix(in srgb, var(--phpub-expression) 16%, var(--phpub-root));
@@ -6343,7 +6349,10 @@ input, textarea { font: inherit; color: inherit; }
   text-align: center;
   padding: clamp(40px, 8vw, 88px) 20px clamp(28px, 4vw, 48px);
 }
-.phpub-hero .phpub-atmos { z-index: 0; }
+.phpub-hero .phpub-atmos, .phpub-hero .phpub-figure { z-index: 0; }
+/* Keep hero content above the decorative atmosphere + imagery figure. */
+.phpub-hero-eyebrow, .phpub-hero-title, .phpub-hero-lede,
+.phpub-hero-actions, .phpub-scrollcue, .phpub-motif-rail { position: relative; z-index: 1; }
 .phpub-hero-eyebrow {
   text-transform: uppercase; letter-spacing: 0.22em;
   font-size: 11px; font-weight: 600;
@@ -6586,12 +6595,73 @@ input, textarea { font: inherit; color: inherit; }
 .phpub[data-motion="still"] .phpub-scrollcue::before,
 .phpub[data-motion="still"] .phpub-invitation .phpub-halo { animation: none; }
 
-/* Tone → intensity of the luminous accent/halo mix. */
-.phpub[data-tone="warm"]     { --phpub-halo-1: 34%; --phpub-halo-2: 12%; }
-.phpub[data-tone="grounded"] { --phpub-halo-1: 24%; --phpub-halo-2: 9%; }
-.phpub[data-tone="luminous"] { --phpub-halo-1: 44%; --phpub-halo-2: 16%; }
-.phpub[data-tone="clear"]    { --phpub-halo-1: 20%; --phpub-halo-2: 8%; }
-.phpub[data-tone="vivid"]    { --phpub-halo-1: 52%; --phpub-halo-2: 18%; }
+/* Tone → intensity of the luminous accent/halo mix, plus a faint surface tone
+   wash (--phpub-tone-tint) toward the radiance accent. Kept tiny so ink
+   contrast is unaffected and meaning is never carried by colour alone. */
+.phpub[data-tone="warm"]     { --phpub-halo-1: 34%; --phpub-halo-2: 12%; --phpub-tone-tint: 6%; }
+.phpub[data-tone="grounded"] { --phpub-halo-1: 24%; --phpub-halo-2: 9%;  --phpub-tone-tint: 2%; }
+.phpub[data-tone="luminous"] { --phpub-halo-1: 44%; --phpub-halo-2: 16%; --phpub-tone-tint: 5%; }
+.phpub[data-tone="clear"]    { --phpub-halo-1: 20%; --phpub-halo-2: 8%;  --phpub-tone-tint: 1%; }
+.phpub[data-tone="vivid"]    { --phpub-halo-1: 52%; --phpub-halo-2: 18%; --phpub-tone-tint: 9%; }
+
+/* ── Imagery strategy → decorative hero figure (aria-hidden, no text) ──
+   Field strategies (atmosphere / abstract) layer soft luminous fields; framed
+   strategies (portrait / place / object) show an intentional inline-SVG mark —
+   a media-less stand-in until real imagery generation arrives. */
+.phpub-figure {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.phpub-figure .phpub-field {
+  position: absolute; border-radius: 50%; filter: blur(26px);
+  background: radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--phpub-accent) 30%, transparent), transparent 70%);
+  opacity: 0.7; will-change: transform;
+  animation: phpub-figure-drift var(--phpub-motion-dur, 15s) var(--phpub-ease) infinite;
+}
+.phpub-figure .phpub-field-1 { width: 46%; aspect-ratio: 1; top: -8%; left: 8%; }
+.phpub-figure .phpub-field-2 { width: 38%; aspect-ratio: 1; top: 6%; right: 6%;
+  background: radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--phpub-radiance) 26%, transparent), transparent 70%);
+  animation-delay: -4s; animation-duration: calc(var(--phpub-motion-dur, 15s) * 1.3); }
+.phpub-figure .phpub-field-3 { width: 30%; aspect-ratio: 1; bottom: -6%; left: 34%;
+  background: radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--phpub-expression) 12%, transparent), transparent 72%);
+  animation-delay: -8s; }
+.phpub-figure[data-imagery="abstract"] .phpub-field { filter: blur(18px); opacity: 0.55; }
+.phpub-figure-mark {
+  width: min(220px, 42%); height: auto; opacity: 0.5; overflow: visible;
+}
+.phpub-figure-frame {
+  fill: none; stroke: color-mix(in srgb, var(--phpub-accent) 55%, var(--phpub-line));
+  stroke-width: 2; stroke-dasharray: 5 7; stroke-linecap: round;
+}
+.phpub-figure-dot {
+  fill: color-mix(in srgb, var(--phpub-radiance) 22%, transparent);
+  stroke: color-mix(in srgb, var(--phpub-radiance) 60%, var(--phpub-line)); stroke-width: 1.5;
+}
+.phpub-figure[data-imagery="place"] .phpub-figure-dot { rx: 40; ry: 26; }
+.phpub-figure[data-imagery="object"] .phpub-figure-frame { stroke-dasharray: none; }
+
+/* ── Broader motif set → a subtle decorative glyph rail (aria-hidden) ── */
+.phpub-motif-rail {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 14px;
+  margin: 22px auto 4px; line-height: 1;
+}
+.phpub-motif-mark {
+  font-size: 15px; opacity: 0.42; line-height: 1;
+  color: color-mix(in srgb, var(--phpub-radiance) 60%, var(--phpub-ink-muted));
+}
+
+/* Reduced motion / still: hold the figure's drifting fields. */
+.phpub[data-motion="still"] .phpub-figure .phpub-field { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .phpub-figure .phpub-field { animation: none !important; }
+}
+@keyframes phpub-figure-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, -4%, 0) scale(1.06); }
+}
 
 .ph-rooms-nav.is-v3 {
   grid-template-columns: repeat(5, 1fr);
@@ -22446,12 +22516,59 @@ if (document.readyState === 'loading') {
       var viDensity = viPick(vi.density,       ['sparse', 'balanced', 'rich'], 'balanced');
       var viMotion  = viPick(vi.motion,        ['still', 'subtle', 'alive'], 'subtle');
       var viType    = viPick(vi.typeDirection, ['editorial', 'modern', 'grounded', 'expressive'], 'grounded');
-      var viMotifs  = Array.isArray(vi.motifs) ? vi.motifs : [];
+      // Motif vocab is a fixed, public-safe set (PR #152). Filter the model's
+      // motifs to that vocab so a malformed identity can never surface a raw
+      // word — and map each to a neutral geometric glyph for decorative marks.
+      var MOTIF_GLYPHS = {
+        threshold: '⌂', weave: '▦', water: '≈', hearth: '✦',
+        signal: '◈', orbit: '⊙', garden: '❉', studio: '◇'
+      };
+      var viMotifs  = (Array.isArray(vi.motifs) ? vi.motifs : []).filter(function (m) {
+        return typeof m === 'string' && MOTIF_GLYPHS.hasOwnProperty(m);
+      });
+      // Imagery strategy (PR #152): field-like (atmosphere / abstract) leans on
+      // layered luminous fields; framed (portrait / place / object) shows an
+      // intentional, media-less mark. No real image generation in this slice.
+      var viImagery = viPick(vi.imagery, ['portrait', 'place', 'object', 'abstract', 'atmosphere'], 'abstract');
+      var FIELD_IMAGERY = { atmosphere: 1, abstract: 1 };
       var viAttrs = ' data-tone="' + esc(viTone) + '"' +
                     ' data-density="' + esc(viDensity) + '"' +
                     ' data-motion="' + esc(viMotion) + '"' +
                     ' data-type="' + esc(viType) + '"' +
+                    ' data-imagery="' + esc(viImagery) + '"' +
+                    (viMotifs.length ? ' data-motifs="' + esc(viMotifs.join(' ')) + '"' : '') +
                     (viMotifs[0] ? ' data-motif="' + esc(viMotifs[0]) + '"' : '');
+
+      // Imagery-driven hero figure — decorative, aria-hidden, no text. Field
+      // strategies render layered luminous fields; framed strategies render an
+      // intentional inline-SVG mark (a stand-in until real media arrives).
+      function heroFigure() {
+        if (FIELD_IMAGERY[viImagery]) {
+          return '<div class="phpub-figure" data-imagery="' + esc(viImagery) + '" aria-hidden="true">' +
+            '<span class="phpub-field phpub-field-1"></span>' +
+            '<span class="phpub-field phpub-field-2"></span>' +
+            '<span class="phpub-field phpub-field-3"></span>' +
+          '</div>';
+        }
+        return '<div class="phpub-figure" data-imagery="' + esc(viImagery) + '" aria-hidden="true">' +
+          '<svg class="phpub-figure-mark" viewBox="0 0 120 120" role="presentation" focusable="false" preserveAspectRatio="xMidYMid meet">' +
+            '<rect class="phpub-figure-frame" x="7" y="7" width="106" height="106" rx="12"/>' +
+            '<circle class="phpub-figure-dot" cx="60" cy="60" r="24"/>' +
+          '</svg>' +
+        '</div>';
+      }
+
+      // Broader motif set → a subtle decorative rail of neutral glyph marks.
+      // Uses the whole motifs list (not just the primary), giving each home a
+      // quiet personal texture. aria-hidden; every glyph is language-free.
+      function motifRail() {
+        if (!viMotifs.length) return '';
+        return '<p class="phpub-motif-rail" aria-hidden="true">' +
+          viMotifs.map(function (m) {
+            return '<span class="phpub-motif-mark" data-motif="' + esc(m) + '">' + MOTIF_GLYPHS[m] + '</span>';
+          }).join('') +
+        '</p>';
+      }
 
       // Per-room treatments, aligned by position (never the internal dimension
       // name). Each maps a palette role → --phpub-room-accent, an intensity, and
@@ -22482,10 +22599,11 @@ if (document.readyState === 'loading') {
 
       // ── Threshold / hero — person-first ──────────────────────────────
       var heroHeading = esc(hero.heading || name);
-      html += '<header class="phpub-hero" aria-label="Welcome">' + atmos +
+      html += '<header class="phpub-hero" aria-label="Welcome">' + atmos + heroFigure() +
         '<p class="phpub-hero-eyebrow">Welcome in</p>' +
         (heroHeading ? '<h1 class="phpub-hero-title">' + heroHeading + '</h1>' : '') +
         (hero.intro ? '<p class="phpub-hero-lede">' + esc(hero.intro) + '</p>' : '') +
+        motifRail() +
         '<p class="phpub-hero-actions"><a class="phpub-btn" href="#phpub-invitation">Say hello</a></p>' +
         '<p class="phpub-scrollcue" aria-hidden="true">Wander in</p>' +
       '</header>';
