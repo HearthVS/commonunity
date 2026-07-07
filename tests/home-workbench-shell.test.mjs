@@ -43,6 +43,27 @@ test('entry-point CTA #home-workbench-open-entrance exists with the right copy',
     'entry CTA must show "Open hOMe Workbench" copy');
 });
 
+test('entry-point CTA is NOT hidden inside the collapsed Studio Path <details>', () => {
+  // The Workbench is the *primary* hOMe entry per the handoff. Burying
+  // it inside the entrance <details class="studio-path-trail"> panel
+  // (which is collapsed by default) means members can't find it. The
+  // button must live in the entrance rail proper, ABOVE that <details>.
+  const btnIdx = html.indexOf('id="home-workbench-open-entrance"');
+  const detailsIdx = html.indexOf('id="entrance-studio-path"');
+  assert.ok(btnIdx !== -1, 'entry CTA must exist in the DOM');
+  assert.ok(detailsIdx !== -1, 'the entrance Studio Path <details> must exist');
+  assert.ok(btnIdx < detailsIdx,
+    'the Workbench entry CTA must appear BEFORE the Studio Path <details> ' +
+    'block so it is visible without expanding the panel');
+});
+
+test('entry-point CTA uses the primary (first-class rail) variant', () => {
+  assert.match(html,
+    /class="hw-entry-cta hw-entry-cta-primary" id="home-workbench-open-entrance"/,
+    'the entrance CTA must carry the .hw-entry-cta-primary class so it ' +
+    'reads as a first-class rail action, not a tucked-away link');
+});
+
 test('legacy "Preview Personal Home" modal button is preserved as fallback', () => {
   // Guardrail: we demoted, but did not remove, the old modal path.
   // The public API window.openWebsitePreview must still be reachable.
@@ -110,6 +131,25 @@ test('Workbench API is exposed on window', () => {
   assert.match(html, /window\.phWorkbenchRefreshAll\s*=\s*phWorkbenchRefreshAll/);
   assert.match(html, /window\.phWorkbenchRefreshPreview\s*=\s*phWorkbenchRefreshPreview/);
   assert.match(html, /window\.phWorkbenchSaveActiveSection\s*=\s*phWorkbenchSaveActiveSection/);
+});
+
+test('openStudioProject("home") routes to the Workbench (with modal fallback)', () => {
+  // The "View hOMe draft" link in the Muse widget footer (and any other
+  // internal caller that opens the hOMe project) reaches the hOMe surface
+  // through openStudioProject('home'). That path must now open the
+  // Workbench, falling back to the old modal only when the Workbench
+  // isn't available.
+  const fnStart = html.indexOf('function openStudioProject');
+  assert.ok(fnStart !== -1, 'openStudioProject must exist');
+  const fnBody = html.slice(fnStart, fnStart + 1500);
+  assert.match(fnBody, /window\.openHomeWorkbench/,
+    'openStudioProject must prefer window.openHomeWorkbench for the ' +
+    'website (hOMe) builder');
+  // The workbench call must come BEFORE the openWebsitePreview fallback.
+  const hwIdx = fnBody.indexOf('window.openHomeWorkbench');
+  const legacyIdx = fnBody.indexOf('openWebsitePreview()');
+  assert.ok(hwIdx !== -1 && legacyIdx !== -1 && hwIdx < legacyIdx,
+    'Workbench must be tried BEFORE the legacy modal fallback');
 });
 
 // ── Extract the JS block verbatim and exercise the pure functions ──
