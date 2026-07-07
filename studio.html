@@ -21487,9 +21487,50 @@ if (document.readyState === 'loading') {
     };
     var PH_ROOM_SIGIL = { work: '◐', lens: '◑', field: '◓', call: '◒' };
 
+    // <HOME_PUBLIC_LABELS_START> — extracted verbatim by tests/home-public-labels.test.mjs
+    // Public-facing dimension label defaults. The four dimensions
+    // (work/lens/field/call) are hidden builder/source architecture and
+    // must never surface as fixed taxonomy on the visitor-facing hOMe
+    // (docs/home-design-grammar.md §5). These warm, human placeholders are
+    // the *public* default when the person has not written their own
+    // section label — seeded by, but never locked to, the dimension's
+    // meaning. Internal builder surfaces keep using phRoomFullName().
+    var PH_PUBLIC_ROOM_LABELS = {
+      work:  'What I make',
+      lens:  'How I perceive',
+      field: 'What keeps me alive',
+      call:  'What I’m here for'
+    };
+    // Warm, taxonomy-free eyebrows for the visitor-facing room + doorway
+    // views. The internal "Room N · The Work · …" framing stays in stUdio;
+    // the public layer never names the fixed taxonomy.
+    var PH_PUBLIC_ROOM_EYEBROWS = {
+      work:  'The outer layer · what I make and offer',
+      lens:  'How I see · the way I read the world',
+      field: 'What sustains me · who I thrive with',
+      call:  'The innermost ask · what I’m here for'
+    };
+    // Resolve the visitor-facing label for a room. Order of precedence:
+    //   1. an explicit custom label the person set (sec.label), if present;
+    //   2. the warm public default for the dimension;
+    //   3. empty string — never the raw internal dimension name.
+    function phPublicRoomLabel(key, sec) {
+      var custom = sec && typeof sec.label === 'string' ? sec.label.trim() : '';
+      if (custom) return custom;
+      return PH_PUBLIC_ROOM_LABELS[key] || '';
+    }
+    // Resolve the visitor-facing eyebrow, honouring a custom eyebrow first,
+    // then the warm public default, then the public label as a last resort.
+    function phPublicRoomEyebrow(key, sec) {
+      var custom = sec && typeof sec.eyebrow === 'string' ? sec.eyebrow.trim() : '';
+      if (custom) return custom;
+      return PH_PUBLIC_ROOM_EYEBROWS[key] || phPublicRoomLabel(key, sec);
+    }
+    // <HOME_PUBLIC_LABELS_END>
+
     function phRenderRoom(model, key) {
       var sec    = model.sections[key];
-      var label  = phRoomFullName(key);
+      var label  = phPublicRoomLabel(key, sec);
       var atmos  = PH_ROOM_ATMOS[key] || {};
       var sigil  = PH_ROOM_SIGIL[key] || 'ॐ';
       var heading = sec.heading || label;
@@ -21499,7 +21540,7 @@ if (document.readyState === 'loading') {
 
       var html = '<article class="ph-room is-v3 s-' + key + '" aria-label="' + lpEscape(label) + ' room">' +
         '<div class="ph-room-main-v3">' +
-          '<p class="ph-room-eyebrow">' + lpEscape(atmos.eye || label) + '</p>' +
+          '<p class="ph-room-eyebrow">' + lpEscape(phPublicRoomEyebrow(key, sec)) + '</p>' +
           '<h3 class="ph-room-heading">' + lpEscape(heading) + '</h3>';
 
       if (intro) {
@@ -21704,8 +21745,8 @@ if (document.readyState === 'loading') {
         var atmos  = PH_ROOM_ATMOS[k] || {};
         var blurb  = sec.heading || (sec.intro ? lpTrim(sec.intro, 110) : (atmos.fallback || 'Awaiting source'));
         html += '<button type="button" class="ph-doorway s-' + k + '" data-ph-room="' + k + '">' +
-          '<span class="ph-doorway-eye">' + lpEscape(atmos.eye || phRoomFullName(k)) + '</span>' +
-          '<span class="ph-doorway-name">' + lpEscape(phRoomFullName(k)) + '</span>' +
+          '<span class="ph-doorway-eye">' + lpEscape(phPublicRoomEyebrow(k, sec)) + '</span>' +
+          '<span class="ph-doorway-name">' + lpEscape(phPublicRoomLabel(k, sec)) + '</span>' +
           '<span class="ph-doorway-tag">' + lpEscape(blurb) + '</span>' +
           '<span class="ph-doorway-cta">Enter the room →</span>' +
         '</button>';
