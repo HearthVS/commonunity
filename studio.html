@@ -21738,6 +21738,141 @@ if (document.readyState === 'loading') {
     };
     // <HOME_PUBLIC_FALLBACKS_END>
 
+    // <HOME_PUBLIC_MODEL_START> — extracted verbatim by tests/home-public-model.test.mjs
+    // Pure, visitor-facing hOMe render model (docs/home-design-grammar.md §3,
+    // §5, §8; roadmap "clean public hOMe render model"). This is the seam a
+    // future public render/publish surface consumes: it turns the internal
+    // preview model (buildWebsitePreview output, carrying builder chrome) and/or
+    // the first-class source seeds (HOME_SOURCE_SEEDS) into a model that holds
+    // ONLY what a stranger may read — identity, hero, rooms with warm public
+    // labels + body/highlights, an invitation, and the public palette roles.
+    //
+    // What it deliberately drops: the internal source-provenance tags
+    // (compass/captured/mixed), the raw dimension keys as visible labels, the
+    // system names (cOMpass / OM Cipher / Living Profile / Nexus / Spark / Field
+    // Observations), and every other builder-only surface. The internal source
+    // systems stay available to the builder; they are simply hidden from this
+    // visitor-facing view.
+    //
+    // Copy precedence per field: the person's own preview copy first (what they
+    // captured / tuned), then the cOMpass content seed, then the PR-#147 public
+    // fallback prose. Labels follow the PR-#146 public defaults. The assembled
+    // model is run back through validatePublicHomeLanguage() and the result is
+    // attached as `language: { ok, violations }`, so any leak is observable at
+    // the seam. Pure: no DOM, no window, no persistence.
+    function phPublicHomeModel(input, opts) {
+      input = (input && typeof input === 'object') ? input : {};
+      opts  = (opts && typeof opts === 'object') ? opts : {};
+      var validate = (typeof opts.validate === 'function')
+        ? opts.validate
+        : (typeof validatePublicHomeLanguage === 'function' ? validatePublicHomeLanguage : null);
+
+      function pmStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+      function pmFirst() {
+        for (var i = 0; i < arguments.length; i++) {
+          var s = pmStr(arguments[i]);
+          if (s) return s;
+        }
+        return '';
+      }
+      function pmHighlights(arr) {
+        if (!Array.isArray(arr)) return [];
+        var out = [];
+        for (var i = 0; i < arr.length && out.length < 6; i++) {
+          var h = arr[i];
+          var t = typeof h === 'string' ? h : (h && (h.text || h.label || h.title)) || '';
+          t = pmStr(t);
+          if (t) out.push(t);
+        }
+        return out;
+      }
+
+      var DIMS = ['work', 'lens', 'field', 'call'];
+
+      // Source seeds: reuse the preview's attached seeds when present, else
+      // derive them from a raw state-shaped input ({ compassData, cipherContract }).
+      var seeds = (input.sourceSeeds && typeof input.sourceSeeds === 'object')
+        ? input.sourceSeeds
+        : phHomeSourceSeeds({ compassData: input.compassData, cipherContract: input.cipherContract });
+      var content = (seeds && seeds.content) || {};
+      var palette = (seeds && seeds.palette) || {};
+      var seedDims = (content && content.dimensions) || {};
+      var seedThreshold = (content && content.threshold) || {};
+      var seedInvite = (content && content.invitation) || {};
+
+      var previewSections = (input.sections && typeof input.sections === 'object') ? input.sections : {};
+
+      // Identity — the person's own name only.
+      var name = pmFirst(input.name, content.name);
+
+      // Hero / threshold — person copy first, then seed, then public fallback.
+      var heroSec = previewSections.hero || {};
+      var hero = {
+        heading: pmFirst(heroSec.heading, seedThreshold.heading, name),
+        intro:   pmFirst(heroSec.intro, seedThreshold.intro) || PH_PUBLIC_FALLBACKS.heroIntro
+      };
+
+      // Rooms — warm public labels/eyebrows, never the raw dimension key.
+      var rooms = [];
+      DIMS.forEach(function (key) {
+        var sec  = previewSections[key] || {};
+        var seed = seedDims[key] || {};
+        var body = pmFirst(sec.intro, seed.body);
+        var highlights = pmHighlights(sec.highlights && sec.highlights.length ? sec.highlights : seed.highlights);
+        rooms.push({
+          label:      phPublicRoomLabel(key, sec),
+          eyebrow:    phPublicRoomEyebrow(key, sec),
+          heading:    pmFirst(sec.heading, seed.heading) || phPublicRoomLabel(key, sec),
+          body:       body || PH_PUBLIC_FALLBACKS.roomEmpty,
+          highlights: highlights,
+          closing:    pmFirst(sec.closing, seed.closing)
+        });
+      });
+
+      // Invitation — person copy first, then seed, then public fallback. Contact
+      // is the seed's structured { kind, value } list (safe, public-neutral).
+      var inviteSec = previewSections.invitation || {};
+      var contact = Array.isArray(seedInvite.contact) ? seedInvite.contact.slice() : [];
+      var invitation = {
+        body:    pmFirst(inviteSec.body, seedInvite.body) || PH_PUBLIC_FALLBACKS.invitationEmpty,
+        contact: contact
+      };
+
+      // Palette — the three public visual ROLES only (no source-system name).
+      var paletteRoles = (palette && palette.present && palette.roles)
+        ? { root: palette.roles.root, expression: palette.roles.expression, radiance: palette.roles.radiance }
+        : null;
+
+      var roomsWithContent = rooms.filter(function (r) {
+        return r.body !== PH_PUBLIC_FALLBACKS.roomEmpty || r.highlights.length;
+      }).length;
+
+      var model = {
+        identity:   { name: name },
+        hero:       hero,
+        rooms:      rooms,
+        invitation: invitation,
+        palette:    paletteRoles ? { roles: paletteRoles } : null,
+        status: {
+          present:          !!content.present,
+          roomsWithContent: roomsWithContent,
+          hasInvitation:    invitation.body !== PH_PUBLIC_FALLBACKS.invitationEmpty
+        }
+      };
+
+      // Firewall the assembled visitor model and attach the result at the seam.
+      if (validate) {
+        model.language = validate({
+          identity:   model.identity,
+          hero:       model.hero,
+          rooms:      model.rooms,
+          invitation: model.invitation
+        });
+      }
+      return model;
+    }
+    // <HOME_PUBLIC_MODEL_END>
+
     function phRenderRoom(model, key) {
       var sec    = model.sections[key];
       var label  = phPublicRoomLabel(key, sec);
@@ -22866,6 +23001,15 @@ if (document.readyState === 'loading') {
       compassContentSeed:  phCompassContentSeed,
       omCipherPaletteSeed: phOmCipherPaletteSeed,
       homeSourceSeeds:     phHomeSourceSeeds,
+      // Clean, visitor-facing hOMe render model (docs/home-design-grammar.md
+      // §3, §5, §8). The seam a future public render/publish consumes: pass a
+      // preview model (buildWebsitePreview output) or a raw { compassData,
+      // cipherContract } state and get back only visitor-facing fields —
+      // identity, hero, rooms with public labels, invitation, palette roles,
+      // status — plus a `language` firewall result. No internal source names,
+      // provenance tags, or raw dimension keys leak into it.
+      publicHomeModel:     phPublicHomeModel,
+      buildPublicHomeModel: phPublicHomeModel,
       // Convenience: a short human status for a readiness surface. Pass the
       // public copy/model to review; returns a warning string when the
       // firewall finds leaks, or '' when clean. Non-blocking by design.
