@@ -6278,125 +6278,260 @@ input, textarea { font: inherit; color: inherit; }
   background: var(--text); color: var(--bg);
 }
 .ph-preview-modebtn[aria-pressed="true"] { background: transparent; color: var(--text); }
+/* .phpub is a self-contained warm "public web" canvas. It derives its whole
+   surface from the three public palette ROLES (root=surface, expression=ink,
+   radiance=accent) so a person's palette meaningfully colours the render, with
+   warm-paper fallbacks when no palette is present. Atmosphere (luminous halos,
+   a faint grain) and per-room accents live in scoped pseudo-elements and s-N
+   classes — no framework, no HTML provenance. */
 .phpub {
-  --phpub-root: var(--bg);
-  --phpub-expression: var(--text);
-  --phpub-radiance: var(--accent, #c98a2b);
-  color: var(--text);
-  line-height: 1.6;
+  --phpub-root: #f6f1e7;        /* warm paper surface (fallback) */
+  --phpub-expression: #211e18;  /* warm ink (fallback) */
+  --phpub-radiance: #c07a22;    /* honey / lamp-light accent (fallback) */
+  /* Derived surfaces: a lifted paper and a recessed band, tinted by root. */
+  --phpub-surface: color-mix(in srgb, var(--phpub-root) 100%, #fff 0%);
+  --phpub-surface-2: color-mix(in srgb, var(--phpub-root) 86%, #fff 14%);
+  --phpub-sink: color-mix(in srgb, var(--phpub-root) 90%, var(--phpub-expression) 8%);
+  --phpub-ink-soft: color-mix(in srgb, var(--phpub-expression) 72%, var(--phpub-root));
+  --phpub-ink-muted: color-mix(in srgb, var(--phpub-expression) 52%, var(--phpub-root));
+  --phpub-line: color-mix(in srgb, var(--phpub-expression) 16%, var(--phpub-root));
+  --phpub-accent: var(--phpub-radiance);
+  --phpub-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  color: var(--phpub-expression);
+  background: var(--phpub-surface);
+  border-radius: 18px;
+  line-height: 1.62;
+  overflow: hidden;
 }
-.phpub a { color: color-mix(in srgb, var(--phpub-expression) 80%, var(--text)); }
+.phpub ::selection { background: color-mix(in srgb, var(--phpub-radiance) 30%, transparent); }
+.phpub a { color: color-mix(in srgb, var(--phpub-expression) 82%, var(--phpub-radiance)); }
+.phpub :focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--phpub-radiance) 80%, var(--phpub-expression));
+  outline-offset: 3px; border-radius: 6px;
+}
+
+/* Reusable atmosphere layer: a breathing luminous halo + a faint film grain.
+   Decorative only (aria-hidden in markup); sits behind content. */
+.phpub-atmos { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.phpub-atmos > * { position: absolute; }
+.phpub-halo {
+  top: -20%; left: 50%; width: 70%; aspect-ratio: 1; transform: translateX(-50%);
+  background: radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--phpub-accent) 34%, transparent) 0%,
+    color-mix(in srgb, var(--phpub-accent) 12%, transparent) 34%, transparent 68%);
+  filter: blur(10px); border-radius: 50%;
+  animation: phpub-breathe 15s var(--phpub-ease) infinite;
+}
+.phpub-grain {
+  inset: 0; opacity: 0.5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+.phpub-hero, .phpub-index, .phpub-rooms, .phpub-invitation, .phpub-closing { position: relative; z-index: 1; }
+
 .phpub-hero {
   text-align: center;
-  padding: clamp(28px, 6vw, 64px) 16px clamp(24px, 4vw, 40px);
-  border-radius: 18px;
-  background:
-    radial-gradient(120% 120% at 50% 0%,
-      color-mix(in srgb, var(--phpub-radiance) 16%, transparent) 0%, transparent 60%),
-    color-mix(in srgb, var(--phpub-root) 40%, transparent);
+  padding: clamp(40px, 8vw, 88px) 20px clamp(28px, 4vw, 48px);
 }
+.phpub-hero .phpub-atmos { z-index: 0; }
 .phpub-hero-eyebrow {
   text-transform: uppercase; letter-spacing: 0.22em;
-  font-size: 11px; color: var(--text-muted); margin: 0 0 14px;
+  font-size: 11px; font-weight: 600;
+  color: color-mix(in srgb, var(--phpub-radiance) 70%, var(--phpub-expression));
+  margin: 0 0 16px;
 }
 .phpub-hero-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; letter-spacing: -0.01em; line-height: 1.1;
-  font-size: clamp(30px, 5vw, 52px); margin: 0 auto 16px; max-width: 20ch;
-  color: var(--text);
+  font-weight: 500; letter-spacing: -0.015em; line-height: 1.06;
+  font-size: clamp(32px, 5.4vw, 58px); margin: 0 auto 18px; max-width: 20ch;
+  color: var(--phpub-expression);
 }
 .phpub-hero-lede {
-  max-width: 46ch; margin: 0 auto; color: var(--text-muted);
-  font-size: clamp(15px, 1.6vw, 18px);
+  max-width: 48ch; margin: 0 auto; color: var(--phpub-ink-soft);
+  font-size: clamp(16px, 1.7vw, 19px); line-height: 1.55;
 }
-.phpub-hero-actions { margin: 22px 0 0; }
+.phpub-hero-actions { margin: 26px 0 0; }
 .phpub-btn {
   display: inline-block; text-decoration: none;
-  padding: 10px 22px; border-radius: 999px;
-  background: var(--phpub-expression); color: var(--phpub-root) !important;
+  padding: 11px 24px; border-radius: 999px;
+  background: var(--phpub-expression); color: var(--phpub-surface) !important;
   font-weight: 600; font-size: 14px;
+  transition: transform 0.25s var(--phpub-ease), box-shadow 0.3s var(--phpub-ease), background 0.25s var(--phpub-ease);
 }
-.phpub-index { margin: clamp(24px, 4vw, 40px) 0; }
-.phpub-index-line { text-align: center; color: var(--text-muted); margin: 0 0 16px; font-size: 14px; }
+.phpub-btn:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--phpub-radiance) 80%, var(--phpub-expression));
+  box-shadow: 0 12px 30px -14px color-mix(in srgb, var(--phpub-radiance) 90%, #000);
+}
+.phpub-scrollcue {
+  margin: clamp(24px, 4vw, 40px) auto 0; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--phpub-ink-muted);
+}
+.phpub-scrollcue::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--phpub-radiance);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--phpub-radiance) 40%, transparent);
+  animation: phpub-pulse 3.2s var(--phpub-ease) infinite;
+}
+
+.phpub-index {
+  margin: clamp(8px, 2vw, 24px) auto clamp(28px, 4vw, 48px);
+  padding: 0 clamp(16px, 4vw, 40px); max-width: 900px;
+}
+.phpub-index-line {
+  text-align: center; color: var(--phpub-ink-muted); margin: 0 auto 18px;
+  font-size: 15px; max-width: 40ch;
+  font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic;
+}
 .phpub-index ol {
   list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
 @media (max-width: 560px) { .phpub-index ol { grid-template-columns: 1fr; } }
 .phpub-index a {
-  display: grid; grid-template-columns: auto 1fr; gap: 2px 12px;
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 14px;
   align-items: baseline; text-decoration: none;
-  padding: 14px 16px; border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--phpub-root) 24%, transparent);
-  transition: border-color 0.15s ease;
+  padding: 15px 18px; border-radius: 12px;
+  border: 1px solid var(--phpub-line);
+  background: var(--phpub-surface-2);
+  transition: border-color 0.2s var(--phpub-ease), transform 0.2s var(--phpub-ease), box-shadow 0.25s var(--phpub-ease);
 }
-.phpub-index a:hover { border-color: var(--phpub-radiance); }
+.phpub-index a:hover {
+  border-color: color-mix(in srgb, var(--phpub-accent) 60%, var(--phpub-line));
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -20px color-mix(in srgb, var(--phpub-accent) 90%, #000);
+}
 .phpub-index-idx {
   grid-row: 1 / 3; font-variant-numeric: tabular-nums;
-  font-size: 20px; color: var(--phpub-radiance); font-weight: 600;
+  font-size: 20px; color: var(--phpub-accent); font-weight: 600;
 }
-.phpub-index-name { font-weight: 600; color: var(--text); }
-.phpub-index-note { font-size: 12px; color: var(--text-muted); }
-.phpub-rooms { display: grid; gap: clamp(20px, 3vw, 36px); }
+.phpub-index-name { font-weight: 600; color: var(--phpub-expression); }
+.phpub-index-note { font-size: 12px; color: var(--phpub-ink-muted); }
+
+.phpub-rooms {
+  display: grid; gap: clamp(20px, 3vw, 36px);
+  padding: 0 clamp(16px, 4vw, 40px); max-width: 1000px; margin: 0 auto;
+}
+/* Per-room accents: each room mixes the palette radiance toward a distinct
+   warm/cool hue so the four rooms read as a related-but-varied progression.
+   Position-based (s-1..s-4) — never the internal dimension key. */
+.phpub-room.s-1 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 88%, #d98a2b); }
+.phpub-room.s-2 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 62%, #4c6b6e); }
+.phpub-room.s-3 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 66%, #6f8f5f); }
+.phpub-room.s-4 { --phpub-accent: color-mix(in srgb, var(--phpub-radiance) 92%, #b8631a); }
 .phpub-room {
-  padding: clamp(20px, 3vw, 32px);
+  position: relative; overflow: hidden;
+  padding: clamp(24px, 3.4vw, 40px);
   border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  background: color-mix(in srgb, var(--phpub-root) 20%, transparent);
-  scroll-margin-top: 20px;
+  border: 1px solid var(--phpub-line);
+  border-top: 3px solid var(--phpub-accent);
+  background: var(--phpub-surface-2);
+  scroll-margin-top: 24px;
 }
-.phpub-room-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 14px; }
+.phpub-room::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 60% 55% at 92% 0%,
+    color-mix(in srgb, var(--phpub-accent) 12%, transparent), transparent 66%);
+}
+.phpub-room > * { position: relative; z-index: 1; }
+.phpub-room-head { display: flex; align-items: baseline; gap: 16px; margin: 0 0 16px; }
 .phpub-room-idx {
   font-variant-numeric: tabular-nums; font-size: clamp(20px, 3vw, 30px);
-  color: var(--phpub-radiance); font-weight: 600; line-height: 1;
+  color: var(--phpub-accent); font-weight: 600; line-height: 1;
 }
 .phpub-room-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; font-size: clamp(22px, 2.8vw, 32px); line-height: 1.1;
-  margin: 0; color: var(--text);
+  font-weight: 500; font-size: clamp(24px, 2.9vw, 34px); line-height: 1.08;
+  margin: 0; color: var(--phpub-expression);
 }
-.phpub-room-kicker { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
-.phpub-room-body { margin: 0 0 12px; color: var(--text); white-space: pre-wrap; }
+.phpub-room-kicker { margin: 6px 0 0; font-size: 13px; color: var(--phpub-ink-muted); }
+.phpub-room-body { margin: 0 0 12px; color: var(--phpub-ink-soft); white-space: pre-wrap; }
 .phpub-room-highlights {
-  list-style: none; margin: 14px 0 0; padding: 0;
+  list-style: none; margin: 16px 0 0; padding: 0;
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px;
 }
 @media (max-width: 520px) { .phpub-room-highlights { grid-template-columns: 1fr; } }
 .phpub-room-highlights li {
-  position: relative; padding: 8px 12px 8px 20px;
-  font-size: 13px; line-height: 1.5;
+  position: relative; padding: 10px 14px 10px 24px;
+  font-size: 13px; line-height: 1.5; color: var(--phpub-ink-soft);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--phpub-root) 30%, transparent);
+  border: 1px solid var(--phpub-line);
+  background: var(--phpub-surface);
 }
 .phpub-room-highlights li::before {
-  content: ''; position: absolute; left: 9px; top: 15px;
-  width: 5px; height: 5px; border-radius: 50%; background: var(--phpub-radiance);
+  content: ''; position: absolute; left: 12px; top: 17px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--phpub-accent);
 }
-.phpub-room-closing { margin: 14px 0 0; color: var(--text-muted); font-style: italic; }
+.phpub-room-closing { margin: 16px 0 0; color: var(--phpub-ink-muted); font-style: italic; }
+
 .phpub-invitation {
-  margin: clamp(24px, 4vw, 44px) 0 0; text-align: center;
-  padding: clamp(28px, 5vw, 52px) 16px; border-radius: 18px;
-  background:
-    radial-gradient(120% 120% at 50% 100%,
-      color-mix(in srgb, var(--phpub-radiance) 14%, transparent) 0%, transparent 60%),
-    color-mix(in srgb, var(--phpub-root) 40%, transparent);
-  scroll-margin-top: 20px;
+  margin: clamp(28px, 4vw, 52px) 0 0; text-align: center;
+  padding: clamp(40px, 6vw, 76px) 20px;
+  background: var(--phpub-sink);
+  border-top: 1px solid var(--phpub-line); border-bottom: 1px solid var(--phpub-line);
+  scroll-margin-top: 24px;
+}
+.phpub-invitation .phpub-halo { top: 50%; transform: translate(-50%, -50%); left: 50%; width: 80%; }
+.phpub-invitation-mark {
+  width: 10px; height: 10px; margin: 0 auto 20px; border-radius: 50%;
+  background: var(--phpub-radiance);
+  box-shadow: 0 0 24px 4px color-mix(in srgb, var(--phpub-radiance) 50%, transparent);
 }
 .phpub-invitation-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; font-size: clamp(26px, 3.4vw, 40px); margin: 0 0 14px; color: var(--text);
+  font-weight: 500; font-size: clamp(28px, 3.6vw, 44px); margin: 0 0 14px; color: var(--phpub-expression);
 }
-.phpub-invitation-body { max-width: 44ch; margin: 0 auto 18px; color: var(--text-muted); }
-.phpub-contact { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.phpub-invitation-body { max-width: 46ch; margin: 0 auto 22px; color: var(--phpub-ink-soft); font-size: clamp(15px, 1.5vw, 18px); }
+.phpub-contact { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .phpub-contact-link {
-  text-decoration: none; padding: 8px 16px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--phpub-expression) 40%, var(--border));
+  text-decoration: none; padding: 9px 18px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--phpub-expression) 30%, var(--phpub-line));
+  color: var(--phpub-expression);
   font-size: 13px; font-weight: 500;
+  transition: border-color 0.2s var(--phpub-ease), color 0.2s var(--phpub-ease), background 0.2s var(--phpub-ease);
 }
-.phpub-closing { margin: clamp(24px, 3vw, 36px) 0 8px; text-align: center; }
-.phpub-closing-note { max-width: 48ch; margin: 0 auto 6px; color: var(--text-muted); font-size: 13px; }
-.phpub-closing-meta { font-size: 12px; color: var(--text-muted); letter-spacing: 0.06em; }
+.phpub-contact-link:hover {
+  border-color: var(--phpub-radiance);
+  background: color-mix(in srgb, var(--phpub-radiance) 12%, transparent);
+}
+.phpub-closing {
+  margin: 0; text-align: center;
+  padding: clamp(28px, 4vw, 48px) 20px clamp(24px, 3vw, 36px);
+}
+.phpub-closing-note {
+  max-width: 50ch; margin: 0 auto 14px; color: var(--phpub-ink-soft); font-size: 15px;
+  font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; line-height: 1.5;
+}
+.phpub-closing-meta {
+  font-size: 12px; color: var(--phpub-ink-muted);
+  text-transform: uppercase; letter-spacing: 0.14em;
+}
+
+/* Small viewports: soften the hero, single-column offers. */
+@media (max-width: 560px) {
+  .phpub-hero { padding-top: clamp(32px, 12vw, 60px); }
+  .phpub-hero-title { font-size: clamp(28px, 9vw, 40px); }
+}
+
+@keyframes phpub-breathe {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.9; }
+  50% { transform: translateX(-50%) scale(1.08); opacity: 1; }
+}
+.phpub-invitation .phpub-halo { animation-name: phpub-breathe-center; }
+@keyframes phpub-breathe-center {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+}
+@keyframes phpub-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--phpub-radiance) 40%, transparent); }
+  70% { box-shadow: 0 0 0 12px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+/* Respect reduced-motion: stop the breathing halos + pulse cue entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .phpub-halo, .phpub-scrollcue::before { animation: none !important; }
+  .phpub-btn, .phpub-index a { transition: none !important; }
+}
 
 .ph-rooms-nav.is-v3 {
   grid-template-columns: repeat(5, 1fr);
@@ -22071,15 +22206,21 @@ if (document.readyState === 'loading') {
       // Room anchor ids come from position, never the raw dimension key.
       function roomId(i) { return 'phpub-room-' + (i + 1); }
 
+      // Decorative luminous atmosphere (halo + faint grain). Purely visual,
+      // aria-hidden, no text — carries no language for the firewall to catch.
+      var atmos = '<div class="phpub-atmos" aria-hidden="true">' +
+        '<span class="phpub-halo"></span><span class="phpub-grain"></span></div>';
+
       var html = '<div class="phpub" data-phpub="visitor"' + styleAttr + '>';
 
       // ── Threshold / hero — person-first ──────────────────────────────
       var heroHeading = esc(hero.heading || name);
-      html += '<header class="phpub-hero" aria-label="Welcome">' +
+      html += '<header class="phpub-hero" aria-label="Welcome">' + atmos +
         '<p class="phpub-hero-eyebrow">Welcome in</p>' +
         (heroHeading ? '<h1 class="phpub-hero-title">' + heroHeading + '</h1>' : '') +
         (hero.intro ? '<p class="phpub-hero-lede">' + esc(hero.intro) + '</p>' : '') +
         '<p class="phpub-hero-actions"><a class="phpub-btn" href="#phpub-invitation">Say hello</a></p>' +
+        '<p class="phpub-scrollcue" aria-hidden="true">Wander in</p>' +
       '</header>';
 
       // ── Rooms index — a quick sense of the whole ─────────────────────
@@ -22127,6 +22268,8 @@ if (document.readyState === 'loading') {
 
       // ── Invitation / contact ─────────────────────────────────────────
       html += '<section class="phpub-invitation" id="phpub-invitation" aria-label="An invitation">' +
+        atmos +
+        '<div class="phpub-invitation-mark" aria-hidden="true"></div>' +
         '<h2 class="phpub-invitation-title">The door is open.</h2>';
       if (invitation.body) html += '<p class="phpub-invitation-body">' + esc(invitation.body) + '</p>';
       var contact = Array.isArray(invitation.contact) ? invitation.contact : [];
