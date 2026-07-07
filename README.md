@@ -12,3 +12,7 @@ Personal OS — Compass, Studio, Tuner, Nexus, **Field**, and (planned) Home / P
 | `sdk/` | TS/JS | Shared utilities — Gene Keys (`genekeys.ts`), Sigil (`sigil.js`) |
 
 See `field/README.md` for the Field service and `tuner/SYNTHESIS_ENGINE.md` for Tuner.
+
+## Docs
+
+- [`docs/home-design-grammar.md`](docs/home-design-grammar.md) — hOMe Design Grammar: the source of truth for the public hOMe doorway (Minimum Viable Digital Self), public/internal language rules, and stUdio builder implications.
