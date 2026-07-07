@@ -587,4 +587,106 @@ test('Digit is wired into open / close / save / focus / blur events', () => {
     'keydown on the workbench body must transition Digit to listening');
 });
 
+// -----------------------------------------------------------------------------
+// Digit — playfulness pass
+// -----------------------------------------------------------------------------
+// The first Digit pass cycled 0→1→2… sequentially which read as a countdown
+// clock. Playfulness requires: shuffled per-state vocabularies, jittered
+// intervals, micro-beats, rare winks, honoured reduced-motion, and a
+// non-sequential ambient cycle. These tests lock those choices.
+
+test('Digit exposes per-state vocabularies (not one shared alphabet)', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /DIGIT_VOCAB\s*=\s*\{/,
+    'DIGIT_VOCAB must be defined as an object of per-state alphabets');
+  for (const s of ['resting', 'idle', 'attending', 'listening', 'thinking']) {
+    assert.ok(new RegExp('\\b' + s + '\\s*:').test(wbSrc),
+      'DIGIT_VOCAB must declare a vocabulary for state: ' + s);
+  }
+});
+
+test('Digit idle vocabulary is not a pure sequential digit list', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // The playful pass must include letters or punctuation in idle vocab.
+  // Locate the idle: [...] entry and check it references letters.
+  const idleMatch = wbSrc.match(/idle\s*:\s*\[([^\]]+)\]/);
+  assert.ok(idleMatch, 'DIGIT_VOCAB.idle must be a defined array literal');
+  const idleBody = idleMatch[1];
+  assert.ok(/'[A-Za-z]'/.test(idleBody),
+    'DIGIT_VOCAB.idle must include at least one letter (playfulness beyond digits)');
+});
+
+test('Digit picks characters at random (no sequential-mod-10 in the picker)', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const pickerMatch = wbSrc.match(/function\s+digitPickNextChar\s*\([^)]*\)\s*\{([\s\S]*?)\n\s{4}\}/);
+  assert.ok(pickerMatch, 'digitPickNextChar must be defined as a top-level function');
+  const pickerBody = pickerMatch[1];
+  // The old countdown behaviour used DIGIT_SEQ_INDEX + 1) % 10 as its
+  // core cycle. The playful pass must not reintroduce that pattern in
+  // the ambient picker (sequential is still allowed elsewhere for the
+  // held-state satisfied-count, but NOT inside digitPickNextChar).
+  assert.ok(!/DIGIT_SEQ_INDEX\s*\+\s*1/.test(pickerBody),
+    'digitPickNextChar must not use sequential DIGIT_SEQ_INDEX incrementing');
+  assert.match(pickerBody, /Math\.random\(\)/,
+    'digitPickNextChar must pick from its vocabulary randomly');
+});
+
+test('Digit ticker jitters interval per tick (breathing, not metronomic)', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /DIGIT_JITTER\b/,
+    'DIGIT_JITTER constant must be defined');
+  assert.match(wbSrc, /function\s+digitNextInterval\s*\(/,
+    'digitNextInterval helper must exist so each tick can jitter its delay');
+  // Ticker must schedule via setTimeout (self-scheduling), not setInterval,
+  // because setInterval can't vary each tick's delay.
+  const tickerMatch = wbSrc.match(/function\s+digitRestartTicker\s*\([^)]*\)\s*\{([\s\S]*?)\n\s{4}\}/);
+  assert.ok(tickerMatch, 'digitRestartTicker must be defined');
+  assert.ok(!/setInterval/.test(tickerMatch[1]),
+    'digitRestartTicker must NOT use setInterval (fixed cadence would break jitter)');
+  assert.match(tickerMatch[1], /setTimeout/,
+    'digitRestartTicker must schedule via setTimeout so each tick can jitter');
+});
+
+test('Digit micro-beats and winks are defined', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /DIGIT_MICROBEAT_QUIET\b/,
+    'micro-beat quiet-frame set must be defined');
+  assert.match(wbSrc, /DIGIT_WINK_CHANCE\b/,
+    'wink chance must be defined');
+  assert.match(wbSrc, /function\s+digitPickWink\s*\(/,
+    'digitPickWink must be defined');
+});
+
+test('Digit honours prefers-reduced-motion', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /function\s+digitPrefersReducedMotion\s*\(/,
+    'digitPrefersReducedMotion helper must be defined');
+  assert.match(wbSrc, /prefers-reduced-motion:\s*reduce/,
+    'digitPrefersReducedMotion must query the prefers-reduced-motion media feature');
+});
+
+test('held state does a satisfied 1→2→3 tick (the one place sequential belongs)', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // Locate the held branch and assert it defines a small counting sequence.
+  const heldMatch = wbSrc.match(/if\s*\(\s*next\s*===\s*['"]held['"]\s*\)[\s\S]{0,2000}heldTick/);
+  assert.ok(heldMatch,
+    'phDigitSetState must have a held-state branch that runs heldTick');
+  assert.match(wbSrc, /heldSeq\s*=\s*\[\s*['"]1['"]\s*,\s*['"]2['"]\s*,\s*['"]3['"]/,
+    'held state must count 1 -> 2 -> 3 to signal "got it, filed it"');
+});
+
 console.log('\n' + passed + ' checks passed.');
