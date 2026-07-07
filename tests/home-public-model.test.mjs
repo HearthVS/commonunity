@@ -49,6 +49,7 @@ const { phPublicHomeModel, validatePublicHomeLanguage } = new Function(
   extractBlock('// <HOME_LANGUAGE_FIREWALL_START>', '// <HOME_LANGUAGE_FIREWALL_END>') +
   extractBlock('// <HOME_PUBLIC_LABELS_START>',    '// <HOME_PUBLIC_LABELS_END>') +
   extractBlock('// <HOME_PUBLIC_FALLBACKS_START>', '// <HOME_PUBLIC_FALLBACKS_END>') +
+  extractBlock('// <HOME_PUBLIC_VISUAL_IDENTITY_START>', '// <HOME_PUBLIC_VISUAL_IDENTITY_END>') +
   extractBlock('// <HOME_PUBLIC_MODEL_START>',     '// <HOME_PUBLIC_MODEL_END>') +
   '\nreturn { phPublicHomeModel, validatePublicHomeLanguage };'
 )();
@@ -253,6 +254,28 @@ test('public model is safe and firewall-clean on null / empty input', () => {
     assert.equal(model.palette, null);
     assert.equal(model.language.ok, true, JSON.stringify(model.language.violations));
   }
+});
+
+// ── Visual identity attachment ──────────────────────────────────────
+test('public model attaches a deterministic visual identity contract', () => {
+  const model = phPublicHomeModel(samplePreview());
+  const vi = model.visualIdentity;
+  assert.ok(vi && typeof vi === 'object', 'model should carry visualIdentity');
+  assert.ok(['warm', 'grounded', 'luminous', 'clear', 'vivid'].includes(vi.tone));
+  assert.ok(['sparse', 'balanced', 'rich'].includes(vi.density));
+  assert.ok(['still', 'subtle', 'alive'].includes(vi.motion));
+  assert.equal(vi.roomTreatments.length, 4);
+  // Palette roles flow through from the attached seeds.
+  assert.equal(vi.palette.roles.expression, '#a00');
+  // The whole model (incl. visualIdentity) stays firewall-clean.
+  assert.equal(validatePublicHomeLanguage(model).ok, true, JSON.stringify(model.language.violations));
+});
+
+test('visual identity is null-safe on empty input', () => {
+  const model = phPublicHomeModel({});
+  assert.ok(model.visualIdentity);
+  assert.equal(model.visualIdentity.palette.present, false);
+  assert.equal(model.visualIdentity.tone, 'grounded');
 });
 
 console.log('\nStatic wiring assertions');

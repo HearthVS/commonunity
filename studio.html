@@ -22021,6 +22021,165 @@ if (document.readyState === 'loading') {
     };
     // <HOME_PUBLIC_FALLBACKS_END>
 
+    // <HOME_PUBLIC_VISUAL_IDENTITY_START> — extracted verbatim by tests/home-public-visual-identity.test.mjs
+    // Pure, visitor-facing hOMe *visual identity* model (docs/home-design-grammar.md
+    // §3, §5, §8; roadmap "visual identity generation foundation"). This is the
+    // structured, deterministic contract a future renderer (or generated-visual
+    // layer) consumes so the public hOMe gets a coherent, personal look instead
+    // of ad-hoc CSS. It turns the first-class source seeds (HOME_SOURCE_SEEDS —
+    // content + palette) into a small, testable object describing HOW the home
+    // should feel and be treated, not WHAT it says.
+    //
+    // Everything here is derived by simple deterministic rules from the source
+    // material and palette (no randomness, no external AI, no network). Every
+    // value is a public-safe word: it must never expose the internal source
+    // systems or the fixed Work/Lens/Field/Call taxonomy, so its output stays
+    // clean under validatePublicHomeLanguage(). Pure: no DOM, no window, no
+    // persistence — seeds/model in, a plain descriptor object out.
+    function phPublicVisualIdentity(input) {
+      input = (input && typeof input === 'object') ? input : {};
+
+      // Accept the several shapes callers already hold: raw source seeds
+      // ({ content, palette }), a preview/public model carrying `sourceSeeds`,
+      // or a raw state ({ compassData, cipherContract }) we can seed ourselves.
+      var seeds;
+      if (input.content || input.palette) {
+        seeds = input;
+      } else if (input.sourceSeeds && typeof input.sourceSeeds === 'object') {
+        seeds = input.sourceSeeds;
+      } else if (typeof phHomeSourceSeeds === 'function') {
+        seeds = phHomeSourceSeeds({ compassData: input.compassData, cipherContract: input.cipherContract });
+      } else {
+        seeds = {};
+      }
+      var content = (seeds && seeds.content) || {};
+      var palette = (seeds && seeds.palette) || {};
+      var dims    = (content && content.dimensions) || {};
+      var themes  = Array.isArray(content && content.themes) ? content.themes : [];
+
+      var DIMS = ['work', 'lens', 'field', 'call'];
+
+      // Deterministic, order-stable small hash → index into a choice list. Lets
+      // the identity vary personally (by the person's own themes/name) while
+      // staying perfectly reproducible for the same source. Never random.
+      function viHash(s) {
+        s = typeof s === 'string' ? s : '';
+        var h = 0;
+        for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+        return h;
+      }
+      function pick(list, key) {
+        if (!list.length) return '';
+        return list[viHash(key) % list.length];
+      }
+
+      // ── Palette: only the three public visual ROLES (never a source name) ──
+      var roles = (palette && palette.present && palette.roles) ? palette.roles : null;
+      var paletteOut = {
+        present: !!roles,
+        roles: roles
+          ? { root: roles.root, expression: roles.expression, radiance: roles.radiance }
+          : null
+      };
+
+      // ── Density: how much material the rooms carry ─────────────────────────
+      // A body counts as 1; each highlight as 1. Sparse when there is little to
+      // show, rich when the rooms are full — so the renderer can breathe or fill.
+      var contentUnits = 0;
+      DIMS.forEach(function (k) {
+        var d = dims[k] || {};
+        if (d.body) contentUnits += 1;
+        if (Array.isArray(d.highlights)) contentUnits += d.highlights.length;
+      });
+      var density = contentUnits <= 2 ? 'sparse' : (contentUnits <= 6 ? 'balanced' : 'rich');
+
+      // ── Tone: warm / grounded / luminous / clear / vivid ───────────────────
+      // Personal but deterministic: chosen from the person's own themes + name.
+      // Calm, grounded default when there is no source material yet.
+      var TONES = ['warm', 'grounded', 'luminous', 'clear', 'vivid'];
+      var toneKey = themes.join(' ') + '|' + String(content.name || '');
+      var tone = content.present ? pick(TONES, toneKey) : 'grounded';
+
+      // ── Motion: still / subtle / alive ─────────────────────────────────────
+      // Follows density so a full home feels alive and an empty one stays still.
+      var motion = !content.present ? 'still' : (density === 'rich' ? 'alive' : (density === 'sparse' ? 'still' : 'subtle'));
+
+      // ── Type direction: editorial / modern / grounded / expressive ─────────
+      var TYPE_BY_TONE = {
+        warm: 'editorial', grounded: 'grounded', luminous: 'expressive',
+        clear: 'modern', vivid: 'expressive'
+      };
+      var typeDirection = TYPE_BY_TONE[tone] || 'grounded';
+
+      // ── Imagery strategy: portrait / place / object / abstract / atmosphere ─
+      // Defaulted and testable for now (no generation in this slice); a present
+      // palette leans atmospheric, a bare home stays abstract.
+      var imagery = paletteOut.present ? 'atmosphere' : 'abstract';
+
+      // ── Motifs: a small set of public-safe motifs ──────────────────────────
+      // Always anchored by "threshold" (a home has a doorway); the rest are
+      // derived from theme keywords where obvious, else deterministic defaults.
+      // All words are public-neutral — none name the internal source system or
+      // the hidden dimension taxonomy.
+      var MOTIF_VOCAB = ['threshold', 'weave', 'water', 'hearth', 'signal', 'orbit', 'garden', 'studio'];
+      var MOTIF_KEYWORDS = [
+        { motif: 'water',  re: /\b(water|sea|coast|ocean|river|tide|flow|rain)\b/i },
+        { motif: 'garden', re: /\b(garden|grow|plant|seed|bloom|soil|nature|root)\b/i },
+        { motif: 'hearth', re: /\b(home|hearth|warm|care|gather|family|kitchen|craft)\b/i },
+        { motif: 'signal', re: /\b(signal|voice|write|word|story|teach|share|broadcast)\b/i },
+        { motif: 'weave',  re: /\b(weave|thread|connect|community|network|link|fabric)\b/i },
+        { motif: 'orbit',  re: /\b(orbit|cycle|rhythm|season|circle|loop|return)\b/i },
+        { motif: 'studio', re: /\b(studio|make|build|design|art|work|practice)\b/i }
+      ];
+      var themeText = themes.join(' ') + ' ' + DIMS.map(function (k) {
+        var d = dims[k] || {};
+        return String(d.theme || '') + ' ' + String(d.heading || '');
+      }).join(' ');
+      var motifs = ['threshold'];
+      MOTIF_KEYWORDS.forEach(function (m) {
+        if (motifs.length < 4 && m.re.test(themeText) && motifs.indexOf(m.motif) === -1) {
+          motifs.push(m.motif);
+        }
+      });
+      // Fill toward a small, coherent set with deterministic defaults so the
+      // renderer always has a couple of motifs to work with.
+      for (var vi = 0; vi < MOTIF_VOCAB.length && motifs.length < 3; vi++) {
+        var cand = pick(MOTIF_VOCAB, toneKey + '|' + vi);
+        if (motifs.indexOf(cand) === -1) motifs.push(cand);
+      }
+
+      // ── Room treatments: one per public room, in room order ────────────────
+      // Aligned by position with the public model's rooms (never keyed by the
+      // hidden dimension name). Each carries the accent role to tint with, a
+      // motif + glyph cue, and an intensity scaled to that room's content.
+      var ROOM_ACCENTS = ['expression', 'root', 'radiance', 'expression'];
+      var ROOM_GLYPHS  = ['◐', '◑', '◓', '◒'];
+      var roomTreatments = DIMS.map(function (k, i) {
+        var d = dims[k] || {};
+        var units = (d.body ? 1 : 0) + (Array.isArray(d.highlights) ? d.highlights.length : 0);
+        var intensity = units === 0 ? 'soft' : (units >= 3 ? 'bold' : 'medium');
+        return {
+          accent:    ROOM_ACCENTS[i],
+          motif:     motifs[(i + 1) % motifs.length] || motifs[0] || 'threshold',
+          glyph:     ROOM_GLYPHS[i],
+          cue:       motifs[(i + 1) % motifs.length] || motifs[0] || 'threshold',
+          intensity: intensity
+        };
+      });
+
+      return {
+        palette:        paletteOut,
+        tone:           tone,
+        density:        density,
+        motifs:         motifs,
+        imagery:        imagery,
+        roomTreatments: roomTreatments,
+        motion:         motion,
+        typeDirection:  typeDirection
+      };
+    }
+    // <HOME_PUBLIC_VISUAL_IDENTITY_END>
+
     // <HOME_PUBLIC_MODEL_START> — extracted verbatim by tests/home-public-model.test.mjs
     // Pure, visitor-facing hOMe render model (docs/home-design-grammar.md §3,
     // §5, §8; roadmap "clean public hOMe render model"). This is the seam a
@@ -22130,12 +22289,21 @@ if (document.readyState === 'loading') {
         return r.body !== PH_PUBLIC_FALLBACKS.roomEmpty || r.highlights.length;
       }).length;
 
+      // Structured visual identity contract for the future renderer / generated
+      // visuals (HOME_PUBLIC_VISUAL_IDENTITY). Derived deterministically from the
+      // same seeds; all values public-safe. Guarded so the model still resolves
+      // if the helper layer is absent.
+      var visualIdentity = (typeof phPublicVisualIdentity === 'function')
+        ? phPublicVisualIdentity(seeds)
+        : null;
+
       var model = {
         identity:   { name: name },
         hero:       hero,
         rooms:      rooms,
         invitation: invitation,
         palette:    paletteRoles ? { roles: paletteRoles } : null,
+        visualIdentity: visualIdentity,
         status: {
           present:          !!content.present,
           roomsWithContent: roomsWithContent,
@@ -23490,6 +23658,14 @@ if (document.readyState === 'loading') {
       // provenance tags, or raw dimension keys leak into it.
       publicHomeModel:     phPublicHomeModel,
       buildPublicHomeModel: phPublicHomeModel,
+      // Pure, deterministic public visual identity contract
+      // (docs/home-design-grammar.md §3, §5, §8). Turns the first-class source
+      // seeds into a structured, public-safe descriptor (palette roles, tone,
+      // density, motifs, imagery, per-room treatments, motion, type direction)
+      // the future renderer / generated-visual layer consumes. No source-system
+      // names or raw dimension taxonomy leak into it. Also attached to the
+      // public model above as `visualIdentity`.
+      publicVisualIdentity: phPublicVisualIdentity,
       // Pure, visitor-facing hOMe renderer (docs/home-design-grammar.md §3,
       // §5, §8). Consumes the clean public model above and returns ONLY the
       // HTML a stranger reads — person-first threshold, rooms with warm public
