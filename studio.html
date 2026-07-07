@@ -8638,6 +8638,484 @@ input, textarea { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .sacred-chamber-active::before { animation: none; }
 }
+
+/* ── hOMe Workbench (HOME_WORKBENCH_CSS_START) ─────────────────────────
+   A dedicated stUdio surface where the person clearly feels
+   "I am working on my hOMe." Three columns:
+     · rooms sidebar (draft status per section + selected state)
+     · active-section work area (labels, body, contextual Muse, source
+       drawer, Save & Tune)
+     · live visitor preview (split view — the same phRenderPublicHome
+       output a stranger reads, refreshed after every Save)
+   The Workbench is a full-viewport panel that opens over stUdio and
+   closes cleanly back. It uses the *existing* helpers (phPublicHomeModel,
+   phRenderPublicHome, buildWebsitePreview, phWriteRoomCapture, language
+   firewall) but is not constrained by the old modal shell.
+   docs/home-design-grammar.md §8: preview overlay pattern is a first-class
+   feature — the split-view here fulfils the "quick to invoke and dismiss,
+   encouraging frequent checks" requirement. */
+.home-workbench {
+  position: fixed; inset: 0; z-index: 9500;
+  display: none;
+  background: var(--bg, #0b1120);
+  color: var(--text, #eef1f7);
+  overflow: hidden;
+}
+.home-workbench.is-open { display: flex; flex-direction: column; }
+body.hw-open { overflow: hidden; }
+
+/* Top bar — project identity + status + visitor-preview affordance + close. */
+.hw-topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 70%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 40%, transparent);
+  flex-wrap: wrap;
+}
+.hw-topbar-brand {
+  display: flex; align-items: center; gap: 12px; min-width: 0;
+}
+.hw-topbar-eyebrow {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-topbar-title {
+  font-size: 18px; font-weight: 600; margin: 2px 0 0; line-height: 1.2;
+  color: var(--text, #eef1f7);
+}
+.hw-topbar-title em { font-style: italic; color: var(--text-muted, #9aa3b2); }
+.hw-topbar-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 75%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 55%, transparent);
+  font-size: 11px; color: var(--text-muted, #9aa3b2);
+  letter-spacing: 0.02em;
+}
+.hw-topbar-status .hw-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #a48cff) 80%, transparent);
+}
+.hw-topbar-status.is-fully-seeded .hw-status-dot { background: #6bd6a8; }
+.hw-topbar-status.is-awaiting-seed .hw-status-dot { background: #d9a86b; }
+.hw-topbar-progress {
+  flex: 1 1 240px; min-width: 160px; max-width: 380px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.hw-topbar-progress-track {
+  height: 6px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--border, #2a2f3a) 60%, transparent);
+}
+.hw-topbar-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent, #a48cff) 90%, transparent),
+    color-mix(in srgb, var(--accent, #a48cff) 60%, transparent));
+  transition: width 0.4s ease;
+}
+.hw-topbar-progress-label {
+  font-size: 11px; color: var(--text-muted, #9aa3b2); letter-spacing: 0.02em;
+}
+.hw-topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.hw-topbar-btn {
+  border: 1px solid var(--border, #2a2f3a);
+  background: transparent; color: var(--text, #eef1f7);
+  padding: 8px 14px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, border-color 0.2s;
+}
+.hw-topbar-btn:hover { background: color-mix(in srgb, var(--accent, #a48cff) 8%, transparent); border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a)); }
+.hw-topbar-btn.is-primary { background: var(--text, #eef1f7); color: var(--bg, #0b1120); border-color: var(--text, #eef1f7); }
+.hw-topbar-btn.is-primary:hover { background: color-mix(in srgb, var(--text, #eef1f7) 90%, var(--accent, #a48cff)); }
+.hw-topbar-close {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border, #2a2f3a);
+  background: transparent; color: var(--text, #eef1f7);
+  cursor: pointer; font-size: 20px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.hw-topbar-close:hover { background: color-mix(in srgb, var(--danger, #d97575) 15%, transparent); border-color: color-mix(in srgb, var(--danger, #d97575) 60%, var(--border, #2a2f3a)); }
+
+/* Three-column layout. Preview column can be toggled off (fullscreen work) or
+   Workbench itself can hide (fullscreen preview) via body-level classes. */
+.hw-body {
+  flex: 1 1 auto; display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* Mobile tab bar (only visible under 720px — see @media below). Sits
+   directly under the topbar. Defined BEFORE the media queries so the
+   media rules that flip it to display:flex win by cascade order. */
+.hw-mobile-tabs {
+  display: none;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+}
+.hw-mobile-tab {
+  flex: 1 1 0;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #9aa3b2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.hw-mobile-tab.is-active {
+  color: var(--text, #eef1f7);
+  border-bottom-color: color-mix(in srgb, var(--accent, #a48cff) 80%, transparent);
+}
+.home-workbench.is-preview-collapsed .hw-body {
+  grid-template-columns: 260px minmax(0, 1fr) 0;
+}
+.home-workbench.is-preview-collapsed .hw-preview-col { display: none; }
+.home-workbench.is-preview-fullscreen .hw-body {
+  grid-template-columns: 0 0 minmax(0, 1fr);
+}
+.home-workbench.is-preview-fullscreen .hw-rooms-col,
+.home-workbench.is-preview-fullscreen .hw-work-col { display: none; }
+
+
+/* Rooms sidebar. */
+.hw-rooms-col {
+  display: flex; flex-direction: column;
+  border-right: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 70%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 25%, transparent);
+  overflow-y: auto;
+}
+.hw-rooms-head {
+  padding: 16px 18px 8px;
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-rooms-list { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 16px; margin: 0; list-style: none; }
+.hw-room-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px; border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text, #eef1f7);
+  cursor: pointer; text-align: left; width: 100%;
+  font: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+.hw-room-card:hover { background: color-mix(in srgb, var(--accent, #a48cff) 6%, transparent); }
+.hw-room-card.is-active {
+  background: color-mix(in srgb, var(--accent, #a48cff) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 45%, transparent);
+}
+.hw-room-card-label { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.hw-room-card-meta {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-muted, #9aa3b2);
+  letter-spacing: 0.02em;
+}
+.hw-room-card-dot { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--border, #2a2f3a) 80%, transparent); }
+.hw-room-card-dot.is-compass  { background: #7aa7ff; }
+.hw-room-card-dot.is-captured { background: #6bd6a8; }
+.hw-room-card-dot.is-mixed    { background: #a48cff; }
+.hw-room-card-dot.is-empty    { background: color-mix(in srgb, var(--border, #2a2f3a) 80%, transparent); }
+/* Unsaved marker on the active room card. */
+.hw-room-card .hw-room-unsaved {
+  display: none;
+  margin-left: auto;
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent, #a48cff) 90%, var(--text, #eef1f7));
+  padding: 2px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 40%, transparent);
+}
+.home-workbench.is-dirty .hw-room-card.is-active .hw-room-unsaved { display: inline-flex; align-items: center; }
+.hw-rooms-footnote {
+  margin-top: auto;
+  padding: 12px 18px 18px;
+  font-size: 11px; color: var(--text-faint, #6b7280);
+  border-top: 1px dashed color-mix(in srgb, var(--border, #2a2f3a) 60%, transparent);
+  line-height: 1.5;
+}
+.hw-rooms-footnote a, .hw-rooms-footnote button {
+  color: var(--text-muted, #9aa3b2);
+  background: transparent; border: 0; padding: 0;
+  text-decoration: underline; cursor: pointer; font: inherit;
+}
+
+/* Work column — active section: label, body, muse guidance, source drawer. */
+.hw-work-col {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
+  border-right: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 70%, transparent);
+}
+.hw-work-head {
+  padding: 18px 24px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+}
+.hw-work-eyebrow {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+  margin: 0 0 4px;
+}
+.hw-work-title {
+  font-size: 22px; font-weight: 600; margin: 0;
+  color: var(--text, #eef1f7);
+}
+.hw-work-body {
+  flex: 1 1 auto; overflow-y: auto;
+  padding: 18px 24px 24px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.hw-work-field { display: flex; flex-direction: column; gap: 6px; }
+.hw-work-field-label {
+  font-size: 12px; color: var(--text-muted, #9aa3b2);
+  letter-spacing: 0.03em;
+}
+.hw-work-field-input,
+.hw-work-field-textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--border, #2a2f3a);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 65%, transparent);
+  color: var(--text, #eef1f7);
+  font: inherit; font-size: 14px; line-height: 1.55;
+  resize: vertical;
+}
+.hw-work-field-textarea { min-height: 140px; }
+.hw-work-field-input:focus,
+.hw-work-field-textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #a48cff) 55%, transparent);
+  outline-offset: 0; border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a));
+}
+.hw-work-muse {
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 30%, var(--border, #2a2f3a));
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 6%, transparent);
+}
+.hw-work-muse-eye {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent, #a48cff) 85%, var(--text-muted, #9aa3b2));
+  margin: 0 0 4px;
+}
+.hw-work-muse-body { font-size: 13px; color: var(--text, #eef1f7); line-height: 1.55; margin: 0; }
+.hw-work-muse-body em { color: var(--text-muted, #9aa3b2); font-style: italic; }
+
+.hw-work-actions {
+  /* Sticky at the bottom of the work column so Save & tune is always
+     reachable, even when the body is long. */
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px;
+  border-top: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+/* When there are unsaved changes, the Save button pulses gently. */
+.home-workbench.is-dirty .hw-work-save {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a48cff) 25%, transparent);
+  animation: hw-save-pulse 2.4s ease-in-out infinite;
+}
+@keyframes hw-save-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a48cff) 22%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #a48cff) 10%, transparent); }
+}
+.hw-work-save {
+  background: var(--text, #eef1f7); color: var(--bg, #0b1120);
+  border: 1px solid var(--text, #eef1f7);
+  padding: 8px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.hw-work-save:hover { background: color-mix(in srgb, var(--text, #eef1f7) 90%, var(--accent, #a48cff)); }
+.hw-work-cancel {
+  background: transparent; border: 1px solid var(--border, #2a2f3a);
+  color: var(--text-muted, #9aa3b2);
+  padding: 8px 14px; border-radius: 999px;
+  font-size: 12px; cursor: pointer;
+}
+.hw-work-hint { font-size: 11px; color: var(--text-faint, #6b7280); margin-left: auto; }
+
+/* Source drawer — bottom of work column. */
+.hw-source-drawer {
+  border-top: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 20%, transparent);
+  max-height: 42%;
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.hw-source-drawer-head {
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  cursor: pointer;
+  background: transparent; border: 0; color: var(--text, #eef1f7);
+  font: inherit; width: 100%; text-align: left;
+}
+.hw-source-drawer-title {
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-source-drawer-caret {
+  transition: transform 0.2s ease;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-source-drawer.is-open .hw-source-drawer-caret { transform: rotate(180deg); }
+.hw-source-drawer-body {
+  padding: 4px 24px 16px; overflow-y: auto;
+  display: none;
+}
+.hw-source-drawer.is-open .hw-source-drawer-body { display: block; }
+.hw-source-group { margin: 8px 0 14px; }
+.hw-source-group-title {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+  margin: 0 0 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hw-source-group-count {
+  border: 1px solid var(--border, #2a2f3a); border-radius: 999px;
+  padding: 1px 8px; font-size: 10px; letter-spacing: 0.04em;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-source-items { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.hw-source-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 8px; border-radius: 8px;
+  cursor: pointer; background: transparent; border: 1px solid transparent;
+  color: var(--text, #eef1f7);
+  font: inherit; width: 100%; text-align: left;
+  font-size: 13px; line-height: 1.4;
+}
+.hw-source-item:hover { background: color-mix(in srgb, var(--accent, #a48cff) 6%, transparent); border-color: color-mix(in srgb, var(--accent, #a48cff) 30%, transparent); }
+.hw-source-item-excerpt { flex: 1 1 auto; min-width: 0; }
+.hw-source-item-tag {
+  font-size: 10px; letter-spacing: 0.04em;
+  color: var(--text-faint, #6b7280);
+  padding: 1px 6px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 70%, transparent);
+  flex-shrink: 0;
+}
+.hw-source-empty {
+  font-size: 12px; color: var(--text-faint, #6b7280);
+  padding: 6px 8px; font-style: italic;
+}
+
+/* Preview column — the live visitor render. Uses .phpub styling already. */
+.hw-preview-col {
+  display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--input-bg, #14171d) 12%, transparent);
+  min-width: 0; min-height: 0;
+}
+.hw-preview-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+}
+.hw-preview-eye {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-preview-actions { display: flex; gap: 6px; }
+.hw-preview-btn {
+  border: 1px solid var(--border, #2a2f3a); background: transparent;
+  color: var(--text-muted, #9aa3b2);
+  padding: 5px 10px; border-radius: 999px;
+  font-size: 11px; cursor: pointer;
+}
+.hw-preview-btn:hover { color: var(--text, #eef1f7); border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a)); }
+.hw-preview-btn.is-active { color: var(--text, #eef1f7); border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a)); background: color-mix(in srgb, var(--accent, #a48cff) 8%, transparent); }
+.hw-preview-frame {
+  flex: 1 1 auto; overflow: auto;
+  padding: 18px;
+  background: transparent;
+}
+.hw-preview-frame > .phpub {
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.55);
+}
+
+/* Toast confirmation shown when a section is saved. */
+.hw-toast {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--text, #eef1f7); color: var(--bg, #0b1120);
+  font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+.hw-toast.is-visible { opacity: 1; }
+
+/* Entry-point CTA on the entrance rail. */
+.hw-entry-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 50%, var(--border, #2a2f3a));
+  background: color-mix(in srgb, var(--accent, #a48cff) 10%, transparent);
+  color: var(--text, #eef1f7);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  letter-spacing: 0.02em;
+  margin-top: 6px; align-self: flex-start;
+}
+.hw-entry-cta:hover { background: color-mix(in srgb, var(--accent, #a48cff) 18%, transparent); }
+.hw-entry-cta .hw-entry-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #a48cff) 85%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #a48cff) 70%, transparent);
+}
+/* Primary variant: first-class rail CTA (bigger, brighter, more space). */
+.hw-entry-cta-primary {
+  padding: 12px 18px;
+  font-size: 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 70%, var(--border, #2a2f3a));
+  margin-top: 14px;
+  box-shadow: 0 6px 22px -12px color-mix(in srgb, var(--accent, #a48cff) 80%, transparent);
+}
+.hw-entry-cta-primary:hover {
+  background: color-mix(in srgb, var(--accent, #a48cff) 30%, transparent);
+  transform: translateY(-1px);
+}
+.hw-entry-cta-primary .hw-entry-dot {
+  width: 10px; height: 10px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #a48cff) 85%, transparent);
+}
+
+/* Responsive breakpoints — declared AT THE END so they cascade after
+   all base rules and win on source order. */
+@media (max-width: 1120px) {
+  .hw-body { grid-template-columns: 220px minmax(0, 1fr) 0; }
+  .hw-preview-col { display: none; }
+  .home-workbench.is-preview-open .hw-body { grid-template-columns: 0 0 minmax(0, 1fr); }
+  .home-workbench.is-preview-open .hw-rooms-col,
+  .home-workbench.is-preview-open .hw-work-col { display: none; }
+  .home-workbench.is-preview-open .hw-preview-col { display: flex; }
+}
+@media (max-width: 720px) {
+  .hw-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
+  .hw-mobile-tabs { display: flex; }
+  .hw-rooms-col, .hw-work-col, .hw-preview-col {
+    grid-column: 1 / -1; grid-row: 1;
+    display: none;
+    border-right: 0;
+  }
+  .home-workbench.is-mobile-tab-work .hw-work-col,
+  .home-workbench:not(.is-mobile-tab-rooms):not(.is-mobile-tab-preview) .hw-work-col { display: flex; }
+  .home-workbench.is-mobile-tab-rooms .hw-rooms-col { display: flex; }
+  .home-workbench.is-mobile-tab-preview .hw-preview-col { display: flex; }
+  .hw-topbar { padding: 10px 14px; gap: 10px; }
+  .hw-topbar-title { font-size: 16px; }
+  .hw-topbar-progress { flex: 1 1 100%; max-width: none; order: 3; }
+  .hw-topbar-actions .hw-topbar-btn { display: none; }
+  .hw-work-head, .hw-work-body { padding-left: 16px; padding-right: 16px; }
+}
+/* ── hOMe Workbench (HOME_WORKBENCH_CSS_END) ─────────────────────────── */
 </style>
 </head>
 <body>
@@ -8775,6 +9253,16 @@ input, textarea { font: inherit; color: inherit; }
     </div>
     <p class="entrance-subtitle">Studio is where your <em>Compass</em> becomes form.</p>
     <div class="entrance-name" id="entrance-name"></div>
+
+    <!-- Primary hOMe entry: the Workbench. First-class CTA on the
+         entrance rail (not tucked inside the collapsed Studio Path
+         panel) so members can walk straight into shaping their hOMe.
+         The read-only "Preview Personal Home" button remains reachable
+         inside the Studio Path panel as a transitional fallback. -->
+    <button type="button" class="hw-entry-cta hw-entry-cta-primary" id="home-workbench-open-entrance">
+      <span class="hw-entry-dot" aria-hidden="true"></span>
+      Open hOMe Workbench
+    </button>
 
     <!-- Studio Path — the three levels of authentic digital self.
          Collapsed by default to keep the entrance rail discreet; the
@@ -9792,6 +10280,120 @@ input, textarea { font: inherit; color: inherit; }
     </div>
   </div>
 </div>
+
+<!-- ============================================================
+     hOMe Workbench — HOME_WORKBENCH_SHELL_START
+     The primary hOMe work surface. A full-viewport panel that
+     replaces the old Studio Path modal as the main builder entry.
+     Three columns:
+       · Rooms sidebar — the four hidden dimensions surfaced as
+         warm public labels, with per-room draft status + selected
+         state.
+       · Work column — active-section editor: label + body +
+         contextual Muse guidance + source drawer (Field
+         Observations / Nexus returns / cOMpass seeds) with
+         functional pull-in.
+       · Preview column — the live visitor render (the same
+         phRenderPublicHome output a stranger reads), refreshed
+         after every Save so "Tune the room" changes are
+         immediately visible.
+     Uses existing helpers (phPublicHomeModel, phRenderPublicHome,
+     buildWebsitePreview, phWriteRoomCapture, language firewall).
+     Public preview stays firewall-clean; internal terms never leak.
+     docs/home-design-grammar.md §8 (preview overlay pattern) is
+     first-class here.
+     ============================================================ -->
+<div id="home-workbench" class="home-workbench" role="dialog" aria-labelledby="home-workbench-title" aria-modal="true" hidden>
+  <div class="hw-topbar">
+    <div class="hw-topbar-brand">
+      <div>
+        <p class="hw-topbar-eyebrow">Workbench · hOMe</p>
+        <h2 class="hw-topbar-title" id="home-workbench-title">Your <em>hOMe</em> in the making</h2>
+      </div>
+      <span class="hw-topbar-status" id="home-workbench-status">
+        <span class="hw-status-dot" aria-hidden="true"></span>
+        <span id="home-workbench-status-label">Draft</span>
+      </span>
+    </div>
+    <div class="hw-topbar-progress" aria-label="Draft progress across rooms">
+      <div class="hw-topbar-progress-track">
+        <div class="hw-topbar-progress-fill" id="home-workbench-progress-fill" style="width:0%;"></div>
+      </div>
+      <span class="hw-topbar-progress-label" id="home-workbench-progress-label">0 of 4 rooms drafted</span>
+    </div>
+    <div class="hw-topbar-actions">
+      <button type="button" class="hw-topbar-btn" id="home-workbench-preview-toggle"
+              aria-pressed="true" title="Show or hide the live visitor preview column">
+        Hide preview
+      </button>
+      <button type="button" class="hw-topbar-btn" id="home-workbench-preview-fullscreen"
+              aria-pressed="false" title="Open the visitor preview at full width">
+        Preview as visitor
+      </button>
+      <button type="button" class="hw-topbar-close" id="home-workbench-close" aria-label="Close hOMe Workbench">×</button>
+    </div>
+  </div>
+
+  <!-- Mobile-only tab bar (revealed by @media (max-width: 720px)). Lets
+       members swap between the three columns one at a time on small
+       screens so nothing overlaps. -->
+  <nav class="hw-mobile-tabs" role="tablist" aria-label="Workbench panels">
+    <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="rooms" role="tab" aria-selected="false">Rooms</button>
+    <button type="button" class="hw-mobile-tab is-active" data-hw-mobile-tab="work" role="tab" aria-selected="true">Shape</button>
+    <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="preview" role="tab" aria-selected="false">Preview</button>
+  </nav>
+
+  <div class="hw-body">
+    <!-- Rooms sidebar -->
+    <aside class="hw-rooms-col" aria-label="hOMe rooms">
+      <p class="hw-rooms-head">Rooms</p>
+      <ul class="hw-rooms-list" id="home-workbench-rooms" role="tablist"></ul>
+      <p class="hw-rooms-footnote">
+        The four rooms are your hOMe's shape. Select one to shape it in your own words.
+        <button type="button" id="home-workbench-open-legacy-modal">Open the read-only preview</button>
+      </p>
+    </aside>
+
+    <!-- Active section work column -->
+    <section class="hw-work-col" aria-label="Active room editor">
+      <div class="hw-work-head">
+        <p class="hw-work-eyebrow" id="home-workbench-work-eyebrow">Room</p>
+        <h3 class="hw-work-title" id="home-workbench-work-title">Select a room</h3>
+      </div>
+      <div class="hw-work-body" id="home-workbench-work-body">
+        <p class="hw-work-hint">Pick a room on the left to start shaping it. Everything you save re-seeds the preview on the right.</p>
+      </div>
+      <div class="hw-work-actions" id="home-workbench-work-actions" hidden>
+        <button type="button" class="hw-work-save" id="home-workbench-save">Save &amp; tune</button>
+        <button type="button" class="hw-work-cancel" id="home-workbench-cancel">Revert</button>
+        <span class="hw-work-hint">Nothing is published. Preview updates immediately.</span>
+      </div>
+      <!-- Source drawer -->
+      <div class="hw-source-drawer" id="home-workbench-source-drawer">
+        <button type="button" class="hw-source-drawer-head" id="home-workbench-source-toggle"
+                aria-expanded="false" aria-controls="home-workbench-source-body">
+          <span class="hw-source-drawer-title" id="home-workbench-source-title">Source material · pull into this room</span>
+          <span class="hw-source-drawer-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="hw-source-drawer-body" id="home-workbench-source-body" role="region"></div>
+      </div>
+    </section>
+
+    <!-- Live visitor preview -->
+    <section class="hw-preview-col" aria-label="Live visitor preview">
+      <div class="hw-preview-head">
+        <span class="hw-preview-eye">Live preview · what a visitor reads</span>
+        <div class="hw-preview-actions">
+          <button type="button" class="hw-preview-btn is-active" id="home-workbench-preview-refresh" title="Refresh preview">Refresh</button>
+        </div>
+      </div>
+      <div class="hw-preview-frame" id="home-workbench-preview-frame" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div class="hw-toast" id="home-workbench-toast" role="status" aria-live="polite"></div>
+</div>
+<!-- HOME_WORKBENCH_SHELL_END -->
 
 <!-- ============================================================
      Personal Home Preview v0.2 — modal
@@ -22070,6 +22672,673 @@ if (document.readyState === 'loading') {
         return !!latest && latest.builder === 'personal-home';
       } catch (_) { return false; }
     }
+
+    // <HOME_WORKBENCH_JS_START>
+    // ─────────────────────────────────────────────────────────────
+    // hOMe Workbench — the primary hOMe work surface
+    // ─────────────────────────────────────────────────────────────
+    // A dedicated stUdio panel (see #home-workbench in the HTML) that
+    // integrates the four rooms, contextual Muse guidance, source
+    // material (Field Observations / Nexus returns / cOMpass seeds),
+    // and a live visitor preview into ONE coherent surface. Replaces
+    // the old "Preview Personal Home" modal as the primary builder
+    // entry (the old modal remains reachable as a transitional
+    // fallback via #home-workbench-open-legacy-modal).
+    //
+    // Contract:
+    //   • openHomeWorkbench()  — show the Workbench, seed the active
+    //     room from state, and paint the split-view preview.
+    //   • closeHomeWorkbench() — hide and restore body scroll.
+    //   • phWorkbenchState     — internal view state (active room,
+    //     draft buffer, dirty flag, preview column state). Never
+    //     persisted; writes go through phWriteRoomCapture like
+    //     the existing tune flow so there is one source of truth.
+    //   • phWorkbenchRefreshPreview() — repaint the .phpub preview
+    //     column from the current model. Called after every Save;
+    //     this is the mechanism that makes "Tune the room → Save"
+    //     immediately reflect in visitor preview.
+    //
+    // Public-language firewall: the preview column renders through
+    // phRenderPublicHome(phPublicHomeModel(...)) — the same firewall-
+    // guarded path the visitor view already uses — so internal terms
+    // (Compass, Living Profile, Nexus, Field Observations, Spark, OM
+    // Cipher, fixed Work/Lens/Field/Call taxonomy) cannot leak into
+    // the visitor render even though they are visible in the builder
+    // chrome around it.
+    // Related: docs/home-design-grammar.md §8 (preview overlay).
+
+    var HW_ROOM_KEYS = ['work', 'lens', 'field', 'call'];
+
+    // Contextual Muse guidance per room — plain, warm, first-person
+    // prompts that help the person shape the section in their own
+    // voice. These are BUILDER-only strings; they never appear in the
+    // preview column (phRenderPublicHome does not read them).
+    var HW_MUSE_PROMPTS = {
+      work: {
+        eyebrow: 'Muse · what I make',
+        body:    'What is the shape of your work right now? Name one or two things a stranger could actually meet — a craft, an offer, a piece you\'d gladly be found through.'
+      },
+      lens: {
+        eyebrow: 'Muse · how I perceive',
+        body:    'How do you read the world? Not just what you see — what patterns, questions, or ways of noticing are yours. One or two sentences, in your own voice.'
+      },
+      field: {
+        eyebrow: 'Muse · what keeps me alive',
+        body:    'What sustains you — practices, places, people, rhythms? Name what actually keeps the light on. Concrete beats abstract.'
+      },
+      call: {
+        eyebrow: 'Muse · what I\'m here for',
+        body:    'What is asking through you? Where would you like to be reached, joined, or supported? A single honest sentence is enough.'
+      }
+    };
+
+    // Public-safe source-drawer group labels. "cOMpass" and "Field
+    // Observations" are internal builder terms — allowed here because
+    // this is builder chrome, NOT visitor-facing text. The firewall
+    // only guards phRenderPublicHome output.
+    var HW_SOURCE_GROUPS = [
+      { key: 'compass',     title: 'From your cOMpass' },
+      { key: 'observation', title: 'From your Field Observations' },
+      { key: 'nexus',       title: 'From Nexus returns' }
+    ];
+
+    var phWorkbenchState = {
+      open:            false,
+      activeRoom:      'work',
+      draftLabel:      '',
+      draftBody:       '',
+      dirty:           false,
+      previewCollapsed: false,
+      previewFullscreen: false
+    };
+
+    // Escape helper — reuse lpEscape when available, else a safe fallback.
+    function hwEscape(s) {
+      if (typeof lpEscape === 'function') return lpEscape(s == null ? '' : s);
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Read the current room draft (label + body) from the shared model.
+    // Uses buildWebsitePreview() so the Workbench sees the exact same
+    // data as the existing preview — one source of truth.
+    function phWorkbenchRoomDraft(model, key) {
+      var sec = (model && model.sections && model.sections[key]) || {};
+      return {
+        label:      (typeof phPublicRoomLabel === 'function')
+                      ? phPublicRoomLabel(key, sec)
+                      : (sec.label || ''),
+        heading:    sec.heading || '',
+        body:       sec.intro   || '',
+        closing:    sec.closing || '',
+        highlights: (sec.highlights || []).slice(),
+        source:     sec.source  || 'empty'
+      };
+    }
+
+    // Collect available source material for the drawer. Groups by
+    // provenance so the person can see WHERE material is coming from,
+    // even though none of these labels ever surface publicly.
+    function phWorkbenchSourceItems(key) {
+      var out = { compass: [], observation: [], nexus: [] };
+      var st = window.state || {};
+      var cd = st.compassData || {};
+
+      // 1. cOMpass seed content for this dimension (web_intro / summary /
+      //    highlights). Treated as pull-in candidates.
+      var points = cd.points || {};
+      var p = points[key] || {};
+      if (p.web_intro) {
+        out.compass.push({ excerpt: String(p.web_intro).trim(), tag: 'cOMpass · intro' });
+      }
+      if (p.summary && p.summary !== p.web_intro) {
+        out.compass.push({ excerpt: String(p.summary).trim(), tag: 'cOMpass · summary' });
+      }
+      if (Array.isArray(p.highlights)) {
+        p.highlights.forEach(function (h) {
+          var t = typeof h === 'string' ? h : (h && (h.text || h.label || ''));
+          if (t) out.compass.push({ excerpt: String(t).trim(), tag: 'cOMpass · highlight' });
+        });
+      }
+
+      // 2. Field Observations captures for the site-<room> field. Any
+      //    past capture becomes a pull-in candidate. Latest capture is
+      //    already the live intro, so we surface older ones as options.
+      var caps = (st.builder && st.builder.captures) || {};
+      var captureId = (typeof phRoomCaptureId === 'function') ? phRoomCaptureId(key) : ('site-' + key);
+      var arr = caps[captureId] || [];
+      // Present older captures first (latest is the current intro).
+      for (var i = arr.length - 2; i >= 0 && out.observation.length < 6; i--) {
+          var c = arr[i];
+          if (c && c.excerpt) {
+            var tag = c.builder === 'personal-home' ? 'Tuned earlier'
+                    : c.builder === 'spark'          ? 'Spark answer'
+                    : 'Observation';
+            out.observation.push({ excerpt: String(c.excerpt).trim(), tag: tag });
+          }
+      }
+      // Also scan a generic 'field-observations' bucket if the site is
+      // using one — best-effort, only surfaces items that mention the
+      // room in their prompt to avoid noise.
+      var generic = caps['field-observations'] || caps['observations'] || [];
+      if (Array.isArray(generic)) {
+        generic.slice(-10).forEach(function (c) {
+          if (!c || !c.excerpt) return;
+          var prompt = String(c.prompt || '').toLowerCase();
+          var roomName = (typeof phRoomFullName === 'function' ? phRoomFullName(key) : key).toLowerCase();
+          if (roomName && prompt.indexOf(roomName) === -1) return;
+          out.observation.push({ excerpt: String(c.excerpt).trim(), tag: 'Observation' });
+        });
+      }
+
+      // 3. Nexus returns — the app stores these under state.nexus or
+      //    similar; we treat any array of { text, room? } as candidate
+      //    material tagged to this room. Best-effort; missing shapes
+      //    are simply skipped.
+      var nexus = st.nexus || st.nexusReturns || {};
+      var nexusList = [];
+      if (Array.isArray(nexus)) nexusList = nexus;
+      else if (Array.isArray(nexus[key])) nexusList = nexus[key];
+      else if (Array.isArray(nexus.items)) nexusList = nexus.items;
+      nexusList.forEach(function (n) {
+        if (!n) return;
+        if (n.room && n.room !== key) return;
+        var text = typeof n === 'string' ? n : (n.text || n.excerpt || n.body || '');
+        if (text) out.nexus.push({ excerpt: String(text).trim(), tag: 'Nexus return' });
+      });
+
+      // Cap each group so the drawer stays scannable.
+      Object.keys(out).forEach(function (k) { out[k] = out[k].slice(0, 6); });
+      return out;
+    }
+
+    // Compose the Muse block for the active room. Returns HTML.
+    function phWorkbenchMuseHtml(key) {
+      var prompt = HW_MUSE_PROMPTS[key] || HW_MUSE_PROMPTS.work;
+      return '<div class="hw-work-muse" role="note">' +
+        '<p class="hw-work-muse-eye">' + hwEscape(prompt.eyebrow) + '</p>' +
+        '<p class="hw-work-muse-body">' + hwEscape(prompt.body) + '</p>' +
+      '</div>';
+    }
+
+    // Compose the source drawer body from grouped source items.
+    function phWorkbenchSourceHtml(items) {
+      var totalCount = 0;
+      var groupsHtml = HW_SOURCE_GROUPS.map(function (g) {
+        var arr = items[g.key] || [];
+        totalCount += arr.length;
+        if (!arr.length) return '';
+        var itemsHtml = arr.map(function (it, i) {
+          var excerpt = it.excerpt.length > 220 ? it.excerpt.slice(0, 217) + '…' : it.excerpt;
+          return '<li><button type="button" class="hw-source-item" ' +
+            'data-hw-source-group="' + hwEscape(g.key) + '" ' +
+            'data-hw-source-index="' + i + '">' +
+            '<span class="hw-source-item-excerpt">' + hwEscape(excerpt) + '</span>' +
+            '<span class="hw-source-item-tag">' + hwEscape(it.tag) + '</span>' +
+          '</button></li>';
+        }).join('');
+        return '<div class="hw-source-group">' +
+          '<p class="hw-source-group-title">' + hwEscape(g.title) +
+          ' <span class="hw-source-group-count">' + arr.length + '</span></p>' +
+          '<ul class="hw-source-items">' + itemsHtml + '</ul>' +
+        '</div>';
+      }).join('');
+      if (!totalCount) {
+        return '<p class="hw-source-empty">No source material yet for this room. Answer a Spark or add a Field Observation and it will appear here.</p>';
+      }
+      return groupsHtml;
+    }
+
+    // Render / refresh the room list in the sidebar.
+    function phWorkbenchRenderRooms(model) {
+      var list = document.getElementById('home-workbench-rooms');
+      if (!list) return;
+      var html = HW_ROOM_KEYS.map(function (key) {
+        var d = phWorkbenchRoomDraft(model, key);
+        var active = (key === phWorkbenchState.activeRoom) ? ' is-active' : '';
+        var srcClass = 'is-' + (d.source || 'empty');
+        var status = d.source === 'empty' ? 'Awaiting' :
+                     d.source === 'compass' ? 'Seeded' :
+                     d.source === 'captured' ? 'Tuned' : 'Tuned + seeded';
+        return '<li role="presentation">' +
+          '<button type="button" class="hw-room-card' + active + '" role="tab" ' +
+            'aria-selected="' + (active ? 'true' : 'false') + '" ' +
+            'data-hw-room="' + hwEscape(key) + '">' +
+            '<span class="hw-room-card-label">' + hwEscape(d.label) + '</span>' +
+            '<span class="hw-room-card-meta">' +
+              '<span class="hw-room-card-dot ' + srcClass + '" aria-hidden="true"></span>' +
+              hwEscape(status) +
+              '<span class="hw-room-unsaved" aria-hidden="true">Unsaved</span>' +
+            '</span>' +
+          '</button>' +
+        '</li>';
+      }).join('');
+      list.innerHTML = html;
+    }
+
+    // Render / refresh the active work column: fields, Muse, source drawer.
+    function phWorkbenchRenderWorkColumn(model) {
+      var key = phWorkbenchState.activeRoom;
+      var draft = phWorkbenchRoomDraft(model, key);
+      // Only reset draft buffer when not dirty — preserve unsaved edits.
+      if (!phWorkbenchState.dirty) {
+        phWorkbenchState.draftLabel = draft.label || '';
+        phWorkbenchState.draftBody  = draft.body  || '';
+      }
+      var eye   = document.getElementById('home-workbench-work-eyebrow');
+      var title = document.getElementById('home-workbench-work-title');
+      var body  = document.getElementById('home-workbench-work-body');
+      var actions = document.getElementById('home-workbench-work-actions');
+      var drawer = document.getElementById('home-workbench-source-body');
+      var srcTitle = document.getElementById('home-workbench-source-title');
+
+      if (eye)   eye.textContent   = 'Room · ' + (draft.label || key);
+      if (title) title.textContent = 'Shape ' + (draft.label || key);
+
+      if (body) {
+        var labelId = 'home-workbench-label';
+        var bodyId  = 'home-workbench-body';
+        var html = '';
+        html += '<div class="hw-work-field">' +
+          '<label class="hw-work-field-label" for="' + labelId + '">Room label · how you name this section publicly</label>' +
+          '<input class="hw-work-field-input" id="' + labelId + '" type="text" ' +
+            'value="' + hwEscape(phWorkbenchState.draftLabel) + '" ' +
+            'placeholder="' + hwEscape(draft.label || 'What I make') + '" />' +
+        '</div>';
+        html += '<div class="hw-work-field">' +
+          '<label class="hw-work-field-label" for="' + bodyId + '">In your own voice · a paragraph or two</label>' +
+          '<textarea class="hw-work-field-textarea" id="' + bodyId + '" rows="6" ' +
+            'placeholder="Speak plainly. What is here?">' + hwEscape(phWorkbenchState.draftBody) + '</textarea>' +
+        '</div>';
+        html += phWorkbenchMuseHtml(key);
+        body.innerHTML = html;
+
+        // Wire local input handlers — mark dirty on change.
+        var lbl = document.getElementById(labelId);
+        var txt = document.getElementById(bodyId);
+        if (lbl) lbl.addEventListener('input', function () {
+          phWorkbenchState.draftLabel = lbl.value;
+          phWorkbenchState.dirty = true;
+          phWorkbenchSyncDirty();
+        });
+        if (txt) txt.addEventListener('input', function () {
+          phWorkbenchState.draftBody = txt.value;
+          phWorkbenchState.dirty = true;
+          phWorkbenchSyncDirty();
+        });
+      }
+      if (actions) actions.hidden = false;
+
+      // Source drawer
+      if (drawer) {
+        var items = phWorkbenchSourceItems(key);
+        drawer.innerHTML = phWorkbenchSourceHtml(items);
+        drawer.setAttribute('data-hw-active-room', key);
+        // Cache source items on the drawer so pull-in handlers can read them.
+        drawer._hwSourceItems = items;
+      }
+      if (srcTitle) srcTitle.textContent = 'Source material · pull into ' + (draft.label || key);
+    }
+
+    // Render / refresh the live visitor preview column. This is the
+    // definitive fix for the "Tune the room → Save → preview did not
+    // reflect" bug: preview is repainted from the *just-updated* model
+    // every time we call this, using the same firewall-guarded path
+    // the read-only preview toggle uses.
+    function phWorkbenchRefreshPreview() {
+      var frame = document.getElementById('home-workbench-preview-frame');
+      if (!frame) return;
+      if (typeof buildWebsitePreview !== 'function' ||
+          typeof phPublicHomeModel !== 'function' ||
+          typeof phRenderPublicHome !== 'function') {
+        frame.innerHTML = '<p class="hw-source-empty">Live preview is unavailable in this build.</p>';
+        return;
+      }
+      try {
+        var model = buildWebsitePreview();
+        var publicModel = phPublicHomeModel(model);
+        frame.innerHTML = phRenderPublicHome(publicModel);
+      } catch (e) {
+        frame.innerHTML = '<p class="hw-source-empty">Preview could not render right now. Your work is saved.</p>';
+      }
+    }
+
+    // Update the top-bar progress + status from the shared model.
+    function phWorkbenchRenderTopbar(model) {
+      var seed = (typeof phSeedReadiness === 'function') ? phSeedReadiness(model) : null;
+      var fill = document.getElementById('home-workbench-progress-fill');
+      var label = document.getElementById('home-workbench-progress-label');
+      var status = document.getElementById('home-workbench-status');
+      var statusLabel = document.getElementById('home-workbench-status-label');
+      if (seed && fill) {
+        var pct = seed.total ? Math.round((seed.drafted / seed.total) * 100) : 0;
+        fill.style.width = pct + '%';
+      }
+      if (seed && label) {
+        label.textContent = seed.drafted + ' of ' + seed.total + ' rooms drafted';
+      }
+      if (seed && status) {
+        status.classList.remove('is-fully-seeded', 'is-awaiting-seed', 'is-seeded');
+        status.classList.add('is-' + seed.stage);
+      }
+      if (statusLabel && seed) {
+        statusLabel.textContent = seed.stage === 'fully-seeded' ? 'Ready for preview'
+                               : seed.stage === 'awaiting-seed' ? 'Awaiting your voice'
+                               : 'Draft';
+      }
+    }
+
+    // Refresh everything from the current state. Called on open + after
+    // every save so the whole surface stays coherent.
+    function phWorkbenchRefreshAll() {
+      if (typeof buildWebsitePreview !== 'function') return;
+      var model = buildWebsitePreview();
+      phWorkbenchRenderTopbar(model);
+      phWorkbenchRenderRooms(model);
+      phWorkbenchRenderWorkColumn(model);
+      phWorkbenchRefreshPreview();
+      phWorkbenchSyncDirty();
+    }
+
+    // Mirror phWorkbenchState.dirty onto the root's class list so the
+    // CSS "unsaved" pill + Save-button pulse reflect the true state.
+    function phWorkbenchSyncDirty() {
+      var root = document.getElementById('home-workbench');
+      if (!root) return;
+      root.classList.toggle('is-dirty', !!phWorkbenchState.dirty);
+    }
+
+    // Save the active room's body through the existing capture path.
+    // Also stores an optional custom label on the compass point so the
+    // room's public label reflects the person's chosen wording. Returns
+    // true if anything was written.
+    function phWorkbenchSaveActiveSection() {
+      var key = phWorkbenchState.activeRoom;
+      var body = String(phWorkbenchState.draftBody || '').trim();
+      var label = String(phWorkbenchState.draftLabel || '').trim();
+      var wroteBody = false;
+      var wroteLabel = false;
+
+      if (body && typeof phWriteRoomCapture === 'function') {
+        wroteBody = !!phWriteRoomCapture(key, body);
+      }
+
+      // Persist the custom room label on the compass point, so both the
+      // preview and phPublicRoomLabel pick it up. Fail-safe: if state
+      // shape is missing, we simply skip the label write.
+      try {
+        var st = window.state;
+        if (st && label) {
+          if (!st.compassData) st.compassData = {};
+          if (!st.compassData.points) st.compassData.points = {};
+          if (!st.compassData.points[key]) st.compassData.points[key] = {};
+          // Only write when label differs from the current custom label.
+          if (st.compassData.points[key].web_label !== label) {
+            st.compassData.points[key].web_label = label;
+            // phPublicRoomLabel already honours sec.label; wire that
+            // through wpPointSection by mirroring onto the section too.
+            wroteLabel = true;
+            if (typeof saveState === 'function') saveState();
+          }
+        }
+      } catch (_) { /* label write is best-effort */ }
+
+      phWorkbenchState.dirty = false;
+      phWorkbenchRefreshAll();
+      return wroteBody || wroteLabel;
+    }
+
+    // Pull a source item into the active section's draft body. Appends
+    // to the current draft (never clobbers) so combining sources is
+    // additive. Marks the draft dirty so the next Save writes it back.
+    function phWorkbenchPullSource(groupKey, index) {
+      var drawer = document.getElementById('home-workbench-source-body');
+      if (!drawer || !drawer._hwSourceItems) return false;
+      var arr = drawer._hwSourceItems[groupKey] || [];
+      var item = arr[index];
+      if (!item || !item.excerpt) return false;
+      var current = String(phWorkbenchState.draftBody || '').trim();
+      var glue = current ? (current.endsWith('.') || current.endsWith('!') || current.endsWith('?') ? '\n\n' : '\n\n') : '';
+      phWorkbenchState.draftBody = current + glue + item.excerpt;
+      phWorkbenchState.dirty = true;
+      phWorkbenchSyncDirty();
+      // Re-render only the work column (leave preview stable until Save).
+      var body = document.getElementById('home-workbench-work-body');
+      if (body && typeof buildWebsitePreview === 'function') {
+        var model = buildWebsitePreview();
+        phWorkbenchRenderWorkColumn(model);
+      }
+      // Focus the textarea after pull-in so the person can keep typing.
+      var txt = document.getElementById('home-workbench-body');
+      if (txt) { txt.focus(); txt.setSelectionRange(txt.value.length, txt.value.length); }
+      return true;
+    }
+
+    // Show a brief confirmation toast in the Workbench.
+    function phWorkbenchToast(message) {
+      var el = document.getElementById('home-workbench-toast');
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add('is-visible');
+      window.setTimeout(function () { el.classList.remove('is-visible'); }, 1800);
+    }
+
+    // Open / close. Body scroll lock + Escape-to-close mirror the
+    // existing modal patterns, so nothing else has to change.
+    function openHomeWorkbench(opts) {
+      var root = document.getElementById('home-workbench');
+      if (!root) return;
+      opts = opts || {};
+      if (opts.room && HW_ROOM_KEYS.indexOf(opts.room) !== -1) {
+        phWorkbenchState.activeRoom = opts.room;
+      }
+      phWorkbenchState.dirty = false;
+      root.hidden = false;
+      root.classList.add('is-open');
+      document.body.classList.add('hw-open');
+      phWorkbenchState.open = true;
+      // Ensure the old modal isn't stacking underneath.
+      var oldModal = document.getElementById('website-preview-modal');
+      if (oldModal && oldModal.classList.contains('is-open')) {
+        oldModal.classList.remove('is-open');
+      }
+      phWorkbenchRefreshAll();
+    }
+
+    function closeHomeWorkbench() {
+      var root = document.getElementById('home-workbench');
+      if (!root) return;
+      root.classList.remove('is-open');
+      root.hidden = true;
+      document.body.classList.remove('hw-open');
+      phWorkbenchState.open = false;
+    }
+
+    // One-time DOM wiring — called from the same DOMContentLoaded pass
+    // that wires the other modals so the Workbench is live at boot.
+    function wireHomeWorkbench() {
+      var root = document.getElementById('home-workbench');
+      if (!root) return;
+
+      // Entry-point button on the entrance rail.
+      var entryBtn = document.getElementById('home-workbench-open-entrance');
+      if (entryBtn) entryBtn.addEventListener('click', function () { openHomeWorkbench(); });
+
+      // Close.
+      var closeBtn = document.getElementById('home-workbench-close');
+      if (closeBtn) closeBtn.addEventListener('click', closeHomeWorkbench);
+
+      // Escape closes.
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && phWorkbenchState.open) closeHomeWorkbench();
+      });
+
+      // Legacy modal fallback.
+      var legacy = document.getElementById('home-workbench-open-legacy-modal');
+      if (legacy) legacy.addEventListener('click', function () {
+        if (typeof window.openWebsitePreview === 'function') window.openWebsitePreview();
+      });
+
+      // Room selection.
+      root.addEventListener('click', function (e) {
+        var t = e.target;
+        while (t && t !== root) {
+          if (t.getAttribute && t.getAttribute('data-hw-room')) {
+            var k = t.getAttribute('data-hw-room');
+            if (HW_ROOM_KEYS.indexOf(k) !== -1) {
+              phWorkbenchState.activeRoom = k;
+              phWorkbenchState.dirty = false;
+              phWorkbenchRefreshAll();
+              return;
+            }
+          }
+          if (t.classList && t.classList.contains('hw-source-item')) {
+            var g = t.getAttribute('data-hw-source-group');
+            var i = parseInt(t.getAttribute('data-hw-source-index'), 10);
+            if (g && !isNaN(i)) { phWorkbenchPullSource(g, i); return; }
+          }
+          t = t.parentNode;
+        }
+      });
+
+      // Save / revert / refresh.
+      var saveBtn = document.getElementById('home-workbench-save');
+      if (saveBtn) saveBtn.addEventListener('click', function () {
+        var wrote = phWorkbenchSaveActiveSection();
+        phWorkbenchToast(wrote ? 'Saved — preview updated' : 'Nothing to save yet');
+      });
+      var hwCancelBtn = document.getElementById('home-workbench-cancel');
+      if (hwCancelBtn) hwCancelBtn.addEventListener('click', function () {
+        phWorkbenchState.dirty = false;
+        phWorkbenchRefreshAll();
+      });
+      var refreshBtn = document.getElementById('home-workbench-preview-refresh');
+      if (refreshBtn) refreshBtn.addEventListener('click', phWorkbenchRefreshPreview);
+
+      // Preview column toggles.
+      var toggleBtn = document.getElementById('home-workbench-preview-toggle');
+      if (toggleBtn) toggleBtn.addEventListener('click', function () {
+        phWorkbenchState.previewCollapsed = !phWorkbenchState.previewCollapsed;
+        root.classList.toggle('is-preview-collapsed', phWorkbenchState.previewCollapsed);
+        toggleBtn.textContent = phWorkbenchState.previewCollapsed ? 'Show preview' : 'Hide preview';
+        toggleBtn.setAttribute('aria-pressed', phWorkbenchState.previewCollapsed ? 'false' : 'true');
+      });
+      var fsBtn = document.getElementById('home-workbench-preview-fullscreen');
+      if (fsBtn) fsBtn.addEventListener('click', function () {
+        phWorkbenchState.previewFullscreen = !phWorkbenchState.previewFullscreen;
+        // Entering fullscreen implies preview must be visible: force the
+        // collapsed flag off so the fullscreen preview column paints.
+        if (phWorkbenchState.previewFullscreen && phWorkbenchState.previewCollapsed) {
+          phWorkbenchState.previewCollapsed = false;
+          root.classList.remove('is-preview-collapsed');
+          if (toggleBtn) {
+            toggleBtn.textContent = 'Hide preview';
+            toggleBtn.setAttribute('aria-pressed', 'true');
+          }
+        }
+        root.classList.toggle('is-preview-fullscreen', phWorkbenchState.previewFullscreen);
+        fsBtn.textContent = phWorkbenchState.previewFullscreen ? 'Return to Workbench' : 'Preview as visitor';
+        fsBtn.setAttribute('aria-pressed', phWorkbenchState.previewFullscreen ? 'true' : 'false');
+        // Ensure preview is up to date on entry.
+        phWorkbenchRefreshPreview();
+      });
+
+      // Mobile column tabs (only visible < 720px). Setting the class on
+      // the root swaps which of the three columns is displayed.
+      var mobileTabs = root.querySelectorAll('[data-hw-mobile-tab]');
+      function setMobileTab(name) {
+        root.classList.remove('is-mobile-tab-rooms', 'is-mobile-tab-work', 'is-mobile-tab-preview');
+        root.classList.add('is-mobile-tab-' + name);
+        for (var i = 0; i < mobileTabs.length; i++) {
+          var tabEl = mobileTabs[i];
+          var isMe = tabEl.getAttribute('data-hw-mobile-tab') === name;
+          tabEl.classList.toggle('is-active', isMe);
+          tabEl.setAttribute('aria-selected', isMe ? 'true' : 'false');
+        }
+        // Repaint the preview when switching TO it so we don't show an
+        // out-of-date render.
+        if (name === 'preview') phWorkbenchRefreshPreview();
+      }
+      for (var mi = 0; mi < mobileTabs.length; mi++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            setMobileTab(btn.getAttribute('data-hw-mobile-tab'));
+          });
+        })(mobileTabs[mi]);
+      }
+      // Default mobile tab is "work" so opening the Workbench lands
+      // directly on the editor — no extra tap needed.
+      root.classList.add('is-mobile-tab-work');
+
+      // Keyboard shortcuts inside the Workbench:
+      //   Cmd/Ctrl+S — Save the active section (never triggers a browser
+      //                  save; preventDefault is unconditional).
+      //   Cmd/Ctrl+ArrowUp / ArrowDown — move between rooms.
+      root.addEventListener('keydown', function (e) {
+        if (!phWorkbenchState.open) return;
+        var meta = e.metaKey || e.ctrlKey;
+        if (meta && (e.key === 's' || e.key === 'S')) {
+          e.preventDefault();
+          var wrote = phWorkbenchSaveActiveSection();
+          phWorkbenchToast(wrote ? 'Saved — preview updated' : 'Nothing to save yet');
+          return;
+        }
+        if (meta && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+          e.preventDefault();
+          var idx = HW_ROOM_KEYS.indexOf(phWorkbenchState.activeRoom);
+          if (idx === -1) idx = 0;
+          var delta = e.key === 'ArrowDown' ? 1 : -1;
+          var next = (idx + delta + HW_ROOM_KEYS.length) % HW_ROOM_KEYS.length;
+          phWorkbenchState.activeRoom = HW_ROOM_KEYS[next];
+          phWorkbenchState.dirty = false;
+          phWorkbenchRefreshAll();
+        }
+      });
+
+      // Autosave on blur: if the body textarea loses focus while dirty,
+      // persist the draft. Silent — no toast, so it doesn't feel noisy.
+      root.addEventListener('focusout', function (e) {
+        if (!phWorkbenchState.dirty) return;
+        var t = e.target;
+        if (!t || t.id !== 'home-workbench-body') return;
+        // The related target may be the Save button — skip autosave in
+        // that case; the click handler already covers it.
+        if (e.relatedTarget && e.relatedTarget.id === 'home-workbench-save') return;
+        phWorkbenchSaveActiveSection();
+      });
+
+      // Source drawer collapse.
+      var srcToggle = document.getElementById('home-workbench-source-toggle');
+      var drawer = document.getElementById('home-workbench-source-drawer');
+      if (srcToggle && drawer) srcToggle.addEventListener('click', function () {
+        var open = drawer.classList.toggle('is-open');
+        srcToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    }
+
+    // Expose on window so other builder surfaces (Spark, entrance rail,
+    // future links) can open the Workbench directly at a chosen room.
+    if (typeof window !== 'undefined') {
+      window.openHomeWorkbench = openHomeWorkbench;
+      window.closeHomeWorkbench = closeHomeWorkbench;
+      window.phWorkbenchRefreshAll = phWorkbenchRefreshAll;
+      window.phWorkbenchRefreshPreview = phWorkbenchRefreshPreview;
+      window.phWorkbenchSaveActiveSection = phWorkbenchSaveActiveSection;
+    }
+
+    // Wire on next tick — the rest of Studio's DOM boot runs first.
+    if (typeof document !== 'undefined') {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireHomeWorkbench);
+      } else {
+        // wireHomeWorkbench is defined above; call it after the current
+        // script executes so all sibling helpers are ready.
+        window.setTimeout(wireHomeWorkbench, 0);
+      }
+    }
+    // <HOME_WORKBENCH_JS_END>
+
     // Room-specific atmosphere copy (eyebrow + closing invitation
     // fallback). Subtle, restrained — sets tone without overstating.
     // Eyebrows are intentionally ordered as a deepening sequence:
@@ -23179,9 +24448,21 @@ if (document.readyState === 'loading') {
     function openStudioProject(projectKey) {
       var p = museProjectByKey(projectKey);
       if (!p) return false;
-      if (p.builder === 'website' && typeof openWebsitePreview === 'function') {
-        openWebsitePreview();
-        return true;
+      // Primary hOMe entry now opens the Workbench (the split-view work
+      // surface introduced in feat/home-workbench-shell). Every other
+      // caller — including the Muse widget's "View hOMe draft" link —
+      // reaches the Workbench through this function. If the Workbench
+      // is unavailable for any reason, fall back to the old read-only
+      // modal so we never leave the person with no route.
+      if (p.builder === 'website') {
+        if (typeof window.openHomeWorkbench === 'function') {
+          window.openHomeWorkbench();
+          return true;
+        }
+        if (typeof openWebsitePreview === 'function') {
+          openWebsitePreview();
+          return true;
+        }
       }
       return false;
     }

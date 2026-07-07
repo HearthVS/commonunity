@@ -41,6 +41,14 @@ The Personal Home Page renders the member's Om Cipher in `full` mode via the can
 
 - Wired in Studio via the Website Preview path (`homepage.html`).
 - Sigil render hooks exist; visual is still v0 OM-badge — to be replaced with Om Cipher v1.
+- **Primary builder entry: the hOMe Workbench** (`#home-workbench` in `studio.html`).
+  A dedicated, full-viewport work surface that combines the four rooms,
+  contextual Muse guidance, source material with functional pull-in,
+  and a live visitor preview column. The old "Preview Personal Home"
+  modal remains reachable as a transitional read-only fallback
+  (`#home-workbench-open-legacy-modal`) but is no longer the way
+  members shape their hOMe. See `docs/home-design-grammar.md` §8
+  (preview overlay pattern).
 
 ## Open work
 
