@@ -12381,6 +12381,183 @@ function initOmCipherPalette() {
   if (callTint)  rootEl.style.setProperty('--room-cipher-tint-call',  callTint);
 }
 
+// ── hOMe first-class source seeds ────────────────────────────────────────────
+// docs/home-design-grammar.md §8 ("Required internal source inputs") + roadmap
+// #11: the hOMe builder must treat the person's cOMpass JSON as its primary
+// *content* seed and the OM Cipher palette as its primary *visual* seed, and
+// read both before asking the person to fill or style anything. Before this
+// block those reads were implicit and scattered (compass fields pulled inline
+// inside buildWebsitePreview; palette colours re-extracted in three places),
+// with no single, pure, testable source contract. HOME_SOURCE_SEEDS makes that
+// contract explicit.
+//
+// Public-language safety: these are internal builder materials. The object
+// *keys* here (work/lens/field/call, root/expression/radiance) are hidden
+// builder architecture and are never rendered as visitor-facing text — only the
+// person's own copy *values* flow to the public surface. The seeds never carry
+// the system names "cOMpass" or "OM Cipher", so nothing here can leak through
+// the language firewall (docs/home-design-grammar.md §3).
+// <HOME_SOURCE_SEEDS_START> — extracted verbatim by tests/home-source-seeds.test.mjs
+var HOME_SOURCE_SEEDS = (function () {
+  function str(v) { return typeof v === 'string' ? v.trim() : ''; }
+  function firstStr() {
+    for (var i = 0; i < arguments.length; i++) {
+      var s = str(arguments[i]);
+      if (s) return s;
+    }
+    return '';
+  }
+  function normHighlights(arr) {
+    if (!Array.isArray(arr)) return [];
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var h = arr[i];
+      var t = typeof h === 'string' ? h : (h && (h.text || h.label || h.title)) || '';
+      t = str(t);
+      if (t) out.push(t);
+    }
+    return out.slice(0, 6);
+  }
+
+  // The four hidden dimensions — hidden builder/source architecture, never a
+  // public taxonomy (docs/home-design-grammar.md §5).
+  var DIMENSIONS = ['work', 'lens', 'field', 'call'];
+
+  // cOMpass JSON → primary hOMe *content* seed. Pure: takes the parsed cOMpass
+  // export (the state.compassData shape) and returns the structured material
+  // the builder uses to pre-fill the public hOMe before the person refines it —
+  // identity, threshold/hero, per-dimension copy, highlights, themes, and an
+  // invitation/offers seed. Compass-only (no builder captures) so it stays a
+  // deterministic, testable view of the source file.
+  function phCompassContentSeed(compassData) {
+    var cd = (compassData && typeof compassData === 'object') ? compassData : {};
+    var profile = (cd.profile && typeof cd.profile === 'object') ? cd.profile : {};
+    var points  = (cd.points  && typeof cd.points  === 'object') ? cd.points  : {};
+
+    function dimSeed(key) {
+      var p = (points[key] && typeof points[key] === 'object') ? points[key] : {};
+      return {
+        heading:    firstStr(p.web_heading, p.theme),
+        body:       firstStr(p.web_intro, p.summary, p.raw),
+        closing:    str(p.web_closing),
+        highlights: normHighlights(p.highlights),
+        theme:      str(p.theme)
+      };
+    }
+
+    var dimensions = {};
+    var themes = [];
+    DIMENSIONS.forEach(function (k) {
+      var d = dimSeed(k);
+      dimensions[k] = d;
+      if (d.theme) themes.push(d.theme);
+    });
+
+    var fullName = (str(profile.first_name) + ' ' + str(profile.last_name)).trim();
+    var name = firstStr(profile.display_name, profile.full_name, fullName, cd.companion);
+
+    // Threshold / hero seed: prefer an explicit web heading the person wrote
+    // (never a theme keyword) across dimensions, else their name; intro from
+    // the most self-describing dimension copy. Mirrors the existing hero
+    // precedence in buildWebsitePreview (lens → work → field → call).
+    function webHeading(key) {
+      var p = (points[key] && typeof points[key] === 'object') ? points[key] : {};
+      return str(p.web_heading);
+    }
+    var threshold = {
+      heading: firstStr(webHeading('lens'), webHeading('work'), webHeading('field'), webHeading('call'), name),
+      intro:   firstStr(dimensions.lens.body, dimensions.work.body)
+    };
+
+    // Invitation / offers seed from the call dimension + contact profile.
+    var contact = [];
+    if (/^https?:\/\//i.test(str(profile.linkedin_url))) contact.push({ kind: 'linkedin', value: str(profile.linkedin_url) });
+    if (/@/.test(str(profile.email)))                    contact.push({ kind: 'email',    value: str(profile.email) });
+    if (/^https?:\/\//i.test(str(profile.website)))      contact.push({ kind: 'website',  value: str(profile.website) });
+    var invitation = {
+      body:    firstStr(dimensions.call.closing, dimensions.call.body),
+      contact: contact
+    };
+
+    var present = !!(
+      threshold.heading || threshold.intro || invitation.body || contact.length ||
+      DIMENSIONS.some(function (k) {
+        var d = dimensions[k];
+        return !!(d.heading || d.body || d.closing || d.highlights.length);
+      })
+    );
+
+    return {
+      name:       name,
+      threshold:  threshold,
+      dimensions: dimensions,
+      themes:     themes,
+      invitation: invitation,
+      present:    present
+    };
+  }
+
+  // OM Cipher / palette layer → primary hOMe *visual* seed. Pure: takes the OM
+  // Cipher contract (the commonunity_om_cipher_v1 shape) and returns the
+  // baseline palette mapped onto the three stable public visual ROLES the
+  // preview theme is built from (mirrors phDerivePaletteTheme's role mapping):
+  //     root       ← palette.secondary       (grounding / surfaces / depth)
+  //     expression ← palette.primary         (accent / actions / hero)
+  //     radiance   ← palette.seasonal_accent (glow / soft, alive emphasis)
+  // Role names are safe public-neutral words and the returned seed never
+  // contains the system name "OM Cipher", so the visual seed cannot leak the
+  // source system to the visitor.
+  function phOmCipherPaletteSeed(contract) {
+    var om = (contract && typeof contract === 'object' && contract.om_cipher &&
+      typeof contract.om_cipher === 'object') ? contract.om_cipher : {};
+    var palette = (om.palette && typeof om.palette === 'object') ? om.palette : {};
+    var primary   = str(palette.primary);
+    var secondary = str(palette.secondary);
+    var accent    = firstStr(palette.seasonal_accent, palette.accent);
+    if (!primary && !secondary && !accent) {
+      return { present: false, sources: { primary: '', secondary: '', accent: '' }, roles: null };
+    }
+    // Graceful fallback so a partial palette still resolves all three roles.
+    var roles = {
+      root:       secondary || primary   || accent,
+      expression: primary   || secondary || accent,
+      radiance:   accent    || secondary || primary
+    };
+    return {
+      present: true,
+      sources: { primary: primary, secondary: secondary, accent: accent },
+      roles:   roles
+    };
+  }
+
+  // Combined first-class source layer: content (cOMpass JSON) + visual (OM
+  // Cipher palette). The single explicit contract the hOMe builder reads before
+  // asking the person to fill or style anything.
+  function phHomeSourceSeeds(input) {
+    input = (input && typeof input === 'object') ? input : {};
+    return {
+      content: phCompassContentSeed(input.compassData),
+      palette: phOmCipherPaletteSeed(input.cipherContract)
+    };
+  }
+
+  return {
+    DIMENSIONS:            DIMENSIONS,
+    phCompassContentSeed:  phCompassContentSeed,
+    phOmCipherPaletteSeed: phOmCipherPaletteSeed,
+    phHomeSourceSeeds:     phHomeSourceSeeds
+  };
+})();
+var phCompassContentSeed  = HOME_SOURCE_SEEDS.phCompassContentSeed;
+var phOmCipherPaletteSeed = HOME_SOURCE_SEEDS.phOmCipherPaletteSeed;
+var phHomeSourceSeeds     = HOME_SOURCE_SEEDS.phHomeSourceSeeds;
+if (typeof window !== 'undefined') {
+  window.phCompassContentSeed  = phCompassContentSeed;
+  window.phOmCipherPaletteSeed = phOmCipherPaletteSeed;
+  window.phHomeSourceSeeds     = phHomeSourceSeeds;
+}
+// <HOME_SOURCE_SEEDS_END>
+
 // ── hOMe preview palette role system ─────────────────────────────────────────
 // The OM Cipher gives three source colours (primary / secondary / seasonal
 // accent). Scattered raw usage of those three tokens is what made the hOMe
@@ -12455,12 +12632,9 @@ const PH_PALETTE_TOKENS = [
 function phApplyPaletteRoles(cardEl) {
   if (!cardEl) return false;
   const contract = readOmCipherContract();
-  const palette  = (contract && contract.om_cipher && contract.om_cipher.palette) || {};
-  const theme = phDerivePaletteTheme({
-    primary:   palette.primary || '',
-    secondary: palette.secondary || '',
-    accent:    palette.seasonal_accent || palette.accent || '',
-  });
+  // Extract the palette sources through the shared visual seed so the render
+  // and the source contract never drift apart (HOME_SOURCE_SEEDS).
+  const theme = phDerivePaletteTheme(phOmCipherPaletteSeed(contract).sources);
   if (!theme) {
     PH_PALETTE_TOKENS.forEach(function (t) { cardEl.style.removeProperty(t); });
     delete cardEl.dataset.phPalette;
@@ -21379,11 +21553,22 @@ if (document.readyState === 'loading') {
       });
 
       var transcripts = Array.isArray(cd.transcripts) ? cd.transcripts : [];
+      // Attach the explicit first-class source seeds (HOME_SOURCE_SEEDS) the
+      // model is built from: cOMpass JSON as the content seed and the OM Cipher
+      // palette as the visual seed. Builder-only material — the preview already
+      // carries builder chrome; these keys never render as visitor-facing text.
+      var sourceSeeds = phHomeSourceSeeds({
+        compassData: cd,
+        cipherContract: (function () {
+          try { return readOmCipherContract(); } catch (_) { return null; }
+        })()
+      });
       return {
         name: personName || '',
         sections: sections,
         counts: counts,
-        transcripts: { count: transcripts.length }
+        transcripts: { count: transcripts.length },
+        sourceSeeds: sourceSeeds
       };
     }
 
@@ -22672,6 +22857,15 @@ if (document.readyState === 'loading') {
       // pass the true public render (or model) they want validated.
       validatePublicHomeLanguage: validatePublicHomeLanguage,
       homeLanguageFirewall:       validatePublicHomeLanguage,
+      // First-class hOMe source seeds (docs/home-design-grammar.md §8,
+      // roadmap #11). The explicit, testable contract the builder reads
+      // before the person fills or styles anything: cOMpass JSON → public
+      // content seed, OM Cipher palette → public visual-role seed. Internal
+      // builder material; the system names never appear in the returned
+      // seeds, so nothing here can leak to the visitor surface.
+      compassContentSeed:  phCompassContentSeed,
+      omCipherPaletteSeed: phOmCipherPaletteSeed,
+      homeSourceSeeds:     phHomeSourceSeeds,
       // Convenience: a short human status for a readiness surface. Pass the
       // public copy/model to review; returns a warning string when the
       // firewall finds leaks, or '' when clean. Non-blocking by design.
