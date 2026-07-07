@@ -21528,6 +21528,31 @@ if (document.readyState === 'loading') {
     }
     // <HOME_PUBLIC_LABELS_END>
 
+    // <HOME_PUBLIC_FALLBACKS_START> — extracted verbatim by tests/home-public-fallbacks.test.mjs
+    // Visitor-facing fallback prose for the public hOMe render. When a
+    // person hasn't written their own hero intro / room body / invitation
+    // yet, the visitor still meets a warm, person-first surface — never
+    // CommonUnity's internal method or source language (Compass, Living
+    // Profile, Nexus, Field Observations, Spark, provenance/source phrases,
+    // or the fixed Work/Lens/Field/Call taxonomy). Those internal terms are
+    // legitimate in the *builder* scaffolding (the seeded-field readiness
+    // band, the "Source notes" disclosure, the in-place tune form), which is
+    // stUdio chrome and not part of what a stranger reads as the person's
+    // home (docs/home-design-grammar.md §3, §6). These defaults must pass
+    // validatePublicHomeLanguage(). Kept plain and public-web legible, not
+    // over-poetic.
+    var PH_PUBLIC_FALLBACKS = {
+      // Threshold hero intro when the person has written none.
+      heroIntro: 'This is a small, honest home for what a screen can hold of me. Enough to be met truthfully — step in and look around.',
+      // A room with no content yet.
+      roomEmpty: 'This part of my home is still taking shape — more will settle here soon.',
+      // The invitation / contact area with nothing filled in.
+      invitationEmpty: 'Ways to reach me and where to find me will live here soon.',
+      // A doorway card with no heading or intro to preview.
+      doorwayBlurb: 'Still taking shape.'
+    };
+    // <HOME_PUBLIC_FALLBACKS_END>
+
     function phRenderRoom(model, key) {
       var sec    = model.sections[key];
       var label  = phPublicRoomLabel(key, sec);
@@ -21546,8 +21571,7 @@ if (document.readyState === 'loading') {
       if (intro) {
         html += '<p class="ph-room-intro">' + lpEscape(intro) + '</p>';
       } else if (!highlights.length && !closing) {
-        html += '<p class="lp-empty">Not enough source material yet — ' + lpEscape(label) +
-          ' content will surface here as you fill it in.</p>';
+        html += '<p class="lp-empty">' + lpEscape(PH_PUBLIC_FALLBACKS.roomEmpty) + '</p>';
       }
       if (highlights.length) {
         html += '<ul class="ph-room-highlights">' + highlights.map(function (h) {
@@ -21691,7 +21715,7 @@ if (document.readyState === 'loading') {
     function phRenderThreshold(model) {
       var hero = model.sections.hero;
       var heading = hero.heading || model.name || 'Welcome home';
-      var intro   = hero.intro   || 'Personal Home is a relational plexus — a bridge between this field and the wider web. Compass points you here. Step across the threshold and choose a room to enter.';
+      var intro   = hero.intro   || PH_PUBLIC_FALLBACKS.heroIntro;
 
       // Hero composition: profile slot + heading/intro + sigil slot.
       var phImg = (typeof getProfileImage === 'function') ? getProfileImage() : null;
@@ -21743,7 +21767,7 @@ if (document.readyState === 'loading') {
       fourMap.forEach(function (k) {
         var sec    = model.sections[k] || {};
         var atmos  = PH_ROOM_ATMOS[k] || {};
-        var blurb  = sec.heading || (sec.intro ? lpTrim(sec.intro, 110) : (atmos.fallback || 'Awaiting source'));
+        var blurb  = sec.heading || (sec.intro ? lpTrim(sec.intro, 110) : (atmos.fallback || PH_PUBLIC_FALLBACKS.doorwayBlurb));
         html += '<button type="button" class="ph-doorway s-' + k + '" data-ph-room="' + k + '">' +
           '<span class="ph-doorway-eye">' + lpEscape(phPublicRoomEyebrow(k, sec)) + '</span>' +
           '<span class="ph-doorway-name">' + lpEscape(phPublicRoomLabel(k, sec)) + '</span>' +
@@ -21765,7 +21789,7 @@ if (document.readyState === 'loading') {
           '</dl>';
       }
       if (!inv.body && !(inv.contact && inv.contact.length)) {
-        html += '<p class="lp-empty">Not enough source material yet — how people meet you and where to find you.</p>';
+        html += '<p class="lp-empty">' + lpEscape(PH_PUBLIC_FALLBACKS.invitationEmpty) + '</p>';
       }
       html += '</section>';
       return html;
@@ -21789,21 +21813,27 @@ if (document.readyState === 'loading') {
       // threshold; draft/preview only, no new surface.
       html += renderStudioProjectHeader('home', model);
 
-      // Room navigation tabs (v0.3 pill row).
+      // Room navigation tabs (v0.3 pill row). Visitor-facing labels use the
+      // warm public label layer (honouring any custom label the person set),
+      // never the fixed Work/Lens/Field/Call taxonomy on screen
+      // (docs/home-design-grammar.md §2).
       var tabs = [
-        { key: 'home',  label: 'Home',       eye: 'Threshold' },
-        { key: 'work',  label: 'The Work',   eye: 'Room' },
-        { key: 'lens',  label: 'The Lens',   eye: 'Room' },
-        { key: 'field', label: 'The Field',  eye: 'Room' },
-        { key: 'call',  label: 'The Call',   eye: 'Room' }
+        { key: 'home',  eye: 'Threshold' },
+        { key: 'work',  eye: 'Room' },
+        { key: 'lens',  eye: 'Room' },
+        { key: 'field', eye: 'Room' },
+        { key: 'call',  eye: 'Room' }
       ];
-      html += '<nav class="ph-rooms-nav is-v3" aria-label="Personal Home rooms">';
+      html += '<nav class="ph-rooms-nav is-v3" aria-label="Home rooms">';
       tabs.forEach(function (t) {
         var active = (t.key === phActiveRoom) ? ' is-active' : '';
         var sec = t.key === 'home' ? '' : ' s-' + t.key;
+        var label = t.key === 'home'
+          ? 'Home'
+          : phPublicRoomLabel(t.key, model.sections[t.key]);
         html += '<button type="button" class="ph-room-tab' + sec + active + '" data-ph-room="' + t.key + '">' +
           '<span class="ph-room-tab-label">' + lpEscape(t.eye) + '</span>' +
-          lpEscape(t.label) +
+          lpEscape(label) +
         '</button>';
       });
       html += '</nav>';
