@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Josefin+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- Visitor design pass: Inter + Inter Tight for the .phpub public render. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
 /* ============================================================
@@ -6661,6 +6663,175 @@ input, textarea { font: inherit; color: inherit; }
 @keyframes phpub-figure-drift {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
   50% { transform: translate3d(3%, -4%, 0) scale(1.06); }
+}
+
+/* ── Visitor design pass ─────────────────────────────────────────────
+   Editorial calm with a spatial spine. Typography reset to Inter + Inter
+   Tight (loaded via the shared @import at the top of the sheet, or the
+   local system stack as fallback), a portrait hero when identity.photo
+   is present, and an alternating band rhythm across the rooms so the
+   page reads like a considered publication rather than a form. Scoped
+   under .phpub so builder chrome is untouched. */
+
+/* Type stack: prefer Inter / Inter Tight when the host page loads them
+   from Google Fonts (the deployed instance already links them for the
+   builder shell); otherwise fall back to the platform sans-serif so the
+   render still feels tight and minimalist. We keep Cormorant on a few
+   editorial italic accents (index line, closing meta) as the single
+   restrained ornament — never on the hero. */
+.phpub {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'ss01' 1, 'cv11' 1;
+}
+.phpub-hero-title,
+.phpub-room-title,
+.phpub-invitation-title,
+.phpub-closing-title {
+  font-family: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+  font-optical-sizing: auto;
+}
+.phpub-hero-title {
+  letter-spacing: calc(var(--phpub-tracking, -0.015em) - 0.004em);
+}
+
+/* Portrait hero: when identity.photo is present the renderer sets
+   data-imagery="portrait" on .phpub-hero (via the figure) and emits a
+   <img.phpub-figure-photo> inside .phpub-figure. On desktop we split the
+   hero into two columns — text left, portrait right — while keeping the
+   underlying markup order intact. On small screens we stack (portrait
+   first, then copy) so the face is the first thing a visitor meets. */
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
+  text-align: left;
+  padding: clamp(40px, 8vw, 96px) clamp(20px, 5vw, 56px)
+           clamp(28px, 4vw, 56px);
+}
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-atmos {
+  opacity: 0.55;
+}
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+}
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"])
+  .phpub-hero-title { margin-left: 0; margin-right: 0; max-width: 18ch; }
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"])
+  .phpub-hero-lede  { margin-left: 0; margin-right: 0; }
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"])
+  .phpub-motif-rail { justify-content: flex-start; margin-left: 0; }
+.phpub-hero:has(> .phpub-figure[data-imagery="portrait"])
+  .phpub-scrollcue { margin-left: 0; }
+
+/* Portrait image — a warm frame, not a full bleed. Aspect ratio holds
+   the composition on any container width; radius + subtle inner line
+   echo the room cards; a soft shadow lifts it from the paper. */
+.phpub-figure-photo {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 22%;
+  border-radius: 14px;
+  box-shadow:
+    0 24px 48px -28px color-mix(in srgb, var(--phpub-expression) 55%, transparent),
+    0 4px 12px  -10px color-mix(in srgb, var(--phpub-expression) 40%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--phpub-expression) 10%, transparent);
+  outline-offset: -1px;
+}
+.phpub-figure[data-imagery="portrait"] {
+  position: relative; inset: auto;
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  overflow: hidden;
+  display: block;
+}
+
+/* Desktop two-column split for the portrait hero. We use a grid on the
+   .phpub-hero itself when it contains a portrait figure — the eyebrow,
+   title, lede, actions, motif rail and scroll cue land in column A, and
+   the portrait lands in column B. All addressed by their generated
+   order so no markup change is required. */
+@media (min-width: 780px) {
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-rows: auto;
+    column-gap: clamp(32px, 5vw, 72px);
+    row-gap: 8px;
+    align-items: center;
+  }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-atmos {
+    grid-column: 1 / -1; grid-row: 1;
+  }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure {
+    grid-column: 2; grid-row: 1;
+    align-self: center;
+    max-width: 460px;
+    margin-left: auto;
+  }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) >
+    :not(.phpub-atmos):not(.phpub-figure) {
+    grid-column: 1; grid-row: 1;
+  }
+  /* Stack the text children within column 1 by wrapping their rows. */
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-hero-eyebrow  { grid-row: 1; align-self: end;   margin-bottom: 6px; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-hero-title    { grid-row: 2; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-hero-lede     { grid-row: 3; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-hero-actions  { grid-row: 4; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-motif-rail    { grid-row: 5; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-scrollcue     { grid-row: 6; align-self: start; }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure        { grid-row: 1 / span 6; }
+}
+
+/* Mobile pass: stack, and put the portrait first so the face leads. */
+@media (max-width: 779px) {
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
+    text-align: left;
+    padding-left: clamp(20px, 6vw, 28px);
+    padding-right: clamp(20px, 6vw, 28px);
+  }
+  .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure {
+    max-width: 380px;
+    margin: 0 auto clamp(18px, 4vw, 28px);
+  }
+  .phpub-figure[data-imagery="portrait"] { aspect-ratio: 4 / 5; }
+}
+
+/* Editorial rhythm across the rooms: alternate the surface tint so the
+   page reads as a series of considered bands rather than an even wash.
+   Even-indexed rooms sit on the recessed surface (--phpub-surface-2);
+   odd rooms keep the paper surface. The band spans full-bleed inside
+   the rounded .phpub container by pulling the padding into the room. */
+.phpub-rooms > .phpub-room {
+  position: relative;
+  padding-left: clamp(20px, 4vw, 40px);
+  padding-right: clamp(20px, 4vw, 40px);
+}
+.phpub-rooms > .phpub-room:nth-child(even) {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--phpub-surface-2) 92%, transparent) 0%,
+    var(--phpub-surface-2) 30%,
+    var(--phpub-surface-2) 70%,
+    color-mix(in srgb, var(--phpub-surface-2) 92%, transparent) 100%);
+}
+.phpub-rooms > .phpub-room:nth-child(odd) {
+  background: transparent;
+}
+
+/* Room title: pull the Inter Tight weight up a notch and give the title
+   room to breathe. Kicker stays quiet, muted. */
+.phpub-room-title {
+  font-size: calc(clamp(22px, 3vw, 30px) * var(--phpub-type-scale, 1));
+  letter-spacing: -0.012em;
+  line-height: 1.18;
+}
+
+/* Small-screen legibility floor: raise minimums slightly so lines never
+   feel cramped on phones. */
+@media (max-width: 560px) {
+  .phpub-hero-lede { font-size: clamp(15.5px, 4.2vw, 18px); }
+  .phpub-room-body { font-size: 15.5px; line-height: 1.6; }
+  .phpub-room-title { font-size: clamp(21px, 6vw, 26px); }
 }
 
 .ph-rooms-nav.is-v3 {
@@ -13699,6 +13870,13 @@ var HOME_SOURCE_SEEDS = (function () {
     var fullName = (str(profile.first_name) + ' ' + str(profile.last_name)).trim();
     var name = firstStr(profile.display_name, profile.full_name, fullName, cd.companion);
 
+    // Profile portrait — the person's own face on the visitor hero. Both storage
+    // shapes supported: profile_image_data (inline data URL, what the Living
+    // Profile uploader writes) and profile_image (a plain URL, historical field).
+    // The seed carries only a safe string; the renderer decides whether/how to
+    // display it, and falls back to the atmosphere figure when absent.
+    var photo = firstStr(profile.profile_image_data, profile.profile_image);
+
     // Threshold / hero seed: prefer an explicit web heading the person wrote
     // (never a theme keyword) across dimensions, else their name; intro from
     // the most self-describing dimension copy. Mirrors the existing hero
@@ -13732,6 +13910,7 @@ var HOME_SOURCE_SEEDS = (function () {
 
     return {
       name:       name,
+      photo:      photo,
       threshold:  threshold,
       dimensions: dimensions,
       themes:     themes,
@@ -13751,12 +13930,35 @@ var HOME_SOURCE_SEEDS = (function () {
   // contains the system name "OM Cipher", so the visual seed cannot leak the
   // source system to the visitor.
   function phOmCipherPaletteSeed(contract) {
-    var om = (contract && typeof contract === 'object' && contract.om_cipher &&
-      typeof contract.om_cipher === 'object') ? contract.om_cipher : {};
+    var contractObj = (contract && typeof contract === 'object') ? contract : {};
+    var om = (contractObj.om_cipher && typeof contractObj.om_cipher === 'object')
+      ? contractObj.om_cipher : {};
+    // Three accepted palette shapes on the source contract, in order:
+    //   (a) contract.om_cipher.palette = { primary, secondary, seasonal_accent }
+    //       — the labelled localStorage 'commonunity_om_cipher_v1' shape used by
+    //       the running app.
+    //   (b) contract.om_cipher.layer4.palette = [primary, secondary, accent]
+    //       — the ACTUAL compass export shape produced by the Python cipher
+    //       engine when it writes the full om_cipher object (layers 1–6).
+    //   (c) contract.layer4.palette = [primary, secondary, accent]
+    //       — a hydrated-at-top-level variant we also accept so a caller can
+    //       pass just the layer4 object as the contract.
+    // Shape (a) wins when both a labelled palette and an array are present.
     var palette = (om.palette && typeof om.palette === 'object') ? om.palette : {};
     var primary   = str(palette.primary);
     var secondary = str(palette.secondary);
     var accent    = firstStr(palette.seasonal_accent, palette.accent);
+    if (!primary && !secondary && !accent) {
+      var l4nested = (om.layer4 && typeof om.layer4 === 'object') ? om.layer4 : null;
+      var l4top    = (contractObj.layer4 && typeof contractObj.layer4 === 'object') ? contractObj.layer4 : null;
+      var l4 = l4nested || l4top || {};
+      var arr = Array.isArray(l4.palette) ? l4.palette : [];
+      if (arr.length) {
+        primary   = str(arr[0]);
+        secondary = str(arr[1]);
+        accent    = str(arr[2]);
+      }
+    }
     if (!primary && !secondary && !accent) {
       return { present: false, sources: { primary: '', secondary: '', accent: '' }, roles: null };
     }
@@ -24556,9 +24758,15 @@ if (document.readyState === 'loading') {
       var typeDirection = TYPE_BY_TONE[tone] || 'grounded';
 
       // ── Imagery strategy: portrait / place / object / abstract / atmosphere ─
-      // Defaulted and testable for now (no generation in this slice); a present
-      // palette leans atmospheric, a bare home stays abstract.
-      var imagery = paletteOut.present ? 'atmosphere' : 'abstract';
+      // A real portrait, when present, always wins — that is the strongest and
+      // most honest hero imagery a person can offer. Otherwise a present palette
+      // leans atmospheric, and a bare home stays abstract. The portrait itself is
+      // carried by identity.photo on the public model; this flag lets the
+      // renderer choose the correct hero layout deterministically.
+      var hasPhoto = !!(typeof content.photo === 'string' && content.photo.trim());
+      var imagery = hasPhoto
+        ? 'portrait'
+        : (paletteOut.present ? 'atmosphere' : 'abstract');
 
       // ── Motifs: a small set of public-safe motifs ──────────────────────────
       // Always anchored by "threshold" (a home has a doorway); the rest are
@@ -24688,8 +24896,12 @@ if (document.readyState === 'loading') {
 
       var previewSections = (input.sections && typeof input.sections === 'object') ? input.sections : {};
 
-      // Identity — the person's own name only.
-      var name = pmFirst(input.name, content.name);
+      // Identity — the person's own name and (optional) portrait. The photo is a
+      // plain string (data URL or https URL); nothing else is carried across the
+      // seam. The renderer decides how to frame it and falls back gracefully if
+      // it is absent, malformed, or fails to load.
+      var name  = pmFirst(input.name, content.name);
+      var photo = pmStr(content.photo);
 
       // Hero / threshold — person copy first, then seed, then public fallback.
       var heroSec = previewSections.hero || {};
@@ -24742,7 +24954,7 @@ if (document.readyState === 'loading') {
         : null;
 
       var model = {
-        identity:   { name: name },
+        identity:   { name: name, photo: photo },
         hero:       hero,
         rooms:      rooms,
         invitation: invitation,
@@ -24854,9 +25066,22 @@ if (document.readyState === 'loading') {
                     (viMotifs[0] ? ' data-motif="' + esc(viMotifs[0]) + '"' : '');
 
       // Imagery-driven hero figure — decorative, aria-hidden, no text. Field
-      // strategies render layered luminous fields; framed strategies render an
-      // intentional inline-SVG mark (a stand-in until real media arrives).
+      // strategies render layered luminous fields; portrait renders the person's
+      // actual photo when identity.photo is present (the most honest hero we can
+      // offer); other framed strategies render an intentional inline-SVG mark.
+      // Safety: identity.photo is accepted only if it is either a data: image URL
+      // or an https URL, so a stray string can never inject non-image markup.
+      var identityPhoto = (typeof identity.photo === 'string') ? identity.photo.trim() : '';
+      var isSafePhoto = identityPhoto && (
+        /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/i.test(identityPhoto) ||
+        /^https:\/\//i.test(identityPhoto)
+      );
       function heroFigure() {
+        if (viImagery === 'portrait' && isSafePhoto) {
+          return '<div class="phpub-figure" data-imagery="portrait" data-has-photo="true" aria-hidden="true">' +
+            '<img class="phpub-figure-photo" src="' + esc(identityPhoto) + '" alt="" loading="eager" decoding="async"/>' +
+          '</div>';
+        }
         if (FIELD_IMAGERY[viImagery]) {
           return '<div class="phpub-figure" data-imagery="' + esc(viImagery) + '" aria-hidden="true">' +
             '<span class="phpub-field phpub-field-1"></span>' +
