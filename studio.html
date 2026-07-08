@@ -6624,6 +6624,105 @@ input, textarea { font: inherit; color: inherit; }
 .phpub[data-tone="clear"]    { --phpub-halo-1: 20%; --phpub-halo-2: 8%;  --phpub-tone-tint: 1%; }
 .phpub[data-tone="vivid"]    { --phpub-halo-1: 52%; --phpub-halo-2: 18%; --phpub-tone-tint: 9%; }
 
+/* ── Composition overlay (HOME_COMPOSITION) ───────────────────────────
+   A small, user-chosen presentation layer on top of the derived identity.
+   phRenderPublicHome emits data-palette-mode / data-hero-layout / data-rhythm /
+   data-accent-intensity / data-image-treatment on the .phpub root ONLY for the
+   fields the person set, so the all-'auto' default render is byte-identical.
+   These rules turn those hooks into REAL composition changes — a different
+   field, hero layout, band rhythm and image treatment from the SAME content —
+   while preserving ink contrast and the person's palette-role accents. */
+
+/* Palette field. Only surface + ink tokens shift; the three palette ROLE
+   accents (root / expression / radiance) are untouched so a person's colour
+   identity still reads in every field. Dark-contrast lifts ink to a warm paper
+   colour and darkens the field for a cinematic read. */
+.phpub[data-palette-mode="warm-field"] {
+  --phpub-paper: color-mix(in srgb, var(--phpub-root) 10%, #faf4e8);
+  --phpub-surface-2: color-mix(in srgb, var(--phpub-radiance) 6%, #f2e8d6);
+  --phpub-sink: color-mix(in srgb, var(--phpub-radiance) 8%, #ece0cb);
+  --phpub-tone-tint: 5%;
+}
+.phpub[data-palette-mode="clear-spacious"] {
+  --phpub-paper: color-mix(in srgb, var(--phpub-root) 3%, #fcfcfb);
+  --phpub-surface-2: color-mix(in srgb, var(--phpub-root) 6%, #f4f5f6);
+  --phpub-sink: color-mix(in srgb, var(--phpub-root) 9%, #eceef0);
+  --phpub-line: color-mix(in srgb, var(--phpub-expression) 12%, #e2e4e6);
+  --phpub-tone-tint: 0%;
+}
+.phpub[data-palette-mode="dark-contrast"] {
+  --phpub-paper: color-mix(in srgb, var(--phpub-expression) 22%, #141210);
+  --phpub-surface-2: color-mix(in srgb, var(--phpub-expression) 28%, #1d1a15);
+  --phpub-sink: color-mix(in srgb, var(--phpub-expression) 32%, #24201a);
+  --phpub-ink: color-mix(in srgb, var(--phpub-radiance) 8%, #f4efe6);
+  --phpub-ink-soft: color-mix(in srgb, var(--phpub-radiance) 6%, #ded8cd);
+  --phpub-ink-muted: color-mix(in srgb, var(--phpub-radiance) 12%, #a9a294);
+  --phpub-line: color-mix(in srgb, var(--phpub-radiance) 16%, #3a352c);
+  --phpub-halo-1: 46%;
+  --phpub-halo-2: 18%;
+}
+.phpub[data-palette-mode="dark-contrast"] a {
+  color: color-mix(in srgb, var(--phpub-radiance) 72%, #f4efe6);
+}
+
+/* Accent intensity → how present the luminous halos / accent glow read. */
+.phpub[data-accent-intensity="soft"]   { --phpub-halo-1: 18%; --phpub-halo-2: 7%;  }
+.phpub[data-accent-intensity="medium"] { --phpub-halo-1: 30%; --phpub-halo-2: 11%; }
+.phpub[data-accent-intensity="bold"]   { --phpub-halo-1: 50%; --phpub-halo-2: 18%; }
+
+/* Hero layout. Centered = editorial title block; purpose-led = left, lede
+   promoted to a purpose statement; portrait-forward = give the portrait more
+   of the two-column hero (only when a real photo drives data-imagery=portrait).
+   The established portrait-split rules keep priority when a photo is present. */
+.phpub[data-hero-layout="centered"] .phpub-hero { text-align: center; }
+.phpub[data-hero-layout="centered"] .phpub-hero-title { margin-left: auto; margin-right: auto; max-width: 20ch; }
+.phpub[data-hero-layout="centered"] .phpub-hero-lede  { margin-left: auto; margin-right: auto; max-width: 56ch; }
+.phpub[data-hero-layout="purpose-led"] .phpub-hero-lede {
+  font-size: clamp(19px, 2.4vw, 27px);
+  line-height: 1.42;
+  max-width: 42ch;
+  color: var(--phpub-ink);
+}
+.phpub[data-hero-layout="purpose-led"] .phpub-hero-title { max-width: 24ch; }
+@container phpub (min-width: 780px) {
+  .phpub[data-hero-layout="portrait-forward"]
+    .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  }
+  .phpub[data-hero-layout="portrait-forward"]
+    .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure {
+    max-width: 560px;
+  }
+}
+
+/* Section rhythm → how the rooms sit as a sequence of bands. Even flattens the
+   alternation to a single calm field; editorial deepens the alternation;
+   spacious opens generous air between rooms so each stands alone. */
+.phpub[data-rhythm="even"] .phpub-rooms > .phpub-room:nth-child(even) {
+  background: var(--phpub-surface-2);
+}
+.phpub[data-rhythm="editorial"] .phpub-rooms > .phpub-room:nth-child(even) {
+  background: var(--phpub-sink);
+}
+.phpub[data-rhythm="spacious"] .phpub-rooms > .phpub-room {
+  padding-top: calc(clamp(24px, 3.4vw, 40px) * var(--phpub-space, 1) * 1.6);
+  padding-bottom: calc(clamp(24px, 3.4vw, 40px) * var(--phpub-space, 1) * 1.6);
+}
+.phpub[data-rhythm="spacious"] .phpub-rooms { row-gap: clamp(18px, 3vw, 40px); }
+
+/* Image treatment → how the portrait photo is framed. Full-bleed drops the
+   rounding + deepens the lift for a cinematic frame; soft rounds it warmly. */
+.phpub[data-image-treatment="full-bleed"] .phpub-figure-photo {
+  border-radius: 6px;
+  box-shadow: 0 34px 64px -30px color-mix(in srgb, var(--phpub-expression) 70%, transparent);
+}
+.phpub[data-image-treatment="full-bleed"] .phpub-figure[data-imagery="portrait"] {
+  aspect-ratio: 3 / 4;
+}
+.phpub[data-image-treatment="soft"] .phpub-figure-photo {
+  border-radius: 22px;
+}
+
 /* ── Imagery strategy → decorative hero figure (aria-hidden, no text) ──
    Field strategies (atmosphere / abstract) layer soft luminous fields; framed
    strategies (portrait / place / object) show an intentional inline-SVG mark —
@@ -9368,6 +9467,39 @@ body.hw-open { overflow: hidden; }
 }
 .hw-preview-btn:hover { color: var(--text, #eef1f7); border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a)); }
 .hw-preview-btn.is-active { color: var(--text, #eef1f7); border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a)); background: color-mix(in srgb, var(--accent, #a48cff) 8%, transparent); }
+
+/* Composition mode bar — a small, curated set of whole-page compositions
+   above the live preview. Keyboard-accessible <button>s with aria-pressed. */
+.hw-composition {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+}
+.hw-composition-label {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-composition-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+.hw-composition-btn {
+  border: 1px solid var(--border, #2a2f3a); background: transparent;
+  color: var(--text-muted, #9aa3b2);
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 11px; cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.hw-composition-btn:hover {
+  color: var(--text, #eef1f7);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 55%, var(--border, #2a2f3a));
+}
+.hw-composition-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent, #a48cff) 70%, transparent);
+  outline-offset: 2px;
+}
+.hw-composition-btn.is-active {
+  color: var(--text, #eef1f7);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a));
+  background: color-mix(in srgb, var(--accent, #a48cff) 14%, transparent);
+}
 .hw-preview-frame {
   flex: 1 1 auto; overflow: auto;
   padding: 18px;
@@ -10858,6 +10990,10 @@ body.hw-open { overflow: hidden; }
           <button type="button" class="hw-preview-btn is-active" id="home-workbench-preview-refresh" title="Refresh preview">Refresh</button>
         </div>
       </div>
+      <!-- Composition modes — a small, curated set of whole-page compositions.
+           Same content, different rendered structure. Populated + wired by
+           phWorkbenchRenderComposition(). -->
+      <div class="hw-composition" id="home-workbench-composition" role="group" aria-label="Visitor composition style"></div>
       <div class="hw-preview-frame" id="home-workbench-preview-frame" aria-live="polite"></div>
     </section>
   </div>
@@ -11168,6 +11304,11 @@ let state = {
   identityMedia: {       // visual identity slots — Living Profile + Personal Home
     profileImage: null   // { src: dataURL, createdAt: ISO } | null
   },
+  // Visitor composition overlay — a small, user-chosen presentation layer on
+  // top of the derived visual identity. Stored as a chosen `mode` plus optional
+  // per-field overrides; resolved (phResolveComposition) at render time. null /
+  // { mode:'auto' } means "defer to the derived identity" — fully back-compatible.
+  homeComposition: null, // { mode, paletteMode, accentIntensity, heroLayout, sectionRhythm, density, imageTreatment } | null
   // Living Profile v0.1 manual-edit safeguard.
   //   auto[key] — last value the deterministic builder produced for
   //               an editable field, captured BEFORE any *_manual
@@ -23133,7 +23274,11 @@ if (document.readyState === 'loading') {
         sections: sections,
         counts: counts,
         transcripts: { count: transcripts.length },
-        sourceSeeds: sourceSeeds
+        sourceSeeds: sourceSeeds,
+        // The person's chosen visitor composition (HOME_COMPOSITION). Plumbed
+        // through so phPublicHomeModel resolves it onto the model and the
+        // public render reflects the choice. Absent → all-'auto' default.
+        composition: (window.state && window.state.homeComposition) || null
       };
     }
 
@@ -24096,11 +24241,48 @@ if (document.readyState === 'loading') {
       } else {
         rolesShown = '<span class="hw-fd-empty">Add the roles you carry</span>';
       }
-      var imageShown;
-      if (t.image) {
-        imageShown = '<span class="hw-fd-image-set">A profile photo is set.</span>';
+      // Profile photo — a live inline editor, not a dead "coming soon" button.
+      // Reuses the exact upload / replace / remove / reposition controls the
+      // Living Profile hero uses (renderProfileImageSlot + the fit panel), with
+      // the 'ph' prefix the shared wiring already anticipates. Change replaces
+      // the image, Remove clears it, Adjust opens focal position + zoom
+      // (object-position). Guarded so a build missing those helpers degrades to
+      // the previous read-only status line.
+      var pImg = (typeof getProfileImage === 'function') ? getProfileImage() : null;
+      var pAlt = 'Profile photo' + (t.name ? ' for ' + t.name : '');
+      var photoEditorHtml;
+      if (typeof renderProfileImageSlot === 'function' && typeof renderProfileImageFitPanel === 'function') {
+        if (pImg && pImg.src) {
+          photoEditorHtml =
+            '<div class="hw-fd-photo lp-hero-slot-wrap">' +
+              renderProfileImageSlot(pImg, pAlt) +
+              '<div class="lp-id-controls" aria-label="Profile photo controls">' +
+                '<label class="lp-id-file-label" title="Replace profile photo">Change' +
+                  '<input type="file" accept="image/*" id="ph-profile-image-input">' +
+                '</label>' +
+                '<button type="button" class="lp-id-btn" id="ph-profile-image-adjust" aria-expanded="false" aria-controls="ph-profile-image-fit">Adjust</button>' +
+                '<button type="button" class="lp-id-btn lp-id-btn-danger" id="ph-profile-image-remove">Remove</button>' +
+              '</div>' +
+              renderProfileImageFitPanel('ph', pImg.fit || (typeof defaultProfileImageFit === 'function' ? defaultProfileImageFit() : { x: 50, y: 50, zoom: 1 })) +
+            '</div>';
+        } else {
+          photoEditorHtml =
+            '<div class="hw-fd-photo lp-hero-slot-wrap">' +
+              '<div class="lp-hero-slot" title="Profile photo — visual representation slot">' +
+                '<span class="lp-hero-slot-glyph" aria-hidden="true">◯</span>' +
+                '<span class="lp-hero-slot-label">Profile<br>photo</span>' +
+              '</div>' +
+              '<div class="lp-id-controls" aria-label="Profile photo controls">' +
+                '<label class="lp-id-file-label" title="Upload profile photo">Upload profile photo' +
+                  '<input type="file" accept="image/*" id="ph-profile-image-input">' +
+                '</label>' +
+              '</div>' +
+            '</div>';
+        }
       } else {
-        imageShown = '<span class="hw-fd-empty">No profile photo yet</span>';
+        photoEditorHtml = t.image
+          ? '<span class="hw-fd-image-set">A profile photo is set.</span>'
+          : '<span class="hw-fd-empty">No profile photo yet</span>';
       }
 
       // Welcome-sentence hint: this copy is shared with the room that
@@ -24141,12 +24323,11 @@ if (document.readyState === 'loading') {
           '</div>' +
           '<div class="hw-fd-tile-value">' + rolesShown + '</div>' +
         '</div>' +
-        '<div class="hw-fd-tile" data-hw-fd-field="photo">' +
+        '<div class="hw-fd-tile hw-fd-tile-photo" data-hw-fd-field="photo">' +
           '<div class="hw-fd-tile-head">' +
             '<span class="hw-fd-tile-label">Profile photo</span>' +
-            '<button type="button" class="hw-fd-edit-btn" data-hw-fd-edit="photo">Edit</button>' +
           '</div>' +
-          '<div class="hw-fd-tile-value">' + imageShown + '</div>' +
+          '<div class="hw-fd-tile-value">' + photoEditorHtml + '</div>' +
         '</div>' +
       '</div>';
       html += phWorkbenchMuseHtml('threshold');
@@ -24164,6 +24345,20 @@ if (document.readyState === 'loading') {
           });
         })(btns[i]);
       }
+
+      // Wire the inline profile-photo editor. Same shared helpers the Living
+      // Profile hero uses, with the 'ph' prefix — so upload / replace / remove
+      // / reposition all work here without a second code path. On change these
+      // call refreshIdentityMediaSurfaces(), which repaints this Front door and
+      // the live visitor preview so the new photo shows immediately.
+      try {
+        if (typeof wireProfileImageControls === 'function') {
+          wireProfileImageControls('ph-profile-image-input', 'ph-profile-image-remove');
+        }
+        if (typeof wireProfileImageFitControls === 'function') {
+          wireProfileImageFitControls('ph');
+        }
+      } catch (_) { /* never break the Front door render */ }
     }
 
     // Open the appropriate edit surface for a Front door field.
@@ -24203,20 +24398,18 @@ if (document.readyState === 'loading') {
         }, 200);
         return;
       }
-      if (field === 'roles' || field === 'photo') {
-        // Roles and photo don't yet have popover editors; the existing
-        // path is on the Living Profile page. Route the user there in a
-        // gentle way: log a hint into the Digit prompt area and set
-        // Digit to attending so they know Digit heard the intent.
+      if (field === 'roles') {
+        // Roles don't yet have a popover editor; the existing path is on the
+        // Living Profile page. Route the user there gently: log a hint into the
+        // Digit prompt area and set Digit to attending so they know it heard.
+        // (Photo is now edited inline on the Front door — see the photo tile.)
         if (typeof phDigitSetState === 'function') phDigitSetState('attending');
         try {
           var body = document.getElementById('home-workbench-work-body');
           if (body) {
             var hint = document.createElement('div');
             hint.className = 'hw-fd-route-hint';
-            hint.textContent = (field === 'roles')
-              ? 'Editing roles from the Front door is coming next. For now, roles are edited from the Living Profile page.'
-              : 'Uploading a new profile photo from the Front door is coming next. For now, use the Living Profile page.';
+            hint.textContent = 'Editing roles from the Front door is coming next. For now, roles are edited from the Living Profile page.';
             body.appendChild(hint);
             setTimeout(function () { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 4200);
           }
@@ -24342,6 +24535,73 @@ if (document.readyState === 'loading') {
       }
     }
 
+    // Curated composition modes surfaced above the live preview. Public-facing
+    // labels only — no internal system names. Each is a whole-page composition
+    // (palette field + hero layout + section rhythm + accent + image treatment),
+    // not a cosmetic tag; selecting one re-renders the visitor preview with a
+    // different structure from the SAME content.
+    var PH_WB_COMPOSITION_CHOICES = [
+      { mode: 'auto',              label: 'Signature', hint: 'Your palette, chosen for you' },
+      { mode: 'editorial-about',   label: 'Editorial', hint: 'Warm field · centered title · restrained' },
+      { mode: 'cinematic-profile', label: 'Cinematic', hint: 'Portrait-forward · dark contrast' },
+      { mode: 'purpose-advisory',  label: 'Advisory',  hint: 'Purpose-led · spacious · clear' },
+      { mode: 'atelier',           label: 'Atelier',   hint: 'Warm · hand-made · quietly spacious' }
+    ];
+
+    // Current stored mode (defaults to 'auto' when nothing chosen / legacy).
+    function phWorkbenchCompositionMode() {
+      var comp = (window.state && window.state.homeComposition) || null;
+      var mode = comp && typeof comp.mode === 'string' ? comp.mode : 'auto';
+      var valid = PH_WB_COMPOSITION_CHOICES.some(function (c) { return c.mode === mode; });
+      return valid ? mode : 'auto';
+    }
+
+    // Persist a chosen mode and repaint the controls + live preview. Stored as
+    // a small { mode } shape on state.homeComposition (migration-safe: the
+    // resolver fills the rest). 'auto' clears the overlay back to derived.
+    function phWorkbenchSetComposition(mode) {
+      if (!window.state) return;
+      var valid = PH_WB_COMPOSITION_CHOICES.some(function (c) { return c.mode === mode; });
+      if (!valid) return;
+      window.state.homeComposition = (mode === 'auto') ? { mode: 'auto' } : { mode: mode };
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      phWorkbenchRenderComposition();
+      phWorkbenchRefreshPreview();
+      if (typeof phWorkbenchToast === 'function') {
+        var chosen = PH_WB_COMPOSITION_CHOICES.filter(function (c) { return c.mode === mode; })[0];
+        phWorkbenchToast('Composition · ' + (chosen ? chosen.label : mode));
+      }
+    }
+
+    // Render the composition mode buttons, reflecting the active mode. Real
+    // <button>s with aria-pressed so the group is keyboard-accessible.
+    function phWorkbenchRenderComposition() {
+      var host = document.getElementById('home-workbench-composition');
+      if (!host) return;
+      var active = phWorkbenchCompositionMode();
+      var html = '<span class="hw-composition-label">Composition</span>' +
+        '<div class="hw-composition-choices">';
+      PH_WB_COMPOSITION_CHOICES.forEach(function (c) {
+        var on = (c.mode === active);
+        html += '<button type="button" class="hw-composition-btn' + (on ? ' is-active' : '') + '"' +
+          ' data-hw-composition="' + hwEscape(c.mode) + '"' +
+          ' aria-pressed="' + (on ? 'true' : 'false') + '"' +
+          ' title="' + hwEscape(c.hint) + '">' +
+          hwEscape(c.label) +
+        '</button>';
+      });
+      html += '</div>';
+      host.innerHTML = html;
+      var btns = host.querySelectorAll('[data-hw-composition]');
+      for (var i = 0; i < btns.length; i++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            phWorkbenchSetComposition(btn.getAttribute('data-hw-composition'));
+          });
+        })(btns[i]);
+      }
+    }
+
     // Update the top-bar progress + status from the shared model.
     function phWorkbenchRenderTopbar(model) {
       var seed = (typeof phSeedReadiness === 'function') ? phSeedReadiness(model) : null;
@@ -24375,6 +24635,7 @@ if (document.readyState === 'loading') {
       phWorkbenchRenderTopbar(model);
       phWorkbenchRenderRooms(model);
       phWorkbenchRenderWorkColumn(model);
+      phWorkbenchRenderComposition();
       phWorkbenchRefreshPreview();
       phWorkbenchSyncDirty();
       // Any of the render functions may have replaced Digit's glyph
@@ -24976,6 +25237,93 @@ if (document.readyState === 'loading') {
     }
     // <HOME_PUBLIC_VISUAL_IDENTITY_END>
 
+    // <HOME_COMPOSITION_START> — extracted verbatim by tests/home-composition.test.mjs
+    // Composition state layer — a small, user-chosen presentation overlay that
+    // sits ON TOP of the derived visual identity (HOME_PUBLIC_VISUAL_IDENTITY),
+    // never replacing it. A stored composition is just a chosen `mode` plus
+    // optional per-field overrides; this resolves it to concrete, public-safe
+    // words (or 'auto', meaning "defer to the derived identity / neutral
+    // default"). Every value is public-neutral — none names an internal system
+    // (cOMpass / OM Cipher / Living Profile / Nexus / Spark / Field
+    // Observations) or the Work/Lens/Field/Call taxonomy — so a render that
+    // consumes it stays clean under validatePublicHomeLanguage(). Pure +
+    // deterministic + migration-safe: no DOM, no window, no persistence.
+    var PH_COMPOSITION_FIELDS = ['paletteMode', 'accentIntensity', 'heroLayout', 'sectionRhythm', 'density', 'imageTreatment'];
+
+    function phDefaultComposition() {
+      return {
+        mode:            'auto',
+        paletteMode:     'auto',
+        accentIntensity: 'auto',
+        heroLayout:      'auto',
+        sectionRhythm:   'auto',
+        density:         'auto',
+        imageTreatment:  'auto'
+      };
+    }
+
+    // Named modes → concrete field presets. A curated, small set of
+    // high-quality compositions rather than many loose knobs.
+    var PH_COMPOSITION_MODES = {
+      // Editorial About — white/warm field, centered editorial title, restraint.
+      'editorial-about': {
+        paletteMode: 'warm-field', accentIntensity: 'soft',   heroLayout: 'centered',
+        sectionRhythm: 'editorial', density: 'balanced',       imageTreatment: 'framed'
+      },
+      // Cinematic Profile — portrait-forward, stronger dark/light contrast.
+      'cinematic-profile': {
+        paletteMode: 'dark-contrast', accentIntensity: 'bold', heroLayout: 'portrait-forward',
+        sectionRhythm: 'even', density: 'rich',                 imageTreatment: 'full-bleed'
+      },
+      // Purpose Advisory — purpose-led, spacious, clarity-first.
+      'purpose-advisory': {
+        paletteMode: 'clear-spacious', accentIntensity: 'medium', heroLayout: 'purpose-led',
+        sectionRhythm: 'spacious', density: 'sparse',             imageTreatment: 'soft'
+      },
+      // Atelier — warm, made-by-hand, quietly spacious.
+      'atelier': {
+        paletteMode: 'warm-field', accentIntensity: 'medium', heroLayout: 'centered',
+        sectionRhythm: 'spacious', density: 'balanced',        imageTreatment: 'soft'
+      }
+    };
+
+    var PH_COMPOSITION_ALLOWED = {
+      mode:            ['auto', 'editorial-about', 'cinematic-profile', 'purpose-advisory', 'atelier'],
+      paletteMode:     ['auto', 'warm-field', 'dark-contrast', 'clear-spacious'],
+      accentIntensity: ['auto', 'soft', 'medium', 'bold'],
+      heroLayout:      ['auto', 'centered', 'portrait-forward', 'purpose-led'],
+      sectionRhythm:   ['auto', 'even', 'editorial', 'spacious'],
+      density:         ['auto', 'sparse', 'balanced', 'rich'],
+      imageTreatment:  ['auto', 'framed', 'full-bleed', 'soft']
+    };
+
+    function phResolveComposition(input) {
+      var out = phDefaultComposition();
+      input = (input && typeof input === 'object') ? input : {};
+      function ok(field, val) {
+        var allowed = PH_COMPOSITION_ALLOWED[field];
+        return (allowed && typeof val === 'string' && allowed.indexOf(val) !== -1) ? val : null;
+      }
+      // Mode first — a valid named mode seeds the concrete fields.
+      var mode = ok('mode', input.mode) || 'auto';
+      out.mode = mode;
+      if (mode !== 'auto' && PH_COMPOSITION_MODES[mode]) {
+        var preset = PH_COMPOSITION_MODES[mode];
+        PH_COMPOSITION_FIELDS.forEach(function (f) {
+          if (preset[f]) out[f] = preset[f];
+        });
+      }
+      // Explicit per-field overrides win over the mode preset, but only when a
+      // valid non-'auto' value is supplied — a stored 'auto' never clobbers a
+      // mode's concrete choice, keeping older/partial stored shapes safe.
+      PH_COMPOSITION_FIELDS.forEach(function (f) {
+        var v = ok(f, input[f]);
+        if (v && v !== 'auto') out[f] = v;
+      });
+      return out;
+    }
+    // <HOME_COMPOSITION_END>
+
     // <HOME_PUBLIC_MODEL_START> — extracted verbatim by tests/home-public-model.test.mjs
     // Pure, visitor-facing hOMe render model (docs/home-design-grammar.md §3,
     // §5, §8; roadmap "clean public hOMe render model"). This is the seam a
@@ -25101,6 +25449,13 @@ if (document.readyState === 'loading') {
         ? phPublicVisualIdentity(seeds)
         : null;
 
+      // Composition overlay — the person's chosen presentation on top of the
+      // derived identity. Guarded so the model still resolves if the helper
+      // layer is absent; null → the renderer treats every field as 'auto'.
+      var composition = (typeof phResolveComposition === 'function')
+        ? phResolveComposition(input.composition)
+        : null;
+
       var model = {
         identity:   { name: name, photo: photo },
         hero:       hero,
@@ -25108,6 +25463,7 @@ if (document.readyState === 'loading') {
         invitation: invitation,
         palette:    paletteRoles ? { roles: paletteRoles } : null,
         visualIdentity: visualIdentity,
+        composition: composition,
         status: {
           present:          !!content.present,
           roomsWithContent: roomsWithContent,
@@ -25190,6 +25546,21 @@ if (document.readyState === 'loading') {
       var viDensity = viPick(vi.density,       ['sparse', 'balanced', 'rich'], 'balanced');
       var viMotion  = viPick(vi.motion,        ['still', 'subtle', 'alive'], 'subtle');
       var viType    = viPick(vi.typeDirection, ['editorial', 'modern', 'grounded', 'expressive'], 'grounded');
+
+      // Composition overlay (HOME_COMPOSITION) — a user-chosen presentation the
+      // person selected in the builder. Each non-'auto' field becomes a data-*
+      // hook on the render root that the scoped .phpub CSS keys off to change
+      // the actual layout/composition (palette field, hero layout, section
+      // rhythm, accent intensity, image treatment). When absent or 'auto', the
+      // render is byte-for-byte the derived-identity default. A set density
+      // overrides the derived density so the person can tune how full it reads.
+      var comp = (model.composition && typeof model.composition === 'object') ? model.composition : {};
+      function compVal(field) {
+        var v = (typeof comp[field] === 'string') ? comp[field] : 'auto';
+        return (v && v !== 'auto') ? v : '';
+      }
+      var compDensity = compVal('density');
+      if (compDensity) viDensity = compDensity;
       // Motif vocab is a fixed, public-safe set (PR #152). Filter the model's
       // motifs to that vocab so a malformed identity can never surface a raw
       // word — and map each to a neutral geometric glyph for decorative marks.
@@ -25212,6 +25583,18 @@ if (document.readyState === 'loading') {
                     ' data-imagery="' + esc(viImagery) + '"' +
                     (viMotifs.length ? ' data-motifs="' + esc(viMotifs.join(' ')) + '"' : '') +
                     (viMotifs[0] ? ' data-motif="' + esc(viMotifs[0]) + '"' : '');
+
+      // Composition data hooks — emitted only for fields the person set, so the
+      // default (all-'auto') render is unchanged. The CSS reads these to change
+      // real layout, not to print any label.
+      var compAttrs = '';
+      if (comp.mode && comp.mode !== 'auto') compAttrs += ' data-composition="' + esc(comp.mode) + '"';
+      [['paletteMode', 'data-palette-mode'], ['accentIntensity', 'data-accent-intensity'],
+       ['heroLayout', 'data-hero-layout'], ['sectionRhythm', 'data-rhythm'],
+       ['imageTreatment', 'data-image-treatment']].forEach(function (pair) {
+        var v = compVal(pair[0]);
+        if (v) compAttrs += ' ' + pair[1] + '="' + esc(v) + '"';
+      });
 
       // Imagery-driven hero figure — decorative, aria-hidden, no text. Field
       // strategies render layered luminous fields; portrait renders the person's
@@ -25282,7 +25665,7 @@ if (document.readyState === 'loading') {
       var atmos = '<div class="phpub-atmos" aria-hidden="true">' +
         '<span class="phpub-halo"></span><span class="phpub-grain"></span></div>';
 
-      var html = '<div class="phpub" data-phpub="visitor"' + viAttrs + styleAttr + '>';
+      var html = '<div class="phpub" data-phpub="visitor"' + viAttrs + compAttrs + styleAttr + '>';
 
       // ── Threshold / hero — person-first ──────────────────────────────
       var heroHeading = esc(hero.heading || name);
@@ -26289,6 +26672,14 @@ if (document.readyState === 'loading') {
             document.getElementById('website-preview-modal') &&
             document.getElementById('website-preview-modal').classList.contains('is-open')) {
           renderWebsitePreview();
+        }
+      } catch (_) {}
+      // hOMe Workbench — repaint the Front door photo editor + live preview so
+      // an upload / replace / remove shows immediately without reopening.
+      try {
+        var wb = document.getElementById('home-workbench');
+        if (wb && !wb.hidden && typeof phWorkbenchRefreshAll === 'function') {
+          phWorkbenchRefreshAll();
         }
       } catch (_) {}
     }
