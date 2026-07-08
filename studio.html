@@ -6287,6 +6287,14 @@ input, textarea { font: inherit; color: inherit; }
    a faint grain) and per-room accents live in scoped pseudo-elements and s-N
    classes — no framework, no HTML provenance. */
 .phpub {
+  /* Establish a size container so the portrait hero + editorial layout
+     rules below can key off the actual .phpub width (not the viewport).
+     This is what keeps the two-column hero from firing inside the narrow
+     workbench preview column — where viewport is > 780px but the .phpub
+     container is only ~450–500px, forcing text onto the portrait and
+     causing overlap. */
+  container-type: inline-size;
+  container-name: phpub;
   --phpub-root: #f6f1e7;        /* warm paper surface (fallback) */
   --phpub-expression: #211e18;  /* warm ink (fallback) */
   --phpub-radiance: #c07a22;    /* honey / lamp-light accent (fallback) */
@@ -6750,8 +6758,15 @@ input, textarea { font: inherit; color: inherit; }
    .phpub-hero itself when it contains a portrait figure — the eyebrow,
    title, lede, actions, motif rail and scroll cue land in column A, and
    the portrait lands in column B. All addressed by their generated
-   order so no markup change is required. */
-@media (min-width: 780px) {
+   order so no markup change is required.
+
+   Uses a CONTAINER query on .phpub (not a viewport @media) so the split
+   only fires when the .phpub surface itself has room for two columns.
+   Inside the narrow workbench preview column (≈ 450–500px) the hero
+   correctly falls back to the stacked mobile-pass layout, avoiding the
+   title/lede/photo overlap seen when a viewport media query fires but
+   the container is too small to hold two columns. */
+@container phpub (min-width: 780px) {
   .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -6783,8 +6798,12 @@ input, textarea { font: inherit; color: inherit; }
   .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-figure        { grid-row: 1 / span 6; }
 }
 
-/* Mobile pass: stack, and put the portrait first so the face leads. */
-@media (max-width: 779px) {
+/* Narrow-container pass: stack, and put the portrait first so the face
+   leads. Container query mirrors the split rule above so the stacked
+   layout applies whenever the .phpub surface is under 780px — including
+   inside the workbench preview column, which was previously getting the
+   two-column rule crushed into ~250px per side. */
+@container phpub (max-width: 779px) {
   .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) {
     text-align: left;
     padding-left: clamp(20px, 6vw, 28px);
@@ -9389,6 +9408,11 @@ body.hw-open { overflow: hidden; }
   .home-workbench.is-preview-open .hw-rooms-col,
   .home-workbench.is-preview-open .hw-work-col { display: none; }
   .home-workbench.is-preview-open .hw-preview-col { display: flex; }
+  /* Fullscreen "Preview as visitor" must also reveal the preview column at
+     this width — without this the preview column is display:none and the
+     surface reads as a fully blank dark body under the topbar. */
+  .home-workbench.is-preview-fullscreen .hw-body { grid-template-columns: 0 0 minmax(0, 1fr); }
+  .home-workbench.is-preview-fullscreen .hw-preview-col { display: flex; }
 }
 @media (max-width: 720px) {
   .hw-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
