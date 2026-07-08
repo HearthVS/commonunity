@@ -7184,7 +7184,8 @@ input, textarea { font: inherit; color: inherit; }
    the accessible --text tokens; without a completed OM Cipher the
    attribute is absent and the neutral default preview is unchanged.
    ============================================================ */
-#website-preview-card[data-ph-palette="active"] {
+#website-preview-card[data-ph-palette="active"],
+#home-workbench-preview-frame[data-ph-palette="active"] {
   background:
     radial-gradient(140% 110% at 0% 0%, var(--ph-glow, transparent), transparent 58%),
     var(--ph-surface, var(--card));
@@ -24311,6 +24312,16 @@ if (document.readyState === 'loading') {
           typeof phRenderPublicHome !== 'function') {
         frame.innerHTML = '<p class="hw-source-empty">Live preview is unavailable in this build.</p>';
         return;
+      }
+      // Apply the person's derived palette roles to this preview frame so
+      // the visitor render inherits the same personal colors it does from
+      // the front-door entry. Without this the frame falls back to the
+      // Studio shell's theme tokens (--rose-color, --work / --lens /
+      // --field / --call), which paint the visitor hero in shell colors
+      // instead of the person's own palette. Uses the same helper the
+      // read-only preview toggle relies on.
+      if (typeof phApplyPaletteRoles === 'function') {
+        try { phApplyPaletteRoles(frame); } catch (_) { /* never break preview */ }
       }
       try {
         var model = buildWebsitePreview();

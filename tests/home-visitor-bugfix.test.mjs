@@ -303,4 +303,31 @@ test('.lp-edit-popover z-index sits above .home-workbench (9600 > 9500)', () => 
     '.lp-edit-popover z-index must be at least 9600 (got ' + popoverZVal + ')');
 });
 
+// ── Bug E — Workbench preview must apply OM Cipher palette roles ──────
+// When entering the visitor preview from the OM Spark path (which opens
+// the hOMe Workbench), the render lives inside #home-workbench-preview-
+// frame instead of #website-preview-card. Only renderWebsitePreview()
+// applied phApplyPaletteRoles(), so the Workbench preview fell back to
+// the Studio shell's theme tokens (bright green --field, purple
+// --rose-color, etc.) instead of the person's cipher-derived palette.
+// Fix: (1) call phApplyPaletteRoles(frame) inside phWorkbenchRefreshPreview,
+// and (2) extend the [data-ph-palette="active"] atmosphere selector to
+// include #home-workbench-preview-frame.
+test('phWorkbenchRefreshPreview applies phApplyPaletteRoles to the workbench preview frame', () => {
+  // Extract the phWorkbenchRefreshPreview function body.
+  const fnMatch = html.match(/function phWorkbenchRefreshPreview\(\)\s*\{([\s\S]*?)\n    \}/);
+  assert.ok(fnMatch, 'phWorkbenchRefreshPreview must exist');
+  const body = fnMatch[1];
+  assert.match(body, /phApplyPaletteRoles\(frame\)/,
+    'phWorkbenchRefreshPreview must call phApplyPaletteRoles(frame) so the Spark-→Workbench visitor preview inherits the OM Cipher palette instead of Studio shell colors');
+});
+
+test('workbench preview frame is scoped by the [data-ph-palette="active"] atmosphere CSS', () => {
+  // The atmosphere rule that paints ph-surface / ph-border / ph-glow onto
+  // the preview card must also cover the workbench preview frame.
+  assert.match(html,
+    /#home-workbench-preview-frame\[data-ph-palette="active"\]/,
+    '#home-workbench-preview-frame[data-ph-palette="active"] must be part of the palette-atmosphere selector so the Workbench preview surface shows the cipher-derived background and border');
+});
+
 console.log('\n' + passed + ' checks passed.');
