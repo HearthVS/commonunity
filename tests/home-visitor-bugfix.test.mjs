@@ -181,7 +181,7 @@ test('.hw-preview-frame still owns overflow:auto (the actual scroll container)',
 // the other two grid tracks) when is-preview-fullscreen is on.
 test('the 1120px breakpoint also reveals the preview column under is-preview-fullscreen', () => {
   assert.match(html,
-    /@media \(max-width: 1120px\)[\s\S]{0,900}\.home-workbench\.is-preview-fullscreen \.hw-preview-col \{ display: flex; \}/,
+    /@media \(max-width: 1120px\)[\s\S]{0,900}\.home-workbench\.is-preview-fullscreen \.hw-preview-col \{[^}]*display: flex[^}]*\}/,
     'is-preview-fullscreen must set .hw-preview-col to display:flex inside the 1120px media query');
   assert.match(html,
     /@media \(max-width: 1120px\)[\s\S]{0,900}\.home-workbench\.is-preview-fullscreen \.hw-body \{ grid-template-columns: 0 0 minmax\(0, 1fr\); \}/,
@@ -196,6 +196,20 @@ test('the 1120px breakpoint also reveals the preview column under is-preview-ful
 // visibly overlapping the hero title with the intro copy and photo. The
 // fix promotes .phpub to a size container and switches the split rules to
 // @container queries so the layout keys off the actual surface width.
+// ── Bug A followup 3 — fullscreen preview must pin into grid track 3 ──
+// When the .hw-rooms-col and .hw-work-col are display:none in fullscreen
+// mode, they are removed from the CSS grid entirely. The lone remaining
+// .hw-preview-col then auto-flows into track 1 (which is 0px wide),
+// leaving the preview rendered at width 0 — what the user saw as a
+// fully blank body. The fix must explicitly pin .hw-preview-col into
+// grid track 3 (the 1fr track) when is-preview-fullscreen is on.
+test('is-preview-fullscreen pins .hw-preview-col into grid track 3', () => {
+  // Base rule (matches at all widths).
+  assert.match(html,
+    /\.home-workbench\.is-preview-fullscreen \.hw-preview-col \{[\s\S]{0,200}grid-column:\s*3\s*\/\s*4/,
+    'is-preview-fullscreen must pin the preview column into grid track 3');
+});
+
 test('.phpub establishes a size container so hero layout keys off surface width, not viewport', () => {
   assert.match(html, /\.phpub \{[\s\S]{0,600}container-type:\s*inline-size;/,
     '.phpub must set container-type: inline-size');
