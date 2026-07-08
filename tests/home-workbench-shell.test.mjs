@@ -739,6 +739,59 @@ test('Front door save flow is per-field (not the bulk section save)', () => {
     'save flow must check phWorkbenchIsThreshold so threshold saves route through the popover, not bulk save');
 });
 
+test('Front door draft mirrors phCompassContentSeed for name + welcome sentence', () => {
+  // Parity invariant: the Front door tiles must read from the same
+  // sources the phpub visitor hero reads from (via phCompassContentSeed).
+  // Otherwise the tile values and the visitor preview drift, and edits
+  // don't show up on the visitor side.
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const draftFn = wbSrc.match(/function\s+phWorkbenchThresholdDraft\s*\([\s\S]*?\n\s{4}\}/);
+  assert.ok(draftFn, 'phWorkbenchThresholdDraft must be defined');
+  // Name: must consult display_name, full_name, first/last, and companion.
+  assert.match(draftFn[0], /display_name/, 'name draft must consider profile.display_name (matches seed)');
+  assert.match(draftFn[0], /full_name/,    'name draft must consider profile.full_name');
+  assert.match(draftFn[0], /first_name/,   'name draft must consider profile.first_name (for first+last fallback)');
+  assert.match(draftFn[0], /last_name/,    'name draft must consider profile.last_name');
+  assert.match(draftFn[0], /companion/,    'name draft must fall back to compassData.companion');
+  // Welcome sentence: must consult lens + work web copy (same as seed).
+  assert.match(draftFn[0], /web_intro/,    'welcome draft must read points.*.web_intro');
+  assert.match(draftFn[0], /'lens'/,       'welcome draft must consult the lens dimension');
+  assert.match(draftFn[0], /'work'/,       'welcome draft must consult the work dimension');
+  // Must expose a welcomeSource field so the UI can name the source room.
+  assert.match(draftFn[0], /welcomeSource/, 'draft must return welcomeSource so the tile can label its inheritance');
+});
+
+test('Front door render surfaces the primary + secondary bands', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const renderFn = wbSrc.match(/function\s+phWorkbenchRenderThresholdBody\s*\([\s\S]*?\n\s{4}\}/);
+  assert.ok(renderFn, 'phWorkbenchRenderThresholdBody must be defined');
+  // Primary band must include Name + Welcome sentence tiles.
+  assert.match(renderFn[0], /'name'/,      'render must emit a name tile');
+  assert.match(renderFn[0], /'welcome'/,   'render must emit a welcome-sentence tile (visitor hero lede)');
+  // Secondary band must be labelled honestly (Living Profile).
+  assert.match(renderFn[0], /In the visitor hero/,      'primary band must be labelled "In the visitor hero"');
+  assert.match(renderFn[0], /Living Profile/i,          'secondary band must reference Living Profile so the owner knows those fields do not feed the hero');
+});
+
+test('Front door welcome-sentence edit navigates to Lens or Work room', () => {
+  // The visitor-hero lede is inherited from Lens/Work web copy. Editing
+  // it must therefore navigate the Workbench to the source room, not
+  // open a popover on a non-existent field.
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const editFn = wbSrc.match(/function\s+phWorkbenchOpenThresholdEdit\s*\([\s\S]*?\n\s{4}\}/);
+  assert.ok(editFn, 'phWorkbenchOpenThresholdEdit must be defined');
+  assert.match(editFn[0], /field\s*===\s*['"]welcome['"]/,
+    'edit handler must have a welcome branch');
+  assert.match(editFn[0], /phWorkbenchState\.activeRoom/,
+    'welcome edit must switch the Workbench active room to the source room');
+});
+
 test('Digit glyph is ~20% smaller (calm-presence sizing)', () => {
   // Base glyph size dropped from 20x32 to 16x26 in the front-door pass
   // so Digit holds the room without demanding gaze. Locking the new

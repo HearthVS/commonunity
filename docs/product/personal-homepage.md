@@ -135,27 +135,52 @@ feeds the hero, not a fifth public room.
 
 ### What lives in the Front door
 
-Five tiles, rendered on a two-column grid that collapses to one column
-under 720px:
+The Front door tiles are split into two clearly-labelled bands so the
+owner sees at a glance which fields feed the visitor hero and which
+live on the Living Profile page.
 
-1. **Name** — `state.compassData.profile.full_name` (or `.name`).
-2. **One-sentence essence** — `.essence_manual || .essence`.
-3. **Statement** — `.statement_manual || .statement`.
-4. **Roles** — read via `buildLivingProfile().sections.roles.roles`.
-5. **Profile photo** — `.profile_image_data || .profile_image`.
+**Primary band — "In the visitor hero"** (mirrors `phRenderPublicHome`):
+
+1. **Name** — reads the same fallback chain as `phCompassContentSeed`:
+   `profile.display_name` → `profile.full_name` →
+   `profile.first_name + profile.last_name` → `compassData.companion`.
+2. **Welcome sentence** — the visitor lede, drawn from
+   `points.lens.web_intro || .summary || .raw`, falling through to the
+   same fields on `points.work`. The tile shows the source room
+   ("Inherited from your Lens room …") so the owner understands what
+   editing means.
+
+**Secondary band — "Also part of your identity · shown on your Living
+Profile"**:
+
+3. **One-sentence essence** — `.essence_manual || .essence`.
+4. **Statement** — `.statement_manual || .statement`.
+5. **Roles** — via `buildLivingProfile().sections.roles.roles`.
+6. **Profile photo** — `.profile_image_data || .profile_image`.
+
+The primary/secondary split matters because the visitor phpub hero
+only renders name + welcome sentence + decorative motifs. Statement,
+roles, and photo do not appear in the visitor hero; they shape the
+Living Profile page instead. Being explicit about that prevents
+owners from tuning fields that don't ripple to the visitor.
 
 ### Edit flow
 
-Front-door edits are **per-field**, not a bulk section save:
+Front-door edits are **per-field**, not a bulk section save. Each
+tile’s Edit button routes to the source of truth for that field:
 
-- **Name / essence / statement** open the existing Living Profile
-  popover editor (`openLpEditPopover(field, '', null)`), so there is
-  one source of truth for identity edits shared between the Workbench
-  and the Living Profile view. On save, Digit briefly enters the
-  `held` state.
-- **Roles / photo** currently route to the Living Profile page via a
-  `.hw-fd-route-hint` toast. Full inline editing for roles and photo
-  in the Front door is queued as follow-up work.
+- **Name** — opens the existing Living Profile popover editor
+  (`openLpEditPopover('name', '', null)`).
+- **Welcome sentence** — the lede is inherited from a room's web copy,
+  not a standalone field, so its Edit button **switches the Workbench
+  active room** to the source (Lens by default; Work when Lens is
+  empty). This keeps a single source of truth for room copy.
+- **Essence / statement** — open the Living Profile popover editor.
+- **Roles / photo** — route to the Living Profile page via a
+  `.hw-fd-route-hint` toast. Full inline editing for these is queued
+  as follow-up work.
+
+After any popover save, Digit briefly enters the `held` state.
 
 `phWorkbenchSaveActiveSection` short-circuits when the active room is
 the Front door (via `phWorkbenchIsThreshold`), because the bulk-save
@@ -163,11 +188,12 @@ flow doesn't apply here.
 
 ### Digit voice on the Front door
 
-`HW_DIGIT_PROMPTS.threshold` gives Digit room-appropriate copy:
+`HW_DIGIT_PROMPTS.threshold` gives Digit room-appropriate copy that
+names the inheritance honestly:
 
-> This is what visitors meet first. Name, one-sentence essence, a
-> short statement, roles you carry, a face if you'd like one. Small
-> edits are enough. I'll hold the changes as you make them.
+> Two things reach a visitor first: your name and a welcome sentence.
+> I keep them in sync with your Lens (or Work) room — edit either and
+> I'll refresh here. The rest below shapes your Living Profile page.
 
 ### Related invariants
 
