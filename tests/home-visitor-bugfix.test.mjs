@@ -230,4 +230,77 @@ test('portrait hero split uses @container phpub (min-width: 780px), not a viewpo
     'the old @media (min-width: 780px) portrait grid must be gone');
 });
 
+// ── Bug A followup 4 — portrait hero row overrides must win ────────────
+// The catch-all rule `.phpub-hero:has(> .phpub-figure[data-imagery="portrait"])
+// > :not(.phpub-atmos):not(.phpub-figure) { grid-column: 1; grid-row: 1; }`
+// had TWO :not(.class) selectors, giving it higher specificity than the
+// per-child row overrides (`.phpub-hero-title { grid-row: 2 }` etc.).
+// This collapsed eyebrow / title / lede / actions / motif / scrollcue onto
+// row 1, stacking them on top of each other in fullscreen preview.
+// Fix: keep grid-column:1 on the catch-all (all text children share the
+// same column) but DROP grid-row:1 so the per-child row overrides win.
+test('portrait hero catch-all rule does NOT set grid-row (per-child row overrides must win on specificity)', () => {
+  // Capture the catch-all rule body and assert grid-row is absent.
+  const m = html.match(
+    /\.phpub-hero:has\(> \.phpub-figure\[data-imagery="portrait"\]\) >\s*:not\(\.phpub-atmos\):not\(\.phpub-figure\) \{([^}]*)\}/
+  );
+  assert.ok(m, 'catch-all rule for portrait hero text children must exist');
+  const body = m[1];
+  assert.match(body, /grid-column:\s*1/,
+    'catch-all must still put text children into column 1');
+  assert.doesNotMatch(body, /grid-row\s*:/,
+    'catch-all must NOT set grid-row — the per-child overrides would lose the specificity war and collapse onto row 1');
+});
+
+test('per-child portrait hero row assignments are present (eyebrow/title/lede/actions)', () => {
+  // Sanity-check the row assignments the fix relies on.
+  const perChild = [
+    ['phpub-hero-eyebrow',  1],
+    ['phpub-hero-title',    2],
+    ['phpub-hero-lede',     3],
+    ['phpub-hero-actions',  4],
+  ];
+  for (const [cls, row] of perChild) {
+    const re = new RegExp(
+      '\\.phpub-hero:has\\(> \\.phpub-figure\\[data-imagery="portrait"\\]\\) > \\.' +
+      cls + '\\s*\\{[^}]*grid-row:\\s*' + row
+    );
+    assert.match(html, re,
+      '.' + cls + ' must be assigned grid-row: ' + row);
+  }
+});
+
+// ── Bug D — Front-door welcome popover must sit above the Workbench ────
+// The popover overlay had z-index:1250 while .home-workbench is z-index:
+// 9500, so the popover was trapped BEHIND the workbench and only became
+// visible after the user closed the workbench. Fix: bump the popover to
+// z-index:9600 (above the workbench modal).
+test('.lp-edit-popover z-index sits above .home-workbench (9600 > 9500)', () => {
+  // Strip CSS comments before matching so a z-index reference inside an
+  // explanatory comment cannot accidentally satisfy or fail this test.
+  const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Extract .lp-edit-popover z-index.
+  const popoverMatch = html.match(/\.lp-edit-popover \{([^}]*)\}/);
+  assert.ok(popoverMatch, '.lp-edit-popover rule must exist');
+  const popoverBody = stripComments(popoverMatch[1]);
+  const popoverZ = popoverBody.match(/z-index:\s*(\d+)/);
+  assert.ok(popoverZ, '.lp-edit-popover must declare a z-index');
+  const popoverZVal = Number(popoverZ[1]);
+
+  // Extract .home-workbench z-index.
+  const wbMatch = html.match(/\.home-workbench \{([^}]*)\}/);
+  assert.ok(wbMatch, '.home-workbench rule must exist');
+  const wbBody = stripComments(wbMatch[1]);
+  const wbZ = wbBody.match(/z-index:\s*(\d+)/);
+  assert.ok(wbZ, '.home-workbench must declare a z-index');
+  const wbZVal = Number(wbZ[1]);
+
+  assert.ok(popoverZVal > wbZVal,
+    '.lp-edit-popover z-index (' + popoverZVal + ') must exceed .home-workbench z-index (' +
+    wbZVal + ') so the welcome popover renders on top of the workbench');
+  assert.ok(popoverZVal >= 9600,
+    '.lp-edit-popover z-index must be at least 9600 (got ' + popoverZVal + ')');
+});
+
 console.log('\n' + passed + ' checks passed.');
