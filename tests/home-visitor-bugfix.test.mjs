@@ -172,4 +172,48 @@ test('.hw-preview-frame still owns overflow:auto (the actual scroll container)',
     '.hw-preview-frame keeps overflow:auto — the preview column bounds it, the frame scrolls');
 });
 
+// ── Bug A followup 1 — fullscreen preview must appear on medium widths ─
+// The 1120px breakpoint originally hid .hw-preview-col by default and only
+// re-revealed it under .is-preview-open. Fullscreen (.is-preview-fullscreen)
+// was not covered, so on any laptop viewport under 1120px the fullscreen
+// "Preview as visitor" mode rendered a fully blank body — the column was
+// display:none. The fix must also expose the preview column (and collapse
+// the other two grid tracks) when is-preview-fullscreen is on.
+test('the 1120px breakpoint also reveals the preview column under is-preview-fullscreen', () => {
+  assert.match(html,
+    /@media \(max-width: 1120px\)[\s\S]{0,900}\.home-workbench\.is-preview-fullscreen \.hw-preview-col \{ display: flex; \}/,
+    'is-preview-fullscreen must set .hw-preview-col to display:flex inside the 1120px media query');
+  assert.match(html,
+    /@media \(max-width: 1120px\)[\s\S]{0,900}\.home-workbench\.is-preview-fullscreen \.hw-body \{ grid-template-columns: 0 0 minmax\(0, 1fr\); \}/,
+    'is-preview-fullscreen must collapse the other two grid tracks inside the 1120px media query');
+});
+
+// ── Bug A followup 2 — portrait hero split must be container-based ─────
+// The two-column portrait hero originally fired on `@media (min-width:
+// 780px)`, i.e. based on viewport width. Inside the workbench preview
+// column the viewport was > 780px but the .phpub surface was only
+// ~450–500px, so the grid rule fired anyway and crushed the two columns,
+// visibly overlapping the hero title with the intro copy and photo. The
+// fix promotes .phpub to a size container and switches the split rules to
+// @container queries so the layout keys off the actual surface width.
+test('.phpub establishes a size container so hero layout keys off surface width, not viewport', () => {
+  assert.match(html, /\.phpub \{[\s\S]{0,600}container-type:\s*inline-size;/,
+    '.phpub must set container-type: inline-size');
+  assert.match(html, /\.phpub \{[\s\S]{0,600}container-name:\s*phpub;/,
+    '.phpub must name the container "phpub" so the queries are unambiguous');
+});
+
+test('portrait hero split uses @container phpub (min-width: 780px), not a viewport @media', () => {
+  assert.match(html, /@container phpub \(min-width: 780px\)/,
+    'two-column portrait hero rule must be a container query');
+  assert.match(html, /@container phpub \(max-width: 779px\)/,
+    'narrow-container stacked pass must also be a container query so it applies inside the workbench preview column');
+  // Belt-and-braces: the old viewport @media wrapping the portrait grid
+  // must not have been left behind (it would double-fire on wide viewports
+  // and reintroduce the overlap regression).
+  assert.doesNotMatch(html,
+    /@media \(min-width: 780px\) \{\s*\.phpub-hero:has\(> \.phpub-figure\[data-imagery="portrait"\]\)/,
+    'the old @media (min-width: 780px) portrait grid must be gone');
+});
+
 console.log('\n' + passed + ' checks passed.');
