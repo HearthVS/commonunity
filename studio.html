@@ -9065,6 +9065,37 @@ body.hw-open { overflow: hidden; }
 .hw-fd-image-set {
   color: var(--text-muted, #9aa3b2); font-size: 13px;
 }
+/* Band titles separate the primary (visitor-hero) tiles from the
+   secondary (Living Profile) tiles so the owner sees at a glance which
+   fields feed the visitor hero and which don't. */
+.hw-fd-band-title {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text, #eef1f7);
+  margin: 4px 0 10px;
+  font-weight: 600;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.hw-fd-band-note {
+  font-size: 11px; letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted, #9aa3b2);
+  font-weight: 400;
+}
+/* Per-tile inline hint (used mostly for the welcome sentence, which is
+   inherited from another room and therefore edited elsewhere). */
+.hw-fd-tile-hint {
+  font-size: 12px; line-height: 1.45;
+  color: var(--text-muted, #9aa3b2);
+  margin: 0;
+}
+.hw-fd-tile-badge {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #a48cff) 14%, transparent);
+  color: color-mix(in srgb, var(--accent, #a48cff) 78%, var(--text, #eef1f7));
+  margin-right: auto;
+}
 .hw-fd-route-hint {
   margin-top: 10px;
   padding: 8px 12px;
@@ -23394,7 +23425,7 @@ if (document.readyState === 'loading') {
     var HW_DIGIT_PROMPTS = {
       threshold: {
         eyebrow: 'Digit · front door',
-        body:    'This is what visitors meet first. Name, one-sentence essence, a short statement, roles you carry, a face if you\'d like one. Small edits are enough. I\'ll hold the changes as you make them.'
+        body:    'Two things reach a visitor first: your name and a welcome sentence. I keep them in sync with your Lens (or Work) room — edit either and I\'ll refresh here. The rest below shapes your Living Profile page.'
       },
       work: {
         eyebrow: 'Digit · what I make',
@@ -23444,22 +23475,62 @@ if (document.readyState === 'loading') {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // Read the current identity fields for the Front door room. Draws
-    // from state.compassData.profile (the same source the live homepage
-    // hero reads from). Returned in a shape that lets the Workbench
-    // render a summary + edit affordances.
+    // Read the current identity fields for the Front door room.
+    //
+    // Truth about the visitor hero (phRenderPublicHome): the visitor sees
+    // only Name + a single welcome sentence, plus decorative motifs. We
+    // read the SAME sources phCompassContentSeed() reads so the Front
+    // door and the visitor preview never drift:
+    //   name    ← profile.display_name → full_name → first+last → companion
+    //   welcome ← lens web_heading → lens web_intro/summary/raw → work equivalents
+    //
+    // Statement / roles / photo are Living-Profile-only — they don't feed
+    // the phpub hero. We still surface them in a secondary "Also part of
+    // your identity" band so the owner can reach them, but we label them
+    // honestly.
     function phWorkbenchThresholdDraft() {
       var st = (typeof window !== 'undefined' && window.state) ? window.state : {};
       var cd = (st && st.compassData) || {};
       var profile = (cd && cd.profile) || {};
-      // Name may live in profile.full_name or nameContext; fall back to
-      // whatever the live hero would show.
-      var name = String(profile.full_name || cd.name || '').trim();
+      var points  = (cd && cd.points)  || {};
+
+      function firstNonEmpty() {
+        for (var i = 0; i < arguments.length; i++) {
+          var v = arguments[i];
+          if (v == null) continue;
+          var s = String(v).trim();
+          if (s) return s;
+        }
+        return '';
+      }
+
+      // ---- Name: mirror phCompassContentSeed's fallback chain exactly.
+      var fullName = (String(profile.first_name || '').trim() + ' ' +
+                      String(profile.last_name  || '').trim()).trim();
+      var name = firstNonEmpty(
+        profile.display_name,
+        profile.full_name,
+        fullName,
+        cd.companion
+      );
+
+      // ---- Welcome sentence: mirror phCompassContentSeed's threshold.intro
+      //      (lens dimension body → work dimension body). This is what the
+      //      visitor actually reads under the name.
+      function dimBody(key) {
+        var p = (points[key] && typeof points[key] === 'object') ? points[key] : {};
+        return firstNonEmpty(p.web_intro, p.summary, p.raw);
+      }
+      var welcomeSource = ''; // which room the copy came from
+      var welcome = '';
+      var lensBody = dimBody('lens');
+      var workBody = dimBody('work');
+      if (lensBody) { welcome = lensBody; welcomeSource = 'lens'; }
+      else if (workBody) { welcome = workBody; welcomeSource = 'work'; }
+
+      // ---- Living-Profile-only fields (kept for the secondary band).
       var essence = String(profile.essence_manual || profile.essence || '').trim();
       var statement = String(profile.statement_manual || profile.statement || '').trim();
-      // Roles: read the same live-hero source. buildLivingProfile()
-      // aggregates them; we prefer that when available so this stays
-      // in sync with what visitors actually see.
       var roles = [];
       try {
         if (typeof buildLivingProfile === 'function') {
@@ -23468,18 +23539,20 @@ if (document.readyState === 'loading') {
           if (Array.isArray(lpRoles)) roles = lpRoles.slice(0, 5);
         }
       } catch (_) { roles = []; }
-      // Profile image — same key used by the live-hero uploader.
       var image = String(profile.profile_image_data || profile.profile_image || '').trim();
-      // Source heuristic: any filled field means "tuned".
-      var filled = !!(name || essence || statement || roles.length || image);
+
+      var filled = !!(name || welcome || essence || statement || roles.length || image);
       return {
-        label:     HW_THRESHOLD_LABEL,
-        name:      name,
-        essence:   essence,
-        statement: statement,
-        roles:     roles,
-        image:     image,
-        source:    filled ? 'captured' : 'empty'
+        label:         HW_THRESHOLD_LABEL,
+        name:          name,
+        welcome:       welcome,
+        welcomeSource: welcomeSource, // 'lens' | 'work' | ''
+        // Living-Profile-only extras — not shown in the phpub hero.
+        essence:       essence,
+        statement:     statement,
+        roles:         roles,
+        image:         image,
+        source:        filled ? 'captured' : 'empty'
       };
     }
 
@@ -23674,14 +23747,18 @@ if (document.readyState === 'loading') {
     // so both surfaces stay coherent.
     function phWorkbenchRenderThresholdBody(bodyEl, draft) {
       var t = (draft && draft.threshold) || phWorkbenchThresholdDraft();
-      function tile(fieldKey, label, value, placeholder) {
+      function tile(fieldKey, label, hint, value, placeholder, badge) {
         var displayed = value && String(value).trim();
         var shown = displayed ? hwEscape(displayed) : '<span class="hw-fd-empty">' + hwEscape(placeholder) + '</span>';
+        var badgeHtml = badge ? '<span class="hw-fd-tile-badge">' + hwEscape(badge) + '</span>' : '';
+        var hintHtml  = hint  ? '<p class="hw-fd-tile-hint">' + hwEscape(hint) + '</p>' : '';
         return '<div class="hw-fd-tile" data-hw-fd-field="' + hwEscape(fieldKey) + '">' +
           '<div class="hw-fd-tile-head">' +
             '<span class="hw-fd-tile-label">' + hwEscape(label) + '</span>' +
+            badgeHtml +
             '<button type="button" class="hw-fd-edit-btn" data-hw-fd-edit="' + hwEscape(fieldKey) + '">Edit</button>' +
           '</div>' +
+          hintHtml +
           '<div class="hw-fd-tile-value">' + shown + '</div>' +
         '</div>';
       }
@@ -23697,14 +23774,35 @@ if (document.readyState === 'loading') {
       } else {
         imageShown = '<span class="hw-fd-empty">No profile photo yet</span>';
       }
+
+      // Welcome-sentence hint: name the room the copy is inherited from,
+      // so the owner understands *why* editing it means opening Lens/Work.
+      var welcomeHint;
+      if (t.welcomeSource === 'lens') {
+        welcomeHint = 'Inherited from your Lens room — edit it there to change what the visitor reads first.';
+      } else if (t.welcomeSource === 'work') {
+        welcomeHint = 'Inherited from your Work room — edit it there to change what the visitor reads first.';
+      } else {
+        welcomeHint = 'Write a line in your Lens or Work room — the first non-empty one shows here.';
+      }
+
       var html = '';
       html += '<div class="hw-fd-intro">' +
-        '<p>The Front door is what a visitor meets before anything else. Small edits ripple to your homepage immediately.</p>' +
+        '<p>The visitor hero shows two things: your <strong>name</strong> and a <strong>welcome sentence</strong>. Editing those here changes the hero directly. Statement, roles, and photo below live on your Living Profile page — they don\u2019t appear in the visitor hero yet, but they still shape how people meet you.</p>' +
       '</div>';
+
+      // Primary band — mirrors the phpub hero exactly.
+      html += '<h5 class="hw-fd-band-title">In the visitor hero</h5>';
       html += '<div class="hw-fd-grid">' +
-        tile('name',      'Name',                t.name,      'Add your display name') +
-        tile('essence',   'One-sentence essence', t.essence,   'A short line that describes what you offer or stand for') +
-        tile('statement', 'Statement',           t.statement, 'A short personal paragraph, separate from name and essence') +
+        tile('name',    'Name',              null,        t.name,    'Add your display name', null) +
+        tile('welcome', 'Welcome sentence',  welcomeHint, t.welcome, 'The first line a visitor reads', null) +
+      '</div>';
+
+      // Secondary band — Living-Profile-only extras.
+      html += '<h5 class="hw-fd-band-title">Also part of your identity <span class="hw-fd-band-note">· shown on your Living Profile</span></h5>';
+      html += '<div class="hw-fd-grid">' +
+        tile('essence',   'One-sentence essence', null, t.essence,   'A short line that describes what you offer or stand for', null) +
+        tile('statement', 'Statement',            null, t.statement, 'A short personal paragraph, separate from name and essence', null) +
         '<div class="hw-fd-tile" data-hw-fd-field="roles">' +
           '<div class="hw-fd-tile-head">' +
             '<span class="hw-fd-tile-label">Roles</span>' +
@@ -23738,10 +23836,26 @@ if (document.readyState === 'loading') {
     }
 
     // Open the appropriate edit surface for a Front door field.
-    // Delegates to openLpEditPopover for text fields (name/essence/statement).
-    // Roles + photo need dedicated flows — for this pass they route to
-    // the Living Profile edit surfaces via the same live-page path.
+    // - name / essence / statement → shared openLpEditPopover.
+    // - welcome → the phpub-hero lede is inherited from the Lens (or Work)
+    //   room's web copy, so "Edit" navigates the Workbench to that room.
+    // - roles / photo → route to the Living Profile page for now.
     function phWorkbenchOpenThresholdEdit(field) {
+      if (field === 'welcome') {
+        // Jump to the room whose copy currently fills the welcome sentence.
+        // Default to lens (the primary hero-copy source in
+        // phCompassContentSeed) so a first-time member lands somewhere
+        // productive even before any copy exists.
+        var draft = phWorkbenchThresholdDraft();
+        var target = (draft.welcomeSource === 'work') ? 'work' : 'lens';
+        if (typeof phWorkbenchState === 'object' && HW_ROOM_KEYS.indexOf(target) !== -1) {
+          phWorkbenchState.activeRoom = target;
+          phWorkbenchState.dirty = false;
+          try { phWorkbenchRefreshAll(); } catch (_) {}
+          if (typeof phDigitSetState === 'function') phDigitSetState('attending');
+        }
+        return;
+      }
       if (typeof openLpEditPopover === 'function' && (field === 'name' || field === 'essence' || field === 'statement')) {
         // The popover reads current value from an anchor element when
         // available. Since the anchor lives in the Living Profile view,
