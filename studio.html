@@ -8909,10 +8909,18 @@ body.hw-open { overflow: hidden; }
 .hw-topbar-close:hover { background: color-mix(in srgb, var(--danger, #d97575) 15%, transparent); border-color: color-mix(in srgb, var(--danger, #d97575) 60%, var(--border, #2a2f3a)); }
 
 /* Three-column layout. Preview column can be toggled off (fullscreen work) or
-   Workbench itself can hide (fullscreen preview) via body-level classes. */
+   Workbench itself can hide (fullscreen preview) via body-level classes.
+   grid-template-rows is pinned to a single 1fr row (not the default auto) so
+   the row cannot expand to fit tall column content. Without this the preview
+   column's tall .phpub render pushes the grid row past the viewport and, since
+   .home-workbench has overflow:hidden, all content below the fold gets
+   clipped — the visible symptom is a "blank" fullscreen visitor preview even
+   though the DOM has full content. Combined with min-height:0 this lets the
+   inner .hw-preview-frame's overflow:auto actually scroll. */
 .hw-body {
   flex: 1 1 auto; display: grid;
   grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -9283,11 +9291,18 @@ body.hw-open { overflow: hidden; }
   100% { opacity: 0; }
 }
 
-/* Preview column — the live visitor render. Uses .phpub styling already. */
+/* Preview column — the live visitor render. Uses .phpub styling already.
+   height:100% + min-height:0 are what allow the inner .hw-preview-frame to
+   flex to remaining height and its overflow:auto to activate scrolling in
+   both split and "Preview as visitor" fullscreen modes. Without an explicit
+   bounded height here the flex chain has no ceiling and the frame collapses
+   or, worse, pushes past the viewport into clipped territory. */
 .hw-preview-col {
   display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--input-bg, #14171d) 12%, transparent);
   min-width: 0; min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 .hw-preview-head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -13843,10 +13858,12 @@ var HOME_SOURCE_SEEDS = (function () {
   // identity, threshold/hero, per-dimension copy, highlights, themes, and an
   // invitation/offers seed. Compass-only (no builder captures) so it stays a
   // deterministic, testable view of the source file.
-  function phCompassContentSeed(compassData) {
+  function phCompassContentSeed(compassData, identityMedia) {
     var cd = (compassData && typeof compassData === 'object') ? compassData : {};
     var profile = (cd.profile && typeof cd.profile === 'object') ? cd.profile : {};
     var points  = (cd.points  && typeof cd.points  === 'object') ? cd.points  : {};
+    var im      = (identityMedia && typeof identityMedia === 'object') ? identityMedia : {};
+    var imPhoto = (im.profileImage && typeof im.profileImage === 'object') ? im.profileImage : {};
 
     function dimSeed(key) {
       var p = (points[key] && typeof points[key] === 'object') ? points[key] : {};
@@ -13870,12 +13887,16 @@ var HOME_SOURCE_SEEDS = (function () {
     var fullName = (str(profile.first_name) + ' ' + str(profile.last_name)).trim();
     var name = firstStr(profile.display_name, profile.full_name, fullName, cd.companion);
 
-    // Profile portrait — the person's own face on the visitor hero. Both storage
-    // shapes supported: profile_image_data (inline data URL, what the Living
-    // Profile uploader writes) and profile_image (a plain URL, historical field).
+    // Profile portrait — the person's own face on the visitor hero. Three
+    // storage shapes supported, in precedence order:
+    //   (1) identityMedia.profileImage.src  — the Living Profile uploader's
+    //       actual write target (state.identityMedia.profileImage.src).
+    //   (2) profile.profile_image_data      — inline data URL on the compass
+    //       profile (historical export shape).
+    //   (3) profile.profile_image           — a plain URL (older field).
     // The seed carries only a safe string; the renderer decides whether/how to
     // display it, and falls back to the atmosphere figure when absent.
-    var photo = firstStr(profile.profile_image_data, profile.profile_image);
+    var photo = firstStr(imPhoto.src, profile.profile_image_data, profile.profile_image);
 
     // Threshold / hero seed: prefer an explicit web heading the person wrote
     // (never a theme keyword) across dimensions, else their name; intro from
@@ -13981,7 +14002,7 @@ var HOME_SOURCE_SEEDS = (function () {
   function phHomeSourceSeeds(input) {
     input = (input && typeof input === 'object') ? input : {};
     return {
-      content: phCompassContentSeed(input.compassData),
+      content: phCompassContentSeed(input.compassData, input.identityMedia),
       palette: phOmCipherPaletteSeed(input.cipherContract)
     };
   }
@@ -22916,11 +22937,18 @@ if (document.readyState === 'loading') {
       }
       highlights = highlights.filter(Boolean).slice(0, 6);
       var hasCompass = !!(heading || intro || closing || highlights.length);
+      // Custom public label the person set through the Workbench room editor.
+      // Persisted onto the compass point as `web_label`. Carrying it onto
+      // sec.label is what makes phPublicRoomLabel(sec) honour it — without
+      // this line the Save writes to state but the field re-hydrates to
+      // the default ("How I perceive", etc.) on the very next render.
+      var customLabel = String(p.web_label || '').trim();
       return {
         heading: heading ? lpTrim(heading, 140) : '',
         intro:   cap || (intro ? lpTrim(intro, 600) : ''),
         closing: closing ? lpTrim(closing, 280) : '',
         highlights: highlights,
+        label:   customLabel,
         source: cap ? (hasCompass ? 'mixed' : 'captured')
                     : (hasCompass ? 'compass' : 'empty')
       };
@@ -23006,7 +23034,12 @@ if (document.readyState === 'loading') {
         compassData: cd,
         cipherContract: (function () {
           try { return readOmCipherContract(); } catch (_) { return null; }
-        })()
+        })(),
+        // Living Profile writes the visitor portrait to state.identityMedia
+        // (via getIdentityMedia() / setProfileImage()). Plumb the current
+        // slot through so the content seed's `photo` reflects what the person
+        // actually uploaded, not just an inline compass profile field.
+        identityMedia: (window.state && window.state.identityMedia) || null
       });
       return {
         name: personName || '',
@@ -23741,7 +23774,13 @@ if (document.readyState === 'loading') {
           if (Array.isArray(lpRoles)) roles = lpRoles.slice(0, 5);
         }
       } catch (_) { roles = []; }
-      var image = String(profile.profile_image_data || profile.profile_image || '').trim();
+      // Include the Living Profile uploader's slot — this is where the current
+      // in-app uploader actually writes the visitor portrait
+      // (state.identityMedia.profileImage.src). Falls back to the compass
+      // profile inline fields for older exports.
+      var im = (window.state && window.state.identityMedia) || {};
+      var imSrc = (im.profileImage && typeof im.profileImage === 'object') ? String(im.profileImage.src || '') : '';
+      var image = String(imSrc || profile.profile_image_data || profile.profile_image || '').trim();
 
       var filled = !!(name || welcome || essence || statement || roles.length || image);
       return {
@@ -24694,7 +24733,11 @@ if (document.readyState === 'loading') {
       } else if (input.sourceSeeds && typeof input.sourceSeeds === 'object') {
         seeds = input.sourceSeeds;
       } else if (typeof phHomeSourceSeeds === 'function') {
-        seeds = phHomeSourceSeeds({ compassData: input.compassData, cipherContract: input.cipherContract });
+        seeds = phHomeSourceSeeds({
+          compassData:    input.compassData,
+          cipherContract: input.cipherContract,
+          identityMedia:  input.identityMedia
+        });
       } else {
         seeds = {};
       }
@@ -24887,7 +24930,11 @@ if (document.readyState === 'loading') {
       // derive them from a raw state-shaped input ({ compassData, cipherContract }).
       var seeds = (input.sourceSeeds && typeof input.sourceSeeds === 'object')
         ? input.sourceSeeds
-        : phHomeSourceSeeds({ compassData: input.compassData, cipherContract: input.cipherContract });
+        : phHomeSourceSeeds({
+            compassData:    input.compassData,
+            cipherContract: input.cipherContract,
+            identityMedia:  input.identityMedia
+          });
       var content = (seeds && seeds.content) || {};
       var palette = (seeds && seeds.palette) || {};
       var seedDims = (content && content.dimensions) || {};
