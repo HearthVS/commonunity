@@ -6786,7 +6786,13 @@ input, textarea { font: inherit; color: inherit; }
   }
   .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) >
     :not(.phpub-atmos):not(.phpub-figure) {
-    grid-column: 1; grid-row: 1;
+    /* Default text children into column 1. The row assignments below
+       use lower-specificity selectors, so we intentionally do NOT set
+       grid-row here — setting it would beat the per-child overrides on
+       specificity (the two :not() classes outweigh a single class),
+       collapsing eyebrow / title / lede / actions / motif / scrollcue
+       onto row 1 and stacking them on top of each other. */
+    grid-column: 1;
   }
   /* Stack the text children within column 1 by wrapping their rows. */
   .phpub-hero:has(> .phpub-figure[data-imagery="portrait"]) > .phpub-hero-eyebrow  { grid-row: 1; align-self: end;   margin-bottom: 6px; }
@@ -8491,7 +8497,10 @@ input, textarea { font: inherit; color: inherit; }
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, #000 50%, transparent);
-  z-index: 1250;
+  /* Sits above the hOMe Workbench modal (z-index: 9500) so edits
+     triggered from the Workbench's Front door surface actually appear
+     on top of it instead of being trapped behind the workbench body. */
+  z-index: 9600;
   padding: var(--space-4);
 }
 .lp-edit-popover.is-open { display: flex; }
