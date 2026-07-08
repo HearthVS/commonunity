@@ -9005,6 +9005,82 @@ body.hw-open { overflow: hidden; }
   padding: 6px 8px; font-style: italic;
 }
 
+/* ------------------------------------------------------------
+   Front door (threshold) room — identity-field tiles.
+   Not a single free-form textarea like the four making rooms;
+   the Front door surfaces name / essence / statement / roles /
+   photo as small tiles with inline Edit buttons.
+   ------------------------------------------------------------ */
+.hw-fd-intro p {
+  font-size: 13px; line-height: 1.55;
+  color: var(--text-muted, #9aa3b2);
+  margin: 0 0 14px;
+}
+.hw-fd-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* .hw-fd-grid mobile stacking lives in the single Workbench 720px block
+   further down (single-media-query invariant). */
+.hw-fd-tile {
+  border: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 90%, transparent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--input-bg, #14171d) 40%, transparent);
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 0;
+}
+.hw-fd-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.hw-fd-tile-label {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-fd-edit-btn {
+  font-size: 11px; padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 30%, var(--border, #2a2f3a));
+  background: transparent;
+  color: var(--text, #eef1f7);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.hw-fd-edit-btn:hover {
+  background: color-mix(in srgb, var(--accent, #a48cff) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 50%, transparent);
+}
+.hw-fd-tile-value {
+  font-size: 14px; line-height: 1.5;
+  color: var(--text, #eef1f7);
+  word-wrap: break-word; overflow-wrap: anywhere;
+  min-height: 20px;
+}
+.hw-fd-empty {
+  color: var(--text-faint, #6b7280); font-style: italic;
+  font-size: 13px;
+}
+.hw-fd-image-set {
+  color: var(--text-muted, #9aa3b2); font-size: 13px;
+}
+.hw-fd-route-hint {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px dashed color-mix(in srgb, var(--accent, #a48cff) 40%, transparent);
+  background: color-mix(in srgb, var(--accent, #a48cff) 5%, transparent);
+  font-size: 12px; color: var(--text-muted, #9aa3b2);
+  animation: hw-fd-hint-fade 4200ms ease;
+}
+@keyframes hw-fd-hint-fade {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  10%  { opacity: 1; transform: none; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* Preview column — the live visitor render. Uses .phpub styling already. */
 .hw-preview-col {
   display: flex; flex-direction: column;
@@ -9114,6 +9190,9 @@ body.hw-open { overflow: hidden; }
   .hw-topbar-progress { flex: 1 1 100%; max-width: none; order: 3; }
   .hw-topbar-actions .hw-topbar-btn { display: none; }
   .hw-work-head, .hw-work-body { padding-left: 16px; padding-right: 16px; }
+  /* Front-door tile grid collapses to a single column on narrow screens
+     so name/essence/statement/roles/photo stack in reading order. */
+  .hw-fd-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Digit — the cycling seven-segment presence ─────────────────────────
@@ -9136,7 +9215,10 @@ body.hw-open { overflow: hidden; }
 .digit-glyph {
   display: inline-block;
   position: relative;
-  width: 20px; height: 32px;
+  /* ~20% smaller than the debut sizing (was 20×32). Digit is a
+     presence, not a spotlight — shrunk so it holds the room without
+     demanding gaze. Original: 20×32 → now: 16×26. */
+  width: 16px; height: 26px;
   vertical-align: middle;
   color: var(--accent, #a48cff);
   /* Digit's tone is a warm hOMe amber — the same family as the room
@@ -9150,9 +9232,10 @@ body.hw-open { overflow: hidden; }
   filter: drop-shadow(0 0 4px var(--digit-lit-glow));
   transition: filter 400ms ease;
 }
-.digit-glyph--sm { width: 15px; height: 24px; }
-.digit-glyph--md { width: 22px; height: 36px; }
-.digit-glyph--lg { width: 30px; height: 48px; }
+/* Size modifiers — all reduced ~20% in the calm-presence pass. */
+.digit-glyph--sm { width: 12px; height: 19px; } /* was 15×24 */
+.digit-glyph--md { width: 18px; height: 29px; } /* was 22×36 */
+.digit-glyph--lg { width: 24px; height: 38px; } /* was 30×48 */
 
 /* All segments carry the ghost baseline. Lit segments override to full
    opacity via the .is-lit class set by JS. */
@@ -23287,7 +23370,19 @@ if (document.readyState === 'loading') {
     // chrome around it.
     // Related: docs/home-design-grammar.md §8 (preview overlay).
 
-    var HW_ROOM_KEYS = ['work', 'lens', 'field', 'call'];
+    // Room ordering: 'threshold' (Front door) is first — the visitor lands
+    // here before anything else, so the making surface mirrors that
+    // spatial reality. The remaining four rooms follow in their
+    // established sequence. 'threshold' is a synthetic room key: it
+    // does not correspond to model.sections[key]; instead it edits the
+    // identity fields on state.compassData.profile (name, essence,
+    // statement, roles, profile image). See phWorkbenchIsThreshold.
+    var HW_ROOM_KEYS = ['threshold', 'work', 'lens', 'field', 'call'];
+    function phWorkbenchIsThreshold(key) { return key === 'threshold'; }
+
+    // Public label for the Front door section. Kept simple and spatial
+    // so it feels honest — people literally enter the homepage here.
+    var HW_THRESHOLD_LABEL = 'Front door';
 
     // Contextual Muse guidance per room — plain, warm, first-person
     // prompts that help the person shape the section in their own
@@ -23297,6 +23392,10 @@ if (document.readyState === 'loading') {
     // first-person, apprentice-toned. Digit rarely says "I" and never
     // performs selfhood. It just names what's here and gets out of the way.
     var HW_DIGIT_PROMPTS = {
+      threshold: {
+        eyebrow: 'Digit · front door',
+        body:    'This is what visitors meet first. Name, one-sentence essence, a short statement, roles you carry, a face if you\'d like one. Small edits are enough. I\'ll hold the changes as you make them.'
+      },
       work: {
         eyebrow: 'Digit · what I make',
         body:    'Name one or two things a stranger could actually meet — a craft, an offer, a piece you\'d gladly be found through. I\'ll hold the draft as you write.'
@@ -23345,10 +23444,62 @@ if (document.readyState === 'loading') {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    // Read the current identity fields for the Front door room. Draws
+    // from state.compassData.profile (the same source the live homepage
+    // hero reads from). Returned in a shape that lets the Workbench
+    // render a summary + edit affordances.
+    function phWorkbenchThresholdDraft() {
+      var st = (typeof window !== 'undefined' && window.state) ? window.state : {};
+      var cd = (st && st.compassData) || {};
+      var profile = (cd && cd.profile) || {};
+      // Name may live in profile.full_name or nameContext; fall back to
+      // whatever the live hero would show.
+      var name = String(profile.full_name || cd.name || '').trim();
+      var essence = String(profile.essence_manual || profile.essence || '').trim();
+      var statement = String(profile.statement_manual || profile.statement || '').trim();
+      // Roles: read the same live-hero source. buildLivingProfile()
+      // aggregates them; we prefer that when available so this stays
+      // in sync with what visitors actually see.
+      var roles = [];
+      try {
+        if (typeof buildLivingProfile === 'function') {
+          var lp = buildLivingProfile();
+          var lpRoles = lp && lp.sections && lp.sections.roles && lp.sections.roles.roles;
+          if (Array.isArray(lpRoles)) roles = lpRoles.slice(0, 5);
+        }
+      } catch (_) { roles = []; }
+      // Profile image — same key used by the live-hero uploader.
+      var image = String(profile.profile_image_data || profile.profile_image || '').trim();
+      // Source heuristic: any filled field means "tuned".
+      var filled = !!(name || essence || statement || roles.length || image);
+      return {
+        label:     HW_THRESHOLD_LABEL,
+        name:      name,
+        essence:   essence,
+        statement: statement,
+        roles:     roles,
+        image:     image,
+        source:    filled ? 'captured' : 'empty'
+      };
+    }
+
     // Read the current room draft (label + body) from the shared model.
     // Uses buildWebsitePreview() so the Workbench sees the exact same
     // data as the existing preview — one source of truth.
+    // The synthetic 'threshold' room is delegated to phWorkbenchThresholdDraft.
     function phWorkbenchRoomDraft(model, key) {
+      if (phWorkbenchIsThreshold(key)) {
+        var t = phWorkbenchThresholdDraft();
+        return {
+          label:      t.label,
+          heading:    '',
+          body:       t.essence || t.statement || '',
+          closing:    '',
+          highlights: [],
+          source:     t.source,
+          threshold:  t
+        };
+      }
       var sec = (model && model.sections && model.sections[key]) || {};
       return {
         label:      (typeof phPublicRoomLabel === 'function')
@@ -23514,6 +23665,119 @@ if (document.readyState === 'loading') {
     }
 
     // Render / refresh the active work column: fields, Muse, source drawer.
+    // Render the Front door room's inner content. Instead of a single
+    // free-form textarea (which suits the four making rooms), the Front
+    // door surfaces the identity fields directly: name, essence,
+    // statement, roles, profile photo. Each is shown as a summary tile
+    // with an inline Edit button that opens the existing popover editor.
+    // This reuses the source-of-truth edit path used by the live homepage
+    // so both surfaces stay coherent.
+    function phWorkbenchRenderThresholdBody(bodyEl, draft) {
+      var t = (draft && draft.threshold) || phWorkbenchThresholdDraft();
+      function tile(fieldKey, label, value, placeholder) {
+        var displayed = value && String(value).trim();
+        var shown = displayed ? hwEscape(displayed) : '<span class="hw-fd-empty">' + hwEscape(placeholder) + '</span>';
+        return '<div class="hw-fd-tile" data-hw-fd-field="' + hwEscape(fieldKey) + '">' +
+          '<div class="hw-fd-tile-head">' +
+            '<span class="hw-fd-tile-label">' + hwEscape(label) + '</span>' +
+            '<button type="button" class="hw-fd-edit-btn" data-hw-fd-edit="' + hwEscape(fieldKey) + '">Edit</button>' +
+          '</div>' +
+          '<div class="hw-fd-tile-value">' + shown + '</div>' +
+        '</div>';
+      }
+      var rolesShown;
+      if (t.roles && t.roles.length) {
+        rolesShown = t.roles.map(function (r) { return hwEscape(r); }).join(' · ');
+      } else {
+        rolesShown = '<span class="hw-fd-empty">Add the roles you carry</span>';
+      }
+      var imageShown;
+      if (t.image) {
+        imageShown = '<span class="hw-fd-image-set">A profile photo is set.</span>';
+      } else {
+        imageShown = '<span class="hw-fd-empty">No profile photo yet</span>';
+      }
+      var html = '';
+      html += '<div class="hw-fd-intro">' +
+        '<p>The Front door is what a visitor meets before anything else. Small edits ripple to your homepage immediately.</p>' +
+      '</div>';
+      html += '<div class="hw-fd-grid">' +
+        tile('name',      'Name',                t.name,      'Add your display name') +
+        tile('essence',   'One-sentence essence', t.essence,   'A short line that describes what you offer or stand for') +
+        tile('statement', 'Statement',           t.statement, 'A short personal paragraph, separate from name and essence') +
+        '<div class="hw-fd-tile" data-hw-fd-field="roles">' +
+          '<div class="hw-fd-tile-head">' +
+            '<span class="hw-fd-tile-label">Roles</span>' +
+            '<button type="button" class="hw-fd-edit-btn" data-hw-fd-edit="roles">Edit</button>' +
+          '</div>' +
+          '<div class="hw-fd-tile-value">' + rolesShown + '</div>' +
+        '</div>' +
+        '<div class="hw-fd-tile" data-hw-fd-field="photo">' +
+          '<div class="hw-fd-tile-head">' +
+            '<span class="hw-fd-tile-label">Profile photo</span>' +
+            '<button type="button" class="hw-fd-edit-btn" data-hw-fd-edit="photo">Edit</button>' +
+          '</div>' +
+          '<div class="hw-fd-tile-value">' + imageShown + '</div>' +
+        '</div>' +
+      '</div>';
+      html += phWorkbenchMuseHtml('threshold');
+      bodyEl.innerHTML = html;
+
+      // Wire edit buttons. Each delegates to the existing popover editor
+      // (openLpEditPopover) so the Front door and the live-hero share a
+      // single edit path. After the popover saves, refresh the Workbench.
+      var btns = bodyEl.querySelectorAll('[data-hw-fd-edit]');
+      for (var i = 0; i < btns.length; i++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            var field = btn.getAttribute('data-hw-fd-edit');
+            phWorkbenchOpenThresholdEdit(field);
+          });
+        })(btns[i]);
+      }
+    }
+
+    // Open the appropriate edit surface for a Front door field.
+    // Delegates to openLpEditPopover for text fields (name/essence/statement).
+    // Roles + photo need dedicated flows — for this pass they route to
+    // the Living Profile edit surfaces via the same live-page path.
+    function phWorkbenchOpenThresholdEdit(field) {
+      if (typeof openLpEditPopover === 'function' && (field === 'name' || field === 'essence' || field === 'statement')) {
+        // The popover reads current value from an anchor element when
+        // available. Since the anchor lives in the Living Profile view,
+        // we pass null — the popover will fall back to state values.
+        try { openLpEditPopover(field, '', null); }
+        catch (e) { /* popover failed — no-op */ }
+        // After the popover closes and the user saves, its own handler
+        // calls saveState + re-renders the Living Profile. We hook a
+        // one-shot refresh of the Workbench so tiles update.
+        setTimeout(function () {
+          try { phWorkbenchRefreshAll(); } catch (_) {}
+          if (typeof phDigitSetState === 'function') phDigitSetState('held');
+        }, 200);
+        return;
+      }
+      if (field === 'roles' || field === 'photo') {
+        // Roles and photo don't yet have popover editors; the existing
+        // path is on the Living Profile page. Route the user there in a
+        // gentle way: log a hint into the Digit prompt area and set
+        // Digit to attending so they know Digit heard the intent.
+        if (typeof phDigitSetState === 'function') phDigitSetState('attending');
+        try {
+          var body = document.getElementById('home-workbench-work-body');
+          if (body) {
+            var hint = document.createElement('div');
+            hint.className = 'hw-fd-route-hint';
+            hint.textContent = (field === 'roles')
+              ? 'Editing roles from the Front door is coming next. For now, roles are edited from the Living Profile page.'
+              : 'Uploading a new profile photo from the Front door is coming next. For now, use the Living Profile page.';
+            body.appendChild(hint);
+            setTimeout(function () { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 4200);
+          }
+        } catch (_) {}
+      }
+    }
+
     function phWorkbenchRenderWorkColumn(model) {
       var key = phWorkbenchState.activeRoom;
       var draft = phWorkbenchRoomDraft(model, key);
@@ -23530,7 +23794,29 @@ if (document.readyState === 'loading') {
       var srcTitle = document.getElementById('home-workbench-source-title');
 
       if (eye)   eye.textContent   = 'Room · ' + (draft.label || key);
-      if (title) title.textContent = 'Shape ' + (draft.label || key);
+      if (title) title.textContent = phWorkbenchIsThreshold(key)
+        ? 'Tune the Front door'
+        : ('Shape ' + (draft.label || key));
+
+      // Front door has its own dedicated renderer. It doesn't use the
+      // label/body single-textarea shape — it edits identity fields via
+      // the shared popover path.
+      if (body && phWorkbenchIsThreshold(key)) {
+        phWorkbenchRenderThresholdBody(body, draft);
+        // Hide the standard save-actions row — threshold saves are
+        // atomic per field via the popover. The save button would be
+        // misleading here.
+        if (actions) actions.hidden = true;
+        // Front door has no source material drawer (nothing to pull in
+        // from cOMpass / Field Observations). Show a quiet empty state.
+        if (drawer) {
+          drawer.innerHTML = '<p class="hw-source-empty">The Front door pulls its content from your identity fields directly. Use the tiles above to tune each part.</p>';
+          drawer.setAttribute('data-hw-active-room', key);
+          drawer._hwSourceItems = { compass: [], observation: [], nexus: [] };
+        }
+        if (srcTitle) srcTitle.textContent = 'Front door · identity fields';
+        return;
+      }
 
       if (body) {
         var labelId = 'home-workbench-label';
@@ -23655,6 +23941,10 @@ if (document.readyState === 'loading') {
     // true if anything was written.
     function phWorkbenchSaveActiveSection() {
       var key = phWorkbenchState.activeRoom;
+      // Front door has no draftBody/draftLabel to write — its saves are
+      // atomic per field via the popover editor. This keyboard-shortcut
+      // path is a no-op when the Front door is active.
+      if (phWorkbenchIsThreshold(key)) return false;
       var body = String(phWorkbenchState.draftBody || '').trim();
       var label = String(phWorkbenchState.draftLabel || '').trim();
       var wroteBody = false;

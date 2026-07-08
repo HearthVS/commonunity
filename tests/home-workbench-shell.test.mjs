@@ -677,6 +677,87 @@ test('Digit honours prefers-reduced-motion', () => {
     'digitPrefersReducedMotion must query the prefers-reduced-motion media feature');
 });
 
+// ── Front door (threshold) room ────────────────────────────────────────
+// The Front door is the first room a visitor lands on in the visitor
+// preview, so it is also the first room in the Workbench room list.
+// It edits identity: name, one-sentence essence, statement, roles, and
+// profile photo. These are stored on state.compassData and held by Digit
+// as edits happen. Roles + photo route to the Living Profile page for
+// full flows (follow-up: inline editing). These tests fix the invariants.
+
+test('Front door is the FIRST room in HW_ROOM_KEYS', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  const match = wbSrc.match(/HW_ROOM_KEYS\s*=\s*(\[[^\]]+\])/);
+  assert.ok(match, 'HW_ROOM_KEYS must be defined');
+  // First entry must be the threshold key so the Front door leads the list.
+  assert.match(match[1], /^\[\s*['"]threshold['"]/, 'threshold must be the first room key');
+});
+
+test('Front door label is exposed as HW_THRESHOLD_LABEL and reads "Front door"', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /HW_THRESHOLD_LABEL\s*=\s*['"]Front door['"]/,
+    'Front door label must be exposed as HW_THRESHOLD_LABEL constant');
+});
+
+test('Front door helpers + render + draft + edit are defined', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  assert.match(wbSrc, /function\s+phWorkbenchIsThreshold\s*\(/,
+    'phWorkbenchIsThreshold predicate must be defined');
+  assert.match(wbSrc, /function\s+phWorkbenchThresholdDraft\s*\(/,
+    'phWorkbenchThresholdDraft must be defined so identity data flows into the room');
+  assert.match(wbSrc, /function\s+phWorkbenchRenderThresholdBody\s*\(/,
+    'phWorkbenchRenderThresholdBody must be defined to render the five tiles');
+  assert.match(wbSrc, /function\s+phWorkbenchOpenThresholdEdit\s*\(/,
+    'phWorkbenchOpenThresholdEdit must be defined to route field edits');
+});
+
+test('Digit has a threshold prompt so it speaks to the Front door', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // HW_DIGIT_PROMPTS must include a threshold entry so the Muse card has
+  // room-appropriate copy on the Front door.
+  const promptsBlock = wbSrc.match(/HW_DIGIT_PROMPTS\s*=\s*\{[\s\S]{0,2000}\}/);
+  assert.ok(promptsBlock, 'HW_DIGIT_PROMPTS object must exist');
+  assert.match(promptsBlock[0], /threshold\s*:/, 'HW_DIGIT_PROMPTS must include a threshold entry');
+});
+
+test('Front door save flow is per-field (not the bulk section save)', () => {
+  const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
+  const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
+  const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
+  // phWorkbenchSaveActiveSection must short-circuit on threshold rooms.
+  const saveFn = wbSrc.match(/function\s+phWorkbenchSaveActiveSection\s*\([\s\S]*?\n\s{4}\}/);
+  assert.ok(saveFn, 'phWorkbenchSaveActiveSection must be defined');
+  assert.match(saveFn[0], /phWorkbenchIsThreshold\s*\(/,
+    'save flow must check phWorkbenchIsThreshold so threshold saves route through the popover, not bulk save');
+});
+
+test('Digit glyph is ~20% smaller (calm-presence sizing)', () => {
+  // Base glyph size dropped from 20x32 to 16x26 in the front-door pass
+  // so Digit holds the room without demanding gaze. Locking the new
+  // dimensions here prevents accidental re-inflation.
+  // Grab the base .digit-glyph rule (up to the first closing brace at
+  // column 1, i.e. the end of the block). Interior lines never start with
+  // } so a lazy match works.
+  const glyph = html.match(/\.digit-glyph\s*\{[\s\S]*?\n\}/);
+  assert.ok(glyph, '.digit-glyph rule must exist');
+  assert.match(glyph[0], /width:\s*16px;\s*height:\s*26px/,
+    '.digit-glyph base size must be 16px x 26px (calm-presence pass)');
+  assert.match(html, /\.digit-glyph--sm\s*\{\s*width:\s*12px;\s*height:\s*19px;\s*\}/,
+    '.digit-glyph--sm must be 12x19');
+  assert.match(html, /\.digit-glyph--md\s*\{\s*width:\s*18px;\s*height:\s*29px;\s*\}/,
+    '.digit-glyph--md must be 18x29');
+  assert.match(html, /\.digit-glyph--lg\s*\{\s*width:\s*24px;\s*height:\s*38px;\s*\}/,
+    '.digit-glyph--lg must be 24x38');
+});
+
 test('held state does a satisfied 1→2→3 tick (the one place sequential belongs)', () => {
   const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
   const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');

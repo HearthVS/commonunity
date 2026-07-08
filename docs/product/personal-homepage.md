@@ -90,13 +90,17 @@ warm hOMe amber `#e2a24a`, overridable via `--digit-tint`.
 
 ### Placement
 
-Whenever the Workbench is open, Digit is visible in three places:
+Whenever the Workbench is open, Digit is visible in three places. All
+sizes were reduced by ~20% in the calm-presence pass so Digit holds
+the room without demanding gaze:
 
-1. **Topbar chip** (`~20×32px`) — persistent presence, always cycling.
-2. **Digit card** (`~22×36px`) — inside the work column, next to the
-   contextual prompt for the active room.
-3. **Entrance-rail CTA** (`~15×24px`) — inside the "Open hOMe Workbench"
-   button before entry, so Digit greets the member on approach.
+1. **Topbar chip** (`16×26px`, base `.digit-glyph`) — persistent
+   presence, always cycling.
+2. **Digit card** (`18×29px`, `.digit-glyph--md`) — inside the work
+   column, next to the contextual prompt for the active room.
+3. **Entrance-rail CTA** (`12×19px`, `.digit-glyph--sm`) — inside the
+   "Open hOMe Workbench" button before entry, so Digit greets the
+   member on approach.
 
 ### Voice
 
@@ -115,6 +119,64 @@ save the relationship. Follow-up PRs will add: (1) name-your-Digit
 ceremony with a "spell name" animation, (2) a verb row (Tighten /
 What's missing / Reflect) backed by `/api/digit/act`, (3) optional
 personality tuning.
+
+## The Front door — first Workbench room
+
+The **Front door** is the first room in the hOMe Workbench room list.
+It is where a visitor lands first in the visitor preview — name, a
+one-sentence essence, a short statement, the roles the member carries,
+and an optional face — so it makes spatial sense to put it first in the
+builder too.
+
+The Front door is a Workbench-only concept. The public preview and the
+visitor-facing page still show the four public rooms (What I make / How
+I perceive / What keeps me alive / What I'm here for) — the Front door
+feeds the hero, not a fifth public room.
+
+### What lives in the Front door
+
+Five tiles, rendered on a two-column grid that collapses to one column
+under 720px:
+
+1. **Name** — `state.compassData.profile.full_name` (or `.name`).
+2. **One-sentence essence** — `.essence_manual || .essence`.
+3. **Statement** — `.statement_manual || .statement`.
+4. **Roles** — read via `buildLivingProfile().sections.roles.roles`.
+5. **Profile photo** — `.profile_image_data || .profile_image`.
+
+### Edit flow
+
+Front-door edits are **per-field**, not a bulk section save:
+
+- **Name / essence / statement** open the existing Living Profile
+  popover editor (`openLpEditPopover(field, '', null)`), so there is
+  one source of truth for identity edits shared between the Workbench
+  and the Living Profile view. On save, Digit briefly enters the
+  `held` state.
+- **Roles / photo** currently route to the Living Profile page via a
+  `.hw-fd-route-hint` toast. Full inline editing for roles and photo
+  in the Front door is queued as follow-up work.
+
+`phWorkbenchSaveActiveSection` short-circuits when the active room is
+the Front door (via `phWorkbenchIsThreshold`), because the bulk-save
+flow doesn't apply here.
+
+### Digit voice on the Front door
+
+`HW_DIGIT_PROMPTS.threshold` gives Digit room-appropriate copy:
+
+> This is what visitors meet first. Name, one-sentence essence, a
+> short statement, roles you carry, a face if you'd like one. Small
+> edits are enough. I'll hold the changes as you make them.
+
+### Related invariants
+
+- `HW_ROOM_KEYS` starts with `'threshold'` — Front door leads the list.
+- `HW_THRESHOLD_LABEL` = `'Front door'` — the visible label.
+- Public room count remains **4** (see
+  `tests/studio-home-seeded-field-readiness.test.js`).
+- Sigil / OM Cipher stays **out** of the public-facing hero — non-members
+  would meet an untranslatable symbol. Sigils are for cOMmons only.
 
 ## Open work
 
