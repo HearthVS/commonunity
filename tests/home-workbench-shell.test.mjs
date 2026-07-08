@@ -777,10 +777,12 @@ test('Front door render surfaces the primary + secondary bands', () => {
   assert.match(renderFn[0], /Living Profile/i,          'secondary band must reference Living Profile so the owner knows those fields do not feed the hero');
 });
 
-test('Front door welcome-sentence edit navigates to Lens or Work room', () => {
-  // The visitor-hero lede is inherited from Lens/Work web copy. Editing
-  // it must therefore navigate the Workbench to the source room, not
-  // open a popover on a non-existent field.
+test('Front door welcome-sentence edit opens the shared popover in place', () => {
+  // The visitor-hero lede is stored on the Lens (or Work) compass
+  // point's web_intro. Editing must happen in place via the shared
+  // popover (openLpEditPopover with type "welcome") — no room-jumping.
+  // The popover writes back to the same compass point that seeds it,
+  // so the room, the tile, and the visitor hero stay in lockstep.
   const wbBlockStart = html.indexOf('<HOME_WORKBENCH_JS_START>');
   const wbBlockEnd = html.indexOf('<HOME_WORKBENCH_JS_END>');
   const wbSrc = html.slice(wbBlockStart, wbBlockEnd);
@@ -788,8 +790,45 @@ test('Front door welcome-sentence edit navigates to Lens or Work room', () => {
   assert.ok(editFn, 'phWorkbenchOpenThresholdEdit must be defined');
   assert.match(editFn[0], /field\s*===\s*['"]welcome['"]/,
     'edit handler must have a welcome branch');
-  assert.match(editFn[0], /phWorkbenchState\.activeRoom/,
-    'welcome edit must switch the Workbench active room to the source room');
+  assert.match(editFn[0], /openLpEditPopover\(\s*['"]welcome['"]/,
+    'welcome edit must open the shared popover with type "welcome" (no room-jumping)');
+  assert.doesNotMatch(editFn[0].match(/field\s*===\s*['"]welcome['"][\s\S]*?return;/)?.[0] || '',
+    /phWorkbenchState\.activeRoom\s*=/,
+    'welcome edit must NOT switch the active room — it stays on Front door');
+});
+
+test('openLpEditPopover has a "welcome" type that reads and writes points.lens.web_intro', () => {
+  // The welcome popover reads the current copy from the same compass
+  // point the visitor hero reads from (lens → work fallback) and writes
+  // back to that point\'s web_intro on save. This is what keeps the
+  // Front door tile, the Lens room, and the visitor hero in lockstep.
+  const openFn = html.match(/function\s+openLpEditPopover\s*\([\s\S]*?\n\s{4}\}\n\s{4}function\s+closeLpEditPopover/);
+  assert.ok(openFn, 'openLpEditPopover must be defined');
+  assert.match(openFn[0], /type\s*===\s*['"]welcome['"]/,
+    'openLpEditPopover must have a welcome branch');
+  // Read side: the branch must look at lens (and work fallback) web_intro.
+  const welcomeRead = openFn[0].match(/type\s*===\s*['"]welcome['"][\s\S]*?else if/);
+  assert.ok(welcomeRead, 'welcome read block must exist');
+  assert.match(welcomeRead[0], /points/,
+    'welcome read must reach into compassData.points');
+  assert.match(welcomeRead[0], /web_intro/,
+    'welcome read must consult web_intro');
+  // Write side: on save the welcome branch must persist to points.<key>.web_intro.
+  const welcomeWrite = openFn[0].match(/else if \(type === ['"]welcome['"]\) \{[\s\S]*?\}\n\s*\}\n/);
+  assert.ok(welcomeWrite, 'welcome save block must exist');
+  assert.match(welcomeWrite[0], /web_intro\s*=\s*val/,
+    'welcome save must write the popover value into points.<key>.web_intro');
+});
+
+test('popover save also refreshes the hOMe Workbench so tiles + preview update', () => {
+  // After renderLivingProfile the popover save must also call
+  // phWorkbenchRefreshAll (guarded by typeof check so it\'s safe when
+  // the Workbench isn\'t open). Without this, the Front door tile and
+  // the live visitor preview stayed stale until the user clicked away.
+  const openFn = html.match(/function\s+openLpEditPopover\s*\([\s\S]*?\n\s{4}\}\n\s{4}function\s+closeLpEditPopover/);
+  assert.ok(openFn, 'openLpEditPopover must be defined');
+  assert.match(openFn[0], /renderLivingProfile\(\);[\s\S]{0,400}phWorkbenchRefreshAll/,
+    'popover save must call phWorkbenchRefreshAll after renderLivingProfile');
 });
 
 test('Digit glyph is ~20% smaller (calm-presence sizing)', () => {

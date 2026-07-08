@@ -8978,6 +8978,13 @@ body.hw-open { overflow: hidden; }
 }
 .home-workbench.is-preview-fullscreen .hw-rooms-col,
 .home-workbench.is-preview-fullscreen .hw-work-col { display: none; }
+/* When the sibling cols are display:none they are removed from the grid,
+   so .hw-preview-col would auto-flow into track 1 (which is 0px wide).
+   Explicitly pin it into track 3 (the 1fr track) so the preview actually
+   paints across the full width in "Preview as visitor" fullscreen. */
+.home-workbench.is-preview-fullscreen .hw-preview-col {
+  grid-column: 3 / 4;
+}
 
 
 /* Rooms sidebar. */
@@ -9412,7 +9419,7 @@ body.hw-open { overflow: hidden; }
      this width — without this the preview column is display:none and the
      surface reads as a fully blank dark body under the topbar. */
   .home-workbench.is-preview-fullscreen .hw-body { grid-template-columns: 0 0 minmax(0, 1fr); }
-  .home-workbench.is-preview-fullscreen .hw-preview-col { display: flex; }
+  .home-workbench.is-preview-fullscreen .hw-preview-col { display: flex; grid-column: 3 / 4; }
 }
 @media (max-width: 720px) {
   .hw-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
@@ -20898,6 +20905,20 @@ if (document.readyState === 'loading') {
         // Prefer full_name if present, otherwise current label.
         input.value = (profile.full_name || current || '').toString();
         if (hint) hint.textContent = 'Saved locally with your session.';
+      } else if (type === 'welcome') {
+        // Welcome sentence lives on the compass Lens (or Work) point's
+        // web_intro. Edit here writes back to that same field — the
+        // visitor hero, the Lens room, and this tile stay in lockstep.
+        if (label) label.textContent = 'Welcome sentence';
+        input.style.display = 'none';
+        textarea.style.display = 'block';
+        var _pts = (cd.points && typeof cd.points === 'object') ? cd.points : {};
+        var _pl = (_pts.lens && typeof _pts.lens === 'object') ? _pts.lens : {};
+        var _pw = (_pts.work && typeof _pts.work === 'object') ? _pts.work : {};
+        var _welcomeCurrent = String(_pl.web_intro || _pl.summary || _pl.raw ||
+                                     _pw.web_intro || _pw.summary || _pw.raw || current || '').trim();
+        textarea.value = _welcomeCurrent;
+        if (hint) hint.textContent = 'The first line a visitor reads. Shared with your “What I’ve learned so far” room.';
       } else if (type === 'contact') {
         var contactLabels = {
           email:        'Email address',
@@ -20994,10 +21015,31 @@ if (document.readyState === 'loading') {
           }
         } else if (type === 'name') {
           p.full_name = val;
+        } else if (type === 'welcome') {
+          // Write to whichever compass point the welcome currently reads
+          // from. Default to lens (the primary source) when nothing
+          // exists yet, so first-time edits land in a productive place.
+          var cdW = window.state.compassData;
+          if (!cdW.points || typeof cdW.points !== 'object') cdW.points = {};
+          var plW = cdW.points.lens;
+          var pwW = cdW.points.work;
+          var lensHas = plW && (plW.web_intro || plW.summary || plW.raw);
+          var workHas = pwW && (pwW.web_intro || pwW.summary || pwW.raw);
+          var targetKey = 'lens';
+          if (!lensHas && workHas) targetKey = 'work';
+          if (!cdW.points[targetKey] || typeof cdW.points[targetKey] !== 'object') {
+            cdW.points[targetKey] = {};
+          }
+          cdW.points[targetKey].web_intro = val;
         }
         try { if (typeof saveState === 'function') saveState(); } catch(_) {}
         pop.classList.remove('is-open');
         renderLivingProfile();
+        // Also refresh the hOMe Workbench when it is open so the
+        // Front door tiles and the live visitor preview update
+        // immediately after this popover save (welcome sentence,
+        // name, essence, statement all reach here).
+        try { if (typeof phWorkbenchRefreshAll === 'function') phWorkbenchRefreshAll(); } catch(_) {}
       };
 
       // ── v0.1 safeguard: Restore auto draft ────────────────
@@ -21061,6 +21103,7 @@ if (document.readyState === 'loading') {
           try { if (typeof saveState === 'function') saveState(); } catch(_) {}
           pop.classList.remove('is-open');
           renderLivingProfile();
+          try { if (typeof phWorkbenchRefreshAll === 'function') phWorkbenchRefreshAll(); } catch(_) {}
         };
       }
 
@@ -24040,15 +24083,18 @@ if (document.readyState === 'loading') {
         imageShown = '<span class="hw-fd-empty">No profile photo yet</span>';
       }
 
-      // Welcome-sentence hint: name the room the copy is inherited from,
-      // so the owner understands *why* editing it means opening Lens/Work.
+      // Welcome-sentence hint: this copy is shared with the room that
+      // seeds it (Lens by default, Work as fallback). Editing here in
+      // place writes back to that same field, so the sentence stays
+      // in sync everywhere without whisking the owner off the Front
+      // door.
       var welcomeHint;
       if (t.welcomeSource === 'lens') {
-        welcomeHint = 'Inherited from your Lens room — edit it there to change what the visitor reads first.';
+        welcomeHint = 'Also shown in your “What I’ve learned so far” room. Edit here to update both.';
       } else if (t.welcomeSource === 'work') {
-        welcomeHint = 'Inherited from your Work room — edit it there to change what the visitor reads first.';
+        welcomeHint = 'Also shown in your “What I make” room. Edit here to update both.';
       } else {
-        welcomeHint = 'Write a line in your Lens or Work room — the first non-empty one shows here.';
+        welcomeHint = 'The first line a visitor reads. Edit here to write it directly.';
       }
 
       var html = '';
@@ -24101,23 +24147,24 @@ if (document.readyState === 'loading') {
     }
 
     // Open the appropriate edit surface for a Front door field.
-    // - name / essence / statement → shared openLpEditPopover.
-    // - welcome → the phpub-hero lede is inherited from the Lens (or Work)
-    //   room's web copy, so "Edit" navigates the Workbench to that room.
+    // - name / essence / statement / welcome → shared openLpEditPopover.
+    //   (welcome writes back to the same Lens/Work compass point that
+    //   seeds it, so the room and the hero stay in lockstep.)
     // - roles / photo → route to the Living Profile page for now.
     function phWorkbenchOpenThresholdEdit(field) {
       if (field === 'welcome') {
-        // Jump to the room whose copy currently fills the welcome sentence.
-        // Default to lens (the primary hero-copy source in
-        // phCompassContentSeed) so a first-time member lands somewhere
-        // productive even before any copy exists.
-        var draft = phWorkbenchThresholdDraft();
-        var target = (draft.welcomeSource === 'work') ? 'work' : 'lens';
-        if (typeof phWorkbenchState === 'object' && HW_ROOM_KEYS.indexOf(target) !== -1) {
-          phWorkbenchState.activeRoom = target;
-          phWorkbenchState.dirty = false;
-          try { phWorkbenchRefreshAll(); } catch (_) {}
-          if (typeof phDigitSetState === 'function') phDigitSetState('attending');
+        // In-place edit — opens the shared popover with a 'welcome'
+        // type that reads/writes the same compass point (Lens by
+        // default, Work as fallback) the visitor hero reads from.
+        // No room-jumping. Owner edits the sentence right where they
+        // clicked Edit.
+        if (typeof openLpEditPopover === 'function') {
+          try { openLpEditPopover('welcome', '', null); }
+          catch (e) { /* popover failed — no-op */ }
+          setTimeout(function () {
+            try { phWorkbenchRefreshAll(); } catch (_) {}
+            if (typeof phDigitSetState === 'function') phDigitSetState('held');
+          }, 200);
         }
         return;
       }
