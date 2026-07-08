@@ -6303,14 +6303,24 @@ input, textarea { font: inherit; color: inherit; }
      0% by default) toward the radiance accent, so warmer tones read warmer
      without touching ink contrast. */
   --phpub-tone-tint: 0%;
-  --phpub-surface: color-mix(in srgb, var(--phpub-root) 100%, #fff 0%);
+  /* The palette supplies HUES, not literal surface/ink values. Every OM-cipher
+     role sits at one mid lightness, so used raw they collapse contrast (surface
+     ≈ ink). Instead we hold a light warm-paper field and a dark grounded ink and
+     let the palette only TINT them: atmosphere comes from the hue, legibility
+     from the paper/ink. This is what keeps the render editorial rather than a
+     flat mid-tone wash — while a person's palette still colours the whole page. */
+  --phpub-paper: color-mix(in srgb, var(--phpub-root) 7%, #f7f3ea);
+  --phpub-surface: var(--phpub-paper);
   --phpub-surface-2: color-mix(in srgb, var(--phpub-radiance) var(--phpub-tone-tint, 0%),
-    color-mix(in srgb, var(--phpub-root) 86%, #fff 14%));
+    color-mix(in srgb, var(--phpub-root) 15%, #f1eadd));
   --phpub-sink: color-mix(in srgb, var(--phpub-radiance) var(--phpub-tone-tint, 0%),
-    color-mix(in srgb, var(--phpub-root) 90%, var(--phpub-expression) 8%));
-  --phpub-ink-soft: color-mix(in srgb, var(--phpub-expression) 72%, var(--phpub-root));
-  --phpub-ink-muted: color-mix(in srgb, var(--phpub-expression) 52%, var(--phpub-root));
-  --phpub-line: color-mix(in srgb, var(--phpub-expression) 16%, var(--phpub-root));
+    color-mix(in srgb, var(--phpub-root) 22%, #ece3d3));
+  /* Ink stays dark for contrast; expression is kept as the first color-mix term
+     so the palette identity still reads, but it only warms a near-black base. */
+  --phpub-ink: color-mix(in srgb, var(--phpub-expression) 38%, #1b1811);
+  --phpub-ink-soft: color-mix(in srgb, var(--phpub-expression) 28%, #262019);
+  --phpub-ink-muted: color-mix(in srgb, var(--phpub-expression) 32%, #5c5446);
+  --phpub-line: color-mix(in srgb, var(--phpub-expression) 18%, #ded6c6);
   --phpub-accent: var(--phpub-radiance);
   --phpub-ease: cubic-bezier(0.16, 1, 0.3, 1);
   /* Visual-identity defaults — overridden by the data-tone / data-density /
@@ -6324,7 +6334,7 @@ input, textarea { font: inherit; color: inherit; }
   --phpub-halo-1: 34%;          /* tone → halo core intensity */
   --phpub-halo-2: 12%;          /* tone → halo falloff intensity */
   position: relative;
-  color: var(--phpub-expression);
+  color: var(--phpub-ink);
   background: var(--phpub-surface);
   border-radius: 18px;
   line-height: 1.62;
@@ -6374,7 +6384,7 @@ input, textarea { font: inherit; color: inherit; }
   font-weight: 500; letter-spacing: var(--phpub-tracking, -0.015em); line-height: 1.06;
   font-size: calc(clamp(32px, 5.4vw, 58px) * var(--phpub-type-scale, 1));
   margin: 0 auto 18px; max-width: 20ch;
-  color: var(--phpub-expression);
+  color: var(--phpub-ink);
 }
 .phpub-hero-lede {
   max-width: 48ch; margin: 0 auto; color: var(--phpub-ink-soft);
@@ -6435,7 +6445,7 @@ input, textarea { font: inherit; color: inherit; }
   grid-row: 1 / 3; font-variant-numeric: tabular-nums;
   font-size: 20px; color: var(--phpub-accent); font-weight: 600;
 }
-.phpub-index-name { font-weight: 600; color: var(--phpub-expression); }
+.phpub-index-name { font-weight: 600; color: var(--phpub-ink); }
 .phpub-index-note { font-size: 12px; color: var(--phpub-ink-muted); }
 
 .phpub-rooms {
@@ -6489,7 +6499,7 @@ input, textarea { font: inherit; color: inherit; }
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
   font-weight: 500; letter-spacing: var(--phpub-tracking, -0.015em);
   font-size: calc(clamp(24px, 2.9vw, 34px) * var(--phpub-type-scale, 1)); line-height: 1.08;
-  margin: 0; color: var(--phpub-expression);
+  margin: 0; color: var(--phpub-ink);
 }
 .phpub-room-kicker { margin: 6px 0 0; font-size: 13px; color: var(--phpub-ink-muted); }
 .phpub-room-body { margin: 0 0 12px; color: var(--phpub-ink-soft); white-space: pre-wrap; }
@@ -6526,14 +6536,14 @@ input, textarea { font: inherit; color: inherit; }
 }
 .phpub-invitation-title {
   font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
-  font-weight: 500; font-size: clamp(28px, 3.6vw, 44px); margin: 0 0 14px; color: var(--phpub-expression);
+  font-weight: 500; font-size: clamp(28px, 3.6vw, 44px); margin: 0 0 14px; color: var(--phpub-ink);
 }
 .phpub-invitation-body { max-width: 46ch; margin: 0 auto 22px; color: var(--phpub-ink-soft); font-size: clamp(15px, 1.5vw, 18px); }
 .phpub-contact { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .phpub-contact-link {
   text-decoration: none; padding: 9px 18px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--phpub-expression) 30%, var(--phpub-line));
-  color: var(--phpub-expression);
+  color: var(--phpub-ink);
   font-size: 13px; font-weight: 500;
   transition: border-color 0.2s var(--phpub-ease), color 0.2s var(--phpub-ease), background 0.2s var(--phpub-ease);
 }
