@@ -748,16 +748,28 @@
     viz.dataset.photo = state.photo;
     viz.dataset.sigmode = state.sigmode;
 
+    // Portrait media vs. Cipher atmosphere are separate layers. A real public
+    // photo renders cleanly in its own <img> (object-fit cover); the placeholder
+    // Cipher gradient/egg (.portrait), the soft-light torus mask and the hero
+    // watermark are suppressed via data-has-photo so nothing is ever painted
+    // over a human face. The Cipher stays present as the site-wide field bg.
+    const hasPhoto = !!state.heroPhoto;
+    viz.dataset.hasPhoto = hasPhoto ? 'true' : 'false';
+    const heroImg = $('heroPhoto');
+    if (heroImg) {
+      if (hasPhoto) {
+        if (heroImg.getAttribute('src') !== state.heroPhoto) heroImg.setAttribute('src', state.heroPhoto);
+        heroImg.hidden = false;
+      } else {
+        // No real media — never retain a stale portrait between models.
+        heroImg.removeAttribute('src');
+        heroImg.hidden = true;
+      }
+    }
     const portrait = viz.querySelector('.portrait');
     if (portrait) {
       portrait.dataset.photo = state.photo;
-      if (state.heroPhoto) {
-        portrait.style.backgroundImage = `url("${state.heroPhoto}")`;
-        portrait.style.backgroundSize = 'cover';
-        portrait.style.backgroundPosition = 'center';
-      } else {
-        portrait.style.removeProperty('background-image');
-      }
+      portrait.style.removeProperty('background-image');
     }
 
     vizName.textContent = state.name || 'Untitled';
@@ -1202,6 +1214,9 @@
      ========================================================= */
   function init() {
     if (reduceMotion) { const note = $('motionNote'); if (note) note.hidden = false; }
+    // When embedded in Studio, reserve top-right space so the iframe's own
+    // actions never collide with the overlay's floating Close control.
+    if (embedded) { const app = $('app'); if (app) app.classList.add('is-embedded'); }
     // Start on the birth-data-free demo field until Studio posts a real model.
     buildDemoField();
     renderFieldCard();

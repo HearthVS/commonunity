@@ -200,7 +200,8 @@ img,svg{display:block;max-width:100%}
 /* STAGE                                                         */
 /* ============================================================= */
 .stage{display:flex;flex-direction:column;min-height:0;background:
-  radial-gradient(120% 80% at 50% -10%,#1b1c14,#0b0c07 72%)}
+  radial-gradient(130% 90% at 50% -10%,#26211680,#181309 78%),
+  linear-gradient(180deg,#211c12,#14110a 80%)}
 .stage__bar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;
   border-bottom:1px solid var(--ui-line);flex:none}
 .stage__meta{display:flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.05em;color:var(--ui-muted)}
@@ -356,6 +357,16 @@ img,svg{display:block;max-width:100%}
   mix-blend-mode:soft-light}
 .viz[data-torus="atmospheric"] .viz-hero__mask{opacity:calc(var(--field-op)*.7)}
 .viz[data-torus="threshold"] .viz-hero__mask{opacity:var(--field-op)}
+
+/* REAL PORTRAIT MEDIA — a clean public photo in its own layer. When present,
+   the placeholder Cipher gradient/egg, the soft-light torus mask and the hero
+   watermark are all suppressed so nothing opaque is ever painted over a face.
+   The Cipher remains present through the site-wide .viz-fieldbg field. */
+.viz-hero__photo{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center;display:block;z-index:0}
+.viz[data-has-photo="true"] .portrait{display:none}
+.viz[data-has-photo="true"] .viz-hero__mask{display:none}
+.viz[data-has-photo="true"] .viz-watermark{display:none}
 
 /* --- HERO: CONTAINED --- */
 .viz[data-hero="contained"] .viz-hero{grid-template-columns:1.05fr .95fr;gap:clamp(24px,5vw,64px);
@@ -549,6 +560,15 @@ img,svg{display:block;max-width:100%}
   .viz[data-hero="bleed-left"] .viz-hero__media{height:44vh;min-height:280px;order:-1}
   .viz .viz-section[data-role="side"] .viz-sec-media{height:260px;order:-1}
   .viz .viz-title{font-size:clamp(38px,10vw,60px)}
+}
+
+/* Narrow viewports: drop the non-essential status text so the view toggle and
+   the full "Preview public hOMepage" button always fit without truncation. */
+@media (max-width:560px){
+  .stage__bar{padding:10px 14px;gap:10px}
+  .stage__meta{display:none}
+  .app.is-embedded .stage__bar{padding-right:74px}
+  .publicbtn{font-size:10.5px;padding:6px 12px}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -823,11 +843,25 @@ img,svg{display:block;max-width:100%}
 .adj input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--ui-accent);
   border:2px solid var(--ui-panel);cursor:pointer}
 
-/* ---- Preview public hOMepage: hide the builder chrome ---- */
-.stage__actions{display:flex;align-items:center;gap:8px}
-.publicbtn{font-size:11px;letter-spacing:.08em;padding:7px 14px;border-radius:999px;
+/* ---- Toolbar: separate, non-overlapping action groups ---- */
+.stage__bar{gap:16px}
+.stage__actions{display:flex;align-items:center;gap:12px;flex:none;flex-wrap:nowrap}
+.stage__views{flex:none}
+.publicbtn{flex:none;white-space:nowrap;min-width:max-content;
+  font-size:11px;letter-spacing:.08em;padding:7px 14px;border-radius:999px;
   color:#f4e6c4;border:1px solid var(--ui-accent);background:var(--ui-accent-soft);transition:.16s var(--ease)}
 .publicbtn:hover{background:#463d22}
+/* Embedded in Studio: reserve top-right room so the iframe's own actions never
+   collide with the overlay's floating Close control (studio.html top:14px). */
+.app.is-embedded .stage__bar{padding-right:108px}
+
+/* ---- Full-bleed field stage: one continuous parchment field, not a card on a
+        dark canvas. The device toggle only frames the mobile viewport. ---- */
+.stage__scroll{padding:0}
+.viz{max-width:none;border-radius:0;box-shadow:none}
+.stage.is-mobile .stage__scroll{padding:26px 0}
+
+/* ---- Preview public hOMepage: hide the builder chrome ---- */
 .app.is-public-preview{grid-template-columns:1fr}
 .app.is-public-preview .panel{display:none}
 .app.is-public-preview .stage__scroll{padding:0}

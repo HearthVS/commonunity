@@ -186,4 +186,62 @@ test('server.py serves the v5 surface under the studio beta gate', () => {
   assert.match(server, /media_type="application\/javascript"/);
 });
 
+// ── Production correction: portrait vs Cipher, toolbar, full-bleed field ──────
+console.log('\nProduction correction (portrait / toolbar / full-bleed)');
+
+test('a real public portrait renders in its own <img>, not under the Cipher', () => {
+  // Dedicated media element (object-fit cover) separate from the Cipher layers.
+  assert.match(fpHtml, /<img class="viz-hero__photo" id="heroPhoto"/);
+  assert.match(fpCss, /\.viz-hero__photo\{[^}]*object-fit:cover/);
+  // The JS routes the sanitized hero photo into that <img> and flags the state.
+  assert.match(fpJs, /const heroImg = \$\('heroPhoto'\)/);
+  assert.match(fpJs, /viz\.dataset\.hasPhoto = hasPhoto \? 'true' : 'false'/);
+});
+
+test('a real portrait suppresses the placeholder egg, torus mask + watermark', () => {
+  // No opaque Cipher form is ever painted over a face.
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\] \.portrait\{display:none\}/);
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\] \.viz-hero__mask\{display:none\}/);
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\] \.viz-watermark\{display:none\}/);
+});
+
+test('replacing/removing the photo never retains a stale portrait', () => {
+  // hero photo is re-derived through safeMediaSrc on every hydrate…
+  assert.match(fpJs, /state\.heroPhoto = safeMediaSrc\(id\.photo\)/);
+  // …and when absent the <img> src is cleared, not left pointing at old media.
+  assert.match(fpJs, /heroImg\.removeAttribute\('src'\)/);
+  assert.match(fpJs, /heroImg\.hidden = true/);
+});
+
+test('a private / unsafe portrait src never renders', () => {
+  // safeMediaSrc only admits data:image or https srcs.
+  assert.match(fpJs, /function safeMediaSrc\(/);
+  assert.match(fpJs, /\^data:image\\\/\(png\|jpe\?g\|webp\|gif\|svg/);
+  // Room-image defense in depth still drops private images.
+  assert.match(fpJs, /if \(img\.visibility === 'private'\) return null/);
+});
+
+test('toolbar actions are separate, non-overlapping containers with full labels', () => {
+  // Two distinct groups in the bar: the view toggle + the public preview button.
+  assert.match(fpHtml, /<div class="stage__views"/);
+  assert.match(fpHtml, /id="publicPreviewBtn"[^>]*>Preview public hOMepage</);
+  // Non-overlapping sizing: nowrap label, explicit gaps, no shrink.
+  assert.match(fpCss, /\.publicbtn\{[^}]*white-space:nowrap/);
+  assert.match(fpCss, /\.stage__actions\{[^}]*flex-wrap:nowrap/);
+  // Embedded: reserve top-right room so the overlay Close cannot collide.
+  assert.match(fpCss, /\.app\.is-embedded \.stage__bar\{padding-right/);
+  assert.match(fpJs, /app\.classList\.add\('is-embedded'\)/);
+  // The Studio overlay Close is its own element, distinct from the iframe button.
+  assert.match(studio, /id="fieldprint-v5-close"[^>]*aria-label="Close Fieldprint">Close</);
+});
+
+test('the field stage is full-bleed — no preview-card wrapper / radius / black canvas', () => {
+  // Default desktop preview drops the card cap, radius and shadow.
+  assert.match(fpCss, /\.viz\{max-width:none;border-radius:0;box-shadow:none\}/);
+  assert.match(fpCss, /\.stage__scroll\{padding:0\}/);
+  // The shell is a warm deep-ink/umber field, not near-black.
+  assert.match(fpCss, /\.stage\{[^}]*#14110a/);
+  assert.doesNotMatch(fpCss, /radial-gradient\(120% 80% at 50% -10%,#1b1c14,#0b0c07/);
+});
+
 console.log('\n' + passed + ' checks passed.');

@@ -40,7 +40,7 @@
         <section class="ctl ctl--load" aria-labelledby="lbl-load">
           <div class="ctl__label">
             <h2 id="lbl-load">Load Field JSON</h2>
-            <p class="ctl__hint">Seed this Fieldprint from a CommonUnity / cOMpass / Field JSON export. It is normalized through the Studio privacy firewall — raw birth data, Gene Keys and mechanics never cross into this preview.</p>
+            <p class="ctl__hint">Seed from a CommonUnity / cOMpass / Field JSON export. Normalized through the privacy firewall — raw birth data never crosses into this preview.</p>
           </div>
           <button class="loadbtn" id="loadJsonBtn" type="button">
             <svg class="loadbtn__ic" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M3 15v2h14v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -135,7 +135,7 @@
         <section class="ctl" aria-labelledby="lbl-texture">
           <div class="ctl__label">
             <h2 id="lbl-texture">Cipher texture</h2>
-            <p class="ctl__hint">The real Cipher mark as an ambient field texture. <b>Wallpaper</b> tiles it behind the page; <b>Inside-crop</b> zooms into one Cipher so a single fragment fills the screen — you travel within the mark, never seeing the whole art.</p>
+            <p class="ctl__hint">The Cipher mark as ambient texture. <b>Wallpaper</b> tiles it; <b>Inside-crop</b> zooms into one fragment so you travel within the mark.</p>
           </div>
           <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-texture" data-control="texture">
             <button role="radio" class="pill" data-value="off">Off</button>
@@ -316,6 +316,7 @@
           <!-- HERO / THRESHOLD -->
           <header class="viz-hero reveal" id="vizHero">
             <div class="viz-hero__media" aria-hidden="true">
+              <img class="viz-hero__photo" id="heroPhoto" alt="" hidden />
               <div class="portrait" data-photo="warm"></div>
               <div class="viz-hero__mask" id="heroMask"></div>
             </div>
