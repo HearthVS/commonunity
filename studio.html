@@ -9683,6 +9683,111 @@ body.hw-open { overflow: hidden; }
   box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.55);
 }
 
+/* ── Fieldprint style & privacy drawer (editor area) ─────────────────
+   Global public-hOMepage controls, grouped as cards in a collapsible
+   drawer at the bottom of the work column. Matches the source-drawer
+   pattern; the preview pane stays a clean live render. */
+.hw-style-drawer {
+  border-top: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 40%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 26%, transparent);
+  max-height: 48%;
+  display: flex; flex-direction: column; min-height: 0;
+}
+.hw-style-drawer-head {
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  cursor: pointer;
+  background: transparent; border: 0; color: var(--text, #eef1f7);
+  font: inherit; width: 100%; text-align: left;
+}
+.hw-style-drawer-title {
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-style-drawer-caret { transition: transform 0.2s ease; color: var(--text-muted, #9aa3b2); }
+.hw-style-drawer.is-open .hw-style-drawer-caret { transform: rotate(180deg); }
+.hw-style-drawer-body {
+  padding: 4px 24px 18px; overflow-y: auto;
+  display: none; flex-direction: column; gap: 12px;
+}
+.hw-style-drawer.is-open .hw-style-drawer-body { display: flex; }
+
+/* Each control group is a card with a clear label + wrapping chip rows. */
+.hw-style-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border, #2a2f3a) 55%, transparent);
+  background: color-mix(in srgb, var(--input-bg, #14171d) 55%, transparent);
+}
+.hw-cipher-label, .hw-palette-label, .hw-densrow-label {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-muted, #9aa3b2);
+}
+.hw-cipher-modes, .hw-densrow-choices, .hw-palette-intensity, .hw-cipher-intensity {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+/* Shared chip button styling for every selectable control. */
+.hw-cipher-btn, .hw-cipher-int-btn, .hw-palette-int-btn, .hw-dens-btn,
+.hw-trans-btn, .hw-palette-apply {
+  border: 1px solid var(--border, #2a2f3a); background: transparent;
+  color: var(--text-muted, #9aa3b2);
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 11px; cursor: pointer; text-transform: capitalize;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.hw-cipher-btn:hover, .hw-cipher-int-btn:hover, .hw-palette-int-btn:hover,
+.hw-dens-btn:hover, .hw-trans-btn:hover, .hw-palette-apply:hover {
+  color: var(--text, #eef1f7);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 55%, var(--border, #2a2f3a));
+}
+.hw-cipher-btn:focus-visible, .hw-cipher-int-btn:focus-visible,
+.hw-palette-int-btn:focus-visible, .hw-dens-btn:focus-visible,
+.hw-trans-btn:focus-visible, .hw-palette-apply:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent, #a48cff) 70%, transparent);
+  outline-offset: 2px;
+}
+.hw-cipher-btn.is-active, .hw-cipher-int-btn.is-active, .hw-palette-int-btn.is-active,
+.hw-dens-btn.is-active, .hw-trans-btn.is-active {
+  color: var(--text, #eef1f7);
+  border-color: color-mix(in srgb, var(--accent, #a48cff) 60%, var(--border, #2a2f3a));
+  background: color-mix(in srgb, var(--accent, #a48cff) 14%, transparent);
+}
+.hw-palette-apply { text-transform: none; }
+.hw-palette-apply[disabled] { opacity: 0.5; cursor: not-allowed; }
+/* Cipher slider adjustments — a two-column grid of labelled ranges. */
+.hw-cipher-adjust {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px; margin-top: 2px;
+}
+.hw-cipher-adj {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; color: var(--text-muted, #9aa3b2);
+}
+.hw-cipher-adj input[type="range"] {
+  width: 100%; accent-color: var(--accent, #a48cff); cursor: pointer;
+}
+.hw-cipher-adj .hw-cipher-intensity { margin-top: 2px; }
+.hw-palette { flex-direction: column; }
+.hw-palette-intensity { margin-top: 2px; }
+/* Privacy review — compact status card. */
+.hw-privacy { gap: 6px; }
+.hw-privacy-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text, #eef1f7);
+}
+.hw-privacy-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-muted, #9aa3b2); flex-shrink: 0;
+}
+.hw-privacy-head.is-clean .hw-privacy-dot { background: #4ade80; }
+.hw-privacy-head.is-flagged .hw-privacy-dot { background: #f59e0b; }
+.hw-privacy-title { font-weight: 600; letter-spacing: 0.02em; }
+.hw-privacy-status { margin-left: auto; font-size: 11px; color: var(--text-muted, #9aa3b2); }
+.hw-privacy-list {
+  margin: 0; padding-left: 16px; list-style: disc;
+  font-size: 11px; color: var(--text-muted, #9aa3b2); line-height: 1.6;
+}
+
 /* Toast confirmation shown when a section is saved. */
 .hw-toast {
   position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
@@ -11236,6 +11341,30 @@ body.hw-open { overflow: hidden; }
         </button>
         <div class="hw-source-drawer-body" id="home-workbench-source-body" role="region"></div>
       </div>
+
+      <!-- Fieldprint style & privacy drawer — global public-hOMepage controls.
+           Lives in the editor area (NOT the preview pane, which stays a clean
+           live preview). Collapsible, default open so the privacy review is
+           visible before preview/publish. Hosts populated + wired by
+           phWorkbenchRenderCipher / Palette / DensityTransition / Privacy. -->
+      <div class="hw-style-drawer is-open" id="home-workbench-style-drawer">
+        <button type="button" class="hw-style-drawer-head" id="home-workbench-style-toggle"
+                aria-expanded="true" aria-controls="home-workbench-style-body">
+          <span class="hw-style-drawer-title">Style &amp; privacy · your public hOMepage</span>
+          <span class="hw-style-drawer-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="hw-style-drawer-body" id="home-workbench-style-body" role="region">
+          <!-- Cipher texture controls — off / subtle field / inside-crop /
+               wallpaper plus intensity, scale, position, opacity. -->
+          <div class="hw-style-card hw-cipher" id="home-workbench-cipher" role="group" aria-label="Cipher texture controls"></div>
+          <!-- Palette apply/import + palette intensity. -->
+          <div class="hw-style-card hw-palette" id="home-workbench-palette" role="group" aria-label="Palette controls"></div>
+          <!-- Density + transition selectors. -->
+          <div class="hw-style-card hw-densrow" id="home-workbench-density" role="group" aria-label="Density and transition"></div>
+          <!-- Privacy review — compact status card, visible before preview/publish. -->
+          <div class="hw-style-card hw-privacy" id="home-workbench-privacy" role="status" aria-live="polite"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Live public hOMepage preview -->
@@ -11248,18 +11377,9 @@ body.hw-open { overflow: hidden; }
       </div>
       <!-- Composition modes — a small, curated set of whole-page compositions.
            Same content, different rendered structure. Populated + wired by
-           phWorkbenchRenderComposition(). -->
+           phWorkbenchRenderComposition(). Intentionally kept above the live
+           preview: a compact, styled chip row you watch take effect. -->
       <div class="hw-composition" id="home-workbench-composition" role="group" aria-label="Public hOMepage composition style"></div>
-      <!-- Cipher texture controls — off / subtle field / inside-crop / wallpaper
-           plus intensity, scale, position, opacity. Wired by
-           phWorkbenchRenderCipher(). -->
-      <div class="hw-cipher" id="home-workbench-cipher" role="group" aria-label="Cipher texture controls"></div>
-      <!-- Palette apply/import + palette intensity. phWorkbenchRenderPalette(). -->
-      <div class="hw-palette" id="home-workbench-palette" role="group" aria-label="Palette controls"></div>
-      <!-- Density + transition selectors. phWorkbenchRenderComposition() family. -->
-      <div class="hw-densrow" id="home-workbench-density" role="group" aria-label="Density and transition"></div>
-      <!-- Privacy review — visible before preview/publish. phWorkbenchRenderPrivacy(). -->
-      <div class="hw-privacy" id="home-workbench-privacy" role="status" aria-live="polite"></div>
       <div class="hw-preview-frame" id="home-workbench-preview-frame" aria-live="polite"></div>
     </section>
   </div>
@@ -25280,6 +25400,15 @@ if (document.readyState === 'loading') {
       if (!r.languageOk || r.violations.length) {
         if (typeof phWorkbenchToast === 'function') phWorkbenchToast('Publish blocked · privacy review needs attention');
         phWorkbenchRenderPrivacy();
+        // Make sure the privacy card is visible so the block is explained.
+        try {
+          var sd = document.getElementById('home-workbench-style-drawer');
+          var st = document.getElementById('home-workbench-style-toggle');
+          if (sd && !sd.classList.contains('is-open')) {
+            sd.classList.add('is-open');
+            if (st) st.setAttribute('aria-expanded', 'true');
+          }
+        } catch (_) {}
         return false;
       }
       try {
@@ -26016,6 +26145,12 @@ if (document.readyState === 'loading') {
       if (srcToggle && drawer) srcToggle.addEventListener('click', function () {
         var open = drawer.classList.toggle('is-open');
         srcToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      var styleToggle = document.getElementById('home-workbench-style-toggle');
+      var styleDrawer = document.getElementById('home-workbench-style-drawer');
+      if (styleToggle && styleDrawer) styleToggle.addEventListener('click', function () {
+        var open = styleDrawer.classList.toggle('is-open');
+        styleToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
     }
 

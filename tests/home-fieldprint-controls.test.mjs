@@ -268,7 +268,7 @@ test('Publish + Open live buttons are wired to the privacy-gated handoff', () =>
   assert.match(html, /function phPublishHome/);
   // Publish is gated by the privacy review before it records readiness.
   const idx = html.indexOf('function phPublishHome');
-  const body = html.slice(idx, idx + 900);
+  const body = html.slice(idx, idx + 1300);
   assert.match(body, /phWorkbenchPrivacyReport\(\)/);
   assert.match(body, /if \(!r\.languageOk \|\| r\.violations\.length\)/);
   assert.match(body, /return false/);
@@ -281,6 +281,70 @@ test('privacy report counts withheld fields + public/private images', () => {
   assert.match(body, /withheldFields/);
   assert.match(body, /privateImages/);
   assert.match(body, /publicImages/);
+});
+
+// ── Layout / placement — controls belong in the editor area, NOT the
+//    preview pane (regression: unstyled controls dumped over the live
+//    preview). These slice the two <section>s of the shell and assert the
+//    control hosts live in the work column's style drawer, never in the
+//    preview column, plus that the required container/style classes exist. ──
+function sectionSlice(className) {
+  const start = html.indexOf('<section class="' + className);
+  assert.ok(start !== -1, 'section must exist: ' + className);
+  const end = html.indexOf('</section>', start);
+  assert.ok(end !== -1, 'section must close: ' + className);
+  return html.slice(start, end);
+}
+const previewCol = sectionSlice('hw-preview-col');
+const workCol = sectionSlice('hw-work-col');
+
+test('the preview column holds ONLY the composition bar + live preview frame', () => {
+  assert.match(previewCol, /id="home-workbench-composition"/);
+  assert.match(previewCol, /id="home-workbench-preview-frame"/);
+  // The dumped controls must NOT be in the preview pane anymore.
+  ['home-workbench-cipher', 'home-workbench-palette', 'home-workbench-density',
+   'home-workbench-privacy'].forEach((id) => {
+    assert.ok(previewCol.indexOf(id) === -1, 'control leaked into preview pane: ' + id);
+  });
+});
+
+test('the appearance + privacy controls live in the work column style drawer', () => {
+  assert.match(workCol, /id="home-workbench-style-drawer"/);
+  ['home-workbench-cipher', 'home-workbench-palette', 'home-workbench-density',
+   'home-workbench-privacy'].forEach((id) => {
+    assert.ok(workCol.indexOf(id) !== -1, 'control missing from editor area: ' + id);
+  });
+  // Each control host is wrapped as a styled card inside the drawer body.
+  assert.match(workCol, /class="hw-style-card hw-cipher"/);
+  assert.match(workCol, /class="hw-style-card hw-privacy"/);
+});
+
+test('the style drawer defaults open (so privacy is visible) and is collapsible', () => {
+  assert.match(html, /class="hw-style-drawer is-open" id="home-workbench-style-drawer"/);
+  assert.match(html, /id="home-workbench-style-toggle"[^>]*aria-expanded="true"/);
+  // The collapse toggle is wired.
+  assert.match(html, /getElementById\('home-workbench-style-toggle'\)/);
+  assert.match(html, /styleDrawer\.classList\.toggle\('is-open'\)/);
+});
+
+test('required container + control style rules exist (not just markup)', () => {
+  // Drawer + card containers.
+  assert.match(html, /\.hw-style-drawer\s*\{/);
+  assert.match(html, /\.hw-style-drawer\.is-open \.hw-style-drawer-body\s*\{\s*display:\s*flex/);
+  assert.match(html, /\.hw-style-card\s*\{/);
+  // Chip buttons get a shared selectable style with an is-active state.
+  assert.match(html, /\.hw-cipher-btn[^{]*\.is-active|\.hw-cipher-btn\.is-active/);
+  assert.match(html, /\.hw-dens-btn[\s\S]{0,400}?\.is-active/);
+  // Sliders are actually styled (usable ranges), not raw inline text.
+  assert.match(html, /\.hw-cipher-adj input\[type="range"\]\s*\{/);
+  // Privacy card has a status dot + list styling.
+  assert.match(html, /\.hw-privacy-dot\s*\{/);
+  assert.match(html, /\.hw-privacy-head\.is-clean \.hw-privacy-dot/);
+});
+
+test('composition bar retains its own styled container above the preview', () => {
+  assert.match(html, /\.hw-composition\s*\{/);
+  assert.match(html, /\.hw-composition-btn\.is-active\s*\{/);
 });
 
 console.log('\n' + passed + ' checks passed.');
