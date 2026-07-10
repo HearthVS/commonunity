@@ -9522,6 +9522,73 @@ body.hw-open { overflow: hidden; }
 }
 .hw-toast.is-visible { opacity: 1; }
 
+/* ── Load JSON · import review summary ─────────────────────────── */
+.hw-import-review {
+  margin: 0 0 14px; padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent, #a48cff) 40%, var(--border, #2a2f3a));
+  background: color-mix(in srgb, var(--accent, #a48cff) 8%, transparent);
+  color: var(--text, #eef1f7);
+  font-size: 12.5px; line-height: 1.5;
+}
+.hw-import-review.has-warning {
+  border-color: color-mix(in srgb, #e6a23c 55%, var(--border, #2a2f3a));
+  background: color-mix(in srgb, #e6a23c 10%, transparent);
+}
+.hw-import-review-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hw-import-review-title { margin: 0; font-weight: 600; letter-spacing: 0.01em; }
+.hw-import-review-dismiss {
+  border: none; background: transparent; color: var(--text-muted, #9aa3b2);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+.hw-import-review-dismiss:hover { color: var(--text, #eef1f7); }
+.hw-import-review-list { margin: 8px 0 0; padding-left: 16px; }
+.hw-import-review-list li { margin: 2px 0; }
+.hw-import-review-warn {
+  margin: 8px 0 0; padding: 8px 10px 8px 26px; border-radius: 8px;
+  background: color-mix(in srgb, #e6a23c 14%, transparent);
+  color: color-mix(in srgb, #e6a23c 80%, var(--text, #eef1f7));
+  font-size: 11.5px;
+}
+.hw-import-review-warn li { margin: 2px 0; }
+
+/* ── Per-section room image control ────────────────────────────── */
+.hw-section-image {
+  margin-top: 14px; padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--border, #2a2f3a) 90%, transparent);
+  background: color-mix(in srgb, var(--text, #eef1f7) 3%, transparent);
+}
+.hw-section-image-head { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-muted, #9aa3b2); letter-spacing: 0.03em; text-transform: uppercase; }
+.hw-section-image-preview { border-radius: 10px; overflow: hidden; margin-bottom: 10px; max-height: 160px; }
+.hw-section-image-preview img { width: 100%; height: auto; display: block; object-fit: cover; }
+.hw-section-image-controls { display: flex; flex-direction: column; gap: 8px; }
+.hw-section-image-field { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.hw-section-image-field span { min-width: 58px; color: var(--text-muted, #9aa3b2); }
+.hw-section-image-field select,
+.hw-section-image-field input {
+  flex: 1; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid var(--border, #2a2f3a);
+  background: var(--bg, #0b1120); color: var(--text, #eef1f7);
+  font-size: 12px;
+}
+.hw-section-image-actions { display: flex; gap: 8px; margin-top: 2px; }
+.hw-section-image-add,
+.hw-section-image-replace,
+.hw-section-image-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border, #2a2f3a);
+  background: color-mix(in srgb, var(--text, #eef1f7) 5%, transparent);
+  color: var(--text, #eef1f7);
+}
+.hw-section-image-add { border-style: dashed; }
+.hw-section-image-add:hover,
+.hw-section-image-replace:hover,
+.hw-section-image-remove:hover { background: color-mix(in srgb, var(--text, #eef1f7) 10%, transparent); }
+.hw-section-image-hint { margin: 8px 0 0; font-size: 11px; color: var(--text-faint, #6b7280); }
+
 /* Entry-point CTA on the entrance rail. */
 .hw-entry-cta {
   display: inline-flex; align-items: center; gap: 8px;
@@ -10925,6 +10992,11 @@ body.hw-open { overflow: hidden; }
       <span class="hw-topbar-progress-label" id="home-workbench-progress-label">0 of 4 rooms drafted</span>
     </div>
     <div class="hw-topbar-actions">
+      <button type="button" class="hw-topbar-btn" id="home-workbench-import-open"
+              title="Load a Field / cOMpass JSON export to seed your four rooms">
+        Load JSON
+      </button>
+      <input type="file" id="home-workbench-import-input" accept=".json,application/json" hidden>
       <button type="button" class="hw-topbar-btn" id="home-workbench-preview-toggle"
               aria-pressed="true" title="Show or hide the live visitor preview column">
         Hide preview
@@ -10959,6 +11031,8 @@ body.hw-open { overflow: hidden; }
 
     <!-- Active section work column -->
     <section class="hw-work-col" aria-label="Active room editor">
+      <!-- Import review / status summary — populated after Load JSON. -->
+      <div class="hw-import-review" id="home-workbench-import-review" role="status" aria-live="polite" hidden></div>
       <div class="hw-work-head">
         <p class="hw-work-eyebrow" id="home-workbench-work-eyebrow">Room</p>
         <h3 class="hw-work-title" id="home-workbench-work-title">Select a room</h3>
@@ -11535,6 +11609,32 @@ const STUDIO_WINDOW_ROOM_LABEL = {
 };
 const STUDIO_WINDOW_ROOM_GLYPH = { work: '◐', lens: '◑', field: '◓', call: '◒' };
 
+// Per-section image model (v0.2). Additive to the Studio Window item shape:
+//   role — how a room image is presented (inset card / full-bleed band /
+//          background wash). Defaults to 'inset' for legacy items.
+//   alt  — accessible description (empty by default).
+//   tags — forward-looking hooks for a future Studio image library. Every
+//          room image is auto-tagged 'homepage' + 'public' + its room tag.
+const STUDIO_WINDOW_IMAGE_ROLES = ['inset', 'full-bleed', 'background'];
+const STUDIO_WINDOW_TAG_VOCAB = [
+  'homepage', 'hero', 'background',
+  'what-i-make', 'how-i-perceive', 'what-keeps-me-alive', 'what-im-here-for',
+  'public', 'private'
+];
+const STUDIO_WINDOW_ROOM_TAG = {
+  work:  'what-i-make',
+  lens:  'how-i-perceive',
+  field: 'what-keeps-me-alive',
+  call:  'what-im-here-for'
+};
+function normalizeStudioWindowRole(role) {
+  return STUDIO_WINDOW_IMAGE_ROLES.indexOf(role) >= 0 ? role : 'inset';
+}
+function studioWindowTagsForRoom(room) {
+  var t = STUDIO_WINDOW_ROOM_TAG[room];
+  return ['homepage', 'public'].concat(t ? [t] : []);
+}
+
 function ensureStudioWindow() {
   if (!Array.isArray(state.studioWindow)) state.studioWindow = [];
   return state.studioWindow;
@@ -11604,12 +11704,17 @@ function normalizeStudioWindowLink(raw) {
 function studioWindowAdd(item) {
   var list = ensureStudioWindow();
   if (list.length >= STUDIO_WINDOW_MAX) return null;
+  var room = STUDIO_WINDOW_ROOMS.indexOf(item && item.room) >= 0 ? item.room : 'work';
   var entry = {
     id: 'sw-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
     type: 'image',
-    room: STUDIO_WINDOW_ROOMS.indexOf(item && item.room) >= 0 ? item.room : 'work',
+    room: room,
     src: item && item.src ? item.src : '',
     link: normalizeStudioWindowLink(item && item.link),
+    // Per-section display role + accessible alt + tagging hooks (v0.2).
+    role: normalizeStudioWindowRole(item && item.role),
+    alt: item && typeof item.alt === 'string' ? item.alt.trim() : '',
+    tags: Array.isArray(item && item.tags) && item.tags.length ? item.tags.slice() : studioWindowTagsForRoom(room),
     createdAt: new Date().toISOString()
   };
   list.push(entry);
@@ -11643,6 +11748,26 @@ function studioWindowSetRoom(id, room) {
   var it = list.find(function (x) { return x && x.id === id; });
   if (!it) return false;
   it.room = room;
+  try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+  return true;
+}
+
+// Set the display role (inset / full-bleed / background) on a room image.
+function studioWindowSetRole(id, role) {
+  var list = ensureStudioWindow();
+  var it = list.find(function (x) { return x && x.id === id; });
+  if (!it) return false;
+  it.role = normalizeStudioWindowRole(role);
+  try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+  return true;
+}
+
+// Set the accessible alt text on a room image.
+function studioWindowSetAlt(id, alt) {
+  var list = ensureStudioWindow();
+  var it = list.find(function (x) { return x && x.id === id; });
+  if (!it) return false;
+  it.alt = typeof alt === 'string' ? alt.trim() : '';
   try { if (typeof saveState === 'function') saveState(); } catch (_) {}
   return true;
 }
@@ -24472,8 +24597,13 @@ if (document.readyState === 'loading') {
           '<textarea class="hw-work-field-textarea" id="' + bodyId + '" rows="6" ' +
             'placeholder="Speak plainly. What is here?">' + hwEscape(phWorkbenchState.draftBody) + '</textarea>' +
         '</div>';
+        html += phWorkbenchRenderSectionImage(key);
         html += phWorkbenchMuseHtml(key);
         body.innerHTML = html;
+
+        // Wire the per-section image controls (upload / replace / remove /
+        // role / alt) for this room.
+        phWorkbenchWireSectionImage(key);
 
         // Wire local input handlers — mark dirty on change.
         var lbl = document.getElementById(labelId);
@@ -24734,6 +24864,307 @@ if (document.readyState === 'loading') {
       window.setTimeout(function () { el.classList.remove('is-visible'); }, 1800);
     }
 
+    // <HOME_WORKBENCH_IMPORT_START>
+    // Pure normalizer for the Workbench "Load Field JSON" flow. Takes a parsed
+    // JSON object (Field / cOMpass / CommonUnity export) and produces a
+    // visitor-safe normalization: the four public sections mapped from
+    // points.{work,lens,field,call}, a palette + Cipher-texture suggestion
+    // pulled from om_cipher (visual data only), and an internal-only privacy
+    // report. No DOM, no state, no side effects — safe to unit-test in
+    // isolation and to run before touching builder state.
+    var PH_WB_IMPORT_PUBLIC_LABELS = {
+      work:  'What I make',
+      lens:  'How I perceive',
+      field: 'What keeps me alive',
+      call:  "What I'm here for"
+    };
+    var PH_WB_IMPORT_ROOM_KEYS = ['work', 'lens', 'field', 'call'];
+    // Fields that must never become public visitor copy — birth data + internal
+    // mechanics. Detected on import and surfaced as an internal warning; the
+    // public section copy is still imported safely (these are never mapped in).
+    var PH_WB_PRIVATE_FIELD_KEYS = [
+      'dob', 'tob', 'pob', 'date_of_birth', 'birth_time', 'place_of_birth',
+      'birthdate', 'birthplace', 'birth_coordinates', 'gk_profile', 'gene_keys',
+      'geneKeys', 'human_design', 'humanDesign', 'cipherIdentity', 'gates', 'hd_type'
+    ];
+
+    function phWbImportStr(v) {
+      if (v == null) return '';
+      if (typeof v === 'number') return String(v);
+      return (typeof v === 'string') ? v.trim() : '';
+    }
+    function phWbImportList(v) {
+      if (Array.isArray(v)) return v.map(phWbImportStr).filter(Boolean);
+      var s = phWbImportStr(v);
+      return s ? [s] : [];
+    }
+
+    // Unwrap a Studio wrapper / raw cOMpass session down to the compassData
+    // that carries `points`. Self-contained so the normalizer stays hermetic.
+    function phWbImportUnwrap(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      if (raw.compassData && typeof raw.compassData === 'object' && raw.compassData.points) return raw.compassData;
+      if (raw.points && typeof raw.points === 'object') return raw;
+      return null;
+    }
+
+    // Build visitor-safe copy for one section, preferring the web_* editorial
+    // fields, then summary / insights for deeper content. Never reads private
+    // fields.
+    function phWbImportSectionCopy(point) {
+      point = point || {};
+      var heading    = phWbImportStr(point.web_heading);
+      var intro      = phWbImportStr(point.web_intro) || phWbImportStr(point.summary) || phWbImportStr(point.raw);
+      var closing    = phWbImportStr(point.web_closing);
+      var label      = phWbImportStr(point.web_label);
+      var highlights = phWbImportList(point.highlights);
+      var insights   = phWbImportList(point.insights);
+      var summary    = phWbImportStr(point.summary);
+      var has = !!(heading || intro || closing || highlights.length || summary || insights.length);
+      return {
+        label: label, heading: heading, intro: intro, closing: closing,
+        highlights: highlights, insights: insights, summary: summary, has: has
+      };
+    }
+
+    // Detect obviously-private fields present anywhere in the raw payload so the
+    // import can warn internally while still importing public copy.
+    function phWbImportPrivateWarnings(raw) {
+      var found = [];
+      function scan(obj, depth) {
+        if (!obj || typeof obj !== 'object' || depth > 4) return;
+        Object.keys(obj).forEach(function (k) {
+          if (PH_WB_PRIVATE_FIELD_KEYS.indexOf(k) >= 0) {
+            var v = obj[k];
+            var nonEmpty = v != null && (typeof v !== 'object' || Object.keys(v).length > 0) && v !== '';
+            if (nonEmpty && found.indexOf(k) < 0) found.push(k);
+          }
+          if (obj[k] && typeof obj[k] === 'object') scan(obj[k], depth + 1);
+        });
+      }
+      scan(raw, 0);
+      return found;
+    }
+
+    // Pull a palette + Cipher-texture suggestion from om_cipher, when present.
+    // Only visual data crosses — palette/hue for atmosphere, layer6 svg as a
+    // texture source. cipherIdentity is kept internal (import metadata only).
+    function phWbImportVisuals(raw) {
+      var oc = (raw && raw.om_cipher && typeof raw.om_cipher === 'object') ? raw.om_cipher : null;
+      var out = { palette: null, hue: null, cipherSvg: '', cipherIdentity: null };
+      if (!oc) return out;
+      var l4 = (oc.layer4 && typeof oc.layer4 === 'object') ? oc.layer4 : null;
+      if (l4) {
+        if (Array.isArray(l4.palette) && l4.palette.length) out.palette = l4.palette.slice(0, 6);
+        if (typeof l4.hue === 'number') out.hue = l4.hue;
+        else if (out.palette && out.palette[0] && typeof out.palette[0] === 'object' && typeof out.palette[0].hue === 'number') out.hue = out.palette[0].hue;
+      }
+      var l6 = (oc.layer6 && typeof oc.layer6 === 'object') ? oc.layer6 : null;
+      if (l6 && typeof l6.svg === 'string') out.cipherSvg = l6.svg;
+      if (oc.cipherIdentity != null) out.cipherIdentity = oc.cipherIdentity;
+      return out;
+    }
+
+    function phWorkbenchNormalizeFieldJson(raw) {
+      var compass = phWbImportUnwrap(raw);
+      if (!compass) return { ok: false, reason: 'not-a-field-json' };
+      var points = (compass.points && typeof compass.points === 'object') ? compass.points : {};
+      var sections = {};
+      var detectedSections = [];
+      PH_WB_IMPORT_ROOM_KEYS.forEach(function (k) {
+        var copy = phWbImportSectionCopy(points[k]);
+        sections[k] = copy;
+        if (copy.has) detectedSections.push(k);
+      });
+      var visuals = phWbImportVisuals(raw);
+      var privateFields = phWbImportPrivateWarnings(raw);
+      var person = phWbImportStr(compass.companion) || phWbImportStr(raw && raw.person);
+      var warnings = [];
+      if (!detectedSections.length) warnings.push('No public section copy (points.work / lens / field / call) was found — nothing to import.');
+      if (privateFields.length) warnings.push('Private fields in this file were NOT imported into public copy: ' + privateFields.join(', ') + '.');
+      return {
+        ok: true,
+        person: person,
+        sections: sections,
+        detectedSections: detectedSections,
+        palette: visuals.palette,
+        hue: visuals.hue,
+        cipherSvg: visuals.cipherSvg,
+        cipherIdentity: visuals.cipherIdentity, // internal metadata only — never public copy
+        privateFields: privateFields,
+        warnings: warnings,
+        privacy: privateFields.length ? 'private-fields-detected' : 'clean'
+      };
+    }
+    // <HOME_WORKBENCH_IMPORT_END>
+
+    // Apply a normalized Field JSON import into builder state. Writes only
+    // visitor-safe copy into state.compassData.points.{work,lens,field,call}
+    // (preferring web_heading / web_intro / highlights / web_closing / summary
+    // / insights), records a palette + Cipher-texture suggestion as internal
+    // import metadata, keeps cipherIdentity internal, and returns a review
+    // object for the summary UI.
+    function phWorkbenchImportFieldJson(raw) {
+      var norm = phWorkbenchNormalizeFieldJson(raw);
+      if (!norm.ok) { phWorkbenchRenderImportReview({ ok: false }); return norm; }
+      var st = window.state;
+      if (!st) return { ok: false, reason: 'no-state' };
+      if (!st.compassData) st.compassData = {};
+      if (!st.compassData.points) st.compassData.points = {};
+      var imported = [];
+      PH_WB_IMPORT_ROOM_KEYS.forEach(function (k) {
+        var sec = norm.sections[k];
+        if (!sec || !sec.has) return;
+        var pt = st.compassData.points[k] || (st.compassData.points[k] = {});
+        if (sec.heading)           pt.web_heading = sec.heading;
+        if (sec.intro)             pt.web_intro   = sec.intro;
+        if (sec.closing)           pt.web_closing = sec.closing;
+        if (sec.label)             pt.web_label   = sec.label;
+        if (sec.highlights.length) pt.highlights  = sec.highlights.slice();
+        if (sec.summary)           pt.summary     = sec.summary;
+        if (sec.insights.length)   pt.insights    = sec.insights.slice();
+        imported.push(k);
+      });
+      // Palette + Cipher-texture suggestion — internal import metadata; applied
+      // as an atmosphere suggestion, never as public text. cipherIdentity is
+      // retained here as import metadata only.
+      st.compassData._importMeta = st.compassData._importMeta || {};
+      if (norm.palette)              st.compassData._importMeta.palette = norm.palette;
+      if (norm.hue != null)          st.compassData._importMeta.hue = norm.hue;
+      if (norm.cipherSvg)            st.compassData._importMeta.cipherSvg = norm.cipherSvg;
+      if (norm.cipherIdentity != null) st.compassData._importMeta.cipherIdentity = norm.cipherIdentity;
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      var review = {
+        ok: true,
+        person: norm.person,
+        imported: imported,
+        detectedSections: norm.detectedSections,
+        palette: norm.palette,
+        cipher: !!norm.cipherSvg,
+        warnings: norm.warnings,
+        privacy: norm.privacy
+      };
+      phWorkbenchRenderImportReview(review);
+      phWorkbenchRefreshAll();
+      return review;
+    }
+
+    // Render the import review / status summary: detected sections, palette,
+    // Cipher texture, privacy status, and any warnings. Dismissible.
+    function phWorkbenchRenderImportReview(review) {
+      var host = document.getElementById('home-workbench-import-review');
+      if (!host) return;
+      if (!review || !review.ok) {
+        host.hidden = false;
+        host.className = 'hw-import-review has-warning';
+        host.innerHTML = '<p class="hw-import-review-title">Import failed</p>' +
+          '<p class="hw-import-review-line">That file isn’t a Field / cOMpass JSON export (no public points found).</p>';
+        return;
+      }
+      var labels = (review.imported || []).map(function (k) { return PH_WB_IMPORT_PUBLIC_LABELS[k] || k; });
+      var html = '';
+      html += '<div class="hw-import-review-head">';
+      html += '<p class="hw-import-review-title">Imported' + (review.person ? ' · ' + hwEscape(review.person) : '') + '</p>';
+      html += '<button type="button" class="hw-import-review-dismiss" id="home-workbench-import-dismiss" aria-label="Dismiss import summary">×</button>';
+      html += '</div>';
+      html += '<ul class="hw-import-review-list">';
+      html += '<li>Sections: ' + (labels.length ? hwEscape(labels.join(' · ')) : 'none') + '</li>';
+      html += '<li>Palette: ' + (review.palette && review.palette.length ? (review.palette.length + ' colours detected') : 'none in file') + '</li>';
+      html += '<li>Cipher texture: ' + (review.cipher ? 'source found' : 'none in file') + '</li>';
+      html += '<li>Privacy: ' + (review.privacy === 'clean' ? 'clean — no private fields imported' : 'private fields detected &amp; withheld') + '</li>';
+      html += '</ul>';
+      if (review.warnings && review.warnings.length) {
+        html += '<ul class="hw-import-review-warn">';
+        review.warnings.forEach(function (w) { html += '<li>' + hwEscape(w) + '</li>'; });
+        html += '</ul>';
+      }
+      host.hidden = false;
+      host.className = 'hw-import-review' + (review.privacy === 'clean' ? '' : ' has-warning');
+      host.innerHTML = html;
+      var dz = document.getElementById('home-workbench-import-dismiss');
+      if (dz) dz.addEventListener('click', function () { host.hidden = true; host.innerHTML = ''; });
+    }
+
+    // ── Per-section image control (v0.2) ────────────────────────────────
+    // Each public room can carry one manual image with a display role + alt
+    // text, stored on the Studio Window model (which already renders
+    // room-tagged images into the visitor preview). Reuses the shared
+    // client-side compress path. Tagging hooks are attached for a future
+    // Studio image library. The Front door keeps its own profile-photo editor.
+    function phWorkbenchRoomImage(key) {
+      if (typeof studioWindowItemsForRoom !== 'function') return null;
+      var items = studioWindowItemsForRoom(key);
+      return items && items.length ? items[0] : null;
+    }
+    function phWorkbenchRenderSectionImage(key) {
+      var img = phWorkbenchRoomImage(key);
+      var roles = (typeof STUDIO_WINDOW_IMAGE_ROLES !== 'undefined')
+        ? STUDIO_WINDOW_IMAGE_ROLES : ['inset', 'full-bleed', 'background'];
+      var html = '<div class="hw-section-image" data-hw-section-image="' + hwEscape(key) + '">';
+      html += '<p class="hw-section-image-head">Room image · optional</p>';
+      if (img && img.src) {
+        html += '<div class="hw-section-image-preview"><img src="' + hwEscape(img.src) + '" alt="' + hwEscape(img.alt || 'Room image') + '"></div>';
+        html += '<div class="hw-section-image-controls">';
+        html += '<label class="hw-section-image-field"><span>Display</span>' +
+          '<select id="hw-section-image-role" aria-label="Image display role">';
+        roles.forEach(function (r) {
+          html += '<option value="' + hwEscape(r) + '"' + (((img.role || 'inset') === r) ? ' selected' : '') + '>' + hwEscape(r) + '</option>';
+        });
+        html += '</select></label>';
+        html += '<label class="hw-section-image-field"><span>Alt text</span>' +
+          '<input type="text" id="hw-section-image-alt" value="' + hwEscape(img.alt || '') + '" placeholder="Describe this image"></label>';
+        html += '<div class="hw-section-image-actions">';
+        html += '<label class="hw-section-image-replace">Replace<input type="file" id="hw-section-image-input" accept="image/*" hidden></label>';
+        html += '<button type="button" class="hw-section-image-remove" id="hw-section-image-remove">Remove</button>';
+        html += '</div>';
+        html += '</div>';
+      } else {
+        html += '<label class="hw-section-image-add">Add an image<input type="file" id="hw-section-image-input" accept="image/*" hidden></label>';
+        html += '<p class="hw-section-image-hint">Your own image for this room. Compressed and saved locally — nothing published.</p>';
+      }
+      html += '</div>';
+      return html;
+    }
+    function phWorkbenchWireSectionImage(key) {
+      var input = document.getElementById('hw-section-image-input');
+      if (input) input.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file || typeof compressImageFile !== 'function') return;
+        compressImageFile(file).then(function (res) {
+          var existing = phWorkbenchRoomImage(key);
+          var role = existing && existing.role ? existing.role : 'inset';
+          var alt  = existing && existing.alt ? existing.alt : '';
+          if (existing && typeof studioWindowRemove === 'function') studioWindowRemove(existing.id);
+          if (typeof studioWindowAdd === 'function') studioWindowAdd({ src: res.src, room: key, role: role, alt: alt });
+          phWorkbenchToast('Room image added');
+          phWorkbenchRefreshAll();
+        }).catch(function () { phWorkbenchToast('Could not load image'); });
+      });
+      var rm = document.getElementById('hw-section-image-remove');
+      if (rm) rm.addEventListener('click', function () {
+        var existing = phWorkbenchRoomImage(key);
+        if (existing && typeof studioWindowRemove === 'function') studioWindowRemove(existing.id);
+        phWorkbenchToast('Room image removed');
+        phWorkbenchRefreshAll();
+      });
+      var roleSel = document.getElementById('hw-section-image-role');
+      if (roleSel) roleSel.addEventListener('change', function () {
+        var existing = phWorkbenchRoomImage(key);
+        if (existing && typeof studioWindowSetRole === 'function') {
+          studioWindowSetRole(existing.id, roleSel.value);
+          phWorkbenchRefreshPreview();
+        }
+      });
+      var altIn = document.getElementById('hw-section-image-alt');
+      if (altIn) altIn.addEventListener('change', function () {
+        var existing = phWorkbenchRoomImage(key);
+        if (existing && typeof studioWindowSetAlt === 'function') {
+          studioWindowSetAlt(existing.id, altIn.value);
+          phWorkbenchRefreshPreview();
+        }
+      });
+    }
+
     // Open / close. Body scroll lock + Escape-to-close mirror the
     // existing modal patterns, so nothing else has to change.
     function openHomeWorkbench(opts) {
@@ -24797,6 +25228,34 @@ if (document.readyState === 'loading') {
       var legacy = document.getElementById('home-workbench-open-legacy-modal');
       if (legacy) legacy.addEventListener('click', function () {
         if (typeof window.openWebsitePreview === 'function') window.openWebsitePreview();
+      });
+
+      // Load JSON — seed the four public rooms from a Field / cOMpass /
+      // CommonUnity JSON export. Parsed client-side, normalized into builder
+      // state (never dumped raw), then a review summary is shown.
+      var importBtn = document.getElementById('home-workbench-import-open');
+      var importInput = document.getElementById('home-workbench-import-input');
+      if (importBtn && importInput) importBtn.addEventListener('click', function () { importInput.click(); });
+      if (importInput) importInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var raw;
+          try { raw = JSON.parse(ev.target.result); }
+          catch (_) {
+            phWorkbenchRenderImportReview({ ok: false });
+            phWorkbenchToast('Could not read JSON');
+            importInput.value = '';
+            return;
+          }
+          var review = phWorkbenchImportFieldJson(raw);
+          phWorkbenchToast(review && review.ok
+            ? ('Imported ' + review.imported.length + ' section' + (review.imported.length === 1 ? '' : 's'))
+            : 'Nothing to import');
+          importInput.value = '';
+        };
+        reader.readAsText(file);
       });
 
       // Room selection.
@@ -24968,6 +25427,8 @@ if (document.readyState === 'loading') {
       window.phWorkbenchRefreshAll = phWorkbenchRefreshAll;
       window.phWorkbenchRefreshPreview = phWorkbenchRefreshPreview;
       window.phWorkbenchSaveActiveSection = phWorkbenchSaveActiveSection;
+      window.phWorkbenchNormalizeFieldJson = phWorkbenchNormalizeFieldJson;
+      window.phWorkbenchImportFieldJson = phWorkbenchImportFieldJson;
     }
 
     // Wire on next tick — the rest of Studio's DOM boot runs first.
@@ -26487,9 +26948,11 @@ if (document.readyState === 'loading') {
       items.forEach(function (it) {
         var label = STUDIO_WINDOW_ROOM_LABEL[it.room] || '';
         var glyph = STUDIO_WINDOW_ROOM_GLYPH[it.room] || '';
-        var alt = 'Studio Window image for ' + label;
+        // Prefer the user's own alt text; fall back to a room-derived label.
+        var alt = (it.alt && String(it.alt).trim()) || ('Studio Window image for ' + label);
+        var role = normalizeStudioWindowRole(it.role);
         var safeLink = normalizeStudioWindowLink(it.link);
-        var imgHtml = '<img alt="' + lpEscape(alt) + '" src="' + lpEscape(it.src) + '">';
+        var imgHtml = '<img alt="' + lpEscape(alt) + '" src="' + lpEscape(it.src) + '" data-image-role="' + lpEscape(role) + '">';
         var caption = '<figcaption class="sw-tile-tag" aria-label="Room tag · ' + lpEscape(label) + '">' +
           (glyph ? '<span aria-hidden="true">' + glyph + '</span> ' : '') + lpEscape(label) +
         '</figcaption>';
