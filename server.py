@@ -4182,6 +4182,25 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
 async def serve_studio(request: Request):
     return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "studio.html")
 
+
+# Fieldprint — the v5 full-bleed field surface. Served under the same "studio"
+# beta-access key so it inherits the Studio gate. The HTML is embedded by
+# studio.html as a same-origin iframe and receives only a privacy-scrubbed
+# model via postMessage; it never runs the OM Cipher engine or sees raw data.
+@app.get("/fieldprint")
+async def serve_fieldprint(request: Request):
+    return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint.html")
+
+
+@app.get("/fieldprint.css")
+async def serve_fieldprint_css(request: Request):
+    return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint.css", media_type="text/css")
+
+
+@app.get("/fieldprint.js")
+async def serve_fieldprint_js(request: Request):
+    return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint.js", media_type="application/javascript")
+
 # CommonUnity public homepage (served at /home for now; intended for the
 # commonunity.io apex once Compass moves to compass.commonunity.io).
 @app.get("/home")

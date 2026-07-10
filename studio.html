@@ -9136,6 +9136,42 @@ input, textarea { font: inherit; color: inherit; }
    docs/home-design-grammar.md §8: preview overlay pattern is a first-class
    feature — the split-view here fulfils the "quick to invoke and dismiss,
    encouraging frequent checks" requirement. */
+/* <FIELDPRINT_V5_CSS_START> */
+/* Fieldprint v5 overlay — full-viewport host for the /fieldprint iframe. Sits
+   above the old Workbench so it is the primary surface when "Open Fieldprint"
+   is pressed. */
+.fieldprint-v5-overlay {
+  position: fixed; inset: 0; z-index: 9600;
+  display: none;
+  background: #101109;
+}
+.fieldprint-v5-overlay.is-open { display: block; }
+body.fieldprint-v5-open { overflow: hidden; }
+.fieldprint-v5-frame {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: 0; display: block;
+  background: #101109;
+}
+.fieldprint-v5-close {
+  position: absolute; top: 14px; right: 16px; z-index: 2;
+  appearance: none; cursor: pointer;
+  font: 500 12px/1 'General Sans', system-ui, sans-serif;
+  letter-spacing: .04em;
+  color: #f4efe4;
+  background: color-mix(in srgb, #101109 62%, transparent);
+  border: 1px solid color-mix(in srgb, #c7a44f 46%, transparent);
+  border-radius: 999px;
+  padding: 8px 16px;
+  backdrop-filter: blur(6px);
+  transition: background .18s ease, border-color .18s ease;
+}
+.fieldprint-v5-close:hover {
+  background: color-mix(in srgb, #c7a44f 22%, #101109);
+  border-color: #c7a44f;
+}
+/* <FIELDPRINT_V5_CSS_END> */
+
 .home-workbench {
   position: fixed; inset: 0; z-index: 9500;
   display: none;
@@ -11244,6 +11280,23 @@ body.hw-open { overflow: hidden; }
      docs/home-design-grammar.md §8 (preview overlay pattern) is
      first-class here.
      ============================================================ -->
+<!-- <FIELDPRINT_V5_OVERLAY_START> -->
+<!-- Fieldprint v5 — the primary "Open Fieldprint" surface. A full-bleed field
+     experience served at /fieldprint and embedded here as a same-origin iframe.
+     Studio remains the only place the OM Cipher engine + raw data live; this
+     frame receives only a privacy-scrubbed model via postMessage. The old
+     Workbench modal below is kept intact as an internal fallback but is no
+     longer the primary visible experience. -->
+<div id="fieldprint-v5-overlay" class="fieldprint-v5-overlay" role="dialog"
+     aria-label="Fieldprint" aria-modal="true" hidden>
+  <button type="button" class="fieldprint-v5-close" id="fieldprint-v5-close"
+          aria-label="Close Fieldprint">Close</button>
+  <iframe id="fieldprint-v5-frame" class="fieldprint-v5-frame"
+          title="Fieldprint" src="about:blank"
+          allow="clipboard-write"></iframe>
+</div>
+<!-- <FIELDPRINT_V5_OVERLAY_END> -->
+
 <div id="home-workbench" class="home-workbench" role="dialog" aria-labelledby="home-workbench-title" aria-modal="true" hidden>
   <div class="hw-topbar">
     <div class="hw-topbar-brand">
@@ -25928,15 +25981,106 @@ if (document.readyState === 'loading') {
       phDigitSetState('resting');
     }
 
+    // <FIELDPRINT_V5_ADAPTER_START>
+    // Fieldprint v5 surface — the primary "Open Fieldprint" experience. The
+    // full-bleed field lives in a same-origin iframe at /fieldprint. Studio is
+    // the ONLY place the OM Cipher engine + raw member data run; the frame
+    // receives a privacy-scrubbed model (public rooms, scrubbed cipher SVG,
+    // palette roles, public-only images) via postMessage. Raw JSON / birth
+    // data / Gene Keys / mechanics / private images never cross the seam.
+    var phV5Bridged = false;
+
+    // Build the sanitized public model the iframe consumes. Reuses the existing
+    // privacy firewall (phPublicHomeModel over buildWebsitePreview()).
+    function phV5BuildModel() {
+      try {
+        if (typeof buildWebsitePreview !== 'function' ||
+            typeof phPublicHomeModel !== 'function') return null;
+        return phPublicHomeModel(buildWebsitePreview());
+      } catch (_) { return null; }
+    }
+
+    function phV5PostModel() {
+      var frame = document.getElementById('fieldprint-v5-frame');
+      if (!frame || !frame.contentWindow) return;
+      var model = phV5BuildModel();
+      if (!model) return;
+      frame.contentWindow.postMessage(
+        { type: 'fieldprint-model', model: model }, window.location.origin);
+    }
+
+    // Single message listener: only accept from our own iframe + same origin.
+    function phV5WireBridge() {
+      if (phV5Bridged) return;
+      phV5Bridged = true;
+      window.addEventListener('message', function (e) {
+        if (e.origin !== window.location.origin) return;
+        var frame = document.getElementById('fieldprint-v5-frame');
+        if (!frame || e.source !== frame.contentWindow) return;
+        var d = e.data;
+        if (!d || typeof d !== 'object') return;
+        if (d.type === 'fieldprint-ready') {
+          phV5PostModel();
+        } else if (d.type === 'fieldprint-import-json') {
+          // Normalize the raw export through the SAME firewall the Workbench
+          // uses, then repost the sanitized model. Raw text never round-trips.
+          var parsed = null;
+          try { parsed = JSON.parse(d.raw); } catch (_) { parsed = null; }
+          if (parsed && typeof phWorkbenchImportFieldJson === 'function') {
+            try { phWorkbenchImportFieldJson(parsed); } catch (_) {}
+          }
+          phV5PostModel();
+        }
+      });
+    }
+
+    function openFieldprintV5() {
+      var overlay = document.getElementById('fieldprint-v5-overlay');
+      var frame = document.getElementById('fieldprint-v5-frame');
+      if (!overlay || !frame) { openHomeWorkbench(); return; }
+      phV5WireBridge();
+      // Load the surface fresh each open so it re-handshakes for a live model.
+      if (frame.getAttribute('src') !== '/fieldprint') {
+        frame.setAttribute('src', '/fieldprint');
+      } else {
+        // Already loaded — repost the current model.
+        phV5PostModel();
+      }
+      overlay.hidden = false;
+      overlay.classList.add('is-open');
+      document.body.classList.add('fieldprint-v5-open');
+    }
+
+    function closeFieldprintV5() {
+      var overlay = document.getElementById('fieldprint-v5-overlay');
+      if (!overlay) return;
+      overlay.classList.remove('is-open');
+      overlay.hidden = true;
+      document.body.classList.remove('fieldprint-v5-open');
+    }
+    // <FIELDPRINT_V5_ADAPTER_END>
+
     // One-time DOM wiring — called from the same DOMContentLoaded pass
     // that wires the other modals so the Workbench is live at boot.
     function wireHomeWorkbench() {
       var root = document.getElementById('home-workbench');
       if (!root) return;
 
-      // Entry-point button on the entrance rail.
+      // Entry-point button on the entrance rail — opens the primary Fieldprint
+      // v5 surface. The old Workbench modal remains as an internal fallback
+      // (openHomeWorkbench) but is no longer the visible Open Fieldprint frame.
       var entryBtn = document.getElementById('home-workbench-open-entrance');
-      if (entryBtn) entryBtn.addEventListener('click', function () { openHomeWorkbench(); });
+      if (entryBtn) entryBtn.addEventListener('click', function () { openFieldprintV5(); });
+
+      // Close the Fieldprint v5 overlay.
+      var v5Close = document.getElementById('fieldprint-v5-close');
+      if (v5Close) v5Close.addEventListener('click', closeFieldprintV5);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          var ov = document.getElementById('fieldprint-v5-overlay');
+          if (ov && ov.classList.contains('is-open')) closeFieldprintV5();
+        }
+      });
 
       // Close.
       var closeBtn = document.getElementById('home-workbench-close');
@@ -26159,6 +26303,8 @@ if (document.readyState === 'loading') {
     if (typeof window !== 'undefined') {
       window.openHomeWorkbench = openHomeWorkbench;
       window.closeHomeWorkbench = closeHomeWorkbench;
+      window.openFieldprintV5 = openFieldprintV5;
+      window.closeFieldprintV5 = closeFieldprintV5;
       window.phWorkbenchRefreshAll = phWorkbenchRefreshAll;
       window.phWorkbenchRefreshPreview = phWorkbenchRefreshPreview;
       window.phWorkbenchSaveActiveSection = phWorkbenchSaveActiveSection;
@@ -27825,6 +27971,12 @@ if (document.readyState === 'loading') {
       // is unavailable for any reason, fall back to the old read-only
       // modal so we never leave the person with no route.
       if (p.builder === 'website') {
+        // Primary surface is now the Fieldprint v5 field experience. The old
+        // Workbench modal stays as an internal fallback.
+        if (typeof window.openFieldprintV5 === 'function') {
+          window.openFieldprintV5();
+          return true;
+        }
         if (typeof window.openHomeWorkbench === 'function') {
           window.openHomeWorkbench();
           return true;

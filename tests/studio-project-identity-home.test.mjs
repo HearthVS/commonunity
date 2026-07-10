@@ -135,14 +135,18 @@ test('renderWebsitePreview renders the project header above the existing preview
     'project header must be emitted before the rooms nav');
 });
 
-// openStudioProject is a READ path into the existing preview — no new modal.
-test('openStudioProject routes home to the existing preview, no second surface', () => {
+// openStudioProject is a READ path into an existing surface — no new modal.
+// The primary home surface is now the Fieldprint v5 field experience, with the
+// old Workbench + website preview kept as internal fallbacks.
+test('openStudioProject routes home to an existing surface, no second surface', () => {
   const fnIdx = html.indexOf('function openStudioProject(projectKey)');
   assert.ok(fnIdx !== -1, 'openStudioProject must exist');
-  const fnBody = html.slice(fnIdx, fnIdx + 400);
+  const fnBody = html.slice(fnIdx, fnIdx + 1300);
   assert.match(fnBody, /museProjectByKey\(projectKey\)/);
+  // Primary route is the Fieldprint v5 surface; preview remains a fallback.
+  assert.match(fnBody, /openFieldprintV5\(\)/);
   assert.match(fnBody, /openWebsitePreview\(\)/);
-  // Must not spin up a separate surface (new modal / element).
+  // Must not spin up a separate surface inline (new modal / element).
   assert.doesNotMatch(fnBody, /createElement/);
   assert.doesNotMatch(fnBody, /new .*Modal/);
 });
