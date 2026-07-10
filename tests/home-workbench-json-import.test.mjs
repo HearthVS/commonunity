@@ -153,7 +153,7 @@ test('a clean file (no private fields) reports privacy: clean', () => {
 
 test('the Workbench topbar exposes a first-class Load JSON control', () => {
   assert.match(html, /id="home-workbench-import-open"/);
-  assert.match(html, /Load JSON/);
+  assert.match(html, /Load Field JSON/);
   assert.match(html, /id="home-workbench-import-input"[^>]*accept="\.json/);
 });
 
@@ -194,7 +194,7 @@ test('the work column renders + wires the section image control', () => {
 });
 
 test('Studio Window model carries display role, alt, and tagging hooks', () => {
-  assert.match(html, /STUDIO_WINDOW_IMAGE_ROLES\s*=\s*\['inset',\s*'full-bleed',\s*'background'\]/);
+  assert.match(html, /STUDIO_WINDOW_IMAGE_ROLES\s*=\s*\['inset',\s*'full-bleed',\s*'background',\s*'artifact',\s*'hero'\]/);
   assert.match(html, /STUDIO_WINDOW_TAG_VOCAB/);
   // The required tagging vocabulary hooks are all present.
   for (const tag of ['homepage', 'hero', 'background', 'what-i-make',
@@ -206,10 +206,11 @@ test('Studio Window model carries display role, alt, and tagging hooks', () => {
 test('studioWindowAdd persists role/alt/tags additively', () => {
   const idx = html.indexOf('function studioWindowAdd');
   assert.ok(idx !== -1);
-  const body = html.slice(idx, idx + 900);
+  const body = html.slice(idx, idx + 1300);
   assert.match(body, /role:\s*normalizeStudioWindowRole/);
   assert.match(body, /alt:/);
   assert.match(body, /tags:/);
+  assert.match(body, /visibility:\s*normalizeStudioWindowVisibility/);
 });
 
 test('setters exist for role + alt on room images', () => {

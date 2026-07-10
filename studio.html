@@ -10097,7 +10097,7 @@ body.hw-open { overflow: hidden; }
       <span class="hw-entry-digit" aria-hidden="true">
         <span class="digit-glyph digit-glyph--sm" data-digit-glyph="entrance"></span>
       </span>
-      Open hOMe Workbench
+      Open Fieldprint
     </button>
 
     <!-- Studio Path — the three levels of authentic digital self.
@@ -11143,8 +11143,9 @@ body.hw-open { overflow: hidden; }
   <div class="hw-topbar">
     <div class="hw-topbar-brand">
       <div>
-        <p class="hw-topbar-eyebrow">Workbench · hOMe</p>
-        <h2 class="hw-topbar-title" id="home-workbench-title">Your <em>hOMe</em> in the making</h2>
+        <p class="hw-topbar-eyebrow">Fieldprint</p>
+        <h2 class="hw-topbar-title" id="home-workbench-title">Your <em>Fieldprint</em> in the making</h2>
+        <p class="hw-topbar-tagline">Create your Fieldprint. Publish it as your public hOMepage.</p>
       </div>
       <!-- Digit — the always-present creative helper. Cycling seven-segment
            glyph mounted by phDigitMount() when the Workbench opens. -->
@@ -11166,26 +11167,34 @@ body.hw-open { overflow: hidden; }
     </div>
     <div class="hw-topbar-actions">
       <button type="button" class="hw-topbar-btn" id="home-workbench-import-open"
-              title="Load a Field / cOMpass JSON export to seed your four rooms">
-        Load JSON
+              title="Load a Field JSON export to seed your four rooms">
+        Load Field JSON
       </button>
       <input type="file" id="home-workbench-import-input" accept=".json,application/json" hidden>
       <button type="button" class="hw-topbar-btn" id="home-workbench-preview-toggle"
-              aria-pressed="true" title="Show or hide the live visitor preview column">
+              aria-pressed="true" title="Show or hide the live public hOMepage preview column">
         Hide preview
       </button>
       <button type="button" class="hw-topbar-btn" id="home-workbench-preview-fullscreen"
-              aria-pressed="false" title="Open the visitor preview at full width">
-        Preview as visitor
+              aria-pressed="false" title="Preview your public hOMepage at full width">
+        Preview public hOMepage
       </button>
-      <button type="button" class="hw-topbar-close" id="home-workbench-close" aria-label="Close hOMe Workbench">×</button>
+      <button type="button" class="hw-topbar-btn hw-topbar-btn-publish" id="home-workbench-publish"
+              title="Run the privacy review and publish your public hOMepage">
+        Publish hOMepage
+      </button>
+      <button type="button" class="hw-topbar-btn" id="home-workbench-open-live"
+              title="Open your public hOMepage">
+        Open public hOMepage
+      </button>
+      <button type="button" class="hw-topbar-close" id="home-workbench-close" aria-label="Close Fieldprint">×</button>
     </div>
   </div>
 
   <!-- Mobile-only tab bar (revealed by @media (max-width: 720px)). Lets
        members swap between the three columns one at a time on small
        screens so nothing overlaps. -->
-  <nav class="hw-mobile-tabs" role="tablist" aria-label="Workbench panels">
+  <nav class="hw-mobile-tabs" role="tablist" aria-label="Fieldprint panels">
     <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="rooms" role="tab" aria-selected="false">Rooms</button>
     <button type="button" class="hw-mobile-tab is-active" data-hw-mobile-tab="work" role="tab" aria-selected="true">Shape</button>
     <button type="button" class="hw-mobile-tab" data-hw-mobile-tab="preview" role="tab" aria-selected="false">Preview</button>
@@ -11198,7 +11207,7 @@ body.hw-open { overflow: hidden; }
       <ul class="hw-rooms-list" id="home-workbench-rooms" role="tablist"></ul>
       <p class="hw-rooms-footnote">
         The four rooms are your hOMe's shape. Select one to shape it in your own words.
-        <button type="button" id="home-workbench-open-legacy-modal">Open the read-only preview</button>
+        <button type="button" id="home-workbench-open-legacy-modal">Open the public hOMepage preview</button>
       </p>
     </aside>
 
@@ -11229,10 +11238,10 @@ body.hw-open { overflow: hidden; }
       </div>
     </section>
 
-    <!-- Live visitor preview -->
-    <section class="hw-preview-col" aria-label="Live visitor preview">
+    <!-- Live public hOMepage preview -->
+    <section class="hw-preview-col" aria-label="Live public hOMepage preview">
       <div class="hw-preview-head">
-        <span class="hw-preview-eye">Live preview · what a visitor reads</span>
+        <span class="hw-preview-eye">Live preview · your public hOMepage</span>
         <div class="hw-preview-actions">
           <button type="button" class="hw-preview-btn is-active" id="home-workbench-preview-refresh" title="Refresh preview">Refresh</button>
         </div>
@@ -11240,7 +11249,17 @@ body.hw-open { overflow: hidden; }
       <!-- Composition modes — a small, curated set of whole-page compositions.
            Same content, different rendered structure. Populated + wired by
            phWorkbenchRenderComposition(). -->
-      <div class="hw-composition" id="home-workbench-composition" role="group" aria-label="Visitor composition style"></div>
+      <div class="hw-composition" id="home-workbench-composition" role="group" aria-label="Public hOMepage composition style"></div>
+      <!-- Cipher texture controls — off / subtle field / inside-crop / wallpaper
+           plus intensity, scale, position, opacity. Wired by
+           phWorkbenchRenderCipher(). -->
+      <div class="hw-cipher" id="home-workbench-cipher" role="group" aria-label="Cipher texture controls"></div>
+      <!-- Palette apply/import + palette intensity. phWorkbenchRenderPalette(). -->
+      <div class="hw-palette" id="home-workbench-palette" role="group" aria-label="Palette controls"></div>
+      <!-- Density + transition selectors. phWorkbenchRenderComposition() family. -->
+      <div class="hw-densrow" id="home-workbench-density" role="group" aria-label="Density and transition"></div>
+      <!-- Privacy review — visible before preview/publish. phWorkbenchRenderPrivacy(). -->
+      <div class="hw-privacy" id="home-workbench-privacy" role="status" aria-live="polite"></div>
       <div class="hw-preview-frame" id="home-workbench-preview-frame" aria-live="polite"></div>
     </section>
   </div>
@@ -11788,11 +11807,15 @@ const STUDIO_WINDOW_ROOM_GLYPH = { work: '◐', lens: '◑', field: '◓', call:
 //   alt  — accessible description (empty by default).
 //   tags — forward-looking hooks for a future Studio image library. Every
 //          room image is auto-tagged 'homepage' + 'public' + its room tag.
-const STUDIO_WINDOW_IMAGE_ROLES = ['inset', 'full-bleed', 'background'];
+const STUDIO_WINDOW_IMAGE_ROLES = ['inset', 'full-bleed', 'background', 'artifact', 'hero'];
+// Explicit public/private status for a room image. 'public' is the default so
+// legacy items (no visibility field) keep rendering exactly as before; 'private'
+// images are withheld from the public hOMepage render and never auto-published.
+const STUDIO_WINDOW_VISIBILITY = ['public', 'private'];
 const STUDIO_WINDOW_TAG_VOCAB = [
-  'homepage', 'hero', 'background',
+  'homepage', 'hero', 'artifact', 'background',
   'what-i-make', 'how-i-perceive', 'what-keeps-me-alive', 'what-im-here-for',
-  'public', 'private'
+  'public', 'private', 'observation'
 ];
 const STUDIO_WINDOW_ROOM_TAG = {
   work:  'what-i-make',
@@ -11802,6 +11825,9 @@ const STUDIO_WINDOW_ROOM_TAG = {
 };
 function normalizeStudioWindowRole(role) {
   return STUDIO_WINDOW_IMAGE_ROLES.indexOf(role) >= 0 ? role : 'inset';
+}
+function normalizeStudioWindowVisibility(v) {
+  return STUDIO_WINDOW_VISIBILITY.indexOf(v) >= 0 ? v : 'public';
 }
 function studioWindowTagsForRoom(room) {
   var t = STUDIO_WINDOW_ROOM_TAG[room];
@@ -11887,6 +11913,10 @@ function studioWindowAdd(item) {
     // Per-section display role + accessible alt + tagging hooks (v0.2).
     role: normalizeStudioWindowRole(item && item.role),
     alt: item && typeof item.alt === 'string' ? item.alt.trim() : '',
+    // Explicit public/private status (defaults to public; private is withheld
+    // from the public hOMepage render). Optional focal point / opacity / blend
+    // passthrough for composition control.
+    visibility: normalizeStudioWindowVisibility(item && item.visibility),
     tags: Array.isArray(item && item.tags) && item.tags.length ? item.tags.slice() : studioWindowTagsForRoom(room),
     createdAt: new Date().toISOString()
   };
@@ -11941,6 +11971,17 @@ function studioWindowSetAlt(id, alt) {
   var it = list.find(function (x) { return x && x.id === id; });
   if (!it) return false;
   it.alt = typeof alt === 'string' ? alt.trim() : '';
+  try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+  return true;
+}
+
+// Set the public/private status on a room image. A private image is withheld
+// from the public hOMepage render and never auto-published.
+function studioWindowSetVisibility(id, visibility) {
+  var list = ensureStudioWindow();
+  var it = list.find(function (x) { return x && x.id === id; });
+  if (!it) return false;
+  it.visibility = normalizeStudioWindowVisibility(visibility);
   try { if (typeof saveState === 'function') saveState(); } catch (_) {}
   return true;
 }
@@ -23462,11 +23503,28 @@ if (document.readyState === 'loading') {
         if (typeof studioWindowItemsForRoom !== 'function') return null;
         var items = studioWindowItemsForRoom(key);
         if (!items || !items.length) return null;
-        var it = items[0];
-        if (!it || !it.src) return null;
+        // Prefer the first PUBLIC image; a private image must never surface in
+        // the public render, so we skip past it rather than fall through to it.
+        var it = null;
+        for (var i = 0; i < items.length; i++) {
+          var cand = items[i];
+          if (!cand || !cand.src) continue;
+          if (cand.visibility === 'private') continue;
+          it = cand; break;
+        }
+        if (!it) return null;
         var role = (typeof normalizeStudioWindowRole === 'function')
           ? normalizeStudioWindowRole(it.role) : (it.role || 'inset');
-        return { src: it.src, role: role, alt: (it.alt && String(it.alt).trim()) || '' };
+        var out = {
+          src: it.src, role: role,
+          alt: (it.alt && String(it.alt).trim()) || '',
+          visibility: 'public'
+        };
+        if (typeof it.focalX === 'number') out.focalX = it.focalX;
+        if (typeof it.focalY === 'number') out.focalY = it.focalY;
+        if (typeof it.opacity === 'number') out.opacity = it.opacity;
+        if (typeof it.blend === 'string') out.blend = it.blend;
+        return out;
       } catch (_) { return null; }
     }
 
@@ -23612,6 +23670,12 @@ if (document.readyState === 'loading') {
         // through so phPublicHomeModel resolves it onto the model and the
         // public render reflects the choice. Absent → all-'auto' default.
         composition: (window.state && window.state.homeComposition) || null,
+        // The person's chosen Fieldprint background transition (none/fade/
+        // threshold). Absent → 'threshold' (the historical default behaviour).
+        transition: (window.state && window.state.homeTransition) || null,
+        // Palette-apply intensity chosen in the Fieldprint palette panel
+        // (soft/medium/bold). Absent → 'auto' (unchanged output).
+        paletteIntensity: (window.state && window.state.homePaletteIntensity) || null,
         // Cipher atmosphere source — imported om_cipher texture/palette (from a
         // Load JSON import, held in compassData._importMeta) reduced to the
         // visitor-safe fields the continuous Fieldprint background renders from.
@@ -23620,7 +23684,11 @@ if (document.readyState === 'loading') {
           svg:     (function () { var m = cd._importMeta || {}; return typeof m.cipherSvg === 'string' ? m.cipherSvg : ''; })(),
           hue:     (function () { var m = cd._importMeta || {}; return (typeof m.hue === 'number') ? m.hue : null; })(),
           palette: (function () { var m = cd._importMeta || {}; return Array.isArray(m.palette) ? m.palette.slice(0, 5) : null; })()
-        }
+        },
+        // The person's Cipher texture controls (mode/intensity/scale/position/
+        // opacity) chosen in the Fieldprint Cipher panel. Absent → the historical
+        // deterministic inside-crop behaviour.
+        cipherControls: (window.state && window.state.homeCipher) || null
       };
     }
 
@@ -24949,6 +25017,292 @@ if (document.readyState === 'loading') {
       }
     }
 
+    // ── Cipher texture controls ──────────────────────────────────────────
+    // Mode (off / subtle field / inside-crop / wallpaper) + intensity + scale /
+    // position / opacity. Persisted on state.homeCipher and threaded through
+    // buildWebsitePreview → phPublicCipherField so the live preview + public
+    // render reflect the choice. Backwards-compatible: absent state = 'inside'.
+    var PH_WB_CIPHER_MODES = [
+      { mode: 'off',       label: 'Off',          hint: 'No Cipher field' },
+      { mode: 'subtle',    label: 'Subtle field', hint: 'Soft palette wash only' },
+      { mode: 'inside',    label: 'Inside-crop',  hint: 'Travel inside the mark' },
+      { mode: 'wallpaper', label: 'Wallpaper',    hint: 'Tiled Cipher pattern' }
+    ];
+    function phWorkbenchCipherState() {
+      var c = (window.state && window.state.homeCipher) || {};
+      return {
+        mode:      (['off', 'subtle', 'inside', 'wallpaper'].indexOf(c.mode) !== -1) ? c.mode : 'inside',
+        intensity: (['soft', 'medium', 'bold'].indexOf(c.intensity) !== -1) ? c.intensity : 'medium',
+        scale:     (typeof c.scale === 'number') ? c.scale : 360,
+        x:         (typeof c.x === 'number') ? c.x : 50,
+        y:         (typeof c.y === 'number') ? c.y : 50,
+        opacity:   (typeof c.opacity === 'number') ? c.opacity : 1
+      };
+    }
+    function phWorkbenchSetCipher(patch) {
+      if (!window.state) return;
+      var cur = phWorkbenchCipherState();
+      window.state.homeCipher = Object.assign({}, cur, patch || {});
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      phWorkbenchRenderCipher();
+      phWorkbenchRenderPrivacy();
+      phWorkbenchRefreshPreview();
+    }
+    function phWorkbenchRenderCipher() {
+      var host = document.getElementById('home-workbench-cipher');
+      if (!host) return;
+      var c = phWorkbenchCipherState();
+      var html = '<span class="hw-cipher-label">Cipher texture</span>' +
+        '<div class="hw-cipher-modes">';
+      PH_WB_CIPHER_MODES.forEach(function (m) {
+        var on = (m.mode === c.mode);
+        html += '<button type="button" class="hw-cipher-btn' + (on ? ' is-active' : '') + '"' +
+          ' data-hw-cipher-mode="' + hwEscape(m.mode) + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+          ' title="' + hwEscape(m.hint) + '">' + hwEscape(m.label) + '</button>';
+      });
+      html += '</div>';
+      // Adjustments are meaningless when the field is off.
+      if (c.mode !== 'off') {
+        html += '<div class="hw-cipher-adjust">' +
+          '<label class="hw-cipher-adj">Intensity <span class="hw-cipher-intensity">';
+        ['soft', 'medium', 'bold'].forEach(function (iv) {
+          var on = (iv === c.intensity);
+          html += '<button type="button" class="hw-cipher-int-btn' + (on ? ' is-active' : '') + '"' +
+            ' data-hw-cipher-intensity="' + iv + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + iv + '</button>';
+        });
+        html += '</span></label>' +
+          '<label class="hw-cipher-adj">Scale <input type="range" id="hw-cipher-scale" min="100" max="800" step="10" value="' + hwEscape(String(c.scale)) + '"></label>' +
+          '<label class="hw-cipher-adj">Position X <input type="range" id="hw-cipher-x" min="0" max="100" step="1" value="' + hwEscape(String(c.x)) + '"></label>' +
+          '<label class="hw-cipher-adj">Position Y <input type="range" id="hw-cipher-y" min="0" max="100" step="1" value="' + hwEscape(String(c.y)) + '"></label>' +
+          '<label class="hw-cipher-adj">Opacity <input type="range" id="hw-cipher-opacity" min="0" max="1" step="0.05" value="' + hwEscape(String(c.opacity)) + '"></label>' +
+        '</div>';
+      }
+      host.innerHTML = html;
+      host.querySelectorAll('[data-hw-cipher-mode]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          phWorkbenchSetCipher({ mode: btn.getAttribute('data-hw-cipher-mode') });
+        });
+      });
+      host.querySelectorAll('[data-hw-cipher-intensity]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          phWorkbenchSetCipher({ intensity: btn.getAttribute('data-hw-cipher-intensity') });
+        });
+      });
+      [['hw-cipher-scale', 'scale'], ['hw-cipher-x', 'x'], ['hw-cipher-y', 'y'], ['hw-cipher-opacity', 'opacity']].forEach(function (pair) {
+        var el = document.getElementById(pair[0]);
+        if (el) el.addEventListener('change', function () {
+          var patch = {}; patch[pair[1]] = parseFloat(el.value);
+          phWorkbenchSetCipher(patch);
+        });
+      });
+    }
+
+    // ── Palette controls ─────────────────────────────────────────────────
+    // Apply the imported om_cipher palette + a palette intensity (soft/medium/
+    // bold). Intensity persists on state.homePaletteIntensity and surfaces as
+    // data-palette-intensity on the public render root.
+    function phWorkbenchPaletteIntensity() {
+      var v = window.state && window.state.homePaletteIntensity;
+      return (['auto', 'soft', 'medium', 'bold'].indexOf(v) !== -1) ? v : 'auto';
+    }
+    function phWorkbenchSetPaletteIntensity(v) {
+      if (!window.state) return;
+      if (['auto', 'soft', 'medium', 'bold'].indexOf(v) === -1) return;
+      window.state.homePaletteIntensity = v;
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      phWorkbenchRenderPalette();
+      phWorkbenchRefreshPreview();
+    }
+    function phWorkbenchApplyPalette() {
+      // The imported palette is already applied through phApplyPaletteRoles on
+      // every preview render; this is the explicit, member-triggered re-apply so
+      // the action is visible + honest. It never invents colour.
+      phWorkbenchRefreshPreview();
+      if (typeof phWorkbenchToast === 'function') phWorkbenchToast('Palette applied');
+    }
+    function phWorkbenchRenderPalette() {
+      var host = document.getElementById('home-workbench-palette');
+      if (!host) return;
+      var cd = (window.state && window.state.compassData) || {};
+      var meta = cd._importMeta || {};
+      var hasPalette = Array.isArray(meta.palette) && meta.palette.length;
+      var active = phWorkbenchPaletteIntensity();
+      var html = '<span class="hw-palette-label">Palette</span>' +
+        '<button type="button" class="hw-palette-apply" id="home-workbench-palette-apply"' +
+        (hasPalette ? '' : ' disabled') + ' title="Apply the imported palette to the public hOMepage">' +
+        (hasPalette ? 'Apply imported palette' : 'No imported palette') + '</button>' +
+        '<span class="hw-palette-intensity">';
+      ['auto', 'soft', 'medium', 'bold'].forEach(function (iv) {
+        var on = (iv === active);
+        html += '<button type="button" class="hw-palette-int-btn' + (on ? ' is-active' : '') + '"' +
+          ' data-hw-palette-intensity="' + iv + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + iv + '</button>';
+      });
+      html += '</span>';
+      host.innerHTML = html;
+      var applyBtn = document.getElementById('home-workbench-palette-apply');
+      if (applyBtn && hasPalette) applyBtn.addEventListener('click', phWorkbenchApplyPalette);
+      host.querySelectorAll('[data-hw-palette-intensity]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          phWorkbenchSetPaletteIntensity(btn.getAttribute('data-hw-palette-intensity'));
+        });
+      });
+    }
+
+    // ── Density + transition selectors ───────────────────────────────────
+    var PH_WB_DENSITY_CHOICES = [
+      { value: 'auto',      label: 'Auto' },
+      { value: 'minimal',   label: 'Minimal' },
+      { value: 'editorial', label: 'Editorial' },
+      { value: 'immersive', label: 'Immersive' }
+    ];
+    var PH_WB_TRANSITION_CHOICES = [
+      { value: 'none',      label: 'None' },
+      { value: 'fade',      label: 'Fade' },
+      { value: 'threshold', label: 'Threshold' }
+    ];
+    // Read the density in the Fieldprint vocabulary, migrating any legacy stored
+    // sparse/balanced/rich value to minimal/editorial/immersive for display.
+    function phWorkbenchDensityMode() {
+      var comp = (window.state && window.state.homeComposition) || {};
+      var d = comp.density;
+      var legacy = { sparse: 'minimal', balanced: 'editorial', rich: 'immersive' };
+      if (legacy[d]) return legacy[d];
+      if (['minimal', 'editorial', 'immersive'].indexOf(d) !== -1) return d;
+      return 'auto';
+    }
+    function phWorkbenchSetDensity(v) {
+      if (!window.state) return;
+      if (['auto', 'minimal', 'editorial', 'immersive'].indexOf(v) === -1) return;
+      var comp = Object.assign({}, window.state.homeComposition || {});
+      if (v === 'auto') { delete comp.density; }
+      else { comp.density = v; }
+      if (!comp.mode) comp.mode = 'auto';
+      window.state.homeComposition = comp;
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      phWorkbenchRenderDensityTransition();
+      phWorkbenchRefreshPreview();
+    }
+    function phWorkbenchTransitionMode() {
+      var v = window.state && window.state.homeTransition;
+      return (['none', 'fade', 'threshold'].indexOf(v) !== -1) ? v : 'threshold';
+    }
+    function phWorkbenchSetTransition(v) {
+      if (!window.state) return;
+      if (['none', 'fade', 'threshold'].indexOf(v) === -1) return;
+      window.state.homeTransition = v;
+      try { if (typeof saveState === 'function') saveState(); } catch (_) {}
+      phWorkbenchRenderDensityTransition();
+      phWorkbenchRefreshPreview();
+    }
+    function phWorkbenchRenderDensityTransition() {
+      var host = document.getElementById('home-workbench-density');
+      if (!host) return;
+      var dens = phWorkbenchDensityMode();
+      var trans = phWorkbenchTransitionMode();
+      var html = '<span class="hw-densrow-label">Density</span><div class="hw-densrow-choices">';
+      PH_WB_DENSITY_CHOICES.forEach(function (c) {
+        var on = (c.value === dens);
+        html += '<button type="button" class="hw-dens-btn' + (on ? ' is-active' : '') + '"' +
+          ' data-hw-density="' + c.value + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + hwEscape(c.label) + '</button>';
+      });
+      html += '</div><span class="hw-densrow-label">Transition</span><div class="hw-densrow-choices">';
+      PH_WB_TRANSITION_CHOICES.forEach(function (c) {
+        var on = (c.value === trans);
+        html += '<button type="button" class="hw-trans-btn' + (on ? ' is-active' : '') + '"' +
+          ' data-hw-transition="' + c.value + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + hwEscape(c.label) + '</button>';
+      });
+      html += '</div>';
+      host.innerHTML = html;
+      host.querySelectorAll('[data-hw-density]').forEach(function (btn) {
+        btn.addEventListener('click', function () { phWorkbenchSetDensity(btn.getAttribute('data-hw-density')); });
+      });
+      host.querySelectorAll('[data-hw-transition]').forEach(function (btn) {
+        btn.addEventListener('click', function () { phWorkbenchSetTransition(btn.getAttribute('data-hw-transition')); });
+      });
+    }
+
+    // ── Privacy review (visible before preview / publish) ─────────────────
+    // Summarises: language firewall status of the assembled public model, the
+    // count of import fields withheld as private, and per-image public/private
+    // status (so a member can see nothing private will surface before publish).
+    function phWorkbenchPrivacyReport() {
+      var report = { languageOk: true, violations: [], withheldFields: [], publicImages: 0, privateImages: 0 };
+      try {
+        var model = buildWebsitePreview();
+        var publicModel = phPublicHomeModel(model);
+        if (publicModel && publicModel.language) {
+          report.languageOk = !!publicModel.language.ok;
+          report.violations = Array.isArray(publicModel.language.violations) ? publicModel.language.violations : [];
+        }
+      } catch (_) {}
+      try {
+        var cd = (window.state && window.state.compassData) || {};
+        var meta = cd._importMeta || {};
+        if (Array.isArray(meta.privateFields)) report.withheldFields = meta.privateFields.slice();
+      } catch (_) {}
+      try {
+        var items = (typeof studioWindowItems === 'function') ? studioWindowItems() : [];
+        items.forEach(function (it) {
+          if (!it || !it.src) return;
+          if (it.visibility === 'private') report.privateImages += 1;
+          else report.publicImages += 1;
+        });
+      } catch (_) {}
+      return report;
+    }
+    function phWorkbenchRenderPrivacy() {
+      var host = document.getElementById('home-workbench-privacy');
+      if (!host) return;
+      var r = phWorkbenchPrivacyReport();
+      var clean = r.languageOk && r.violations.length === 0;
+      var html = '<div class="hw-privacy-head' + (clean ? ' is-clean' : ' is-flagged') + '">' +
+        '<span class="hw-privacy-dot" aria-hidden="true"></span>' +
+        '<span class="hw-privacy-title">Privacy review</span>' +
+        '<span class="hw-privacy-status">' + (clean ? 'Clear to preview & publish' : 'Review needed') + '</span></div>' +
+        '<ul class="hw-privacy-list">';
+      html += '<li>Language firewall: ' + (r.languageOk ? 'clean' : (r.violations.length + ' issue(s)')) + '</li>';
+      html += '<li>Private import fields withheld: ' + r.withheldFields.length + '</li>';
+      html += '<li>Images: ' + r.publicImages + ' public · ' + r.privateImages + ' private (private are never published)</li>';
+      html += '</ul>';
+      host.innerHTML = html;
+    }
+
+    // ── Publish / open the public hOMepage ───────────────────────────────
+    // Honest, scoped publish handoff. Runs the language firewall + privacy
+    // review; only when clean does it mark the hOMepage published (state.website)
+    // and open the read-only public hOMepage render. NOTE: there is no live
+    // remote hosting/deploy for the hOMepage render in this build — "publish"
+    // records readiness locally and opens the exact public output. It does NOT
+    // push to the cOMmons Field server (that path publishes a different Living
+    // Profile / Cipher artifact and carries birth/mechanic data).
+    function phPublishHome() {
+      var r = phWorkbenchPrivacyReport();
+      if (!r.languageOk || r.violations.length) {
+        if (typeof phWorkbenchToast === 'function') phWorkbenchToast('Publish blocked · privacy review needs attention');
+        phWorkbenchRenderPrivacy();
+        return false;
+      }
+      try {
+        if (window.state) {
+          if (!window.state.website) window.state.website = {};
+          window.state.website.status = 'Published';
+          window.state.website.publishedAt = new Date().toISOString();
+          if (typeof saveState === 'function') saveState();
+        }
+      } catch (_) {}
+      if (typeof phWorkbenchToast === 'function') phWorkbenchToast('Public hOMepage published');
+      phWorkbenchOpenPublicHome();
+      return true;
+    }
+    function phWorkbenchOpenPublicHome() {
+      // Opens the read-only public hOMepage render (the same output a visitor
+      // reads). Reuses the existing preview modal surface.
+      try {
+        if (typeof window.openPersonalHome === 'function') { window.openPersonalHome(); return; }
+        if (typeof openWebsitePreview === 'function') { openWebsitePreview(); }
+      } catch (_) {}
+    }
+
     // Update the top-bar progress + status from the shared model.
     function phWorkbenchRenderTopbar(model) {
       var seed = (typeof phSeedReadiness === 'function') ? phSeedReadiness(model) : null;
@@ -24983,6 +25337,10 @@ if (document.readyState === 'loading') {
       phWorkbenchRenderRooms(model);
       phWorkbenchRenderWorkColumn(model);
       phWorkbenchRenderComposition();
+      phWorkbenchRenderCipher();
+      phWorkbenchRenderPalette();
+      phWorkbenchRenderDensityTransition();
+      phWorkbenchRenderPrivacy();
       phWorkbenchRefreshPreview();
       phWorkbenchSyncDirty();
       // Any of the render functions may have replaced Digit's glyph
@@ -25330,6 +25688,17 @@ if (document.readyState === 'loading') {
         html += '</select></label>';
         html += '<label class="hw-section-image-field"><span>Alt text</span>' +
           '<input type="text" id="hw-section-image-alt" value="' + hwEscape(img.alt || '') + '" placeholder="Describe this image"></label>';
+        var vis = (img.visibility === 'private') ? 'private' : 'public';
+        html += '<label class="hw-section-image-field"><span>Status</span>' +
+          '<select id="hw-section-image-visibility" aria-label="Image public or private status">' +
+          '<option value="public"' + (vis === 'public' ? ' selected' : '') + '>Public</option>' +
+          '<option value="private"' + (vis === 'private' ? ' selected' : '') + '>Private (never published)</option>' +
+          '</select></label>';
+        // Forward-looking observation-image tagging — intentionally disabled;
+        // no auto-publish. A member will later be able to promote tagged
+        // observation images here, but nothing acts on this yet.
+        html += '<label class="hw-section-image-field hw-section-image-suggest is-disabled"><span>Observation images</span>' +
+          '<button type="button" disabled title="Coming later — no images are auto-published">Suggestions (coming soon)</button></label>';
         html += '<div class="hw-section-image-actions">';
         html += '<label class="hw-section-image-replace">Replace<input type="file" id="hw-section-image-input" accept="image/*" hidden></label>';
         html += '<button type="button" class="hw-section-image-remove" id="hw-section-image-remove">Remove</button>';
@@ -25378,6 +25747,14 @@ if (document.readyState === 'loading') {
         if (existing && typeof studioWindowSetAlt === 'function') {
           studioWindowSetAlt(existing.id, altIn.value);
           phWorkbenchRefreshPreview();
+        }
+      });
+      var visSel = document.getElementById('hw-section-image-visibility');
+      if (visSel) visSel.addEventListener('change', function () {
+        var existing = phWorkbenchRoomImage(key);
+        if (existing && typeof studioWindowSetVisibility === 'function') {
+          studioWindowSetVisibility(existing.id, visSel.value);
+          phWorkbenchRefreshAll();
         }
       });
     }
@@ -25446,6 +25823,12 @@ if (document.readyState === 'loading') {
       if (legacy) legacy.addEventListener('click', function () {
         if (typeof window.openWebsitePreview === 'function') window.openWebsitePreview();
       });
+
+      // Publish the public hOMepage (privacy-gated) + open the live render.
+      var publishBtn = document.getElementById('home-workbench-publish');
+      if (publishBtn) publishBtn.addEventListener('click', function () { phPublishHome(); });
+      var openLiveBtn = document.getElementById('home-workbench-open-live');
+      if (openLiveBtn) openLiveBtn.addEventListener('click', function () { phWorkbenchOpenPublicHome(); });
 
       // Load JSON — seed the four public rooms from a Field / cOMpass /
       // CommonUnity JSON export. Parsed client-side, normalized into builder
@@ -25533,7 +25916,7 @@ if (document.readyState === 'loading') {
           }
         }
         root.classList.toggle('is-preview-fullscreen', phWorkbenchState.previewFullscreen);
-        fsBtn.textContent = phWorkbenchState.previewFullscreen ? 'Return to Workbench' : 'Preview as visitor';
+        fsBtn.textContent = phWorkbenchState.previewFullscreen ? 'Return to Fieldprint' : 'Preview public hOMepage';
         fsBtn.setAttribute('aria-pressed', phWorkbenchState.previewFullscreen ? 'true' : 'false');
         // Ensure preview is up to date on entry.
         phWorkbenchRefreshPreview();
@@ -25646,6 +26029,13 @@ if (document.readyState === 'loading') {
       window.phWorkbenchSaveActiveSection = phWorkbenchSaveActiveSection;
       window.phWorkbenchNormalizeFieldJson = phWorkbenchNormalizeFieldJson;
       window.phWorkbenchImportFieldJson = phWorkbenchImportFieldJson;
+      window.phWorkbenchSetCipher = phWorkbenchSetCipher;
+      window.phWorkbenchSetDensity = phWorkbenchSetDensity;
+      window.phWorkbenchSetTransition = phWorkbenchSetTransition;
+      window.phWorkbenchSetPaletteIntensity = phWorkbenchSetPaletteIntensity;
+      window.phWorkbenchPrivacyReport = phWorkbenchPrivacyReport;
+      window.phPublishHome = phPublishHome;
+      window.phWorkbenchOpenPublicHome = phWorkbenchOpenPublicHome;
     }
 
     // Wire on next tick — the rest of Studio's DOM boot runs first.
@@ -25936,9 +26326,18 @@ if (document.readyState === 'loading') {
         heroLayout:      'auto',
         sectionRhythm:   'auto',
         density:         'auto',
+        densityMode:     'auto',
         imageTreatment:  'auto'
       };
     }
+
+    // Density taxonomy bridge. The Fieldprint builder exposes a warm, public
+    // vocabulary (minimal / editorial / immersive); the render engine + CSS +
+    // existing tests key off the legacy scale (sparse / balanced / rich). These
+    // maps translate both directions so old saved values migrate safely and the
+    // legacy data-density hook keeps working unchanged.
+    var PH_DENSITY_MODE_TO_LEGACY = { minimal: 'sparse', editorial: 'balanced', immersive: 'rich' };
+    var PH_DENSITY_LEGACY_TO_MODE = { sparse: 'minimal', balanced: 'editorial', rich: 'immersive' };
 
     // Named modes → concrete field presets. A curated, small set of
     // high-quality compositions rather than many loose knobs.
@@ -25971,7 +26370,9 @@ if (document.readyState === 'loading') {
       accentIntensity: ['auto', 'soft', 'medium', 'bold'],
       heroLayout:      ['auto', 'centered', 'portrait-forward', 'purpose-led'],
       sectionRhythm:   ['auto', 'even', 'editorial', 'spacious'],
-      density:         ['auto', 'sparse', 'balanced', 'rich'],
+      // Accepts both the new Fieldprint vocabulary and the legacy scale, so
+      // older stored states and mode presets resolve without loss.
+      density:         ['auto', 'minimal', 'editorial', 'immersive', 'sparse', 'balanced', 'rich'],
       imageTreatment:  ['auto', 'framed', 'full-bleed', 'soft']
     };
 
@@ -25998,6 +26399,18 @@ if (document.readyState === 'loading') {
         var v = ok(f, input[f]);
         if (v && v !== 'auto') out[f] = v;
       });
+      // Density bridge — normalise whatever was chosen (new vocabulary or legacy
+      // scale) into BOTH representations: `density` stays on the legacy scale the
+      // render/CSS/tests read, and `densityMode` carries the Fieldprint
+      // vocabulary for the new data-density-mode hook. 'auto' passes through.
+      if (out.density && out.density !== 'auto') {
+        if (PH_DENSITY_MODE_TO_LEGACY[out.density]) {
+          out.densityMode = out.density;
+          out.density = PH_DENSITY_MODE_TO_LEGACY[out.density];
+        } else if (PH_DENSITY_LEGACY_TO_MODE[out.density]) {
+          out.densityMode = PH_DENSITY_LEGACY_TO_MODE[out.density];
+        }
+      }
       return out;
     }
     // <HOME_COMPOSITION_END>
@@ -26060,8 +26473,39 @@ if (document.readyState === 'loading') {
     // carries only a scrubbed SVG, a hue, and palette colours plus a
     // deterministic inside-crop (scale + x/y offset) so the continuous field
     // reads as travelling *inside* a single mark, never a centred sigil.
+    // Cipher texture modes the builder can choose. 'inside' is the historical
+    // default (deterministic inside-crop). 'off' suppresses the field entirely,
+    // 'subtle' renders a soft palette wash only, 'wallpaper' tiles the mark.
+    var PH_CIPHER_MODES = ['off', 'subtle', 'inside', 'wallpaper'];
+    var PH_CIPHER_INTENSITIES = ['soft', 'medium', 'bold'];
+
+    // Normalise the builder's Cipher controls into a safe, bounded shape. Every
+    // field is clamped; absent/legacy input resolves to the historical
+    // inside-crop behaviour so old saved states render unchanged.
+    function phResolveCipherControls(input) {
+      input = (input && typeof input === 'object') ? input : {};
+      function num(v, lo, hi) {
+        v = (typeof v === 'number' && isFinite(v)) ? v : null;
+        if (v == null) return null;
+        return Math.max(lo, Math.min(hi, v));
+      }
+      var mode = (PH_CIPHER_MODES.indexOf(input.mode) !== -1) ? input.mode : 'inside';
+      var intensity = (PH_CIPHER_INTENSITIES.indexOf(input.intensity) !== -1) ? input.intensity : 'medium';
+      return {
+        mode:      mode,
+        intensity: intensity,
+        scale:     num(input.scale, 100, 800),   // % zoom, null → deterministic
+        x:         num(input.x, 0, 100),          // % focus, null → deterministic
+        y:         num(input.y, 0, 100),
+        opacity:   num(input.opacity, 0, 1)       // null → CSS default
+      };
+    }
+
     function phPublicCipherField(input, seeds) {
       input = (input && typeof input === 'object') ? input : {};
+      var ctrl = phResolveCipherControls(input.cipherControls);
+      // 'off' — the person suppressed the Cipher field entirely.
+      if (ctrl.mode === 'off') return null;
       var src = (input.cipher && typeof input.cipher === 'object') ? input.cipher : {};
       // Fall back to raw state (_importMeta) when no preview cipher is attached.
       if (!src.svg && !src.hue && !src.palette) {
@@ -26083,11 +26527,18 @@ if (document.readyState === 'loading') {
       var cropX = 18 + (h % 60);            // 18–78%
       var cropY = 14 + ((h >> 8) % 62);     // 14–76%
       var scale = 320 + ((h >> 16) % 220);  // 320–540%
+      // User adjustments override the deterministic crop when supplied.
+      if (ctrl.x != null) cropX = ctrl.x;
+      if (ctrl.y != null) cropY = ctrl.y;
+      if (ctrl.scale != null) scale = ctrl.scale;
       return {
         present: true,
         svg: svg,
         hue: hue,
         palette: palette,
+        mode: ctrl.mode,
+        intensity: ctrl.intensity,
+        opacity: ctrl.opacity,
         crop: { x: cropX, y: cropY, scale: scale }
       };
     }
@@ -26097,13 +26548,30 @@ if (document.readyState === 'loading') {
     // markup; role is constrained to the three public display roles.
     function phPublicRoomImage(img) {
       if (!img || typeof img !== 'object') return null;
+      // Privacy firewall: a private image NEVER reaches the public render.
+      if (img.visibility === 'private') return null;
       var src = (typeof img.src === 'string') ? img.src.trim() : '';
       var safe = src && (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);/i.test(src) || /^https:\/\//i.test(src));
       if (!safe) return null;
-      var ROLES = ['inset', 'full-bleed', 'background'];
+      var ROLES = ['inset', 'full-bleed', 'background', 'artifact', 'hero'];
       var role = (ROLES.indexOf(img.role) !== -1) ? img.role : 'inset';
       var alt = (typeof img.alt === 'string') ? img.alt.trim() : '';
-      return { src: src, role: role, alt: alt };
+      function pct(v) {
+        return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(100, v)) : null;
+      }
+      function unit(v) {
+        return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(1, v)) : null;
+      }
+      var out = { src: src, role: role, alt: alt };
+      var fx = pct(img.focalX), fy = pct(img.focalY), op = unit(img.opacity);
+      if (fx != null) out.focalX = fx;
+      if (fy != null) out.focalY = fy;
+      if (op != null) out.opacity = op;
+      if (typeof img.blend === 'string' &&
+          ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'luminosity'].indexOf(img.blend) !== -1) {
+        out.blend = img.blend;
+      }
+      return out;
     }
 
     function phPublicHomeModel(input, opts) {
@@ -26224,13 +26692,24 @@ if (document.readyState === 'loading') {
       // Continuous Cipher atmosphere for the Fieldprint background field.
       var cipher = phPublicCipherField(input, seeds);
 
+      // Background transition mode (none / fade / threshold). Absent → the
+      // historical 'threshold' fade. Public-safe, no system names.
+      var TRANSITIONS = ['none', 'fade', 'threshold'];
+      var transition = (TRANSITIONS.indexOf(input.transition) !== -1) ? input.transition : 'threshold';
+
+      // Palette-apply intensity (soft / medium / bold). Absent → 'auto'.
+      var PAL_INTENSITY = ['auto', 'soft', 'medium', 'bold'];
+      var paletteIntensity = (PAL_INTENSITY.indexOf(input.paletteIntensity) !== -1) ? input.paletteIntensity : 'auto';
+
       var model = {
         identity:   { name: name, photo: photo },
         hero:       hero,
         rooms:      rooms,
         invitation: invitation,
         palette:    paletteRoles ? { roles: paletteRoles } : null,
+        paletteIntensity: paletteIntensity,
         cipher:     cipher,
+        transition: transition,
         visualIdentity: visualIdentity,
         composition: composition,
         status: {
@@ -26338,6 +26817,15 @@ if (document.readyState === 'loading') {
       }
       var compDensity = compVal('density');
       if (compDensity) viDensity = compDensity;
+      // Fieldprint density vocabulary (minimal/editorial/immersive) surfaced as
+      // a parallel hook alongside the legacy data-density scale.
+      var compDensityMode = compVal('densityMode');
+      // Background transition + palette-apply intensity — public-safe hooks the
+      // scoped CSS reads. Defaults ('threshold' / 'auto') reproduce prior output.
+      var TRANSITIONS = ['none', 'fade', 'threshold'];
+      var transitionMode = (TRANSITIONS.indexOf(model.transition) !== -1) ? model.transition : 'threshold';
+      var PAL_INTENSITY = ['soft', 'medium', 'bold'];
+      var paletteIntensity = (PAL_INTENSITY.indexOf(model.paletteIntensity) !== -1) ? model.paletteIntensity : '';
       // Motif vocab is a fixed, public-safe set (PR #152). Filter the model's
       // motifs to that vocab so a malformed identity can never surface a raw
       // word — and map each to a neutral geometric glyph for decorative marks.
@@ -26355,6 +26843,9 @@ if (document.readyState === 'loading') {
       var FIELD_IMAGERY = { atmosphere: 1, abstract: 1 };
       var viAttrs = ' data-tone="' + esc(viTone) + '"' +
                     ' data-density="' + esc(viDensity) + '"' +
+                    (compDensityMode ? ' data-density-mode="' + esc(compDensityMode) + '"' : '') +
+                    ' data-transition="' + esc(transitionMode) + '"' +
+                    (paletteIntensity ? ' data-palette-intensity="' + esc(paletteIntensity) + '"' : '') +
                     ' data-motion="' + esc(viMotion) + '"' +
                     ' data-type="' + esc(viType) + '"' +
                     ' data-imagery="' + esc(viImagery) + '"' +
@@ -26447,22 +26938,35 @@ if (document.readyState === 'loading') {
       function cipherFieldLayer() {
         var c = (model.cipher && typeof model.cipher === 'object') ? model.cipher : null;
         if (!c || !c.present) return '';
+        // Texture mode chosen in the Fieldprint Cipher panel. Legacy models with
+        // no mode fall back to 'inside' (the historical deterministic crop).
+        var CMODES = ['subtle', 'inside', 'wallpaper'];
+        var cmode = (CMODES.indexOf(c.mode) !== -1) ? c.mode : 'inside';
         var crop = (c.crop && typeof c.crop === 'object') ? c.crop : { x: 50, y: 50, scale: 360 };
         var style = '--phpub-cipher-x:' + esc(String(crop.x)) + '%;' +
                     '--phpub-cipher-y:' + esc(String(crop.y)) + '%;' +
                     '--phpub-cipher-scale:' + esc(String(crop.scale)) + '%;';
         if (typeof c.hue === 'number') style += '--phpub-cipher-hue:' + esc(String(c.hue)) + ';';
+        if (typeof c.opacity === 'number') style += '--phpub-cipher-opacity:' + esc(String(c.opacity)) + ';';
+        var intensity = (['soft', 'medium', 'bold'].indexOf(c.intensity) !== -1) ? c.intensity : 'medium';
+        // 'subtle' → palette wash only (never the mark texture). 'inside' and
+        // 'wallpaper' use the scrubbed SVG when present, else a palette weave.
+        var useSvg = (cmode !== 'subtle') && !!c.svg;
+        var weaveMode = (cmode === 'subtle') ? 'subtle' : (useSvg ? cmode : 'palette');
         var weave;
-        if (c.svg) {
+        if (useSvg) {
           // Fully percent-encode (incl. parens) so the data URI is safe in an
           // unquoted url() and carries no quotes/brackets/ampersands.
           var uri = 'data:image/svg+xml,' + encodeURIComponent(c.svg)
             .replace(/\(/g, '%28').replace(/\)/g, '%29');
-          weave = '<span class="phpub-cipher-weave" data-mode="inside" style="background-image:url(' + uri + ')"></span>';
+          weave = '<span class="phpub-cipher-weave" data-mode="' + esc(weaveMode) + '" style="background-image:url(' + uri + ')"></span>';
         } else {
-          weave = '<span class="phpub-cipher-weave" data-mode="palette"></span>';
+          weave = '<span class="phpub-cipher-weave" data-mode="' + esc(weaveMode) + '"></span>';
         }
-        return '<div class="phpub-fieldbg" data-cipher="' + (c.svg ? 'inside' : 'palette') + '" aria-hidden="true" style="' + style + '">' +
+        var cipherAttr = (cmode === 'subtle') ? 'subtle' : (useSvg ? cmode : 'palette');
+        return '<div class="phpub-fieldbg" data-cipher="' + esc(cipherAttr) + '"' +
+          ' data-cipher-mode="' + esc(cmode) + '" data-cipher-intensity="' + esc(intensity) + '"' +
+          ' aria-hidden="true" style="' + style + '">' +
           '<span class="phpub-cipher-wash"></span>' + weave +
         '</div>';
       }
@@ -26472,8 +26976,17 @@ if (document.readyState === 'loading') {
       function roomMedia(room) {
         var im = (room && room.image && typeof room.image === 'object') ? room.image : null;
         if (!im || !im.src) return '';
+        var figStyle = '';
+        if (typeof im.focalX === 'number' || typeof im.focalY === 'number') {
+          var fx = (typeof im.focalX === 'number') ? im.focalX : 50;
+          var fy = (typeof im.focalY === 'number') ? im.focalY : 50;
+          figStyle += 'object-position:' + esc(String(fx)) + '% ' + esc(String(fy)) + '%;';
+        }
+        if (typeof im.opacity === 'number') figStyle += 'opacity:' + esc(String(im.opacity)) + ';';
+        if (typeof im.blend === 'string') figStyle += 'mix-blend-mode:' + esc(im.blend) + ';';
+        var styleAttr = figStyle ? ' style="' + figStyle + '"' : '';
         return '<figure class="phpub-room-media" data-role="' + esc(im.role || 'inset') + '">' +
-          '<img class="phpub-room-media-img" src="' + esc(im.src) + '" alt="' + esc(im.alt || '') + '" loading="lazy" decoding="async"/>' +
+          '<img class="phpub-room-media-img" src="' + esc(im.src) + '" alt="' + esc(im.alt || '') + '"' + styleAttr + ' loading="lazy" decoding="async"/>' +
         '</figure>';
       }
       function roomMediaBg(room) {
@@ -26762,7 +27275,7 @@ if (document.readyState === 'loading') {
 
       html += '</div>' +
         '<aside class="ph-room-aside-v3" aria-label="Room atmosphere">' +
-          '<div class="lp-hero-slot is-sigil" title="Room sigil — atmospheric face">' +
+          '<div class="lp-hero-slot is-sigil" title="Room Cipher — atmospheric face">' +
             '<span class="lp-hero-slot-glyph" aria-hidden="true">' + sigil + '</span>' +
             '<span class="lp-hero-slot-label">Atmosphere</span>' +
           '</div>' +
@@ -26878,9 +27391,9 @@ if (document.readyState === 'loading') {
           '<h3 class="ph-hero-name">' + lpEscape(heading) + '</h3>' +
           '<p class="ph-hero-intro">' + lpEscape(intro) + '</p>' +
         '</div>' +
-        '<div class="lp-hero-slot is-sigil" title="Home sigil — symbolic face of the home">' +
+        '<div class="lp-hero-slot is-sigil" title="Home Cipher — symbolic face of the home">' +
           '<span class="lp-hero-slot-glyph" aria-hidden="true">✦</span>' +
-          '<span class="lp-hero-slot-label">Home<br>sigil</span>' +
+          '<span class="lp-hero-slot-label">Home<br>Cipher</span>' +
         '</div>' +
       '</section>';
 
@@ -26924,12 +27437,16 @@ if (document.readyState === 'loading') {
     // part of the visitor render — it lives outside the .phpub render body.
     function phPreviewModeBar(mode) {
       var toBuilder = mode === 'visitor';
-      var label = toBuilder ? 'Back to builder view' : 'Preview as visitor';
+      var label = toBuilder ? 'Return to Fieldprint' : 'Preview public hOMepage';
       var note  = toBuilder
-        ? 'Viewing as a visitor · read-only · exactly what a stranger sees'
-        : 'Builder view · shape rooms, tune copy, check sources';
+        ? 'Your public hOMepage · read-only · exactly what a visitor sees'
+        : 'Fieldprint · shape rooms, tune copy, check sources';
       return '<div class="ph-preview-modebar" role="group" aria-label="Preview mode">' +
         '<span class="ph-preview-modenote">' + lpEscape(note) + '</span>' +
+        (toBuilder
+          ? '<button type="button" class="ph-preview-modebtn ph-preview-editbtn" id="ph-visitor-edit" ' +
+              'aria-pressed="false">' + lpEscape('Edit Fieldprint') + '</button>'
+          : '') +
         '<button type="button" class="ph-preview-modebtn" id="ph-visitor-toggle" ' +
           'aria-pressed="' + (toBuilder ? 'true' : 'false') + '">' + lpEscape(label) + '</button>' +
       '</div>';
@@ -26947,6 +27464,11 @@ if (document.readyState === 'loading') {
       wpBody.innerHTML = phPreviewModeBar('visitor') + phRenderPublicHome(publicModel);
       var toggle = document.getElementById('ph-visitor-toggle');
       if (toggle) toggle.addEventListener('click', function () {
+        phVisitorView = false;
+        renderWebsitePreview();
+      });
+      var editBtn = document.getElementById('ph-visitor-edit');
+      if (editBtn) editBtn.addEventListener('click', function () {
         phVisitorView = false;
         renderWebsitePreview();
       });

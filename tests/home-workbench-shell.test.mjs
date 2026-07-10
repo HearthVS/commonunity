@@ -39,8 +39,8 @@ console.log('hOMe Workbench — static markup assertions');
 test('entry-point CTA #home-workbench-open-entrance exists with the right copy', () => {
   assert.match(html, /id="home-workbench-open-entrance"/,
     'entry CTA must have id="home-workbench-open-entrance"');
-  assert.match(html, /Open hOMe Workbench/,
-    'entry CTA must show "Open hOMe Workbench" copy');
+  assert.match(html, /Open Fieldprint/,
+    'entry CTA must show "Open Fieldprint" copy');
 });
 
 test('entry-point CTA is NOT hidden inside the collapsed Studio Path <details>', () => {
@@ -114,7 +114,7 @@ test('Preview column exposes a live-region visitor frame + refresh action', () =
 test('Topbar exposes hide/show preview + full-screen visitor toggles', () => {
   assert.match(html, /id="home-workbench-preview-toggle"[^>]*aria-pressed/);
   assert.match(html, /id="home-workbench-preview-fullscreen"[^>]*aria-pressed/);
-  assert.match(html, /id="home-workbench-close"[^>]*aria-label="Close hOMe Workbench"/);
+  assert.match(html, /id="home-workbench-close"[^>]*aria-label="Close Fieldprint"/);
 });
 
 test('Topbar exposes seed-readiness progress + status', () => {
@@ -379,7 +379,7 @@ test('mobile tab bar renders the three Workbench panels (Rooms / Shape / Preview
   // columns one at a time. It must ship as a role=tablist in the DOM
   // and expose the three named tabs.
   assert.match(html,
-    /<nav class="hw-mobile-tabs" role="tablist"[^>]*aria-label="Workbench panels"/,
+    /<nav class="hw-mobile-tabs" role="tablist"[^>]*aria-label="Fieldprint panels"/,
     'mobile tab bar must be a role=tablist with an accessible label');
   assert.match(html, /data-hw-mobile-tab="rooms"[^>]*role="tab"[^>]*>Rooms</,
     'Rooms mobile tab must exist and be a role=tab');
