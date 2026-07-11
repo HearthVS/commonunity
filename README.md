@@ -69,6 +69,11 @@ reasoning depth is deterministic rather than implicit.
   survives restarts/redeploys. Changes apply to **subsequent** Nexus requests,
   never to a reply already streaming. The model is not changeable here.
 - Resolution order: admin override (if set) → `NEXUS_EFFORT` env var → `high`.
+- **Short-output endpoints** (opening lines, seed prompts, brief syntheses) keep
+  their brevity through the prompt, not a tight token ceiling. They share
+  `_NEXUS_SHORT_MAX_TOKENS` (1024) so `high`-effort reasoning has headroom and
+  cannot consume the budget before any visible text is produced — the previous
+  100/120/200 ceilings could blank/truncate these streamed replies at `high`.
 - The control renders in the admin **Infrastructure** tab as "Nexus response
   depth", and the active model/effort also appears in the `/api/admin/health`
   `config.nexus` block.

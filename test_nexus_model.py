@@ -174,6 +174,74 @@ class RequestPropagationTests(unittest.TestCase):
         self.assertEqual(self.captured.get("output_config"), {"effort": "low"})
 
 
+class _FakeStream:
+    """Minimal stand-in for the SDK streaming context manager: supports the
+    `with client.messages.stream(...) as s: for t in s.text_stream` pattern."""
+
+    def __init__(self):
+        self.text_stream = ["A short ", "opening line."]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def get_final_message(self):
+        return types.SimpleNamespace(
+            usage=types.SimpleNamespace(input_tokens=1, output_tokens=1),
+            content=[types.SimpleNamespace(text="A short opening line.", type="text")],
+        )
+
+
+class StreamPropagationTests(unittest.TestCase):
+    """Regression: the streaming path (8 of 11 call sites) must also carry the
+    fixed model + active effort, and the short-output budget must have reasoning
+    headroom. Prior coverage only exercised messages.create."""
+
+    def setUp(self):
+        os.environ.pop("NEXUS_EFFORT", None)
+        _reset_effort_override()
+        self.captured = {}
+        self._orig_stream = server.client.messages.stream
+
+        def _fake_stream(**kwargs):
+            self.captured.clear()
+            self.captured.update(kwargs)
+            return _FakeStream()
+
+        server.client.messages.stream = _fake_stream
+        self.c = TestClient(server.app)
+
+    def tearDown(self):
+        server.client.messages.stream = self._orig_stream
+        _reset_effort_override()
+
+    def test_stream_carries_model_and_effort(self):
+        # /rose-prompt is a direct client.messages.stream(...) call site.
+        r = self.c.post("/rose-prompt", json={"context": "some session material"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(self.captured.get("model"), "claude-sonnet-5")
+        self.assertEqual(self.captured.get("output_config"), {"effort": "high"})
+
+    def test_stream_admin_change_propagates(self):
+        admin = _auth_client()
+        self.assertEqual(
+            admin.put("/api/admin/nexus-effort", json={"effort": "medium"}).status_code, 200
+        )
+        r = self.c.post("/rose-prompt", json={"context": "some session material"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(self.captured.get("output_config"), {"effort": "medium"})
+
+    def test_short_endpoint_has_reasoning_headroom(self):
+        # Pins the fix: the previously-tiny short-output budget (was 100) now uses
+        # the shared headroom constant so high-effort reasoning can't blank it.
+        r = self.c.post("/rose-prompt", json={"context": "some session material"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(self.captured.get("max_tokens"), server._NEXUS_SHORT_MAX_TOKENS)
+        self.assertGreaterEqual(server._NEXUS_SHORT_MAX_TOKENS, 1024)
+
+
 class HealthSurfaceTests(unittest.TestCase):
     def test_health_config_exposes_nexus_baseline(self):
         _reset_effort_override()

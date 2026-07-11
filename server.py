@@ -58,6 +58,15 @@ _NEXUS_EFFORT_DEFAULT = "high"
 _NEXUS_EFFORT_LEVELS = ("low", "medium", "high")
 _NEXUS_EFFORT_SETTING_KEY = "nexus_effort"
 
+# High-effort reasoning on Sonnet 5 can consume the output budget before any
+# visible text is produced. Short-output endpoints (opening lines, seed prompts,
+# brief syntheses) keep their brevity via the prompt — "1–3 sentences", "return
+# only the question" — not via a tight token ceiling. Their prior ceilings
+# (100/120/200) left no room for reasoning at the default `high` effort and
+# risked blank or truncated streamed replies on user-facing entrypoints. Raising
+# the ceiling gives reasoning headroom without loosening the requested brevity.
+_NEXUS_SHORT_MAX_TOKENS = 1024
+
 
 def _normalize_effort(value: str | None) -> Optional[str]:
     """Return a valid effort level (low/medium/high) or None if unrecognised."""
@@ -786,7 +795,7 @@ Write a short contemplative starting point (2–3 sentences) to help this person
             with client.messages.stream(
                 model=_NEXUS_MODEL,
                 output_config=_nexus_output_config(),
-                max_tokens=200,
+                max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=INSPIRE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
             ) as s:
@@ -4096,7 +4105,7 @@ Return only the question or observation — no preamble, no attribution."""
             with client.messages.stream(
                 model=_NEXUS_MODEL,
                 output_config=_nexus_output_config(),
-                max_tokens=100,
+                max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=ROSE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
             ) as s:
@@ -4150,7 +4159,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
         async for event, payload in _stream_with_retry(
             client,
             model=_NEXUS_MODEL,
-            max_tokens=120,
+            max_tokens=_NEXUS_SHORT_MAX_TOKENS,
             system=ROSE_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
         ):
@@ -4305,7 +4314,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
         async for event, payload in _stream_with_retry(
             client,
             model=_NEXUS_MODEL,
-            max_tokens=600 if is_studio else 200,
+            max_tokens=600 if is_studio else _NEXUS_SHORT_MAX_TOKENS,
             system=system,
             messages=messages,
         ):
@@ -4409,7 +4418,7 @@ Task: {field_instructions.get(request.field, 'Write a synthesis.')}"""
             with client.messages.stream(
                 model=_NEXUS_MODEL,
                 output_config=_nexus_output_config(),
-                max_tokens=200,
+                max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=INSPIRE_L2_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
             ) as s:
