@@ -1414,6 +1414,31 @@
           <div id="infra-health-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
         </section>
 
+        <!-- Nexus response depth (reasoning effort) -->
+        <section class="panel card" style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <h2 style="margin:0">Nexus response depth</h2>
+            <span class="count-badge" id="nexus-effort-current">—</span>
+          </div>
+          <p class="hint" style="margin:4px 0 14px">
+            Global reasoning effort for every Nexus / Studio generation. Higher effort
+            improves depth and quality but increases latency and cost; lower effort
+            responds faster. The model is fixed (<code id="nexus-model">claude-sonnet-5</code>) —
+            this is the only Nexus tuning control and it is admin-only. Changes apply to
+            new requests, not replies already streaming.
+          </p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <label for="nexus-effort-select" style="font-size:0.85rem;color:#bbb;">Effort</label>
+            <select id="nexus-effort-select" class="btn" style="min-width:120px;">
+              <option value="low">Low — fastest</option>
+              <option value="medium">Medium — balanced</option>
+              <option value="high">High — deepest (default)</option>
+            </select>
+            <button class="btn" id="nexus-effort-save">Save</button>
+            <span id="nexus-effort-status" class="hint" style="margin:0;"></span>
+          </div>
+        </section>
+
         <!-- Post-beta operational task list -->
         <section class="panel card" style="margin-bottom:18px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -2842,8 +2867,48 @@
       }
     }
 
+    // ── Nexus response depth (reasoning effort) ──
+    function renderNexusEffort(state) {
+      if (!state) return;
+      const sel = $('nexus-effort-select');
+      const cur = $('nexus-effort-current');
+      const model = $('nexus-model');
+      if (sel && state.effort) sel.value = state.effort;
+      if (cur) cur.textContent = (state.effort || '—') + (state.source ? ` (${state.source})` : '');
+      if (model && state.model) model.textContent = state.model;
+    }
+
+    async function loadNexusEffort() {
+      try {
+        renderNexusEffort(await api('/api/admin/nexus-effort'));
+      } catch (e) {
+        const cur = $('nexus-effort-current');
+        if (cur) cur.textContent = 'unavailable';
+      }
+    }
+
+    async function saveNexusEffort() {
+      const sel = $('nexus-effort-select');
+      const status = $('nexus-effort-status');
+      if (!sel) return;
+      if (status) status.textContent = 'Saving…';
+      try {
+        const state = await api('/api/admin/nexus-effort', {
+          method: 'PUT',
+          body: JSON.stringify({ effort: sel.value }),
+        });
+        renderNexusEffort(state);
+        if (status) status.textContent = 'Saved — applies to new Nexus requests.';
+      } catch (e) {
+        if (status) status.textContent = 'Failed: ' + (e.message || 'error');
+      }
+    }
+
+    $('nexus-effort-save') && $('nexus-effort-save').addEventListener('click', saveNexusEffort);
+
     function loadInfrastructure() {
       loadInfraHealth();
+      loadNexusEffort();
       loadPostBetaTasks();
     }
 
