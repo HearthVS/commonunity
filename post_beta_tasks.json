@@ -1,0 +1,67 @@
+{
+  "schema_version": "post_beta_tasks_v1",
+  "description": "Source-controlled operational task list for CommonUnity. These are deliberately deferred until after the private beta ships. Read-only for now, surfaced in /admin. The shape (stable id, title, rationale, phase, status, completion_criteria) is designed to migrate into an editable admin table later without breaking the API.",
+  "phases": {
+    "beta": "Work that must exist before / during the private beta.",
+    "post_beta": "Deferred hardening — safe to do after the beta is live and stable.",
+    "scale": "Only relevant once usage grows beyond the invite cohort."
+  },
+  "tasks": [
+    {
+      "id": "perf-rum",
+      "title": "Real-user performance measurements",
+      "rationale": "Synthetic/local checks do not reflect what invitees on real networks and devices experience. We need field data (load, interaction latency) from actual sessions before tuning.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "A lightweight RUM signal (e.g. navigation + LCP/INP timings) is captured per private app and visible as a distribution in the admin panel, sourced only from consenting beta members with no PII."
+    },
+    {
+      "id": "perf-budget-bundle",
+      "title": "Frontend performance budgets & bundle/transfer audit",
+      "rationale": "index.html (~520KB) and studio.html (~1.3MB) ship as large single files. Without a transfer budget these will silently regress and hurt first load, especially on mobile.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "Per-page transfer-size budgets are documented, current sizes measured (gzipped), and a check flags when a page exceeds its budget. Largest offenders have a splitting/compression plan."
+    },
+    {
+      "id": "deploy-regression",
+      "title": "Deployment regression comparison",
+      "rationale": "Railway auto-deploys from main. A bad deploy can degrade health or performance with no baseline to compare against, making it hard to attribute a regression to a specific deploy.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "Each deploy records its commit/version plus a snapshot of key health-check durations, so two deploys can be compared and a regression traced to a commit."
+    },
+    {
+      "id": "latency-error-history",
+      "title": "Latency & error history",
+      "rationale": "The health endpoint is a point-in-time snapshot. Intermittent failures and slow trends are invisible without retained history.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "Health-check results (status + duration + timestamp) are persisted on a rolling window and the admin panel shows a short trend/history rather than only the latest check."
+    },
+    {
+      "id": "ai-cost-latency",
+      "title": "External AI cost/latency correlation",
+      "rationale": "Anthropic spend (Token Usage tab) and request latency are tracked separately. Correlating them reveals which flows are expensive or slow and whether model/config changes help.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "Per-endpoint AI call latency is recorded alongside token usage so cost and latency can be viewed together per route/flow over time."
+    },
+    {
+      "id": "db-backup-restore",
+      "title": "Database backup & restore verification",
+      "rationale": "Admin SQLite durability depends on the Railway volume (COMMONUNITY_ADMIN_DB_PATH). There is currently no automated backup and no tested restore, so a volume loss would lose invites/members/events.",
+      "phase": "beta",
+      "status": "todo",
+      "completion_criteria": "A scheduled backup of the admin SQLite DB exists off the app volume, and a restore has been performed at least once into a scratch environment and verified to reopen cleanly."
+    },
+    {
+      "id": "alert-ownership",
+      "title": "Alert ownership",
+      "rationale": "Health is only visible when an operator opens /admin. Degraded states (DB unwritable, SMTP down) can go unnoticed. Alerts need a defined owner and channel.",
+      "phase": "post_beta",
+      "status": "todo",
+      "completion_criteria": "Degraded health states trigger a notification to a named owner via a defined channel, with an escalation note documented in the repo."
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import os
 import json
 import pathlib
 import io
+import time
 import hmac
 import html
 import hashlib
@@ -2485,8 +2486,14 @@ async def brand_manifest():
 
 @app.get("/api/admin/status")
 async def admin_status(request: Request):
-    return {
-        "unlocked": _has_admin_access(request),
+    # This endpoint is intentionally ungated so the login UI can render before
+    # authentication. Deployment fingerprinting (commit/branch/environment)
+    # must NOT leak to anonymous callers — it is only attached once admin
+    # access is present. The same data is available admin-gated on
+    # GET /api/admin/health.
+    unlocked = _has_admin_access(request)
+    payload = {
+        "unlocked": unlocked,
         "configured": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
         "db_path": str(_admin_db_path()),
         "beta_code_configured": bool(_csv_env(_BETA_CODE_ENV)),
@@ -2496,6 +2503,9 @@ async def admin_status(request: Request):
         "email_template_version": "compass_png_branded_invite_v4",
         "brand_manifest_version": "brand_field_v1",
     }
+    if unlocked:
+        payload["version"] = _app_version_info()
+    return payload
 
 
 @app.post("/api/admin/login")
@@ -2691,62 +2701,365 @@ async def admin_milestones(request: Request):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@app.get("/api/admin/health")
-async def admin_health_check(request: Request):
-    """Live health checks for all attached infrastructure services."""
-    _require_admin(request)
-    import socket
-    results = {}
+# ── Pre-beta system-quality instrumentation ──────────────────────────────────
+# Lightweight active health checks + deployment/config/storage visibility for
+# the admin control room. Deliberately dependency-free (stdlib + existing
+# helpers) so it adds no deployment churn. Every check is bounded, returns a
+# state (healthy / degraded / unconfigured / unknown), and never leaks secrets
+# or raw exception internals.
+_POST_BETA_TASKS_PATH = _ROOT / "post_beta_tasks.json"
 
-    # 1. App itself (always ok if we got here)
-    results["app"] = {"ok": True, "detail": "Railway app responding"}
+# Timeouts (seconds) for the active probes so a slow dependency can't hang the
+# admin panel.
+_HEALTH_DNS_TIMEOUT = 2.0
+_HEALTH_ROUTE_READ_TIMEOUT = 1.0
 
-    # 2. Database
+# Health states. `ok` is retained on every check purely for the older admin UI;
+# `status` is the source of truth going forward.
+_HEALTHY = "healthy"
+_DEGRADED = "degraded"
+_UNCONFIGURED = "unconfigured"
+_UNKNOWN = "unknown"
+
+# Important local routes and their backing asset. Gated routes are served
+# behind the beta gate, so we verify the file is present and readable rather
+# than fetching the (protected) HTTP response — checking over HTTP would only
+# ever see the gate and tell us nothing about the real asset.
+_HEALTH_ROUTES = [
+    {"path": "/", "app": "public", "gated": False, "file": _ROOT / "homepage.html"},
+    {"path": "/compass", "app": "compass", "gated": True, "file": _ROOT / "index.html"},
+    {"path": "/studio", "app": "studio", "gated": True, "file": _ROOT / "studio.html"},
+    {"path": "/threshold", "app": "compass", "gated": True, "optional": True, "file": _ROOT / "threshold" / "threshold.html"},
+    {"path": "/admin", "app": "admin", "gated": True, "file": _ROOT / "admin.html"},
+]
+
+
+def _safe_err(exc: Exception) -> str:
+    """A short, non-leaky label for a failed check. Never surface the raw
+    message (it can contain paths/connection strings); just the error class."""
+    return type(exc).__name__
+
+
+def _redact_path(path: str) -> str:
+    """Show enough of a filesystem path to be useful to the operator without
+    exposing a full home directory or token-bearing segment."""
+    if not path:
+        return ""
+    parts = pathlib.Path(path).parts
+    if len(parts) <= 3:
+        return path
+    return os.path.join("…", *parts[-3:])
+
+
+def _app_version_info() -> dict:
+    """Deployment identity, best-effort and secret-free. Railway injects the
+    RAILWAY_GIT_* vars at build time; we fall back to a committed VERSION file
+    or the local .git ref so the panel still shows something in dev."""
+    commit = (
+        os.getenv("RAILWAY_GIT_COMMIT_SHA", "")
+        or os.getenv("GIT_COMMIT_SHA", "")
+        or os.getenv("SOURCE_VERSION", "")
+    ).strip()
+    branch = os.getenv("RAILWAY_GIT_BRANCH", "").strip()
+    source = "env" if commit else ""
+    if not commit:
+        head = _ROOT / ".git" / "HEAD"
+        try:
+            if head.exists():
+                ref = head.read_text(encoding="utf-8").strip()
+                if ref.startswith("ref:"):
+                    ref_path = _ROOT / ".git" / ref.split(" ", 1)[1].strip()
+                    if ref_path.exists():
+                        commit = ref_path.read_text(encoding="utf-8").strip()
+                        branch = branch or ref.rsplit("/", 1)[-1]
+                else:
+                    commit = ref
+                source = "git" if commit else source
+        except Exception:
+            pass
+    version_file = _ROOT / "VERSION"
+    version = os.getenv("COMMONUNITY_VERSION", "").strip()
+    if not version and version_file.exists():
+        try:
+            version = version_file.read_text(encoding="utf-8").strip()[:40]
+        except Exception:
+            version = ""
+    return {
+        "version": version or None,
+        "commit": (commit[:12] or None),
+        "branch": branch or None,
+        "deployment_id": os.getenv("RAILWAY_DEPLOYMENT_ID", "").strip() or None,
+        "environment": os.getenv("RAILWAY_ENVIRONMENT_NAME", "").strip() or None,
+        "service": os.getenv("RAILWAY_SERVICE_NAME", "").strip() or None,
+        "source": source or "unknown",
+    }
+
+
+def _db_persistence_info() -> dict:
+    """Whether the admin SQLite DB looks like it lives on a persistent volume.
+    Durability on Railway depends on COMMONUNITY_ADMIN_DB_PATH (or /app/data)
+    pointing at a mounted volume rather than the ephemeral container FS."""
+    path = _admin_db_path()
+    configured = bool(os.getenv(_ADMIN_DB_ENV, "").strip())
+    p = str(path)
+    on_volume_hint = configured or p.startswith("/app/data") or p.startswith("/data")
+    return {
+        "configured_env": configured,
+        "persistent_hint": on_volume_hint,
+        "path": _redact_path(p),
+    }
+
+
+def _check_database() -> dict:
+    """Read AND write probe against the admin DB. A read-only success is not
+    enough for pre-beta confidence — we must know the volume is writable, so we
+    round-trip a value through a dedicated probe table."""
+    t0 = time.perf_counter()
+    persistence = _db_persistence_info()
     try:
         with _admin_db() as conn:
             conn.execute("SELECT 1").fetchone()
-        results["database"] = {"ok": True, "detail": "SQLite reachable"}
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS health_probe (id INTEGER PRIMARY KEY CHECK (id = 1), value TEXT, updated_at TEXT)"
+            )
+            stamp = _now_iso()
+            conn.execute(
+                "INSERT INTO health_probe (id, value, updated_at) VALUES (1, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                (secrets.token_hex(8), stamp),
+            )
+            row = conn.execute("SELECT updated_at FROM health_probe WHERE id = 1").fetchone()
+        wrote = bool(row and row["updated_at"] == stamp)
+        detail = "read+write OK" if wrote else "read OK, write not confirmed"
+        if wrote and not persistence["persistent_hint"]:
+            return {
+                "ok": True,
+                "status": _DEGRADED,
+                "detail": "Writable, but DB path may be ephemeral — set COMMONUNITY_ADMIN_DB_PATH to a volume",
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
+                "persistence": persistence,
+            }
+        return {
+            "ok": wrote,
+            "status": _HEALTHY if wrote else _DEGRADED,
+            "detail": detail,
+            "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
+            "persistence": persistence,
+        }
     except Exception as exc:
-        results["database"] = {"ok": False, "detail": str(exc)}
+        return {
+            "ok": False,
+            "status": _DEGRADED,
+            "detail": f"DB check failed ({_safe_err(exc)})",
+            "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
+            "persistence": persistence,
+        }
 
-    # 3. Anthropic API key present
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    results["anthropic"] = {
-        "ok": bool(anthropic_key),
-        "detail": "API key configured" if anthropic_key else "ANTHROPIC_API_KEY missing"
+
+def _check_local_routes() -> dict:
+    """Active readiness check for important local routes. For file-backed
+    routes we open and read a byte of the backing asset (bounded work) to
+    confirm it is present and readable. Gated routes are flagged so the
+    operator understands a public fetch would return the beta gate, not the
+    asset."""
+    t0 = time.perf_counter()
+    routes = []
+    healthy = 0
+    required = 0
+    degraded = 0
+    for spec in _HEALTH_ROUTES:
+        r0 = time.perf_counter()
+        f = spec["file"]
+        optional = spec.get("optional", False)
+        entry = {"path": spec["path"], "gated": spec["gated"], "optional": optional}
+        if not optional:
+            required += 1
+        try:
+            if f.exists():
+                with open(f, "rb") as fh:
+                    fh.read(1)
+                size = f.stat().st_size
+                if size > 0:
+                    entry.update(status=_HEALTHY, ok=True, detail=f"asset present ({size // 1024} KB)")
+                    healthy += 1
+                else:
+                    entry.update(status=_DEGRADED, ok=False, detail="asset present but empty")
+                    degraded += 1
+            elif optional:
+                # Conditionally-mounted module absent from this deploy — expected, not a fault.
+                entry.update(status=_UNCONFIGURED, ok=True, detail="optional module not deployed")
+            else:
+                entry.update(status=_DEGRADED, ok=False, detail="backing asset missing")
+                degraded += 1
+        except Exception as exc:
+            entry.update(status=_DEGRADED, ok=False, detail=f"unreadable ({_safe_err(exc)})")
+            degraded += 1
+        entry["duration_ms"] = round((time.perf_counter() - r0) * 1000, 1)
+        routes.append(entry)
+    status = _DEGRADED if degraded else _HEALTHY
+    return {
+        "ok": degraded == 0,
+        "status": status,
+        "detail": f"{healthy}/{required} required route assets ready",
+        "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
+        "routes": routes,
     }
 
-    # 4. SMTP (Resend) — check env vars present
-    smtp_ok = _smtp_configured()
-    smtp_host = os.getenv("SMTP_HOST", "").strip()
-    results["resend"] = {
-        "ok": smtp_ok,
-        "detail": f"SMTP configured ({smtp_host})" if smtp_ok else "SMTP vars missing"
-    }
 
-    # 5. DNS — check commonunity.io resolves
+def _check_dns() -> dict:
+    """Resolve the apex domain with a bounded timeout so a DNS hang can't stall
+    the panel."""
+    import socket
+    t0 = time.perf_counter()
+    prev = socket.getdefaulttimeout()
     try:
+        socket.setdefaulttimeout(_HEALTH_DNS_TIMEOUT)
         ip = socket.gethostbyname("commonunity.io")
-        results["dns"] = {"ok": True, "detail": f"commonunity.io → {ip}"}
+        return {"ok": True, "status": _HEALTHY, "detail": f"commonunity.io → {ip}",
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 1)}
     except Exception as exc:
-        results["dns"] = {"ok": False, "detail": str(exc)}
+        return {"ok": False, "status": _DEGRADED, "detail": f"resolve failed ({_safe_err(exc)})",
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 1)}
+    finally:
+        socket.setdefaulttimeout(prev)
 
-    # 6. GitHub token env (Railway deploy key not directly checkable, check if repo accessible)
-    github_token = os.getenv("GITHUB_TOKEN", "").strip()
-    results["github"] = {
-        "ok": True,
-        "detail": "Token in Mac keychain · CommonUnity Railway · expires Jun 2027"
+
+def _config_readiness() -> dict:
+    """Configuration/runtime readiness. Missing *optional* config is reported
+    as `unconfigured` (a warning), not `degraded` (a failure), so the operator
+    can tell "not set up yet" from "broken". Only booleans are exposed — never
+    the values themselves."""
+    anthropic_key = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    admin_code = bool(os.getenv(_ADMIN_CODE_ENV, "").strip())
+    smtp_ok = _smtp_configured()
+    beta_code = bool(_csv_env(_BETA_CODE_ENV))
+    magic_links = bool(_csv_env(_BETA_TOKENS_ENV))
+
+    def item(ok: bool, label: str, required: bool) -> dict:
+        return {
+            "ok": ok,
+            "status": _HEALTHY if ok else (_DEGRADED if required else _UNCONFIGURED),
+            "detail": ("configured" if ok else ("required — not set" if required else "not configured")),
+            "label": label,
+        }
+
+    checks = {
+        "admin_code": item(admin_code, "Admin access code", required=True),
+        "anthropic": item(anthropic_key, "Anthropic API key", required=True),
+        "smtp": item(smtp_ok, "Invite email (SMTP)", required=False),
+        "beta_code": item(beta_code, "Beta access code", required=False),
+        "magic_links": item(magic_links, "Magic-link tokens", required=False),
     }
+    warnings = [v["label"] for v in checks.values() if not v["ok"]]
+    # A required item missing means degraded; only optional items missing is a
+    # warning-level (unconfigured) overall state.
+    if any(v["status"] == _DEGRADED for v in checks.values()):
+        status = _DEGRADED
+    elif warnings:
+        status = _UNCONFIGURED
+    else:
+        status = _HEALTHY
+    return {"status": status, "checks": checks, "warnings": warnings}
 
-    # 7. Beta tokens
+
+def _load_post_beta_tasks() -> dict:
+    """Load the source-controlled post-beta operational task list. Kept as a
+    committed JSON file (read-only surface for now) so the deferred work is
+    versioned alongside the code and can later migrate into editable admin
+    tasks without changing the response shape."""
+    try:
+        data = json.loads(_POST_BETA_TASKS_PATH.read_text(encoding="utf-8"))
+        tasks = data.get("tasks", [])
+        counts: dict[str, int] = {}
+        for task in tasks:
+            counts[task.get("status", "unknown")] = counts.get(task.get("status", "unknown"), 0) + 1
+        return {
+            "schema_version": data.get("schema_version"),
+            "phases": data.get("phases", {}),
+            "tasks": tasks,
+            "counts": counts,
+            "source": "post_beta_tasks.json",
+        }
+    except Exception as exc:
+        return {"schema_version": None, "phases": {}, "tasks": [], "counts": {},
+                "error": f"could not load task list ({_safe_err(exc)})"}
+
+
+def _overall_health(checks: dict) -> str:
+    states = [c.get("status", _UNKNOWN) for c in checks.values()]
+    if any(s == _DEGRADED for s in states):
+        return _DEGRADED
+    if any(s == _UNKNOWN for s in states):
+        return _UNKNOWN
+    if any(s == _UNCONFIGURED for s in states):
+        return _UNCONFIGURED
+    return _HEALTHY
+
+
+@app.get("/api/admin/health")
+async def admin_health_check(request: Request):
+    """Active, bounded health + deployment/config/storage visibility for the
+    admin control room. Distinguishes healthy / degraded / unconfigured /
+    unknown; carries per-check durations and a generated-at timestamp. No
+    secrets or raw exception internals are exposed."""
+    _require_admin(request)
+    started = time.perf_counter()
+    generated_at = _now_iso()
+
+    config = _config_readiness()
+
+    checks: dict[str, dict] = {}
+    # Runtime — if this handler runs at all, the app is up.
+    checks["app"] = {"ok": True, "status": _HEALTHY, "detail": "app responding", "duration_ms": 0.0}
+    checks["database"] = _check_database()
+    checks["routes"] = _check_local_routes()
+    checks["dns"] = _check_dns()
+
+    # Optional external dependencies — presence only, reported as warnings when
+    # absent rather than hard failures.
+    anthropic_key = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    checks["anthropic"] = {
+        "ok": anthropic_key,
+        "status": _HEALTHY if anthropic_key else _UNCONFIGURED,
+        "detail": "API key configured" if anthropic_key else "ANTHROPIC_API_KEY not set",
+        "duration_ms": 0.0,
+    }
+    smtp_ok = _smtp_configured()
+    smtp_host = os.getenv(_SMTP_HOST_ENV, "").strip()
+    checks["resend"] = {
+        "ok": smtp_ok,
+        "status": _HEALTHY if smtp_ok else _UNCONFIGURED,
+        "detail": f"SMTP configured ({smtp_host})" if smtp_ok else "SMTP not configured",
+        "duration_ms": 0.0,
+    }
     beta_tokens_ok = bool(_csv_env(_BETA_TOKENS_ENV))
-    results["beta_tokens"] = {
+    checks["beta_tokens"] = {
         "ok": beta_tokens_ok,
-        "detail": "BETA_TOKENS configured" if beta_tokens_ok else "BETA_TOKENS missing"
+        "status": _HEALTHY if beta_tokens_ok else _UNCONFIGURED,
+        "detail": "magic-link tokens configured" if beta_tokens_ok else "no magic-link tokens set",
+        "duration_ms": 0.0,
     }
 
-    all_ok = all(v["ok"] for v in results.values())
-    return {"all_ok": all_ok, "checks": results}
+    overall = _overall_health(checks)
+    total_ms = round((time.perf_counter() - started) * 1000, 1)
+    return {
+        # Backward-compatible fields for the existing panel.
+        "all_ok": all(v.get("ok") for v in checks.values()),
+        "checks": checks,
+        # New pre-beta visibility surface.
+        "status": overall,
+        "generated_at": generated_at,
+        "total_duration_ms": total_ms,
+        "version": _app_version_info(),
+        "config": config,
+    }
+
+
+@app.get("/api/admin/post-beta-tasks")
+async def admin_post_beta_tasks(request: Request):
+    """Source-controlled post-beta operational task list (read-only surface)."""
+    _require_admin(request)
+    return _load_post_beta_tasks()
 
 
 @app.post("/api/admin/invites")

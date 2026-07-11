@@ -701,6 +701,43 @@
     .health-card-body { flex: 1; }
     .health-card-body strong { display: block; }
     .health-card-body small { color: #777; }
+    .health-card small.health-meta { color: #9a9a9a; font-size: 0.68rem; display:block; margin-top:3px; }
+    .health-tag { display:inline-block; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.04em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,0.08); color:#aaa; margin-left:6px; vertical-align:middle; }
+
+    /* ── System-quality summary ── */
+    .health-summary {
+      display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+      padding:14px 16px; margin-bottom:14px; border-radius:12px;
+      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+      font-size:0.8rem;
+    }
+    .health-summary .hs-state { font-weight:640; display:flex; align-items:center; gap:8px; }
+    .health-summary .hs-state .health-dot { width:12px; height:12px; }
+    .health-summary .hs-meta { color:#888; font-size:0.74rem; }
+    .health-summary code { color:#c9b98a; }
+    .config-warnings { margin-bottom:14px; }
+    .config-warnings .cw-item {
+      display:flex; align-items:center; gap:8px; font-size:0.78rem;
+      padding:8px 12px; border-radius:10px; margin-bottom:6px;
+      background:rgba(240,192,96,0.08); border:1px solid rgba(240,192,96,0.2); color:#e6cf8a;
+    }
+
+    /* ── Post-beta task cards ── */
+    .pbt-card {
+      border:1px solid rgba(248,242,232,0.1); border-radius:14px;
+      background:rgba(255,255,255,0.03); padding:14px 16px;
+    }
+    .pbt-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .pbt-head strong { font-size:0.9rem; }
+    .pbt-id { font-family:monospace; font-size:0.68rem; color:#888; }
+    .pbt-badge { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.04em; padding:2px 7px; border-radius:8px; }
+    .pbt-phase-beta { background:rgba(230,160,160,0.14); color:#e6a0a0; }
+    .pbt-phase-post_beta { background:rgba(120,150,200,0.16); color:#9db4dc; }
+    .pbt-phase-scale { background:rgba(134,182,154,0.14); color:#86b69a; }
+    .pbt-status { background:rgba(255,255,255,0.08); color:#bbb; }
+    .pbt-rationale { color:#9a9a9a; font-size:0.78rem; margin:8px 0 0; }
+    .pbt-crit { color:#8a8a8a; font-size:0.74rem; margin:8px 0 0; }
+    .pbt-crit strong { color:#a9a9a9; font-weight:560; }
 
     /* ── Members ── */
     .member-grid {
@@ -1368,11 +1405,23 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div>
               <h2 style="margin:0">Live Health</h2>
-              <p class="hint" style="margin:4px 0 0">Real-time connectivity checks for all attached services.</p>
+              <p class="hint" style="margin:4px 0 0">Active, bounded checks for local routes and attached services. Run each time this tab opens.</p>
             </div>
             <button class="btn" id="infra-refresh">Refresh</button>
           </div>
+          <div id="infra-health-summary" class="health-summary"></div>
+          <div id="infra-config-warnings" class="config-warnings"></div>
           <div id="infra-health-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
+        </section>
+
+        <!-- Post-beta operational task list -->
+        <section class="panel card" style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <h2 style="margin:0">Post-beta tasks</h2>
+            <span class="count-badge" id="post-beta-count">—</span>
+          </div>
+          <p class="hint" style="margin:4px 0 14px">Source-controlled deferred hardening work (<code>post_beta_tasks.json</code>). Read-only surface for now.</p>
+          <div id="post-beta-tasks" style="display:grid;gap:12px;"></div>
         </section>
 
         <!-- Static services registry -->
@@ -2668,26 +2717,77 @@
 
     // ── Infrastructure health checks ──
     const HEALTH_LABELS = {
-      app:         { label: 'Railway App',    icon: '🚂' },
+      app:         { label: 'Runtime',        icon: '🚂' },
       database:    { label: 'Database',       icon: '◫' },
+      routes:      { label: 'Local routes',   icon: '🧭' },
+      dns:         { label: 'Cloudflare DNS', icon: '☁' },
       anthropic:   { label: 'Anthropic API',  icon: '◭' },
       resend:      { label: 'Resend SMTP',    icon: '✉' },
-      dns:         { label: 'Cloudflare DNS', icon: '☁' },
-      github:      { label: 'GitHub Token',  icon: '⌥' },
-      beta_tokens: { label: 'Beta Tokens',   icon: '🔑' },
+      beta_tokens: { label: 'Magic links',    icon: '🔑' },
     };
+    // Map a server health `status` to a dot class. Unknown/legacy checks fall
+    // back to the boolean `ok` field.
+    function healthDotClass(val) {
+      switch (val.status) {
+        case 'healthy': return 'ok';
+        case 'unconfigured': return 'warn';
+        case 'degraded': return 'err';
+        case 'unknown': return 'err';
+        default: return val.ok ? 'ok' : 'err';
+      }
+    }
+
+    function renderHealthSummary(res) {
+      const el = $('infra-health-summary');
+      if (!el) return;
+      const dot = healthDotClass({ status: res.status, ok: res.all_ok });
+      const label = (res.status || 'unknown').replace(/^\w/, c => c.toUpperCase());
+      const v = res.version || {};
+      const versionBits = [];
+      if (v.commit) versionBits.push(`<code>${escapeHtml(v.commit)}</code>${v.branch ? ' @ ' + escapeHtml(v.branch) : ''}`);
+      if (v.version) versionBits.push(escapeHtml(v.version));
+      if (v.environment) versionBits.push(escapeHtml(v.environment));
+      const versionStr = versionBits.length ? versionBits.join(' · ') : 'version unavailable';
+      el.innerHTML = `
+        <div class="hs-state"><span class="health-dot ${dot}"></span>${escapeHtml(label)}</div>
+        <div class="hs-meta">Deploy: ${versionStr}</div>
+        <div class="hs-meta">Checked ${res.generated_at ? date(res.generated_at) : '—'} · ${res.total_duration_ms != null ? res.total_duration_ms + ' ms' : ''}</div>
+      `;
+    }
+
+    function renderConfigWarnings(config) {
+      const el = $('infra-config-warnings');
+      if (!el) return;
+      const warnings = (config && config.warnings) || [];
+      if (!warnings.length) { el.innerHTML = ''; return; }
+      el.innerHTML = warnings.map(w =>
+        `<div class="cw-item"><span class="health-dot warn"></span>${escapeHtml(w)} — not configured</div>`
+      ).join('');
+    }
 
     function renderHealthGrid(checks) {
       const grid = $('infra-health-grid');
       if (!grid) return;
       grid.innerHTML = Object.entries(checks).map(([key, val]) => {
         const meta = HEALTH_LABELS[key] || { label: key, icon: '○' };
-        const dot = val.ok ? 'ok' : 'err';
+        const dot = healthDotClass(val);
+        const dur = (val.duration_ms != null && val.duration_ms > 0) ? `${val.duration_ms} ms` : '';
+        let extra = '';
+        if (key === 'routes' && Array.isArray(val.routes)) {
+          extra = '<small class="health-meta">' + val.routes.map(r =>
+            `${escapeHtml(r.path)}${r.gated ? ' <span class="health-tag">gated</span>' : ''} — ${escapeHtml(r.status)}`
+          ).join('<br>') + '</small>';
+        }
+        if (key === 'database' && val.persistence) {
+          const p = val.persistence;
+          extra = `<small class="health-meta">path ${escapeHtml(p.path || '—')} · ${p.persistent_hint ? 'persistent' : 'ephemeral?'}</small>`;
+        }
         return `<div class="health-card">
           <div class="health-dot ${dot}"></div>
           <div class="health-card-body">
             <strong>${meta.icon} ${meta.label}</strong>
-            <small>${escapeHtml(val.detail || '')}</small>
+            <small>${escapeHtml(val.detail || '')}${dur ? ' · ' + dur : ''}</small>
+            ${extra}
           </div>
         </div>`;
       }).join('');
@@ -2701,18 +2801,58 @@
       ).join('');
       try {
         const res = await api('/api/admin/health');
+        renderHealthSummary(res);
+        renderConfigWarnings(res.config);
         renderHealthGrid(res.checks || {});
       } catch(e) {
+        $('infra-health-summary').innerHTML = '';
         grid.innerHTML = `<div class="health-card"><div class="health-dot err"></div><div class="health-card-body"><strong>Health check failed</strong><small>${escapeHtml(String(e))}</small></div></div>`;
       }
     }
 
-    $('infra-refresh') && $('infra-refresh').addEventListener('click', loadInfraHealth);
+    // ── Post-beta task list ──
+    const PBT_PHASE_LABEL = { beta: 'Beta', post_beta: 'Post-beta', scale: 'Scale' };
+    async function loadPostBetaTasks() {
+      const el = $('post-beta-tasks');
+      if (!el) return;
+      el.innerHTML = '<p class="muted">Loading tasks…</p>';
+      try {
+        const res = await api('/api/admin/post-beta-tasks');
+        const tasks = res.tasks || [];
+        $('post-beta-count').textContent = tasks.length;
+        if (!tasks.length) {
+          el.innerHTML = `<p class="muted">${res.error ? escapeHtml(res.error) : 'No tasks defined.'}</p>`;
+          return;
+        }
+        el.innerHTML = tasks.map(t => {
+          const phase = t.phase || 'post_beta';
+          return `<div class="pbt-card">
+            <div class="pbt-head">
+              <strong>${escapeHtml(t.title || 'Untitled')}</strong>
+              <span class="pbt-id">${escapeHtml(t.id || '')}</span>
+              <span class="pbt-badge pbt-phase-${escapeHtml(phase)}">${escapeHtml(PBT_PHASE_LABEL[phase] || phase)}</span>
+              <span class="pbt-badge pbt-status">${escapeHtml(t.status || 'todo')}</span>
+            </div>
+            <p class="pbt-rationale">${escapeHtml(t.rationale || '')}</p>
+            <p class="pbt-crit"><strong>Done when:</strong> ${escapeHtml(t.completion_criteria || '')}</p>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        el.innerHTML = `<p class="muted">Could not load tasks: ${escapeHtml(String(e))}</p>`;
+      }
+    }
 
-    // Auto-load health when Infrastructure tab is opened
+    function loadInfrastructure() {
+      loadInfraHealth();
+      loadPostBetaTasks();
+    }
+
+    $('infra-refresh') && $('infra-refresh').addEventListener('click', loadInfrastructure);
+
+    // Auto-load health + tasks when Infrastructure tab is opened
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (btn.dataset.tab === 'infrastructure') loadInfraHealth();
+        if (btn.dataset.tab === 'infrastructure') loadInfrastructure();
       });
     });
 
