@@ -49,6 +49,37 @@ deployment churn.
 Both surfaces render in the admin **Infrastructure** tab (live health summary +
 deployment version, config warnings, and the post-beta task list).
 
+## Nexus model & response depth
+
+All Nexus / Studio / generation endpoints share a single fixed model,
+`claude-sonnet-5` (`server._NEXUS_MODEL`). There is **no user-facing model or
+mode selector** — the model is a product decision, not a per-request option.
+Every Anthropic request sends `output_config={"effort": <level>}` so the model's
+reasoning depth is deterministic rather than implicit.
+
+- **Effort levels:** `low` (fastest), `medium`, `high` (deepest — product
+  default). Higher effort improves quality but increases latency and cost.
+- **`GET /api/admin/nexus-effort`** (admin-gated) — returns the non-secret active
+  configuration: fixed `model`, active `effort`, which layer is authoritative
+  (`source`: `admin` / `env` / `default`), available `levels`, and the
+  `env_default`.
+- **`PUT /api/admin/nexus-effort`** (admin-gated) — sets the global effort
+  override (`{"effort": "low|medium|high"}`, validated → `422` otherwise). The
+  value is persisted durably in the admin SQLite `app_settings` table, so it
+  survives restarts/redeploys. Changes apply to **subsequent** Nexus requests,
+  never to a reply already streaming. The model is not changeable here.
+- Resolution order: admin override (if set) → `NEXUS_EFFORT` env var → `high`.
+- The control renders in the admin **Infrastructure** tab as "Nexus response
+  depth", and the active model/effort also appears in the `/api/admin/health`
+  `config.nexus` block.
+
+**Railway env var (optional):** `NEXUS_EFFORT` sets the boot-time default
+(`low` / `medium` / `high`). If unset or invalid it falls back to `high`; an
+admin override always wins over it. No env change is *required* — the default is
+already `high`.
+
+Tests: `python -m unittest test_nexus_model -v`.
+
 **Deployment note:** admin SQLite durability depends on
 `COMMONUNITY_ADMIN_DB_PATH` (or `/app/data/...`) pointing at a persistent Railway
 volume; the `database` health check surfaces a `degraded` warning if the path

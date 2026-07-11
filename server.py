@@ -41,8 +41,54 @@ client = Anthropic()
 
 # ── Model configuration ──────────────────────────────────────────────────────
 # Single place to update the model for all Nexus/Studio/generation endpoints.
-# Current: claude-sonnet-4-6 (upgraded from claude-sonnet-4-5, June 2026)
-_NEXUS_MODEL = "claude-sonnet-4-6"
+# Current: claude-sonnet-5 (upgraded from claude-sonnet-4-6, July 2026 pre-beta
+# baseline). Fixed model — there is no user-facing model selector.
+_NEXUS_MODEL = "claude-sonnet-5"
+
+# ── Reasoning effort configuration ────────────────────────────────────────────
+# Sonnet 5 exposes a reasoning-effort control (output_config.effort). It defaults
+# to high on its own, but we always send an explicit value so the active level is
+# deterministic and can be tuned at runtime by an admin (no user-facing selector).
+# Resolution order, highest priority first:
+#   1. Admin override persisted in app_settings (durable across restarts)
+#   2. NEXUS_EFFORT env var (boot-time default / Railway fallback)
+#   3. "high" (product default)
+_NEXUS_EFFORT_ENV = "NEXUS_EFFORT"
+_NEXUS_EFFORT_DEFAULT = "high"
+_NEXUS_EFFORT_LEVELS = ("low", "medium", "high")
+_NEXUS_EFFORT_SETTING_KEY = "nexus_effort"
+
+
+def _normalize_effort(value: str | None) -> Optional[str]:
+    """Return a valid effort level (low/medium/high) or None if unrecognised."""
+    v = (value or "").strip().lower()
+    return v if v in _NEXUS_EFFORT_LEVELS else None
+
+
+def _env_effort_default() -> str:
+    """Boot-time effort default: NEXUS_EFFORT if valid, else the product default."""
+    return _normalize_effort(os.getenv(_NEXUS_EFFORT_ENV)) or _NEXUS_EFFORT_DEFAULT
+
+
+def _nexus_effort() -> str:
+    """Active Nexus reasoning effort. Admin DB override wins (deterministic and
+    visible in the admin control room), then the NEXUS_EFFORT env default, then
+    'high'. Resolved fresh per request, so an admin change applies to subsequent
+    Nexus calls — never to a response already streaming."""
+    try:
+        stored = _normalize_effort(_get_setting(_NEXUS_EFFORT_SETTING_KEY))
+        if stored:
+            return stored
+    except Exception:
+        # Never let a settings-store hiccup break generation; fall back cleanly.
+        pass
+    return _env_effort_default()
+
+
+def _nexus_output_config() -> dict:
+    """output_config passed to every Anthropic Messages call so the fixed model
+    runs at the active effort level."""
+    return {"effort": _nexus_effort()}
 
 CONTEXT_PATH = pathlib.Path(__file__).parent / "commonunity-context.md"
 BRAND_REF_PATH = pathlib.Path(__file__).parent / "brand-reference.txt"
@@ -117,6 +163,9 @@ class BrandVersionRequest(BaseModel):
     logo_svg: str = ""
     email_png_path: str = ""
     notes: str = ""
+
+class NexusEffortRequest(BaseModel):
+    effort: str = ""  # "low" | "medium" | "high"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -470,6 +519,7 @@ DOCUMENT:
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=1500,
                 system=CV_EXTRACTION_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -550,6 +600,7 @@ TRANSCRIPT:
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=3000,
                 system=TRANSCRIPT_ROUTING_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}]
@@ -654,6 +705,7 @@ QUESTION: {request.query}"""
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=800,
                 system=system,
                 messages=[{"role": "user", "content": user_msg}]
@@ -733,6 +785,7 @@ Write a short contemplative starting point (2–3 sentences) to help this person
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=200,
                 system=INSPIRE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -844,6 +897,7 @@ async def threshold_name_essay(req: NameEssayRequest):
     try:
         resp = client.messages.create(
             model=_NEXUS_MODEL,
+            output_config=_nexus_output_config(),
             max_tokens=900,
             system=NAME_ESSAY_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
@@ -953,6 +1007,7 @@ async def generate(request: GenerateRequest, req: Request):
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=2048,
                 system=system,
                 messages=[{"role": "user", "content": user}]
@@ -1559,6 +1614,18 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Durable key/value store for operator-set runtime settings (e.g. the Nexus
+    # reasoning-effort override). Survives restarts/deploys with the rest of the
+    # admin DB; no separate service. Values are non-secret operational config.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
     conn.execute(
@@ -1591,6 +1658,51 @@ def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None
     return {key: row[key] for key in row.keys()}
+
+
+def _get_setting(key: str, default: str | None = None) -> str | None:
+    """Read a durable operator setting from app_settings, or `default` if unset."""
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key = ?", (key,)
+        ).fetchone()
+    return row["value"] if row is not None else default
+
+
+def _set_setting(key: str, value: str) -> None:
+    """Upsert a durable operator setting (survives restarts/deploys)."""
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO app_settings (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value,
+                                           updated_at = excluded.updated_at
+            """,
+            (key, value, _now_iso()),
+        )
+        conn.commit()
+
+
+def _nexus_effort_state() -> dict:
+    """Non-secret snapshot of the active Nexus model + effort configuration for
+    admin surfaces. `source` explains which layer is currently authoritative."""
+    stored = _normalize_effort(_get_setting(_NEXUS_EFFORT_SETTING_KEY))
+    env_default = _env_effort_default()
+    if stored:
+        source = "admin"
+    elif _normalize_effort(os.getenv(_NEXUS_EFFORT_ENV)):
+        source = "env"
+    else:
+        source = "default"
+    return {
+        "model": _NEXUS_MODEL,
+        "effort": stored or env_default,
+        "source": source,
+        "levels": list(_NEXUS_EFFORT_LEVELS),
+        "env_default": env_default,
+        "admin_override": stored,
+    }
 
 
 def _mask_token(token: str | None) -> str:
@@ -1731,6 +1843,7 @@ async def _stream_with_retry(client, *, model, max_tokens, system, messages, max
             result_holder = []
             with client.messages.stream(
                 model=model,
+                output_config=_nexus_output_config(),
                 max_tokens=max_tokens,
                 system=system,
                 messages=messages,
@@ -2959,7 +3072,13 @@ def _config_readiness() -> dict:
         status = _UNCONFIGURED
     else:
         status = _HEALTHY
-    return {"status": status, "checks": checks, "warnings": warnings}
+    # Active (non-secret) Nexus model + effort so the operator can confirm the
+    # generation baseline at a glance. Values are operational config, not secrets.
+    try:
+        nexus = _nexus_effort_state()
+    except Exception:
+        nexus = {"model": _NEXUS_MODEL, "effort": _env_effort_default(), "source": "default"}
+    return {"status": status, "checks": checks, "warnings": warnings, "nexus": nexus}
 
 
 def _load_post_beta_tasks() -> dict:
@@ -3060,6 +3179,36 @@ async def admin_post_beta_tasks(request: Request):
     """Source-controlled post-beta operational task list (read-only surface)."""
     _require_admin(request)
     return _load_post_beta_tasks()
+
+
+@app.get("/api/admin/nexus-effort")
+async def admin_get_nexus_effort(request: Request):
+    """Admin: current Nexus reasoning-effort configuration. Non-secret operational
+    config only (fixed model id + active effort + which layer is authoritative)."""
+    _require_admin(request)
+    return _nexus_effort_state()
+
+
+@app.put("/api/admin/nexus-effort")
+async def admin_set_nexus_effort(request: Request, payload: NexusEffortRequest):
+    """Admin: set the global Nexus reasoning-effort override. Persists durably in
+    app_settings (survives restarts/deploys) and applies to subsequent Nexus
+    requests — never to a response already streaming. The model stays fixed."""
+    _require_admin(request)
+    effort = _normalize_effort(payload.effort)
+    if effort is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"effort must be one of {', '.join(_NEXUS_EFFORT_LEVELS)}",
+        )
+    _set_setting(_NEXUS_EFFORT_SETTING_KEY, effort)
+    _record_event(
+        "nexus_effort_changed",
+        route="/admin",
+        source="admin",
+        detail=effort,
+    )
+    return _nexus_effort_state()
 
 
 @app.post("/api/admin/invites")
@@ -3946,6 +4095,7 @@ Return only the question or observation — no preamble, no attribution."""
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=100,
                 system=ROSE_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -4258,6 +4408,7 @@ Task: {field_instructions.get(request.field, 'Write a synthesis.')}"""
         try:
             with client.messages.stream(
                 model=_NEXUS_MODEL,
+                output_config=_nexus_output_config(),
                 max_tokens=200,
                 system=INSPIRE_L2_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}]
@@ -4462,6 +4613,7 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
     try:
         msg = client.messages.create(
             model=_NEXUS_MODEL,
+            output_config=_nexus_output_config(),
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_msg}],
@@ -5807,6 +5959,7 @@ def _fo_describe_image(data: bytes, content_type: str) -> dict:
         b64 = base64.standard_b64encode(data).decode("ascii")
         resp = client.messages.create(
             model=_NEXUS_MODEL,
+            output_config=_nexus_output_config(),
             max_tokens=4096,
             messages=[{
                 "role": "user",
