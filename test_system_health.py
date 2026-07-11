@@ -89,11 +89,33 @@ class HealthEndpointTests(unittest.TestCase):
 
 
 class VersionVisibilityTests(unittest.TestCase):
-    def test_version_in_status(self):
+    def test_version_in_status_when_authenticated(self):
         c = _auth_client()
         v = c.get("/api/admin/status").json()["version"]
         for key in ("version", "commit", "branch", "source"):
             self.assertIn(key, v)
+
+    def test_status_does_not_leak_version_when_anonymous(self):
+        # Regression: /api/admin/status is intentionally ungated (drives the
+        # login UI), so it must NOT expose deployment fingerprinting metadata
+        # to anonymous callers. The gated /api/admin/health carries it instead.
+        os.environ["RAILWAY_GIT_COMMIT_SHA"] = "deadbeef1234567890"
+        os.environ["RAILWAY_GIT_BRANCH"] = "main"
+        os.environ["RAILWAY_ENVIRONMENT_NAME"] = "production"
+        try:
+            anon = TestClient(server.app)
+            r = anon.get("/api/admin/status")
+            self.assertEqual(r.status_code, 200)  # stays reachable for login UI
+            body = r.json()
+            self.assertNotIn("version", body)
+            # No fingerprinting values anywhere in the raw payload.
+            raw = r.text
+            self.assertNotIn("deadbeef1234", raw)
+            self.assertNotIn("production", raw)
+        finally:
+            del os.environ["RAILWAY_GIT_COMMIT_SHA"]
+            del os.environ["RAILWAY_GIT_BRANCH"]
+            del os.environ["RAILWAY_ENVIRONMENT_NAME"]
 
     def test_env_commit_is_surfaced(self):
         os.environ["RAILWAY_GIT_COMMIT_SHA"] = "abcdef1234567890"

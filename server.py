@@ -2486,8 +2486,14 @@ async def brand_manifest():
 
 @app.get("/api/admin/status")
 async def admin_status(request: Request):
-    return {
-        "unlocked": _has_admin_access(request),
+    # This endpoint is intentionally ungated so the login UI can render before
+    # authentication. Deployment fingerprinting (commit/branch/environment)
+    # must NOT leak to anonymous callers — it is only attached once admin
+    # access is present. The same data is available admin-gated on
+    # GET /api/admin/health.
+    unlocked = _has_admin_access(request)
+    payload = {
+        "unlocked": unlocked,
         "configured": bool(os.getenv(_ADMIN_CODE_ENV, "").strip()),
         "db_path": str(_admin_db_path()),
         "beta_code_configured": bool(_csv_env(_BETA_CODE_ENV)),
@@ -2496,8 +2502,10 @@ async def admin_status(request: Request):
         "invite_base_url": _public_base_url(request),
         "email_template_version": "compass_png_branded_invite_v4",
         "brand_manifest_version": "brand_field_v1",
-        "version": _app_version_info(),
     }
+    if unlocked:
+        payload["version"] = _app_version_info()
+    return payload
 
 
 @app.post("/api/admin/login")
