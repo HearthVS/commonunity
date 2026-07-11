@@ -157,6 +157,7 @@ img,svg{display:block;max-width:100%}
   color:var(--ui-muted);transition:.16s var(--ease);background:var(--ui-panel-2)}
 .pill:hover{color:var(--ui-fg);border-color:var(--ui-line-2);background:#26271b}
 .pill[aria-checked="true"]{border-color:var(--ui-accent);color:#f4e6c4;background:#211f16}
+.pill--sm{padding:5px 11px;font-size:11px}
 
 /* text fields */
 .field{margin-bottom:14px}
@@ -378,6 +379,34 @@ img,svg{display:block;max-width:100%}
 .viz[data-has-photo="true"][data-photo-alpha="true"] .viz-hero__photo{
   object-fit:contain;background:transparent}
 
+/* PORTRAIT FADE — a true alpha mask (mask-image) feathers the portrait so it
+   merges into adjacent copy and the field, softening hard image edges. Because
+   a mask multiplies the element's own alpha it preserves a transparent PNG's
+   cut-out AND works on opaque photos, with no colour overlay or white backing.
+   --fade-strength (0..1, set inline by JS) drives how far the feather reaches;
+   --fade-reach caps it so the opposite edge / centred face stays fully opaque.
+   Direction is responsive: it targets the edge that meets text per hero mode,
+   and the lower text flow when the stage stacks on mobile. */
+.viz-hero__photo{--fade-reach:calc(14% + var(--fade-strength,.6) * 46%)}
+.viz[data-fade="none"] .viz-hero__photo{-webkit-mask-image:none;mask-image:none}
+/* Toward text — default (contained / bleed-left) fades the RIGHT edge. */
+.viz[data-fade="text"] .viz-hero__photo{
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - var(--fade-reach)),transparent 100%);
+  mask-image:linear-gradient(to right,#000 calc(100% - var(--fade-reach)),transparent 100%)}
+/* bleed-right places copy on the left, so fade the LEFT edge. */
+.viz[data-fade="text"][data-hero="bleed-right"] .viz-hero__photo{
+  -webkit-mask-image:linear-gradient(to left,#000 calc(100% - var(--fade-reach)),transparent 100%);
+  mask-image:linear-gradient(to left,#000 calc(100% - var(--fade-reach)),transparent 100%)}
+/* full-bleed places copy at the bottom, so fade the BOTTOM edge. */
+.viz[data-fade="text"][data-hero="full-bleed"] .viz-hero__photo{
+  -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade-reach)),transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade-reach)),transparent 100%)}
+/* All edges — a soft radial feather (vignette) centred slightly high on the
+   face, never a harsh ellipse; face core stays opaque, only the border melts. */
+.viz[data-fade="edges"] .viz-hero__photo{
+  -webkit-mask-image:radial-gradient(120% 120% at 50% 42%,#000 calc(60% - var(--fade-strength,.6) * 34%),transparent 100%);
+  mask-image:radial-gradient(120% 120% at 50% 42%,#000 calc(60% - var(--fade-strength,.6) * 34%),transparent 100%)}
+
 /* --- HERO: CONTAINED --- */
 .viz[data-hero="contained"] .viz-hero{grid-template-columns:1.05fr .95fr;gap:clamp(24px,5vw,64px);
   padding:clamp(40px,6vw,84px) clamp(28px,6vw,72px)}
@@ -559,6 +588,11 @@ img,svg{display:block;max-width:100%}
 .stage.is-mobile .viz .viz-title{font-size:clamp(40px,11vw,58px)}
 .stage.is-mobile .viz .viz-hero__copy{padding:clamp(28px,7vw,44px) !important}
 .stage.is-mobile .viz .viz-watermark{width:60%}
+/* Stacked mobile: the portrait sits ABOVE the copy (media order:-1), so
+   "toward text" always fades the LOWER edge regardless of desktop hero mode. */
+.stage.is-mobile .viz[data-fade="text"] .viz-hero__photo{
+  -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade-reach)),transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade-reach)),transparent 100%)}
 
 @media (max-width:920px){
   .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;overflow:auto}

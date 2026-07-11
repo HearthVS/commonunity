@@ -88,6 +88,18 @@
                     <input type="range" id="heroFocalY" min="0" max="100" step="1" value="50" aria-label="Portrait focal Y" />
                   </div>
                 </div>
+                <div class="adj adj--fade">
+                  <span class="minilabel" id="lbl-herofade">Portrait fade</span>
+                  <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-herofade" id="heroFadeSeg">
+                    <button role="radio" class="pill pill--sm" data-herofade="none" aria-checked="true" tabindex="0">None</button>
+                    <button role="radio" class="pill pill--sm" data-herofade="text" aria-checked="false" tabindex="-1">Toward text</button>
+                    <button role="radio" class="pill pill--sm" data-herofade="edges" aria-checked="false" tabindex="-1">All edges</button>
+                  </div>
+                </div>
+                <div class="adj" id="heroFadeStrengthRow" hidden>
+                  <span class="adj__label">Fade strength <span class="adj__val" id="heroFadeStrengthVal">60%</span></span>
+                  <input type="range" id="heroFadeStrength" min="0" max="100" step="1" value="60" aria-label="Portrait fade strength" />
+                </div>
               </div>
             </div>
           </div>

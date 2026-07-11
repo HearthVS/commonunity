@@ -434,4 +434,66 @@ test('removing the portrait restores the no-photo placeholder + clears alpha', (
   assert.match(fpJs, /heroImg\.removeAttribute\('src'\)/);
 });
 
+// ── Portrait fade / opacity gradient (merge into text, soften edges) ──
+test('portrait fade controls exist: None / Toward text / All edges + strength', () => {
+  // A radiogroup of three concise choices lives inside the hero photo fields.
+  assert.match(fpHtml, /id="heroFadeSeg"[^>]*role="radiogroup"|role="radiogroup"[^>]*id="heroFadeSeg"/);
+  assert.match(fpHtml, /data-herofade="none"[^>]*>\s*None/);
+  assert.match(fpHtml, /data-herofade="text"[^>]*>\s*Toward text/);
+  assert.match(fpHtml, /data-herofade="edges"[^>]*>\s*All edges/);
+  // A strength slider (0..100) with a live value label, hidden until a fade is on.
+  assert.match(fpHtml, /id="heroFadeStrengthRow"[^>]*hidden/);
+  assert.match(fpHtml, /id="heroFadeStrength"[^>]*min="0"[^>]*max="100"/);
+  assert.match(fpHtml, /id="heroFadeStrengthVal"/);
+});
+
+test('fade state defaults to none (backwards-compatible, no surprise fade)', () => {
+  assert.match(fpJs, /heroFadeMode: 'none'/);
+  assert.match(fpJs, /heroFadeStrength: 0\.6/);
+});
+
+test('applyComposition publishes data-fade + --fade-strength (photo-gated)', () => {
+  assert.match(fpJs, /viz\.dataset\.fade = hasPhoto \? state\.heroFadeMode : 'none'/);
+  assert.match(fpJs, /viz\.style\.setProperty\('--fade-strength', String\(state\.heroFadeStrength\)\)/);
+});
+
+test('fade segmented buttons + strength slider are wired', () => {
+  const wh = fpJs.slice(fpJs.indexOf('function wireHeroPhoto'), fpJs.indexOf('function applyHeroFocal'));
+  assert.match(wh, /heroFadeSeg/);
+  assert.match(wh, /state\.heroFadeMode = btn\.getAttribute\('data-herofade'\)/);
+  assert.match(wh, /state\.heroFadeStrength = n \/ 100/);
+});
+
+test('fade uses a true alpha mask (mask-image + -webkit-mask-image), no colour overlay', () => {
+  // Both prefixes present so transparent-PNG alpha is preserved on WebKit too.
+  assert.match(fpCss, /\.viz\[data-fade="text"\] \.viz-hero__photo\{[^}]*-webkit-mask-image:linear-gradient/);
+  assert.match(fpCss, /\.viz\[data-fade="text"\] \.viz-hero__photo\{[^}]*[^-]mask-image:linear-gradient/);
+  // None explicitly clears the mask so nothing lingers.
+  assert.match(fpCss, /\.viz\[data-fade="none"\] \.viz-hero__photo\{[^}]*mask-image:none/);
+  // Strength drives reach via a CSS custom property (no hard-coded opacity dim).
+  assert.match(fpCss, /--fade-reach:calc\([^)]*var\(--fade-strength/);
+});
+
+test('toward-text fade is responsive per hero mode + stacks to bottom on mobile', () => {
+  // contained/bleed-left default → right edge; bleed-right → left; full-bleed → bottom.
+  assert.match(fpCss, /\.viz\[data-fade="text"\] \.viz-hero__photo\{[^}]*linear-gradient\(to right/);
+  assert.match(fpCss, /\.viz\[data-fade="text"\]\[data-hero="bleed-right"\] \.viz-hero__photo\{[^}]*linear-gradient\(to left/);
+  assert.match(fpCss, /\.viz\[data-fade="text"\]\[data-hero="full-bleed"\] \.viz-hero__photo\{[^}]*linear-gradient\(to bottom/);
+  // Stacked mobile always fades the lower edge (media sits above copy).
+  assert.match(fpCss, /\.stage\.is-mobile \.viz\[data-fade="text"\] \.viz-hero__photo\{[^}]*linear-gradient\(to bottom/);
+});
+
+test('all-edges fade is a soft radial vignette centred on the face, not a harsh ellipse', () => {
+  assert.match(fpCss, /\.viz\[data-fade="edges"\] \.viz-hero__photo\{[^}]*radial-gradient\([^}]*at 50% 42%/);
+  assert.match(fpCss, /\.viz\[data-fade="edges"\] \.viz-hero__photo\{[^}]*-webkit-mask-image:radial-gradient/);
+});
+
+test('fade resets on remove and on model rehydration (no stale framing)', () => {
+  const wh = fpJs.slice(fpJs.indexOf('function wireHeroPhoto'), fpJs.indexOf('function applyHeroFocal'));
+  assert.match(wh, /state\.heroFadeMode = 'none'; state\.heroFadeStrength = 0\.6/);
+  const hy = fpJs.slice(fpJs.indexOf('function hydrateFromModel'));
+  assert.match(hy, /state\.heroFadeMode = 'none'/);
+  assert.match(hy, /state\.heroFadeStrength = 0\.6/);
+});
+
 console.log('\n' + passed + ' checks passed.');

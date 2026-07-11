@@ -146,6 +146,8 @@
     heroPhotoHasAlpha: false,
     heroFocalX: 50,
     heroFocalY: 50,
+    heroFadeMode: 'none',
+    heroFadeStrength: 0.6,
     roleOverrides: { root: null, expression: null, radiance: null },
     sections: SECTIONS.map((s) => ({ ...s, image: null, imgRole: null })),
     view: 'desktop',
@@ -800,6 +802,12 @@
     // atmospheric field — no opaque card/backing. Opaque photos keep the cover
     // crop + focal framing. Detection runs where heroPhoto changes.
     viz.dataset.photoAlpha = (hasPhoto && state.heroPhotoHasAlpha) ? 'true' : 'false';
+    // Portrait fade: a true alpha mask (CSS mask-image) softens the image edge
+    // that meets text, or feathers all edges, so it merges into the field and
+    // adjacent copy. Direction is resolved responsively in CSS from data-hero /
+    // the mobile stage. Strength drives the gradient reach via --fade-strength.
+    viz.dataset.fade = hasPhoto ? state.heroFadeMode : 'none';
+    viz.style.setProperty('--fade-strength', String(state.heroFadeStrength));
     const heroImg = $('heroPhoto');
     if (heroImg) {
       if (hasPhoto) {
@@ -1133,6 +1141,7 @@
       state.heroPhoto = ''; state.heroAlt = '';
       state.heroFocalX = 50; state.heroFocalY = 50;
       state.heroPhotoHasAlpha = false;
+      state.heroFadeMode = 'none'; state.heroFadeStrength = 0.6;
       applyComposition(); syncHeroEditor();
     });
     if (alt) alt.addEventListener('input', () => {
@@ -1141,6 +1150,20 @@
     });
     if (fx) fx.addEventListener('input', () => applyHeroFocal('x', fx.value));
     if (fy) fy.addEventListener('input', () => applyHeroFocal('y', fy.value));
+    const fadeSeg = $('heroFadeSeg');
+    if (fadeSeg) fadeSeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-herofade]');
+      if (!btn) return;
+      state.heroFadeMode = btn.getAttribute('data-herofade');
+      applyComposition(); syncHeroEditor();
+    });
+    const fadeStr = $('heroFadeStrength');
+    if (fadeStr) fadeStr.addEventListener('input', () => {
+      const n = Math.max(0, Math.min(100, +fadeStr.value || 0));
+      state.heroFadeStrength = n / 100;
+      const l = $('heroFadeStrengthVal'); if (l) l.textContent = n + '%';
+      applyComposition();
+    });
   }
   function applyHeroFocal(axis, val) {
     const n = Math.max(0, Math.min(100, +val || 0));
@@ -1153,7 +1176,9 @@
     const has = !!state.heroPhoto;
     const up = $('heroUploadBtn'), rm = $('heroRemoveBtn'), note = $('heroPhotoNote'),
       fields = $('heroPhotoFields'), alt = $('heroAltInput'), fx = $('heroFocalX'),
-      fy = $('heroFocalY'), fxv = $('heroFocalXVal'), fyv = $('heroFocalYVal');
+      fy = $('heroFocalY'), fxv = $('heroFocalXVal'), fyv = $('heroFocalYVal'),
+      fadeSeg = $('heroFadeSeg'), fadeRow = $('heroFadeStrengthRow'),
+      fadeStr = $('heroFadeStrength'), fadeStrVal = $('heroFadeStrengthVal');
     if (up) up.textContent = has ? 'Replace' : 'Upload';
     if (rm) rm.hidden = !has;
     if (note) note.hidden = has;
@@ -1163,6 +1188,16 @@
     if (fy) fy.value = String(state.heroFocalY);
     if (fxv) fxv.textContent = state.heroFocalX + '%';
     if (fyv) fyv.textContent = state.heroFocalY + '%';
+    if (fadeSeg) fadeSeg.querySelectorAll('[data-herofade]').forEach((b) => {
+      const on = b.getAttribute('data-herofade') === state.heroFadeMode;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    // Strength only matters when a fade is active.
+    if (fadeRow) fadeRow.hidden = state.heroFadeMode === 'none';
+    const pct = Math.round(state.heroFadeStrength * 100);
+    if (fadeStr) fadeStr.value = String(pct);
+    if (fadeStrVal) fadeStrVal.textContent = pct + '%';
   }
 
   /* ---- COLOURS: editable role colours over the Cipher-derived harmony.
@@ -1395,6 +1430,9 @@
     // until the decode completes so no stale alpha framing carries over.
     state.heroPhotoHasAlpha = false;
     if (state.heroPhoto) detectHeroAlpha(state.heroPhoto);
+    // A fresh model never inherits the previous portrait's fade framing.
+    state.heroFadeMode = 'none';
+    state.heroFadeStrength = 0.6;
     // Imported palettes replace any prior user colour overrides.
     state.roleOverrides = { root: null, expression: null, radiance: null };
     if (hero.intro) state.tagline = String(hero.intro);
