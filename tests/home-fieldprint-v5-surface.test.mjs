@@ -560,7 +560,7 @@ test('status wording covers idle / dirty / saving / saved / error', () => {
 test('autosave is debounced; explicit Save flushes immediately', () => {
   assert.match(fpJs, /function scheduleSave\(\) \{ clearTimeout\(saveTimer\); saveTimer = setTimeout\(saveDraft, 800\)/);
   assert.match(fpJs, /function markDirty\(\) \{ setSaveStatus\('dirty'\); scheduleSave\(\)/);
-  assert.match(fpJs, /function flushSave\(\) \{ clearTimeout\(saveTimer\); saveDraft\(\)/);
+  assert.match(fpJs, /function flushSave\(\) \{ clearTimeout\(saveTimer\); return saveDraft\(\)/);
   // Save button flushes; native rail input/change is the debounced trigger.
   assert.match(fpJs, /addEventListener\('click', \(\) => flushSave\(\)\)/);
   assert.match(fpJs, /\['input', 'change'\]\.forEach\(\(ev\) => panel\.addEventListener\(ev, markDirty\)\)/);
@@ -789,6 +789,106 @@ test('room nav is light (no heavy bordered pills) and keeps index-based routing'
 test('reduced-motion covers the new room nav + reveal elements', () => {
   const rm = fpCss.slice(fpCss.indexOf('@media (prefers-reduced-motion:reduce)'));
   assert.match(rm, /\.room__navlink/);
+});
+
+// ── PERFORMANCE: the torus loop and full-bleed compositing must stay cheap ──
+
+test('default transition is Fade → no continuous rAF loop out of the box', () => {
+  // The in-memory default is a static one-frame field, not an animation.
+  assert.match(fpJs, /transition:\s*'fade'/);
+  // The rAF loop only runs under an explicit Threshold transition.
+  assert.match(fpJs, /function shouldAnimateTorus\(\)\s*\{[\s\S]*?state\.transition === 'threshold'/);
+});
+
+test('torus loop is capped to ~30fps and re-checks liveness per frame', () => {
+  assert.match(fpJs, /const TORUS_FPS = 30;/);
+  assert.match(fpJs, /const TORUS_FRAME_MS = 1000 \/ TORUS_FPS;/);
+  const render = fpJs.slice(fpJs.indexOf('function render(t)'), fpJs.indexOf('render(performance.now())'));
+  // Frame skipped when it arrives inside the frame budget.
+  assert.match(render, /t - torusPaintAt < TORUS_FRAME_MS/);
+  // Next frame scheduled from a fresh shouldAnimateTorus() check, not a stale flag.
+  assert.match(render, /shouldAnimateTorus\(\) && \(performance\.now\(\) - torusLastInteract < IDLE_SLEEP_MS\)/);
+});
+
+test('torus draw is a single pass — no per-frame Array alloc or depth sort', () => {
+  const render = fpJs.slice(fpJs.indexOf('function render(t)'), fpJs.indexOf('render(performance.now())'));
+  assert.doesNotMatch(render, /\.sort\(/);
+  assert.doesNotMatch(render, /proj\.push/);
+  assert.doesNotMatch(render, /const proj = \[\]/);
+});
+
+test('role colours are parsed once per (re)start via a shader closure, not per point', () => {
+  assert.match(fpJs, /function roleShader\(which\)/);
+  assert.match(fpJs, /const shade = \{ root: roleShader\('root'\), expression: roleShader\('expression'\), radiance: roleShader\('radiance'\) \}/);
+  // The hot inner loop uses the precomputed shader, and the old per-call parser is gone.
+  assert.match(fpJs, /ctx\.fillStyle = shader\(a\)/);
+  assert.doesNotMatch(fpJs, /function roleColor\(/);
+});
+
+test('idle wake window is short and wake events are coalesced (not per-event restarts)', () => {
+  assert.match(fpJs, /const IDLE_SLEEP_MS = 4000;/);
+  const wake = fpJs.slice(fpJs.indexOf('function wakeTorus'), fpJs.indexOf('function shouldAnimateTorus'));
+  // A burst of pointermove/scroll only schedules one coalesced restart.
+  assert.match(wake, /if \(torusRaf \|\| wakeRaf \|\| !shouldAnimateTorus\(\)\) return;/);
+  assert.match(wake, /wakeRaf = requestAnimationFrame/);
+});
+
+test('torus point count is reduced to a visual minimum', () => {
+  assert.match(fpJs, /const NT = 30, NP = 12;/);
+});
+
+test('animation pauses when tab hidden or field scrolled offscreen', () => {
+  // Liveness gate consults page visibility + an offscreen flag.
+  assert.match(fpJs, /function shouldAnimateTorus\(\)\s*\{[\s\S]*?!document\.hidden && torusVisible/);
+  // A visibilitychange handler stops the loop and resumes it.
+  assert.match(fpJs, /document\.addEventListener\('visibilitychange'/);
+  assert.match(fpJs, /if \(document\.hidden\) stopTorus\(\)/);
+  // A dedicated IntersectionObserver flips torusVisible for the canvas host.
+  assert.match(fpJs, /function observeTorusVisibility\(\)/);
+  assert.match(fpJs, /torusVisible = entries\.some\(\(e\) => e\.isIntersecting\)/);
+  assert.match(fpJs, /observeTorusVisibility\(\);/);
+});
+
+test('reduced-motion forces a static torus and drops nonessential compositing', () => {
+  assert.match(fpJs, /function shouldAnimateTorus\(\)\s*\{[\s\S]*?!reduceMotion/);
+  const rm = fpCss.slice(fpCss.indexOf('@media (prefers-reduced-motion:reduce)'));
+  assert.match(rm, /\.viz-fieldbg__grain\{display:none\}/);
+});
+
+test('always-on full-bleed field layers drop blur / blend / backdrop-filter', () => {
+  // The full-bleed weave keeps its mask + gradient but no blur or blend layer.
+  const weave = fpCss.slice(fpCss.indexOf('.viz-fieldbg__weave{'), fpCss.indexOf('.viz[data-texture="off"] .viz-fieldbg__weave'));
+  assert.doesNotMatch(weave, /filter:blur/);
+  assert.doesNotMatch(weave, /mix-blend-mode/);
+  // The site-wide grain is a plain alpha overlay (no overlay-blend compositing).
+  const grain = fpCss.slice(fpCss.indexOf('.viz-fieldbg__grain{'), fpCss.indexOf('.viz-fieldbg__grain{') + 400);
+  assert.doesNotMatch(grain, /mix-blend-mode/);
+  // The (inert) veil no longer forces a backdrop-filter layer.
+  const veil = fpCss.slice(fpCss.indexOf('.viz-veil{'), fpCss.indexOf('.viz-veil{') + 300);
+  assert.doesNotMatch(veil, /backdrop-filter/);
+  // The inside-crop weave also sheds its blur/blend.
+  const inside = fpCss.slice(fpCss.indexOf('.viz-fieldbg__weave[data-mode="inside"]{'), fpCss.indexOf('.viz-fieldbg__weave[data-mode="inside"]{') + 400);
+  assert.doesNotMatch(inside, /filter:blur/);
+  assert.doesNotMatch(inside, /mix-blend-mode/);
+});
+
+test('Studio releases the Fieldprint iframe on close and reloads it on open (no leaked loops)', () => {
+  // Close: flush the draft, then blank the iframe to free Canvas/loop/listeners.
+  const close = studio.slice(studio.indexOf('function closeFieldprintV5'), studio.indexOf('function wireHomeWorkbench'));
+  assert.match(close, /postMessage\(\{ type: 'fieldprint-flush' \}/);
+  assert.match(close, /setAttribute\('src', 'about:blank'\)/);
+  assert.match(close, /addEventListener\('message', onAck\)/);
+  assert.match(close, /removeEventListener\('message', onAck\)/);   // listener is not leaked
+  // Open: reload /fieldprint fresh (re-handshake → rehydrate the saved draft).
+  const open = studio.slice(studio.indexOf('function openFieldprintV5'), studio.indexOf('function closeFieldprintV5'));
+  assert.match(open, /setAttribute\('src', '\/fieldprint'\)/);
+});
+
+test('the Fieldprint surface flushes its draft on request and acks before release', () => {
+  assert.match(fpJs, /d\.type === 'fieldprint-flush'/);
+  assert.match(fpJs, /if \(saveTimer\) Promise\.resolve\(flushSave\(\)\)/);   // only write when edits pending
+  assert.match(fpJs, /postToParent\(\{ type: 'fieldprint-flushed' \}\)/);
+  assert.match(fpJs, /function flushSave\(\) \{ clearTimeout\(saveTimer\); return saveDraft\(\); \}/);
 });
 
 console.log('\n' + passed + ' checks passed.');

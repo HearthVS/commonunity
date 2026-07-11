@@ -26053,10 +26053,32 @@ if (document.readyState === 'loading') {
 
     function closeFieldprintV5() {
       var overlay = document.getElementById('fieldprint-v5-overlay');
+      var frame = document.getElementById('fieldprint-v5-frame');
       if (!overlay) return;
       overlay.classList.remove('is-open');
       overlay.hidden = true;
       document.body.classList.remove('fieldprint-v5-open');
+      // Flush the on-device draft, then RELEASE the iframe (blank it) so its
+      // Canvas backing store, animation loop, observers and listeners are freed
+      // while hidden. Reopen reloads /fieldprint and rehydrates from the draft.
+      if (!frame || frame.getAttribute('src') !== '/fieldprint' || !frame.contentWindow) return;
+      var released = false;
+      var release = function () {
+        if (released) return; released = true;
+        window.removeEventListener('message', onAck);
+        try { frame.setAttribute('src', 'about:blank'); } catch (_) {}
+      };
+      var onAck = function (e) {
+        if (e.origin !== window.location.origin) return;
+        if (!frame || e.source !== frame.contentWindow) return;
+        if (e.data && e.data.type === 'fieldprint-flushed') release();
+      };
+      window.addEventListener('message', onAck);
+      try {
+        frame.contentWindow.postMessage({ type: 'fieldprint-flush' }, window.location.origin);
+      } catch (_) { release(); return; }
+      // Fallback in case the ack never arrives (e.g. the surface is mid-reload).
+      setTimeout(release, 1200);
     }
     // <FIELDPRINT_V5_ADAPTER_END>
 

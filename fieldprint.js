@@ -296,8 +296,13 @@
   let torusLastInteract = 0;
   let torusPoints = null;
   let activeNodeIdx = -1;
-  const IDLE_SLEEP_MS = 30000;
-  const NT = 46, NP = 18;
+  let torusVisible = true;      // set false by IntersectionObserver when offscreen
+  let torusPaintAt = 0;         // last painted frame timestamp (fps throttle)
+  let wakeRaf = 0;              // coalesces restart requests from wake events
+  const IDLE_SLEEP_MS = 4000;   // stop the loop 4s after the last interaction
+  const TORUS_FPS = 30;
+  const TORUS_FRAME_MS = 1000 / TORUS_FPS;
+  const NT = 30, NP = 12;       // ~360–420 points — the visual minimum that still reads as a torus
 
   function ensureTorusCanvas() {
     const host = $('fieldTorus');
@@ -316,18 +321,17 @@
     if (ov) return ov;
     return field ? field.roles[which] : DEFAULT_ROLES[which];
   }
-  function roleColor(which, alpha) {
+  /* Parse a role colour ONCE and return an alpha→string shader, so a hot draw
+     loop can vary opacity without re-parsing the base colour per call. */
+  function roleShader(which) {
     const base = activeRoleColor(which);
-    if (base) {
-      const h = String(base).trim();
-      if (h[0] === '#') {
-        const x = h.slice(1);
-        const r = parseInt(x.slice(0, 2), 16), g = parseInt(x.slice(2, 4), 16), b = parseInt(x.slice(4, 6), 16);
-        if (isFinite(r) && isFinite(g) && isFinite(b)) return `rgba(${r},${g},${b},${alpha})`;
-      }
-      if (/\)$/.test(h)) return h.replace(/\)$/, ` / ${alpha})`);
+    const h = base ? String(base).trim() : '';
+    if (h[0] === '#') {
+      const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
+      if (isFinite(r) && isFinite(g) && isFinite(b)) return (a) => `rgba(${r},${g},${b},${a})`;
     }
-    return `rgba(150,140,110,${alpha})`;
+    if (/\)$/.test(h)) { const pre = h.slice(0, -1); return (a) => `${pre} / ${a})`; }
+    return (a) => `rgba(150,140,110,${a})`;
   }
   /* normalize any CSS colour (oklch / rgb / hex / name) to #rrggbb for the
      native colour inputs, via computed style. */
@@ -359,12 +363,21 @@
     }
     torusPoints = pts;
   }
+  // Refresh the keep-alive timestamp (cheap) on every interaction, but coalesce
+  // any actual (re)start of the loop into a single rAF so a burst of pointermove
+  // / scroll events can't thrash drawFieldTorus.
   function wakeTorus() {
     torusLastInteract = performance.now();
-    if (!torusRaf && shouldAnimateTorus()) drawFieldTorus();
+    if (torusRaf || wakeRaf || !shouldAnimateTorus()) return;
+    wakeRaf = requestAnimationFrame(() => { wakeRaf = 0; if (!torusRaf && shouldAnimateTorus()) drawFieldTorus(); });
   }
   function shouldAnimateTorus() {
-    return state.transition === 'threshold' && state.torus !== 'off' && !reduceMotion;
+    return state.transition === 'threshold' && state.torus !== 'off' &&
+      !reduceMotion && !document.hidden && torusVisible;
+  }
+  function stopTorus() {
+    if (torusRaf) { cancelAnimationFrame(torusRaf); torusRaf = 0; }
+    if (wakeRaf) { cancelAnimationFrame(wakeRaf); wakeRaf = 0; }
   }
   function drawFieldTorus() {
     const cv = ensureTorusCanvas();
@@ -373,6 +386,10 @@
     const ctx0 = cv.getContext('2d');
     if (state.torus === 'off') { ctx0 && ctx0.clearRect(0, 0, cv.width, cv.height); return; }
     if (!torusPoints) bakeTorusPoints();
+
+    // Parse each role colour ONCE per (re)start into a cheap shader closure, so
+    // the per-point inner loop only does a string concat instead of re-parsing.
+    const shade = { root: roleShader('root'), expression: roleShader('expression'), radiance: roleShader('radiance') };
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const host = cv.parentElement;
@@ -397,6 +414,16 @@
     const nodeThetas = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
 
     function render(t) {
+      // Re-check liveness every frame (covers tab hidden / offscreen / torus
+      // toggled off mid-loop) and schedule the next frame BEFORE painting so a
+      // throttled (skipped) frame can't kill the loop.
+      torusRaf = 0;
+      const animating = shouldAnimateTorus() && (performance.now() - torusLastInteract < IDLE_SLEEP_MS);
+      if (animating) torusRaf = requestAnimationFrame(render);
+      // Cap paint rate to ~30fps — drop frames that arrive inside the budget.
+      if (animating && t - torusPaintAt < TORUS_FRAME_MS) return;
+      torusPaintAt = t;
+
       ctx.clearRect(0, 0, w, h);
       const spin = spin0 + (breathing ? t * 0.00007 : 0);
       const breath = breathing ? (1 + Math.sin(t * 0.0009) * 0.025) : 1;
@@ -405,35 +432,29 @@
       const s = scale * breath;
 
       const g = ctx.createRadialGradient(cx, cy, s * 0.1, cx, cy, s * 2.4);
-      g.addColorStop(0, roleColor('expression', 0.16 * levelAlpha));
-      g.addColorStop(0.45, roleColor('root', 0.06 * levelAlpha));
+      g.addColorStop(0, shade.expression(0.16 * levelAlpha));
+      g.addColorStop(0.45, shade.root(0.06 * levelAlpha));
       g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      const proj = [];
+      // Single pass: project + draw in baked order. No per-frame array alloc and
+      // no depth sort — at these alphas the painter's ordering is imperceptible.
+      const zmin = 1.0, zmax = 5.0;
       for (let k = 0; k < torusPoints.length; k++) {
         const P = torusPoints[k];
-        let x = P.x * cosS - P.z * sinS;
-        let z = P.x * sinS + P.z * cosS;
-        let y = P.y;
-        const y2 = y * cosT - z * sinT;
-        const z2 = y * sinT + z * cosT;
-        y = y2; z = z2 + Z_OFF;
-        const f = FOV / (FOV + z * scale);
-        proj.push({ sx: cx + x * s * f, sy: cy + y * s * f, depth: z, f: f, equator: P.equator, theta: P.theta });
-      }
-      proj.sort((a, b) => b.depth - a.depth);
-
-      const zmin = 1.0, zmax = 5.0;
-      for (let k = 0; k < proj.length; k++) {
-        const p = proj[k];
-        const dn = 1 - Math.min(1, Math.max(0, (p.depth - zmin) / (zmax - zmin)));
+        const x = P.x * cosS - P.z * sinS;
+        const zr = P.x * sinS + P.z * cosS;
+        const y0 = P.y;
+        const z2 = y0 * sinT + zr * cosT + Z_OFF;
+        const y = y0 * cosT - zr * sinT;
+        const f = FOV / (FOV + z2 * scale);
+        const dn = 1 - Math.min(1, Math.max(0, (z2 - zmin) / (zmax - zmin)));
         const a = (0.05 + dn * 0.22) * levelAlpha;
-        const roleName = (k % 3 === 0) ? 'radiance' : (k % 3 === 1) ? 'expression' : 'root';
+        const shader = (k % 3 === 0) ? shade.radiance : (k % 3 === 1) ? shade.expression : shade.root;
         ctx.beginPath();
-        ctx.arc(p.sx, p.sy, (1.4 + dn * 2.6) * p.f, 0, Math.PI * 2);
-        ctx.fillStyle = roleColor(roleName, a);
+        ctx.arc(cx + x * s * f, cy + y * s * f, (1.4 + dn * 2.6) * f, 0, Math.PI * 2);
+        ctx.fillStyle = shader(a);
         ctx.fill();
       }
 
@@ -454,12 +475,8 @@
         ctx.arc(nx, ny, (on ? 34 : 14) * f, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      if (breathing) {
-        if (performance.now() - torusLastInteract < IDLE_SLEEP_MS) torusRaf = requestAnimationFrame(render);
-        else torusRaf = 0;
-      }
     }
+    torusPaintAt = 0;
     render(performance.now());
   }
 
@@ -1761,6 +1778,13 @@
         setLoadNote(true, 'Live Fieldprint from your Studio data.');
         // Re-baseline to the imported field, then restore a matching draft.
         establishBaselineAndRestore();
+      } else if (d.type === 'fieldprint-flush') {
+        // Studio is closing the overlay: commit any queued autosave, then ack so
+        // the parent can safely release (blank) the iframe without data loss.
+        // Only write when edits are actually pending — never fabricate a draft.
+        const ack = () => postToParent({ type: 'fieldprint-flushed' });
+        if (saveTimer) Promise.resolve(flushSave()).catch(() => {}).then(ack);
+        else ack();
       }
     });
   }
@@ -1790,6 +1814,22 @@
       });
     }, { root, threshold: 0.12 });
     document.querySelectorAll('.viz .reveal').forEach((el) => io.observe(el));
+  }
+
+  // Stop the torus loop whenever its canvas host leaves the scroller viewport,
+  // and resume when it re-enters. A single long-lived observer — no per-open
+  // accumulation.
+  let torusIO = null;
+  function observeTorusVisibility() {
+    const host = $('fieldTorus');
+    if (!host || typeof IntersectionObserver === 'undefined') return;
+    if (torusIO) torusIO.disconnect();
+    torusIO = new IntersectionObserver((entries) => {
+      torusVisible = entries.some((e) => e.isIntersecting);
+      if (!torusVisible) stopTorus();
+      else if (shouldAnimateTorus()) wakeTorus();
+    }, { root: $('stageScroll') });
+    torusIO.observe(host);
   }
 
   /* ---------- utils ---------- */
@@ -2021,7 +2061,7 @@
   }
   function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, 800); }
   function markDirty() { setSaveStatus('dirty'); scheduleSave(); }
-  function flushSave() { clearTimeout(saveTimer); saveDraft(); }
+  function flushSave() { clearTimeout(saveTimer); return saveDraft(); }
 
   async function loadDraft() {
     let record;
@@ -2131,6 +2171,15 @@
     const scroller = $('stageScroll');
     if (scroller) scroller.addEventListener('scroll', wakeTorus, { passive: true });
     ['pointermove', 'pointerdown'].forEach((ev) => window.addEventListener(ev, wakeTorus, { passive: true }));
+
+    // Pause all animation when the tab is backgrounded or the field scrolls
+    // offscreen; resume when it returns. shouldAnimateTorus() also consults
+    // these flags, so the loop self-terminates cleanly.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopTorus();
+      else if (shouldAnimateTorus()) wakeTorus();
+    });
+    observeTorusVisibility();
 
     // Tell Studio we're ready to receive the sanitized model.
     if (embedded) postToParent({ type: 'fieldprint-ready' });
