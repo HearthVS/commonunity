@@ -671,71 +671,115 @@
   /* =========================================================
      ROOM DEPTH — travel into a section as a destination
      ========================================================= */
+  /* Editorial room composition: an asymmetric masthead spread grounded in the v5
+     field. Media honours the image role (inset / full-bleed / background /
+     artifact); when there is no public image the media region is omitted entirely
+     (no gradient/hatch fake-content band). Highlights render as numbered,
+     hairline-ruled ledger entries — never rounded bordered cards. */
   function renderRoom(idx) {
     const sec = state.sections[idx];
     if (!sec) return;
     const num = `0${idx + 1}`;
     const glyph = markSvg(22, { mono: true, stroke: 1.6, variant: idx + 1, rotate: idx * 30 });
-    const artifacts = (sec.artifacts || []).map((a) => `
-      <li class="room-artifact">
-        <span class="room-artifact__tag">${escapeHtml(a.tag)}</span>
-        <h3 class="room-artifact__title">${escapeHtml(a.title)}</h3>
-        ${a.note ? `<p class="room-artifact__note">${escapeHtml(a.note)}</p>` : ''}
-      </li>`).join('');
+    const img = visibleImage(sec.image);
+    const role = img ? (img.role || 'inset') : 'none';
 
-    const rail = state.sections.map((s, j) => `
-      <button class="room-rail__dot ${j === idx ? 'is-current' : ''}" type="button"
-              data-goto="${j}" aria-label="Go to ${escapeHtml(s.eyebrow)} room"
-              aria-current="${j === idx ? 'true' : 'false'}">
-        <span class="room-rail__num">0${j + 1}</span>
-        <span class="room-rail__name">${escapeHtml(s.eyebrow)}</span>
-      </button>`).join('');
+    const arts = Array.isArray(sec.artifacts) ? sec.artifacts : [];
+    const ledger = arts.length
+      ? `<ol class="room__ledger reveal">${arts.map((a, j) => `
+          <li class="room__entry">
+            <span class="room__entry-num" aria-hidden="true">${String(j + 1).padStart(2, '0')}</span>
+            <div class="room__entry-body">
+              ${a.tag ? `<span class="room__entry-tag">${escapeHtml(a.tag)}</span>` : ''}
+              ${a.title ? `<h3 class="room__entry-title">${escapeHtml(a.title)}</h3>` : ''}
+              ${a.note ? `<p class="room__entry-note">${escapeHtml(a.note)}</p>` : ''}
+            </div>
+          </li>`).join('')}</ol>`
+      : '';
 
+    // Role-aware media pieces. All start empty; only the piece matching the
+    // image role is populated. With no public image (role 'none') every piece
+    // stays empty, so the media region is omitted — no fake-content band.
+    let bleedHTML = '';
+    let bgHTML = '';
+    let mastheadFig = '';
+    let asideFig = '';
+    const figCaption = (img && img.alt && img.alt.trim())
+      ? `<figcaption class="room__figcap">${escapeHtml(img.alt)}</figcaption>` : '';
+    function figure(kind) {
+      return `<figure class="room__figure room__figure--${kind} reveal">
+        <img class="room__img" src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt || '')}" style="${escapeHtml(imageStyle(img))}" loading="lazy" />
+        ${figCaption}
+      </figure>`;
+    }
+    if (role === 'full-bleed') {
+      bleedHTML = `<figure class="room__bleed reveal">
+        <img class="room__img" src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt || '')}" style="${escapeHtml(imageStyle(img))}" loading="lazy" />
+        ${figCaption}
+      </figure>`;
+    } else if (role === 'background') {
+      bgHTML = `<div class="room__bg" aria-hidden="true">
+        <img class="room__bg-img" src="${escapeHtml(img.src)}" alt="" style="${escapeHtml(imageStyle(img))}" loading="lazy" />
+        <span class="room__bg-scrim"></span>
+      </div>`;
+    } else if (role === 'inset') {
+      mastheadFig = figure('inset');
+    } else if (role === 'artifact') {
+      asideFig = figure('artifact');
+    }
+
+    const hasAside = !!(ledger || asideFig);
     const prevIdx = (idx - 1 + state.sections.length) % state.sections.length;
     const nextIdx = (idx + 1) % state.sections.length;
-    const img = visibleImage(sec.image);
-    const media = img
-      ? `<div class="room__media reveal"><img class="room__photo" src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt || '')}" style="${escapeHtml(imageStyle(img))}" loading="lazy" /><div class="room__mediamask"></div></div>`
-      : `<div class="room__media reveal" aria-hidden="true"><div class="room__abstract"></div><div class="room__mediamask"></div></div>`;
+    const pager = state.sections.map((s, j) => `
+      <button class="room__page ${j === idx ? 'is-current' : ''}" type="button"
+              data-goto="${j}" aria-label="Go to ${escapeHtml(s.eyebrow)} room"
+              aria-current="${j === idx ? 'true' : 'false'}"><span class="room__page-num">0${j + 1}</span><span class="room__page-name">${escapeHtml(s.eyebrow)}</span></button>`).join('');
+
+    const closing = (sec.prompt || '').trim()
+      ? `<div class="room__closing reveal"><p class="room__closing-text">${escapeHtml(sec.prompt)}</p></div>`
+      : '';
 
     vizRoom.innerHTML = `
-      <div class="room__inner">
-        <div class="room__top">
-          <button class="room__back" type="button" data-back aria-label="Return to the overview">
-            <span aria-hidden="true">←</span> Back to the field
-          </button>
-          <span class="room__breadcrumb">${escapeHtml(state.name)} · Room ${num}</span>
+      <article class="room room--editorial" data-imgrole="${role}">
+        ${bgHTML}
+        <div class="room__wrap">
+          <div class="room__top">
+            <button class="room__back" type="button" data-back aria-label="Return to the overview">
+              <span aria-hidden="true">←</span> Back to the field
+            </button>
+            <span class="room__breadcrumb">${escapeHtml(state.name)} · Room ${num}</span>
+          </div>
+
+          ${bleedHTML}
+
+          <div class="room__spread ${hasAside ? '' : 'room__spread--solo'}">
+            <div class="room__masthead reveal">
+              <span class="room__eyebrow"><span class="room__glyph">${glyph}</span><span class="room__num">${num}</span> ${escapeHtml(sec.eyebrow)}</span>
+              <h1 class="room__title">${escapeHtml(sec.title)}</h1>
+              <p class="room__narrative">${escapeHtml(sec.narrative || sec.body)}</p>
+              ${mastheadFig}
+            </div>
+            ${hasAside ? `<aside class="room__aside">${asideFig}${ledger}</aside>` : ''}
+          </div>
+
+          ${closing}
+
+          <nav class="room__nav" aria-label="Room navigation">
+            <button class="room__navlink room__navlink--prev" type="button" data-goto="${prevIdx}"
+                    aria-label="Previous room: ${escapeHtml(state.sections[prevIdx].eyebrow)}">
+              <span class="room__navlink-arrow" aria-hidden="true">←</span>
+              <span class="room__navlink-meta"><span class="room__navlink-dir">Previous</span><span class="room__navlink-name">${escapeHtml(state.sections[prevIdx].eyebrow)}</span></span>
+            </button>
+            <div class="room__pager" role="group" aria-label="All rooms">${pager}</div>
+            <button class="room__navlink room__navlink--next" type="button" data-goto="${nextIdx}"
+                    aria-label="Next room: ${escapeHtml(state.sections[nextIdx].eyebrow)}">
+              <span class="room__navlink-meta"><span class="room__navlink-dir">Next</span><span class="room__navlink-name">${escapeHtml(state.sections[nextIdx].eyebrow)}</span></span>
+              <span class="room__navlink-arrow" aria-hidden="true">→</span>
+            </button>
+          </nav>
         </div>
-
-        <header class="room__head reveal">
-          <span class="room__eyebrow"><span class="room__glyph">${glyph}</span><span class="room__num">${num}</span> ${escapeHtml(sec.eyebrow)}</span>
-          <h1 class="room__title">${escapeHtml(sec.title)}</h1>
-          <p class="room__narrative">${escapeHtml(sec.narrative || sec.body)}</p>
-        </header>
-
-        ${media}
-
-        <ul class="room__artifacts reveal">${artifacts}</ul>
-
-        <div class="room__prompt reveal">
-          <span class="room__prompt-mark" aria-hidden="true">${markSvg(18, { mono: true, stroke: 1.7 })}</span>
-          <p class="room__prompt-text">${escapeHtml(sec.prompt || '')}</p>
-        </div>
-
-        <nav class="room__nav" aria-label="Room navigation">
-          <button class="room__nav-btn room__nav-btn--prev" type="button" data-goto="${prevIdx}"
-                  aria-label="Previous room: ${escapeHtml(state.sections[prevIdx].eyebrow)}">
-            <span aria-hidden="true">←</span>
-            <span class="room__nav-meta"><span class="room__nav-dir">Previous</span><span class="room__nav-name">${escapeHtml(state.sections[prevIdx].eyebrow)}</span></span>
-          </button>
-          <div class="room-rail" role="group" aria-label="All rooms">${rail}</div>
-          <button class="room__nav-btn room__nav-btn--next" type="button" data-goto="${nextIdx}"
-                  aria-label="Next room: ${escapeHtml(state.sections[nextIdx].eyebrow)}">
-            <span class="room__nav-meta"><span class="room__nav-dir">Next</span><span class="room__nav-name">${escapeHtml(state.sections[nextIdx].eyebrow)}</span></span>
-            <span aria-hidden="true">→</span>
-          </button>
-        </nav>
-      </div>`;
+      </article>`;
 
     vizRoom.querySelector('[data-back]').addEventListener('click', exitRoom);
     vizRoom.querySelectorAll('[data-goto]').forEach((b) => {
@@ -863,6 +907,20 @@
       const card = document.createElement('div');
       card.className = 'seccard';
       const glyph = makeSigil(state.seed, i + 1, { size: 16, stroke: 1.8 });
+      const arts = Array.isArray(sec.artifacts) ? sec.artifacts : [];
+      const artRows = arts.map((a, j) => `
+        <div class="artrow" data-artrow="${i}-${j}">
+          <div class="artrow__head">
+            <input class="mini-input mini-input--tag" type="text" data-arttag="${i}-${j}"
+              value="${escapeHtml(a.tag || '')}" placeholder="Tag" aria-label="Room 0${i + 1} highlight ${j + 1} tag" />
+            <button class="linkbtn linkbtn--mini artrow__rm" type="button" data-artrm="${i}-${j}"
+              aria-label="Remove highlight ${j + 1} from room 0${i + 1}">Remove</button>
+          </div>
+          <input class="mini-input" type="text" data-arttitle="${i}-${j}"
+            value="${escapeHtml(a.title || '')}" placeholder="Highlight title" aria-label="Room 0${i + 1} highlight ${j + 1} title" />
+          <textarea class="seccard__area" rows="2" data-artnote="${i}-${j}"
+            placeholder="Note (optional)" aria-label="Room 0${i + 1} highlight ${j + 1} note">${escapeHtml(a.note || '')}</textarea>
+        </div>`).join('');
       card.innerHTML = `
         <div class="seccard__head">
           <span class="seccard__title"><span class="seccard__glyph">${glyph}</span><span class="seccard__titletext" data-sectitletext="${i}">${escapeHtml(sec.eyebrow)}</span></span>
@@ -877,9 +935,23 @@
         <label class="minilabel" for="secTitle${i}">Heading</label>
         <input class="mini-input" id="secTitle${i}" type="text" data-sectitle="${i}"
           value="${escapeHtml(sec.title)}" aria-label="Room 0${i + 1} heading" />
-        <label class="minilabel" for="secBody${i}">Body</label>
+        <label class="minilabel" for="secBody${i}">Overview body</label>
         <textarea class="seccard__area" id="secBody${i}" rows="3" data-secbody="${i}"
-          aria-label="Room 0${i + 1} body text">${escapeHtml(sec.body)}</textarea>`;
+          aria-label="Room 0${i + 1} overview body text">${escapeHtml(sec.body)}</textarea>
+        <label class="minilabel" for="secNarr${i}">Room intro</label>
+        <textarea class="seccard__area" id="secNarr${i}" rows="3" data-secnarr="${i}"
+          aria-label="Room 0${i + 1} intro text">${escapeHtml(sec.narrative || '')}</textarea>
+        <div class="minilabel-row">
+          <span class="minilabel">Highlights</span>
+          <button class="linkbtn linkbtn--mini" type="button" data-artadd="${i}">+ Add</button>
+        </div>
+        <div class="artgroup" data-artgroup="${i}">${artRows}</div>
+        <label class="minilabel" for="secPrompt${i}">Closing line</label>
+        <input class="mini-input" id="secPrompt${i}" type="text" data-secprompt="${i}"
+          value="${escapeHtml(sec.prompt || '')}" aria-label="Room 0${i + 1} closing line" />
+        <label class="minilabel" for="secEnter${i}">Entry phrase</label>
+        <input class="mini-input" id="secEnter${i}" type="text" data-secenter="${i}"
+          value="${escapeHtml(sec.enter || '')}" aria-label="Room 0${i + 1} entry phrase" />`;
       sectionCopyControls.appendChild(card);
     });
 
@@ -927,6 +999,84 @@
         state.sections[idx].body = ta.value;
         const target = vizBody.children[idx];
         if (target) { const p = target.querySelector('.viz-sec-body'); if (p) p.textContent = ta.value; }
+      });
+    });
+
+    // Room-detail copy: narrative (intro), closing line (prompt), entry phrase
+    // (enter). These live in the room detail; re-render it in place when open.
+    function liveRoom(idx) {
+      if (state.route.view === 'room' && state.route.roomIdx === idx) renderRoom(idx);
+    }
+    sectionCopyControls.querySelectorAll('[data-secnarr]').forEach((ta) => {
+      ta.addEventListener('input', () => {
+        const idx = +ta.dataset.secnarr;
+        state.sections[idx].narrative = ta.value;
+        liveRoom(idx);
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-secprompt]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = +inp.dataset.secprompt;
+        state.sections[idx].prompt = inp.value;
+        liveRoom(idx);
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-secenter]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = +inp.dataset.secenter;
+        state.sections[idx].enter = inp.value;
+        renderSections();
+        liveRoom(idx);
+      });
+    });
+
+    // Highlights (editorial ledger entries): tag / title / note. Text edits mutate
+    // state and live-render the open room without rebuilding controls (keeps focus).
+    const parseIJ = (s) => s.split('-').map(Number);
+    sectionCopyControls.querySelectorAll('[data-arttag]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const [i, j] = parseIJ(inp.dataset.arttag);
+        if (state.sections[i].artifacts && state.sections[i].artifacts[j]) {
+          state.sections[i].artifacts[j].tag = inp.value; liveRoom(i);
+        }
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-arttitle]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const [i, j] = parseIJ(inp.dataset.arttitle);
+        if (state.sections[i].artifacts && state.sections[i].artifacts[j]) {
+          state.sections[i].artifacts[j].title = inp.value; liveRoom(i);
+        }
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-artnote]').forEach((ta) => {
+      ta.addEventListener('input', () => {
+        const [i, j] = parseIJ(ta.dataset.artnote);
+        if (state.sections[i].artifacts && state.sections[i].artifacts[j]) {
+          state.sections[i].artifacts[j].note = ta.value; liveRoom(i);
+        }
+      });
+    });
+    // Add/remove structurally rebuild the editor group, then live-render + autosave.
+    sectionCopyControls.querySelectorAll('[data-artadd]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = +btn.dataset.artadd;
+        if (!Array.isArray(state.sections[i].artifacts)) state.sections[i].artifacts = [];
+        state.sections[i].artifacts.push({ tag: 'Signal', title: '', note: '' });
+        buildCopyControls();
+        liveRoom(i);
+        markDirty();
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-artrm]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const [i, j] = parseIJ(btn.dataset.artrm);
+        if (Array.isArray(state.sections[i].artifacts)) {
+          state.sections[i].artifacts.splice(j, 1);
+          buildCopyControls();
+          liveRoom(i);
+          markDirty();
+        }
       });
     });
   }
@@ -1006,7 +1156,10 @@
     const secEl = vizBody.children[i];
     if (secEl) { const im = secEl.querySelector('.viz-sec-photo'); if (im) { im.setAttribute('style', imageStyle(img)); im.alt = img.alt || ''; } }
     if (state.route.view === 'room' && state.route.roomIdx === i) {
-      const rm = vizRoom.querySelector('.room__photo'); if (rm) { rm.setAttribute('style', imageStyle(img)); rm.alt = img.alt || ''; }
+      vizRoom.querySelectorAll('.room__img,.room__bg-img').forEach((rm) => {
+        rm.setAttribute('style', imageStyle(img));
+        if (!rm.classList.contains('room__bg-img')) rm.alt = img.alt || '';
+      });
     }
   }
 
@@ -1692,6 +1845,9 @@
       sections: state.sections.map((s) => ({
         key: s.key, eyebrow: s.eyebrow, title: s.title, body: s.body,
         narrative: s.narrative, prompt: s.prompt, enter: s.enter, imgRole: s.imgRole || null,
+        artifacts: Array.isArray(s.artifacts)
+          ? s.artifacts.map((a) => ({ tag: a.tag || '', title: a.title || '', note: a.note || '' }))
+          : [],
         image: s.image ? {
           src: s.image.src || '', role: s.image.role || 'inset', alt: s.image.alt || '',
           visibility: s.image.visibility || 'public',
@@ -1734,6 +1890,14 @@
         if (ss.narrative != null) tgt.narrative = String(ss.narrative);
         if (ss.prompt != null) tgt.prompt = String(ss.prompt);
         if (ss.enter != null) tgt.enter = String(ss.enter);
+        // Only tag/title/note strings are copied — never any raw/private field.
+        if (Array.isArray(ss.artifacts)) {
+          tgt.artifacts = ss.artifacts.map((a) => ({
+            tag: String((a && a.tag) || ''),
+            title: String((a && a.title) || ''),
+            note: String((a && a.note) || ''),
+          }));
+        }
         tgt.imgRole = ss.imgRole || null;
         // sanitizeImage re-runs privacy/safety filtering (defense in depth).
         tgt.image = (ss.image && ss.image.src) ? sanitizeImage(ss.image) : null;

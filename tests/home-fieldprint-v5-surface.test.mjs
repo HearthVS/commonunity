@@ -85,8 +85,8 @@ test('fieldprint.js defines four rooms and enter/exit/goto navigation', () => {
 
 test('room detail exposes Back + Previous + Next travel', () => {
   assert.match(fpJs, /Back to the field/);
-  assert.match(fpJs, /room__nav-btn--prev/);
-  assert.match(fpJs, /room__nav-btn--next/);
+  assert.match(fpJs, /room__navlink--prev/);
+  assert.match(fpJs, /room__navlink--next/);
   assert.match(fpJs, /Previous/);
   assert.match(fpJs, /Next/);
 });
@@ -642,6 +642,153 @@ test('revert + reset cancel any queued autosave (no draft resurrection)', () => 
 test('init + model bridge establish the baseline and restore on (re)load', () => {
   assert.match(fpJs, /wireSave\(\);/);
   assert.match(fpJs, /establishBaselineAndRestore\(\);/);
+});
+
+// ── Editorial room composition: editable copy for all four rooms ──
+test('Content editor exposes room intro, highlights, closing line, entry phrase', () => {
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'), fpJs.indexOf('function buildImageControls'));
+  // Per-room room-detail copy editors (beyond the pre-existing eyebrow/title/body).
+  assert.match(bc, /data-secnarr="\$\{i\}"/);   // Room intro (narrative)
+  assert.match(bc, /data-secprompt="\$\{i\}"/); // Closing line (prompt)
+  assert.match(bc, /data-secenter="\$\{i\}"/);  // Entry phrase (enter)
+  assert.match(bc, />Room intro</);
+  assert.match(bc, />Closing line</);
+  assert.match(bc, />Entry phrase</);
+  // Overview body relabelled so it is distinct from the room intro.
+  assert.match(bc, />Overview body</);
+});
+
+test('highlights editor: per-artifact tag/title/note with add + remove', () => {
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'), fpJs.indexOf('function buildImageControls'));
+  assert.match(bc, /data-arttag="\$\{i\}-\$\{j\}"/);
+  assert.match(bc, /data-arttitle="\$\{i\}-\$\{j\}"/);
+  assert.match(bc, /data-artnote="\$\{i\}-\$\{j\}"/);
+  assert.match(bc, /data-artadd="\$\{i\}"/);
+  assert.match(bc, /data-artrm="\$\{i\}-\$\{j\}"/);
+  assert.match(bc, /data-artgroup="\$\{i\}"/);
+});
+
+test('room-detail copy edits live-render the open room (and enter re-renders overview)', () => {
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'), fpJs.indexOf('function buildImageControls'));
+  // A liveRoom helper re-renders the open room in place on narrative/prompt/artifact edits.
+  assert.match(bc, /function liveRoom\(idx\)/);
+  assert.match(bc, /state\.route\.view === 'room' && state\.route\.roomIdx === idx\) renderRoom\(idx\)/);
+  // narrative/prompt mutate state then liveRoom.
+  assert.match(bc, /state\.sections\[idx\]\.narrative = ta\.value;\s*\n?\s*liveRoom\(idx\)/);
+  assert.match(bc, /state\.sections\[idx\]\.prompt = inp\.value;\s*\n?\s*liveRoom\(idx\)/);
+  // entry phrase also updates the overview enter button.
+  const enterBlk = bc.slice(bc.indexOf("data-secenter]"));
+  assert.match(enterBlk, /renderSections\(\)/);
+  // add pushes a new artifact and rebuilds; remove splices.
+  assert.match(bc, /state\.sections\[i\]\.artifacts\.push\(\{ tag: 'Signal', title: '', note: '' \}\)/);
+  assert.match(bc, /state\.sections\[i\]\.artifacts\.splice\(j, 1\)/);
+  // structural changes autosave.
+  const addBlk = bc.slice(bc.indexOf('data-artadd]'));
+  assert.match(addBlk, /markDirty\(\)/);
+});
+
+// ── Persistence: artifacts + room copy flow through the public-safe allow-list ──
+test('snapshot() persists artifacts (tag/title/note) alongside room copy', () => {
+  const snap = fpJs.slice(fpJs.indexOf('function snapshot'), fpJs.indexOf('function applySnapshot'));
+  assert.match(snap, /narrative: s\.narrative/);
+  assert.match(snap, /prompt: s\.prompt/);
+  assert.match(snap, /enter: s\.enter/);
+  // artifacts serialized as an explicit tag/title/note allow-list, never raw objects.
+  assert.match(snap, /artifacts: Array\.isArray\(s\.artifacts\)/);
+  assert.match(snap, /tag: a\.tag \|\| '', title: a\.title \|\| '', note: a\.note \|\| ''/);
+});
+
+test('applySnapshot() restores artifacts string-sanitized and rejects raw fields', () => {
+  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 2000);
+  assert.match(app, /if \(Array\.isArray\(ss\.artifacts\)\)/);
+  // Only tag/title/note are copied, each coerced to String — no raw/private field.
+  assert.match(app, /tag: String\(\(a && a\.tag\) \|\| ''\)/);
+  assert.match(app, /title: String\(\(a && a\.title\) \|\| ''\)/);
+  assert.match(app, /note: String\(\(a && a\.note\) \|\| ''\)/);
+  assert.match(app, /tgt\.narrative = String\(ss\.narrative\)|ss\.narrative != null/);
+});
+
+// ── Role-aware media in the room; no fake-content band when there is no image ──
+test('renderRoom is role-aware (inset / full-bleed / background / artifact)', () => {
+  const rr = fpJs.slice(fpJs.indexOf('function renderRoom'), fpJs.indexOf('function enterRoom'));
+  assert.match(rr, /const img = visibleImage\(sec\.image\)/);
+  assert.match(rr, /const role = img \? \(img\.role \|\| 'inset'\) : 'none'/);
+  assert.match(rr, /role === 'full-bleed'/);
+  assert.match(rr, /role === 'background'/);
+  assert.match(rr, /role === 'inset'/);
+  assert.match(rr, /role === 'artifact'/);
+  // Full-bleed banner + background scrim + inset/artifact figure.
+  assert.match(rr, /class="room__bleed reveal"/);
+  assert.match(rr, /class="room__bg"/);
+  assert.match(rr, /class="room__bg-scrim"/);
+  assert.match(rr, /room__figure room__figure--/);
+  // Honour focal/opacity/blend + alt.
+  assert.match(rr, /imageStyle\(img\)/);
+  assert.match(rr, /figcaption class="room__figcap"/);
+});
+
+test('renderRoom omits the media region entirely when there is no public image', () => {
+  const rr = fpJs.slice(fpJs.indexOf('function renderRoom'), fpJs.indexOf('function enterRoom'));
+  // Media pieces start empty; only assigned under a matching role. role 'none' → all empty.
+  assert.match(rr, /let bleedHTML = '';/);
+  assert.match(rr, /let bgHTML = '';/);
+  assert.match(rr, /let mastheadFig = '';/);
+  assert.match(rr, /let asideFig = '';/);
+  // The old gradient/hatch fake-content band is gone.
+  assert.doesNotMatch(rr, /room__abstract/);
+  assert.doesNotMatch(rr, /room__mediamask/);
+  assert.doesNotMatch(fpCss, /\.room__abstract\b/);
+});
+
+test('highlights render as a numbered hairline ledger — never bordered cards', () => {
+  const rr = fpJs.slice(fpJs.indexOf('function renderRoom'), fpJs.indexOf('function enterRoom'));
+  assert.match(rr, /class="room__ledger reveal"/);
+  assert.match(rr, /class="room__entry"/);
+  assert.match(rr, /class="room__entry-num"/);
+  assert.match(rr, /padStart\(2, '0'\)/);
+  // Ledger omitted when there are no artifacts (no empty <ol>).
+  assert.match(rr, /arts\.length\s*\n?\s*\?/);
+  // The old dashboard-card artifact markup + CSS are gone.
+  assert.doesNotMatch(rr, /room-artifact\b/);
+  assert.doesNotMatch(fpCss, /\.room-artifact\b/);
+  // Ledger entries use a hairline top rule, not a rounded/bordered box.
+  assert.match(fpCss, /\.room__entry\{[^}]*border-top:1px solid var\(--line\)/);
+});
+
+test('closing line is a restrained final beat at a readable measure', () => {
+  const rr = fpJs.slice(fpJs.indexOf('function renderRoom'), fpJs.indexOf('function enterRoom'));
+  assert.match(rr, /class="room__closing reveal"/);
+  assert.match(rr, /class="room__closing-text"/);
+  assert.match(fpCss, /\.room__closing-text\{[^}]*max-width:45ch/);
+  // Narrative holds a comfortable reading measure.
+  assert.match(fpCss, /\.room__narrative\{[^}]*max-width:68ch/);
+});
+
+test('editorial spread is asymmetric and collapses to one column on narrow', () => {
+  assert.match(fpCss, /\.room__spread\{[^}]*grid-template-columns:minmax\(0,1\.55fr\) minmax\(0,1fr\)/);
+  assert.match(fpCss, /\.room__spread--solo\{grid-template-columns:minmax\(0,1fr\)\}/);
+  assert.match(fpCss, /@media \(max-width:920px\)\{[\s\S]*?\.room__spread\{grid-template-columns:1fr/);
+  assert.match(fpCss, /\.stage\.is-mobile \.room__spread\{grid-template-columns:1fr/);
+});
+
+test('room nav is light (no heavy bordered pills) and keeps index-based routing', () => {
+  const rr = fpJs.slice(fpJs.indexOf('function renderRoom'), fpJs.indexOf('function enterRoom'));
+  // Simplified nav links + a compact numbered pager; routing still data-goto/data-back.
+  assert.match(rr, /class="room__navlink room__navlink--prev"/);
+  assert.match(rr, /class="room__navlink room__navlink--next"/);
+  assert.match(rr, /class="room__pager"/);
+  assert.match(rr, /data-goto="\$\{prevIdx\}"/);
+  assert.match(rr, /data-goto="\$\{nextIdx\}"/);
+  assert.match(rr, /vizRoom\.querySelector\('\[data-back\]'\)\.addEventListener\('click', exitRoom\)/);
+  assert.match(rr, /observeReveals\(\)/);
+  // Nav links are borderless (no pill background/border like the old .room__nav-btn).
+  assert.match(fpCss, /\.room__navlink\{[^}]*background:none;border:none/);
+  assert.doesNotMatch(fpCss, /\.room__nav-btn\b/);
+});
+
+test('reduced-motion covers the new room nav + reveal elements', () => {
+  const rm = fpCss.slice(fpCss.indexOf('@media (prefers-reduced-motion:reduce)'));
+  assert.match(rm, /\.room__navlink/);
 });
 
 console.log('\n' + passed + ' checks passed.');
