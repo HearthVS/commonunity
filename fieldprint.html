@@ -113,6 +113,23 @@
                   <span class="adj__label">Fade strength <span class="adj__val" id="heroFadeStrengthVal">60%</span></span>
                   <input type="range" id="heroFadeStrength" min="0" max="100" step="1" value="60" aria-label="Portrait fade strength" />
                 </div>
+                <div class="adj">
+                  <span class="adj__label">Zoom <span class="adj__val" id="heroZoomVal">100%</span></span>
+                  <input type="range" id="heroZoom" min="100" max="200" step="1" value="100" aria-label="Portrait zoom" />
+                </div>
+                <div class="adj adj--overlay">
+                  <span class="minilabel" id="lbl-herooverlay">Cipher Field</span>
+                  <p class="imgeditor__note imgeditor__note--tight">One optional treatment — a translucent field and torus geometry drawn from your Cipher colours, kept clear of the face.</p>
+                  <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-herooverlay" id="heroOverlaySeg">
+                    <button role="radio" class="pill pill--sm" data-overlay="off" aria-checked="true" tabindex="0">Off</button>
+                    <button role="radio" class="pill pill--sm" data-overlay="cipher-field" aria-checked="false" tabindex="-1">Cipher Field</button>
+                  </div>
+                </div>
+                <div class="adj" id="heroOverlayIntensityRow" hidden>
+                  <span class="adj__label">Intensity <span class="adj__val" id="heroOverlayIntensityVal">50%</span></span>
+                  <input type="range" id="heroOverlayIntensity" min="0" max="100" step="1" value="50" aria-label="Cipher Field intensity" />
+                  <button class="minibtn minibtn--ghost" id="heroOverlayReset" type="button">Reset treatment</button>
+                </div>
               </div>
             </div>
           </div>
@@ -355,7 +372,8 @@
         <article class="viz" id="viz"
                  data-intensity="balanced" data-sigil="mark" data-torus="subtle" data-motion="threshold"
                  data-texture="subtle" data-transition="fade"
-                 data-hero="contained" data-palette="om-field" data-photo="warm" data-sigmode="auto">
+                 data-hero="contained" data-palette="om-field" data-photo="warm" data-sigmode="auto"
+                 data-overlay="off">
 
           <!-- torus atmosphere layer (site-wide) -->
           <div class="viz-fieldbg" aria-hidden="true">
@@ -372,6 +390,7 @@
             <div class="viz-hero__media" aria-hidden="true">
               <img class="viz-hero__photo" id="heroPhoto" alt="" hidden />
               <div class="portrait" data-photo="warm"></div>
+              <div class="viz-hero__cipher" id="heroCipherField"></div>
               <div class="viz-hero__mask" id="heroMask"></div>
             </div>
             <div class="viz-hero__copy">
@@ -408,6 +427,7 @@
   <!-- No OM Cipher engine in this frame: the engine runs in Studio and only a
        scrubbed, public-safe Cipher SVG + palette roles cross the postMessage
        seam. This surface never sees raw birth data / Gene Keys / mechanics. -->
+  <script src="/fieldprint-cipher-field.js"></script>
   <script src="/fieldprint.js"></script>
 </body>
 </html>

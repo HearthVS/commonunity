@@ -146,8 +146,11 @@
     heroPhotoHasAlpha: false,
     heroFocalX: 50,
     heroFocalY: 50,
+    heroZoom: 100,           // portrait zoom % (100 = no zoom; framing a face)
     heroFadeMode: 'none',
     heroFadeStrength: 0.6,
+    heroOverlay: 'off',      // Cipher Field treatment: 'off' | 'cipher-field'
+    heroOverlayIntensity: 0.5,
     roleOverrides: { root: null, expression: null, radiance: null },
     sections: SECTIONS.map((s) => ({ ...s, image: null, imgRole: null })),
     view: 'desktop',
@@ -876,12 +879,19 @@
         heroImg.hidden = false;
         heroImg.alt = state.heroAlt || '';
         heroImg.style.objectPosition = `${state.heroFocalX}% ${state.heroFocalY}%`;
+        // Restrained zoom: scale from the focal point so a face can be framed
+        // without distortion (object-fit still preserves aspect ratio).
+        const z = Math.max(1, state.heroZoom / 100);
+        heroImg.style.transform = z > 1 ? `scale(${z})` : '';
+        heroImg.style.transformOrigin = `${state.heroFocalX}% ${state.heroFocalY}%`;
       } else {
         // No real media — never retain a stale portrait between models.
         heroImg.removeAttribute('src');
         heroImg.hidden = true;
+        heroImg.style.transform = '';
       }
     }
+    applyCipherFieldOverlay(hasPhoto);
     const portrait = viz.querySelector('.portrait');
     if (portrait) {
       portrait.dataset.photo = state.photo;
@@ -902,6 +912,33 @@
     applyCipherWeave();
     drawFieldTorus();
     updateStageState();
+  }
+
+  /* Cipher Field — the one optional Arrival Portrait overlay. Deterministic SVG
+     built from public field primitives only (role colours + hue + a stable
+     seed), applied over the portrait with a face-safe centre mask. Intensity is
+     a single CSS opacity lever. Regenerated only when its inputs change. */
+  let cipherFieldSig = null;
+  function applyCipherFieldOverlay(hasPhoto) {
+    const node = $('heroCipherField');
+    const CF = window.CipherField;
+    const on = hasPhoto && state.heroOverlay === 'cipher-field' && !!CF;
+    viz.dataset.overlay = on ? 'cipher-field' : 'off';
+    if (!node) return;
+    if (!on) { node.innerHTML = ''; cipherFieldSig = null; return; }
+    const roles = {
+      root: activeRoleColor('root'),
+      expression: activeRoleColor('expression'),
+      radiance: activeRoleColor('radiance'),
+    };
+    const hue = (field && typeof field.primaryHue === 'number') ? field.primaryHue : 80;
+    const seed = state.palette + '|' + (field && field.radial ? String(field.radial).length : 0);
+    const sig = [roles.root, roles.expression, roles.radiance, hue, seed].join('~');
+    if (sig !== cipherFieldSig) {
+      node.innerHTML = CF.buildOverlaySvg({ roles: roles, hue: hue, seed: seed });
+      cipherFieldSig = sig;
+    }
+    viz.style.setProperty('--hero-overlay-opacity', String(CF.overlayOpacity(state.heroOverlayIntensity)));
   }
 
   function updateStageState() {
@@ -1347,8 +1384,10 @@
     if (rm) rm.addEventListener('click', () => {
       state.heroPhoto = ''; state.heroAlt = '';
       state.heroFocalX = 50; state.heroFocalY = 50;
+      state.heroZoom = 100;
       state.heroPhotoHasAlpha = false;
       state.heroFadeMode = 'none'; state.heroFadeStrength = 0.6;
+      state.heroOverlay = 'off'; state.heroOverlayIntensity = 0.5;
       applyComposition(); syncHeroEditor();
       markDirty();
     });
@@ -1372,6 +1411,36 @@
       state.heroFadeStrength = n / 100;
       const l = $('heroFadeStrengthVal'); if (l) l.textContent = n + '%';
       applyComposition();
+    });
+    const zoom = $('heroZoom');
+    if (zoom) zoom.addEventListener('input', () => {
+      const n = Math.max(100, Math.min(200, +zoom.value || 100));
+      state.heroZoom = n;
+      const l = $('heroZoomVal'); if (l) l.textContent = n + '%';
+      applyComposition();
+      markDirty();
+    });
+    const overlaySeg = $('heroOverlaySeg');
+    if (overlaySeg) overlaySeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-overlay]');
+      if (!btn) return;
+      state.heroOverlay = btn.getAttribute('data-overlay') === 'cipher-field' ? 'cipher-field' : 'off';
+      applyComposition(); syncHeroEditor();
+      markDirty();
+    });
+    const overlayInt = $('heroOverlayIntensity');
+    if (overlayInt) overlayInt.addEventListener('input', () => {
+      const n = Math.max(0, Math.min(100, +overlayInt.value || 0));
+      state.heroOverlayIntensity = n / 100;
+      const l = $('heroOverlayIntensityVal'); if (l) l.textContent = n + '%';
+      applyComposition();
+      markDirty();
+    });
+    const overlayReset = $('heroOverlayReset');
+    if (overlayReset) overlayReset.addEventListener('click', () => {
+      state.heroOverlay = 'off'; state.heroOverlayIntensity = 0.5;
+      applyComposition(); syncHeroEditor();
+      markDirty();
     });
   }
   function applyHeroFocal(axis, val) {
@@ -1407,6 +1476,22 @@
     const pct = Math.round(state.heroFadeStrength * 100);
     if (fadeStr) fadeStr.value = String(pct);
     if (fadeStrVal) fadeStrVal.textContent = pct + '%';
+    // Portrait zoom.
+    const zoom = $('heroZoom'), zoomVal = $('heroZoomVal');
+    if (zoom) zoom.value = String(state.heroZoom);
+    if (zoomVal) zoomVal.textContent = state.heroZoom + '%';
+    // Cipher Field overlay controls.
+    const overlaySeg = $('heroOverlaySeg'), overlayRow = $('heroOverlayIntensityRow'),
+      overlayInt = $('heroOverlayIntensity'), overlayIntVal = $('heroOverlayIntensityVal');
+    if (overlaySeg) overlaySeg.querySelectorAll('[data-overlay]').forEach((b) => {
+      const on = b.getAttribute('data-overlay') === state.heroOverlay;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    if (overlayRow) overlayRow.hidden = state.heroOverlay !== 'cipher-field';
+    const opct = Math.round(state.heroOverlayIntensity * 100);
+    if (overlayInt) overlayInt.value = String(opct);
+    if (overlayIntVal) overlayIntVal.textContent = opct + '%';
   }
 
   /* ---- COLOURS: editable role colours over the Cipher-derived harmony.
@@ -1644,6 +1729,10 @@
     // A fresh model never inherits the previous portrait's fade framing.
     state.heroFadeMode = 'none';
     state.heroFadeStrength = 0.6;
+    // A fresh model resets zoom + the optional Cipher Field treatment to off.
+    state.heroZoom = 100;
+    state.heroOverlay = 'off';
+    state.heroOverlayIntensity = 0.5;
     // Imported palettes replace any prior user colour overrides.
     state.roleOverrides = { root: null, expression: null, radiance: null };
     if (hero.intro) state.tagline = String(hero.intro);
@@ -1879,8 +1968,17 @@
       hero: {
         mode: state.hero, photo: state.photo, alt: state.heroAlt,
         focalX: state.heroFocalX, focalY: state.heroFocalY,
+        zoom: state.heroZoom,
         fadeMode: state.heroFadeMode, fadeStrength: state.heroFadeStrength,
         src: state.heroPhoto || '',
+        // Cipher Field treatment recipe — structured so a later stUdio Digital
+        // Vista workflow can re-open and extend it without a migration.
+        overlay: {
+          treatment: state.heroOverlay === 'cipher-field' ? 'cipher-field' : 'off',
+          version: (window.CipherField && window.CipherField.VERSION) || 1,
+          intensity: state.heroOverlayIntensity,
+          palette: state.palette,
+        },
       },
       sections: state.sections.map((s) => ({
         key: s.key, eyebrow: s.eyebrow, title: s.title, body: s.body,
@@ -1915,8 +2013,16 @@
     state.heroAlt = h.alt || '';
     state.heroFocalX = numOr(h.focalX, 50);
     state.heroFocalY = numOr(h.focalY, 50);
+    // Absent in pre-overlay drafts → default (no zoom), so old pages load unchanged.
+    state.heroZoom = Math.max(100, Math.min(200, numOr(h.zoom, 100)));
     state.heroFadeMode = ['none', 'text', 'edges'].indexOf(h.fadeMode) !== -1 ? h.fadeMode : 'none';
     state.heroFadeStrength = clamp01(numOr(h.fadeStrength, 0.6));
+    // Cipher Field recipe (absent → off). CipherField normalizes unknown shapes.
+    const rec = (window.CipherField && window.CipherField.normalizeRecipe)
+      ? window.CipherField.normalizeRecipe(h.overlay)
+      : { treatment: 'off', intensity: 0.5 };
+    state.heroOverlay = rec.treatment === 'cipher-field' ? 'cipher-field' : 'off';
+    state.heroOverlayIntensity = clamp01(numOr(rec.intensity, 0.5));
     state.heroPhoto = safeMediaSrc(h.src) || '';
     state.heroPhotoHasAlpha = false;
     if (state.heroPhoto) detectHeroAlpha(state.heroPhoto);

@@ -151,6 +151,37 @@ looks ephemeral.
 Tests: `python -m unittest test_system_health -v` (stdlib `unittest` +
 FastAPI `TestClient`, no new dependencies).
 
+## Arrival Portrait (Fieldprint builder)
+
+The Fieldprint builder (`fieldprint.html` / `.js` / `.css`, embedded in stUdio)
+lets a person use their selfie as the hOMe Arrival Portrait. Presentation is
+non-destructive — only public-safe settings are persisted (never birth data,
+Gene Keys or mechanics), so a page can be re-framed at any time.
+
+- **Presentation** — `Arrival treatment` chooses framed (`contained`, the
+  backward-compatible default) through `full-bleed`, which fills the hero region
+  edge-to-edge with `object-fit: cover` (aspect preserved, no distortion).
+- **Framing** — focal X/Y plus a restrained `Zoom` (100–200%) scale from the
+  focal point so a face can be centred on desktop and mobile. Focal is a single
+  responsive point (no separate mobile crop in this beta).
+- **Cipher Field** — the one optional overlay treatment. A deterministic,
+  privacy-safe SVG (root/expression/radiance palette + field hue + a stable
+  seed) rendered by [`fieldprint-cipher-field.js`](fieldprint-cipher-field.js):
+  a translucent field with torus-derived contour rings, drawn with a built-in
+  face-safe centre mask and `soft-light` blend. One `Intensity` control (0–100%)
+  plus an Off/Reset state. No engine, no birth data, no network, no
+  generative-AI call — it is a pure function of public field primitives.
+- **Persistence** — the builder's `snapshot()` (localStorage meta + IndexedDB
+  image blobs) stores `hero.zoom` and a versioned `hero.overlay` recipe
+  (`{ treatment, version, intensity, palette }`). The recipe is additive: the
+  draft schema is unchanged, so existing saved pages load untouched, and a
+  future stUdio Digital Vista workflow can re-open and extend the recipe without
+  a migration.
+
+Tests: `node --test test_cipher_field.js` (deterministic generation, privacy,
+recipe round-trip) and `python -m unittest test_arrival_portrait -v`
+(route, backward-compat defaults, persistence shape, builder wiring).
+
 ## Docs
 
 - [`docs/home-design-grammar.md`](docs/home-design-grammar.md) — hOMe Design Grammar: the source of truth for the public hOMe doorway (Minimum Viable Digital Self), public/internal language rules, and stUdio builder implications.
