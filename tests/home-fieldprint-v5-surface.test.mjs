@@ -375,4 +375,63 @@ test('Colours accordion offers editable role colours + Cipher reset', () => {
   assert.match(fpJs, /state\.roleOverrides\[which\] = inp\.value/);
 });
 
+// ── Transparent arrival portrait composites over the field (no white box) ────
+console.log('\nTransparent arrival portrait (alpha preserved / no white backing)');
+
+test('a transparent PNG portrait keeps its bytes — never flattened to JPEG', () => {
+  // The uploaded src is used verbatim from safeMediaSrc(FileReader result);
+  // nothing re-encodes it. No image/jpeg conversion exists anywhere.
+  const wh = fpJs.slice(fpJs.indexOf('function wireHeroPhoto'), fpJs.indexOf('function applyHeroFocal'));
+  assert.match(wh, /const src = safeMediaSrc\(ev\.target\.result\)/);
+  assert.match(wh, /state\.heroPhoto = src;/);
+  assert.doesNotMatch(fpJs, /image\/jpeg/i);
+  assert.doesNotMatch(fpJs, /toDataURL/);
+  // safeMediaSrc still admits PNG (and other raster/svg) data URLs unchanged.
+  assert.match(fpJs, /\^data:image\\\/\(png\|jpe\?g\|webp\|gif\|svg/);
+});
+
+test('alpha detection sets a data flag without mutating the portrait src', () => {
+  assert.match(fpJs, /function detectHeroAlpha\(/);
+  assert.match(fpJs, /function setHeroAlpha\(/);
+  // Reads pixels via a canvas probe, checks for any alpha < 250.
+  assert.match(fpJs, /getImageData\(/);
+  assert.match(fpJs, /data\[i\] < 250/);
+  // The detector only writes the alpha flag + dataset — never state.heroPhoto.
+  const det = fpJs.slice(fpJs.indexOf('function detectHeroAlpha'), fpJs.indexOf('function wireHeroPhoto'));
+  assert.doesNotMatch(det, /state\.heroPhoto =/);
+  assert.match(fpJs, /viz\.dataset\.photoAlpha = \(state\.heroPhoto && v\) \? 'true' : 'false'/);
+  // Composition exposes the flag only while a photo is present.
+  assert.match(fpJs, /viz\.dataset\.photoAlpha = \(hasPhoto && state\.heroPhotoHasAlpha\) \? 'true' : 'false'/);
+});
+
+test('detection runs on upload + rehydration, and clears on remove', () => {
+  const wh = fpJs.slice(fpJs.indexOf('function wireHeroPhoto'), fpJs.indexOf('function syncHeroEditor'));
+  assert.match(wh, /detectHeroAlpha\(src\)/);         // upload
+  assert.match(wh, /state\.heroPhotoHasAlpha = false;/); // remove resets
+  assert.match(fpJs, /if \(state\.heroPhoto\) detectHeroAlpha\(state\.heroPhoto\)/); // hydrate
+});
+
+test('a transparent portrait drops the opaque media card (no white rectangle)', () => {
+  // No forced white/cream backing on the image element itself.
+  assert.match(fpCss, /\.viz-hero__photo\{[^}]*background:transparent/);
+  assert.doesNotMatch(fpCss, /\.viz-hero__photo\{[^}]*background:(#fff|#ffffff|white|var\(--surface\)|var\(--bg\))/i);
+  // When alpha present: media wrapper is transparent, shadowless, radius-free,
+  // and the figure is shown whole (contain) over the field.
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\]\[data-photo-alpha="true"\] \.viz-hero__media\{[^}]*background:transparent[^}]*box-shadow:none[^}]*border-radius:0/);
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\]\[data-photo-alpha="true"\] \.viz-hero__photo\{[^}]*object-fit:contain/);
+});
+
+test('opaque photos still render with cover-crop + focal (unchanged path)', () => {
+  // Default hero photo keeps object-fit:cover; focal via object-position.
+  assert.match(fpCss, /\.viz-hero__photo\{[^}]*object-fit:cover/);
+  assert.match(fpJs, /heroImg\.style\.objectPosition = `\$\{state\.heroFocalX\}% \$\{state\.heroFocalY\}%`/);
+});
+
+test('removing the portrait restores the no-photo placeholder + clears alpha', () => {
+  // has-photo false re-enables the placeholder egg; alpha flag is reset.
+  assert.match(fpJs, /viz\.dataset\.hasPhoto = hasPhoto \? 'true' : 'false'/);
+  assert.match(fpCss, /\.viz\[data-has-photo="true"\] \.portrait\{display:none\}/);
+  assert.match(fpJs, /heroImg\.removeAttribute\('src'\)/);
+});
+
 console.log('\n' + passed + ' checks passed.');

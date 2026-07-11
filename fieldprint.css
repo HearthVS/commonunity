@@ -363,10 +363,20 @@ img,svg{display:block;max-width:100%}
    watermark are all suppressed so nothing opaque is ever painted over a face.
    The Cipher remains present through the site-wide .viz-fieldbg field. */
 .viz-hero__photo{position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;object-position:center;display:block;z-index:0}
+  object-fit:cover;object-position:center;display:block;z-index:0;background:transparent}
 .viz[data-has-photo="true"] .portrait{display:none}
 .viz[data-has-photo="true"] .viz-hero__mask{display:none}
 .viz[data-has-photo="true"] .viz-watermark{display:none}
+
+/* TRANSPARENT PORTRAIT — a PNG/WebP/SVG with real alpha composites straight
+   over the atmospheric Fieldprint background. Strip the media card (no opaque
+   backing, shadow or radius) so no white/cream rectangle sits behind the
+   cut-out, and let the figure sit whole over the field (contain, not cover).
+   Opaque photos are unaffected and keep the cover-crop + focal framing. */
+.viz[data-has-photo="true"][data-photo-alpha="true"] .viz-hero__media{
+  background:transparent;box-shadow:none;border-radius:0}
+.viz[data-has-photo="true"][data-photo-alpha="true"] .viz-hero__photo{
+  object-fit:contain;background:transparent}
 
 /* --- HERO: CONTAINED --- */
 .viz[data-hero="contained"] .viz-hero{grid-template-columns:1.05fr .95fr;gap:clamp(24px,5vw,64px);

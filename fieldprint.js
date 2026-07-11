@@ -143,6 +143,7 @@
     eyebrow: 'CommonUnity',
     heroPhoto: '',
     heroAlt: '',
+    heroPhotoHasAlpha: false,
     heroFocalX: 50,
     heroFocalY: 50,
     roleOverrides: { root: null, expression: null, radiance: null },
@@ -795,6 +796,10 @@
     // over a human face. The Cipher stays present as the site-wide field bg.
     const hasPhoto = !!state.heroPhoto;
     viz.dataset.hasPhoto = hasPhoto ? 'true' : 'false';
+    // A transparent portrait (alpha detected) composites straight over the
+    // atmospheric field — no opaque card/backing. Opaque photos keep the cover
+    // crop + focal framing. Detection runs where heroPhoto changes.
+    viz.dataset.photoAlpha = (hasPhoto && state.heroPhotoHasAlpha) ? 'true' : 'false';
     const heroImg = $('heroPhoto');
     if (heroImg) {
       if (hasPhoto) {
@@ -1065,6 +1070,42 @@
     });
   }
 
+  /* Detect whether the arrival portrait carries real transparency. A PNG/WebP/
+     SVG with alpha should composite directly over the field (no opaque card);
+     an opaque JPEG/PNG keeps the cover-crop card. The src is a same-origin
+     data:/https media URL already gated by safeMediaSrc, so the canvas read is
+     never tainted. Detection is async (image decode) and only updates the
+     data-photo-alpha flag the CSS reacts to — it never mutates the src. */
+  function setHeroAlpha(v, forSrc) {
+    // Ignore stale results if the portrait changed while decoding.
+    if (forSrc !== undefined && forSrc !== state.heroPhoto) return;
+    state.heroPhotoHasAlpha = !!v;
+    viz.dataset.photoAlpha = (state.heroPhoto && v) ? 'true' : 'false';
+  }
+  function detectHeroAlpha(src) {
+    if (!src) { setHeroAlpha(false); return; }
+    const probe = new Image();
+    probe.onload = () => {
+      try {
+        const w = Math.max(1, Math.min(probe.naturalWidth || 0, 80));
+        const h = Math.max(1, Math.min(probe.naturalHeight || 0, 80));
+        if (!probe.naturalWidth || !probe.naturalHeight) { setHeroAlpha(false, src); return; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        if (!ctx) { setHeroAlpha(false, src); return; }
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(probe, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        let hasAlpha = false;
+        for (let i = 3; i < data.length; i += 4) { if (data[i] < 250) { hasAlpha = true; break; } }
+        setHeroAlpha(hasAlpha, src);
+      } catch (_) { setHeroAlpha(false, src); }
+    };
+    probe.onerror = () => setHeroAlpha(false, src);
+    probe.src = src;
+  }
+
   /* ---- IDENTITY: arrival portrait (upload / replace / remove / alt / focal).
      Every src passes through safeMediaSrc; private/unsafe portraits never
      render. Removal and rehydration always clear any stale <img> src. ---- */
@@ -1078,7 +1119,12 @@
       const reader = new FileReader();
       reader.onload = (ev) => {
         const src = safeMediaSrc(ev.target.result);
-        if (src) { state.heroPhoto = src; applyComposition(); syncHeroEditor(); }
+        if (src) {
+          state.heroPhoto = src;
+          state.heroPhotoHasAlpha = false;
+          applyComposition(); syncHeroEditor();
+          detectHeroAlpha(src);
+        }
         file.value = '';
       };
       reader.readAsDataURL(f);
@@ -1086,6 +1132,7 @@
     if (rm) rm.addEventListener('click', () => {
       state.heroPhoto = ''; state.heroAlt = '';
       state.heroFocalX = 50; state.heroFocalY = 50;
+      state.heroPhotoHasAlpha = false;
       applyComposition(); syncHeroEditor();
     });
     if (alt) alt.addEventListener('input', () => {
@@ -1344,6 +1391,10 @@
     state.heroAlt = state.heroPhoto ? (typeof id.alt === 'string' ? id.alt : '') : '';
     state.heroFocalX = 50;
     state.heroFocalY = 50;
+    // Transparency is re-derived from the new portrait (async); assume opaque
+    // until the decode completes so no stale alpha framing carries over.
+    state.heroPhotoHasAlpha = false;
+    if (state.heroPhoto) detectHeroAlpha(state.heroPhoto);
     // Imported palettes replace any prior user colour overrides.
     state.roleOverrides = { root: null, expression: null, radiance: null };
     if (hero.intro) state.tagline = String(hero.intro);
