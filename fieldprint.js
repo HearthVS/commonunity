@@ -865,16 +865,49 @@
       const glyph = makeSigil(state.seed, i + 1, { size: 16, stroke: 1.8 });
       card.innerHTML = `
         <div class="seccard__head">
-          <span class="seccard__title"><span class="seccard__glyph">${glyph}</span>${escapeHtml(sec.eyebrow)}</span>
+          <span class="seccard__title"><span class="seccard__glyph">${glyph}</span><span class="seccard__titletext" data-sectitletext="${i}">${escapeHtml(sec.eyebrow)}</span></span>
           <span class="seccard__idx">0${i + 1}</span>
         </div>
+        <div class="minilabel-row">
+          <label class="minilabel" for="secEyebrow${i}">Display heading</label>
+          <button class="linkbtn linkbtn--mini" type="button" data-secheadingreset="${i}">Reset</button>
+        </div>
+        <input class="mini-input" id="secEyebrow${i}" type="text" data-seceyebrow="${i}"
+          value="${escapeHtml(sec.eyebrow)}" aria-label="Room 0${i + 1} display heading" />
         <label class="minilabel" for="secTitle${i}">Heading</label>
         <input class="mini-input" id="secTitle${i}" type="text" data-sectitle="${i}"
-          value="${escapeHtml(sec.title)}" aria-label="${escapeHtml(sec.eyebrow)} heading" />
+          value="${escapeHtml(sec.title)}" aria-label="Room 0${i + 1} heading" />
         <label class="minilabel" for="secBody${i}">Body</label>
         <textarea class="seccard__area" id="secBody${i}" rows="3" data-secbody="${i}"
-          aria-label="${escapeHtml(sec.eyebrow)} body text">${escapeHtml(sec.body)}</textarea>`;
+          aria-label="Room 0${i + 1} body text">${escapeHtml(sec.body)}</textarea>`;
       sectionCopyControls.appendChild(card);
+    });
+
+    // Display heading (the room's public kicker/overline). Editing it updates the
+    // overview, room detail, room rail and prev/next nav live. Routing stays keyed
+    // to the stable room index/key, so renaming a heading can never break it.
+    function applyEyebrowLive(idx) {
+      const tt = sectionCopyControls.querySelector(`[data-sectitletext="${idx}"]`);
+      if (tt) tt.textContent = state.sections[idx].eyebrow;
+      renderSections();
+      if (state.route.view === 'room') renderRoom(state.route.roomIdx);
+    }
+    sectionCopyControls.querySelectorAll('[data-seceyebrow]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = +inp.dataset.seceyebrow;
+        state.sections[idx].eyebrow = inp.value;
+        applyEyebrowLive(idx);
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-secheadingreset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = +btn.dataset.secheadingreset;
+        state.sections[idx].eyebrow = baseEyebrow(idx);
+        const inp = sectionCopyControls.querySelector(`[data-seceyebrow="${idx}"]`);
+        if (inp) inp.value = state.sections[idx].eyebrow;
+        applyEyebrowLive(idx);
+        markDirty();
+      });
     });
 
     sectionCopyControls.querySelectorAll('[data-sectitle]').forEach((inp) => {
@@ -999,6 +1032,7 @@
             renderSections();
             if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
             buildImageControls();
+            markDirty();
           }
           inp.value = '';
         };
@@ -1012,6 +1046,7 @@
         renderSections();
         if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
         buildImageControls();
+        markDirty();
       });
     });
     roomImageControls.querySelectorAll('.roleopt').forEach((btn) => {
@@ -1024,6 +1059,7 @@
           b.setAttribute('aria-checked', b === btn ? 'true' : 'false'));
         renderSections();
         if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
+        markDirty();
       });
     });
     roomImageControls.querySelectorAll('[data-imgalt]').forEach((inp) => {
@@ -1132,6 +1168,7 @@
           state.heroPhotoHasAlpha = false;
           applyComposition(); syncHeroEditor();
           detectHeroAlpha(src);
+          markDirty();
         }
         file.value = '';
       };
@@ -1143,6 +1180,7 @@
       state.heroPhotoHasAlpha = false;
       state.heroFadeMode = 'none'; state.heroFadeStrength = 0.6;
       applyComposition(); syncHeroEditor();
+      markDirty();
     });
     if (alt) alt.addEventListener('input', () => {
       state.heroAlt = alt.value;
@@ -1156,6 +1194,7 @@
       if (!btn) return;
       state.heroFadeMode = btn.getAttribute('data-herofade');
       applyComposition(); syncHeroEditor();
+      markDirty();
     });
     const fadeStr = $('heroFadeStrength');
     if (fadeStr) fadeStr.addEventListener('input', () => {
@@ -1220,6 +1259,7 @@
       state.roleOverrides = { root: null, expression: null, radiance: null };
       applyFieldPalette(); syncColorInputs(); renderSections(); applyComposition();
       if (state.route.view === 'room') renderRoom(state.route.roomIdx);
+      markDirty();
     });
   }
   function syncColorInputs() {
@@ -1272,6 +1312,7 @@
     else if (key === 'texture') { syncAdjustToState(); }
     applyComposition();
     if (key === 'palette' || key === 'hero' || key === 'texture') playTransition();
+    markDirty();
   }
 
   function setGroup(key, value) {
@@ -1565,6 +1606,8 @@
         hydrateFromModel(d.model);
         fullRender();
         setLoadNote(true, 'Live Fieldprint from your Studio data.');
+        // Re-baseline to the imported field, then restore a matching draft.
+        establishBaselineAndRestore();
       }
     });
   }
@@ -1603,6 +1646,286 @@
   function cap(s) { return String(s).charAt(0).toUpperCase() + String(s).slice(1); }
 
   /* =========================================================
+     ON-DEVICE DRAFT PERSISTENCE
+     A private, versioned, public-safe draft saved to THIS browser only —
+     never a cloud/account, never published. Text + settings live in
+     localStorage; image data URLs live in IndexedDB (they can exceed the
+     localStorage quota). Raw imported JSON and any private/birth/Gene-Keys
+     fields are never persisted, and PRIVATE room images are omitted entirely
+     — public/private filtering is enforced on both save and load. A schema
+     version + an owner fingerprint prevent loading a stale/foreign draft.
+     ========================================================= */
+  const DRAFT_SCHEMA = 1;
+  const DRAFT_KEY = 'commonunity.fieldprint.draft.v1';
+  const IDB_NAME = 'commonunity-fieldprint';
+  const IDB_STORE = 'images';
+  let baseline = null;         // in-memory snapshot of the imported/demo field (incl images)
+  let currentOwner = 'demo';   // fingerprint of the active field's identity/source
+  let saveTimer = 0;
+  let hasSavedDraft = false;
+
+  const clamp01 = (n) => Math.max(0, Math.min(1, n));
+  const numOr = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
+  function djb2(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h.toString(36); }
+
+  // Fingerprint the active identity/source so a draft never bleeds across people.
+  function computeOwner() {
+    const sig = [
+      state.name || '',
+      (state.cipher === 'engine' && field) ? Math.round(field.primaryHue || 0) : 'demo',
+      (field && field.radial) ? String(field.radial).length : 0,
+    ].join('|');
+    return djb2(sig);
+  }
+
+  // The public-safe, editable composition — the ONLY thing we ever persist.
+  function snapshot() {
+    return {
+      name: state.name,
+      tagline: state.tagline,
+      hero: {
+        mode: state.hero, photo: state.photo, alt: state.heroAlt,
+        focalX: state.heroFocalX, focalY: state.heroFocalY,
+        fadeMode: state.heroFadeMode, fadeStrength: state.heroFadeStrength,
+        src: state.heroPhoto || '',
+      },
+      sections: state.sections.map((s) => ({
+        key: s.key, eyebrow: s.eyebrow, title: s.title, body: s.body,
+        narrative: s.narrative, prompt: s.prompt, enter: s.enter, imgRole: s.imgRole || null,
+        image: s.image ? {
+          src: s.image.src || '', role: s.image.role || 'inset', alt: s.image.alt || '',
+          visibility: s.image.visibility || 'public',
+          focalX: s.image.focalX, focalY: s.image.focalY, opacity: s.image.opacity, blend: s.image.blend,
+        } : null,
+      })),
+      roleOverrides: { ...state.roleOverrides },
+      fieldset: {
+        intensity: state.intensity, sigil: state.sigil, torus: state.torus, texture: state.texture,
+        transition: state.transition, palette: state.palette, photo: state.photo, sigmode: state.sigmode,
+        zoom: manualZoom, opacity: manualOpacity,
+      },
+    };
+  }
+
+  // Apply a composition back onto state. Never touches the cipher/field engine
+  // (that comes from the imported model / demo, applied before this overlay).
+  function applySnapshot(s) {
+    if (!s) return;
+    if (s.name != null) state.name = String(s.name);
+    if (s.tagline != null) state.tagline = String(s.tagline);
+    const h = s.hero || {};
+    if (h.mode) state.hero = h.mode;
+    if (h.photo) state.photo = h.photo;
+    state.heroAlt = h.alt || '';
+    state.heroFocalX = numOr(h.focalX, 50);
+    state.heroFocalY = numOr(h.focalY, 50);
+    state.heroFadeMode = ['none', 'text', 'edges'].indexOf(h.fadeMode) !== -1 ? h.fadeMode : 'none';
+    state.heroFadeStrength = clamp01(numOr(h.fadeStrength, 0.6));
+    state.heroPhoto = safeMediaSrc(h.src) || '';
+    state.heroPhotoHasAlpha = false;
+    if (state.heroPhoto) detectHeroAlpha(state.heroPhoto);
+    if (Array.isArray(s.sections)) {
+      s.sections.forEach((ss, i) => {
+        const tgt = state.sections[i];
+        if (!tgt || !ss) return;
+        if (ss.eyebrow != null) tgt.eyebrow = String(ss.eyebrow);
+        if (ss.title != null) tgt.title = String(ss.title);
+        if (ss.body != null) tgt.body = String(ss.body);
+        if (ss.narrative != null) tgt.narrative = String(ss.narrative);
+        if (ss.prompt != null) tgt.prompt = String(ss.prompt);
+        if (ss.enter != null) tgt.enter = String(ss.enter);
+        tgt.imgRole = ss.imgRole || null;
+        // sanitizeImage re-runs privacy/safety filtering (defense in depth).
+        tgt.image = (ss.image && ss.image.src) ? sanitizeImage(ss.image) : null;
+      });
+    }
+    if (s.roleOverrides) {
+      state.roleOverrides = {
+        root: s.roleOverrides.root || null,
+        expression: s.roleOverrides.expression || null,
+        radiance: s.roleOverrides.radiance || null,
+      };
+    }
+    const f = s.fieldset || {};
+    ['intensity', 'sigil', 'torus', 'texture', 'transition', 'palette', 'photo', 'sigmode'].forEach((k) => { if (f[k]) state[k] = f[k]; });
+    if (typeof f.zoom === 'number') manualZoom = Math.max(120, Math.min(800, f.zoom));
+    if (typeof f.opacity === 'number') manualOpacity = clamp01(f.opacity);
+  }
+
+  // Split a snapshot into localStorage-safe metadata + an images map for IDB.
+  // PRIVATE images are dropped from both — never written to disk.
+  function toStorable(snap) {
+    const meta = JSON.parse(JSON.stringify(snap));
+    const images = {};
+    if (meta.hero && meta.hero.src) { images.hero = meta.hero.src; meta.hero.src = ''; meta.hero.hasImage = true; }
+    else if (meta.hero) meta.hero.hasImage = false;
+    meta.sections.forEach((ss, i) => {
+      if (!ss.image) return;
+      if (ss.image.visibility === 'private') { ss.image = null; return; }  // never persist private media
+      if (ss.image.src) { images['room' + i] = ss.image.src; ss.image.src = ''; ss.image.hasImage = true; }
+    });
+    return { meta, images };
+  }
+  function fromStorable(meta, images) {
+    const snap = meta;
+    if (snap.hero && snap.hero.hasImage && images && images.hero) snap.hero.src = images.hero;
+    (snap.sections || []).forEach((ss, i) => {
+      if (ss && ss.image && ss.image.hasImage && images && images['room' + i]) ss.image.src = images['room' + i];
+    });
+    return snap;
+  }
+
+  /* ---- IndexedDB (image blobs) ---- */
+  function idbOpen() {
+    return new Promise((res, rej) => {
+      let req;
+      try { req = indexedDB.open(IDB_NAME, 1); } catch (e) { rej(e); return; }
+      req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE); };
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function idbPutImages(owner, images) {
+    const db = await idbOpen();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(images, owner);
+      tx.oncomplete = () => { db.close(); res(true); };
+      tx.onerror = () => { db.close(); rej(tx.error); };
+    });
+  }
+  async function idbGetImages(owner) {
+    try {
+      const db = await idbOpen();
+      return await new Promise((res) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const rq = tx.objectStore(IDB_STORE).get(owner);
+        rq.onsuccess = () => { db.close(); res(rq.result || {}); };
+        rq.onerror = () => { db.close(); res({}); };
+      });
+    } catch (_) { return {}; }
+  }
+  async function idbDelImages(owner) {
+    try {
+      const db = await idbOpen();
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(owner);
+      await new Promise((res) => { tx.oncomplete = res; tx.onerror = res; });
+      db.close();
+    } catch (_) {}
+  }
+
+  /* ---- status + affordances ---- */
+  function setSaveStatus(st, customText) {
+    const el = $('saveStatus');
+    if (!el) return;
+    el.dataset.state = st;
+    const map = {
+      idle: 'Saves to this device', dirty: 'Unsaved changes', saving: 'Saving…',
+      saved: 'Saved on this device', error: "Couldn't save on this device",
+    };
+    el.textContent = customText || map[st] || '';
+  }
+  function updateSaveAffordances() {
+    const rv = $('revertSavedBtn');
+    if (rv) rv.hidden = !hasSavedDraft;
+  }
+
+  /* ---- save / autosave ---- */
+  async function saveDraft() {
+    setSaveStatus('saving');
+    try {
+      const { meta, images } = toStorable(snapshot());
+      const record = { schema: DRAFT_SCHEMA, owner: currentOwner, savedAt: Date.now(), data: meta };
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(record));
+      } catch (_) {
+        setSaveStatus('error', "Couldn't save — this browser's storage is full");
+        return;
+      }
+      let imagesOk = true;
+      const hasImages = Object.keys(images).length > 0;
+      if (hasImages) { try { await idbPutImages(currentOwner, images); } catch (_) { imagesOk = false; } }
+      else { await idbDelImages(currentOwner); }
+      hasSavedDraft = true;
+      // Be honest if images could not be stored on this device.
+      setSaveStatus('saved', imagesOk ? '' : 'Saved on this device (text only — images too large to store here)');
+      updateSaveAffordances();
+    } catch (_) {
+      setSaveStatus('error');
+    }
+  }
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, 800); }
+  function markDirty() { setSaveStatus('dirty'); scheduleSave(); }
+  function flushSave() { clearTimeout(saveTimer); saveDraft(); }
+
+  async function loadDraft() {
+    let record;
+    try { record = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (_) { record = null; }
+    if (!record || record.schema !== DRAFT_SCHEMA) return false;   // schema mismatch → ignore
+    if (record.owner !== currentOwner) return false;               // foreign identity/source → never load
+    const images = await idbGetImages(currentOwner);
+    applySnapshot(fromStorable(record.data, images));
+    fullRender();
+    hasSavedDraft = true;
+    setSaveStatus('saved');
+    updateSaveAffordances();
+    return true;
+  }
+
+  // Capture the imported/demo field as the reset baseline, then restore any
+  // matching on-device draft on top of it.
+  async function establishBaselineAndRestore() {
+    baseline = snapshot();
+    currentOwner = computeOwner();
+    // Does a matching draft already exist? (drives Revert affordance)
+    let record = null;
+    try { record = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (_) {}
+    hasSavedDraft = !!(record && record.schema === DRAFT_SCHEMA && record.owner === currentOwner);
+    const restored = await loadDraft();
+    if (!restored) { setSaveStatus('idle'); updateSaveAffordances(); }
+  }
+
+  async function revertToSaved() {
+    clearTimeout(saveTimer);  // cancel any queued autosave so it can't overwrite the revert
+    const ok = await loadDraft();
+    if (!ok) setSaveStatus('idle');
+  }
+  async function resetToImported() {
+    if (!baseline) return;
+    clearTimeout(saveTimer);  // cancel any queued autosave so it can't resurrect the cleared draft
+    applySnapshot(baseline);
+    fullRender();
+    try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+    await idbDelImages(currentOwner);
+    hasSavedDraft = false;
+    setSaveStatus('idle');
+    updateSaveAffordances();
+  }
+
+  function baseEyebrow(i) {
+    if (baseline && baseline.sections && baseline.sections[i]) return baseline.sections[i].eyebrow;
+    return SECTIONS[i] ? SECTIONS[i].eyebrow : '';
+  }
+
+  function wireSave() {
+    const s = $('saveBtn');
+    if (s) s.addEventListener('click', () => flushSave());
+    const rv = $('revertSavedBtn');
+    if (rv) rv.addEventListener('click', () => {
+      if (window.confirm('Revert to the last version saved on this device? Unsaved changes will be lost.')) revertToSaved();
+    });
+    const ri = $('resetImportedBtn');
+    if (ri) ri.addEventListener('click', () => {
+      if (window.confirm('Reset to the imported Fieldprint? This clears your on-device draft and all edits.')) resetToImported();
+    });
+    // Debounced autosave on any native input/change in the control rail. Custom
+    // radio/segment buttons call markDirty() directly from their handlers.
+    const panel = $('panelScroll');
+    if (panel) ['input', 'change'].forEach((ev) => panel.addEventListener(ev, markDirty));
+  }
+
+  /* =========================================================
      INIT
      ========================================================= */
   function init() {
@@ -1626,12 +1949,15 @@
     wireJsonLoad();
     wireHeroPhoto();
     wireColors();
+    wireSave();
     wireBridge();
     syncControlsToState();
     syncHeroEditor();
     syncColorInputs();
     applyComposition();
     requestAnimationFrame(observeReveals);
+    // Capture the demo field as baseline, then restore any on-device draft.
+    establishBaselineAndRestore();
 
     let resizeRaf = 0;
     window.addEventListener('resize', () => {

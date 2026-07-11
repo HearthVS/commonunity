@@ -496,4 +496,152 @@ test('fade resets on remove and on model rehydration (no stale framing)', () => 
   assert.match(hy, /state\.heroFadeStrength = 0\.6/);
 });
 
+// ── Editable per-room Display heading (eyebrow), routing-safe ──
+console.log('\nEditable presentation copy (room display headings)');
+
+test('each room exposes an editable Display heading, defaulting to its eyebrow', () => {
+  // Content accordion renders a per-room Display heading input seeded from eyebrow.
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'), fpJs.indexOf('function applyEyebrowLive') + 400);
+  assert.match(fpJs, /data-seceyebrow/);
+  assert.match(fpJs, /Display heading/);
+  assert.match(fpJs, /value="\$\{escapeHtml\(sec\.eyebrow\)\}"[^>]*data-seceyebrow|data-seceyebrow="\$\{i\}"[\s\S]*?value="\$\{escapeHtml\(sec\.eyebrow\)\}"/);
+});
+
+test('typing a Display heading updates state.eyebrow + re-renders live', () => {
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'));
+  assert.match(bc, /function applyEyebrowLive\(/);
+  assert.match(bc, /state\.sections\[idx\]\.eyebrow = inp\.value/);
+  // Live: card title text + overview sections + open room re-render.
+  assert.match(bc, /data-sectitletext/);
+  assert.match(bc, /renderSections\(\)/);
+  assert.match(bc, /if \(state\.route\.view === 'room'\) renderRoom\(state\.route\.roomIdx\)/);
+});
+
+test('per-room Reset restores the heading to its imported/default value only', () => {
+  const bc = fpJs.slice(fpJs.indexOf('function buildCopyControls'));
+  assert.match(bc, /data-secheadingreset/);
+  assert.match(bc, /state\.sections\[idx\]\.eyebrow = baseEyebrow\(idx\)/);
+  // baseEyebrow prefers the in-memory baseline (imported), falling back to SECTIONS default.
+  assert.match(fpJs, /function baseEyebrow\(i\)/);
+  assert.match(fpJs, /baseline\.sections\[i\]\.eyebrow/);
+  assert.match(fpJs, /return SECTIONS\[i\] \? SECTIONS\[i\]\.eyebrow : ''/);
+});
+
+test('display-heading editing cannot break routing (routing stays index/key-based)', () => {
+  // Navigation is keyed on data-goto / data-enter indices, never the heading text.
+  assert.match(fpJs, /data-goto/);
+  assert.match(fpJs, /data-enter/);
+  // The snapshot keeps the stable room key alongside the editable eyebrow.
+  assert.match(fpJs, /key: s\.key, eyebrow: s\.eyebrow/);
+});
+
+// ── Save / autosave: local device draft, honest about scope ──
+console.log('\nSave / autosave (on-device draft, privacy-safe)');
+
+test('a visible Save action + live status live in the rail', () => {
+  assert.match(fpHtml, /id="saveBtn"[^>]*>Save Fieldprint|>Save Fieldprint</);
+  assert.match(fpHtml, /id="saveStatus"/);
+  // Honest scope copy: device-only, not cloud/account/published.
+  assert.match(fpHtml, /Saved on this device only/);
+  assert.doesNotMatch(fpHtml, /published to the web[^<]*<\/[^>]*>\s*<\/section>\s*$/);
+  assert.match(fpHtml, /id="revertSavedBtn"/);
+  assert.match(fpHtml, /id="resetImportedBtn"/);
+});
+
+test('status wording covers idle / dirty / saving / saved / error', () => {
+  const ss = fpJs.slice(fpJs.indexOf('function setSaveStatus'));
+  assert.match(ss, /idle: 'Saves to this device'/);
+  assert.match(ss, /dirty: 'Unsaved changes'/);
+  assert.match(ss, /saving: 'Saving…'/);
+  assert.match(ss, /saved: 'Saved on this device'/);
+  assert.match(ss, /error: "Couldn't save on this device"/);
+});
+
+test('autosave is debounced; explicit Save flushes immediately', () => {
+  assert.match(fpJs, /function scheduleSave\(\) \{ clearTimeout\(saveTimer\); saveTimer = setTimeout\(saveDraft, 800\)/);
+  assert.match(fpJs, /function markDirty\(\) \{ setSaveStatus\('dirty'\); scheduleSave\(\)/);
+  assert.match(fpJs, /function flushSave\(\) \{ clearTimeout\(saveTimer\); saveDraft\(\)/);
+  // Save button flushes; native rail input/change is the debounced trigger.
+  assert.match(fpJs, /addEventListener\('click', \(\) => flushSave\(\)\)/);
+  assert.match(fpJs, /\['input', 'change'\]\.forEach\(\(ev\) => panel\.addEventListener\(ev, markDirty\)\)/);
+});
+
+test('custom (non-native) controls also mark the draft dirty', () => {
+  // Radios/segments/uploads/removes/role/colour-reset are <button>s → explicit markDirty.
+  const count = (fpJs.match(/markDirty\(\)/g) || []).length;
+  assert.ok(count >= 8, 'expected markDirty() wired into custom handlers, saw ' + count);
+});
+
+test('only a public-safe composition is persisted — never raw model / private fields', () => {
+  const sn = fpJs.slice(fpJs.indexOf('function snapshot()'), fpJs.indexOf('function applySnapshot'));
+  // The snapshot is an explicit allow-list of presentation fields.
+  assert.match(sn, /name: state\.name/);
+  assert.match(sn, /tagline: state\.tagline/);
+  assert.match(sn, /eyebrow: s\.eyebrow, title: s\.title, body: s\.body/);
+  // No birth/profile/Gene-Keys/mechanics/raw-model leakage into the snapshot.
+  assert.doesNotMatch(sn, /birth|geneKeys|gene_keys|mechanics|rawModel|rawJson|profile/i);
+});
+
+test('private room images are dropped from persistence entirely', () => {
+  const ts = fpJs.slice(fpJs.indexOf('function toStorable'), fpJs.indexOf('function fromStorable'));
+  assert.match(ts, /visibility === 'private'/);
+  assert.match(ts, /ss\.image = null; return;/);
+  // Rehydration re-runs privacy/safety filtering as defense in depth.
+  assert.match(fpJs, /sanitizeImage\(ss\.image\)/);
+  assert.match(fpJs, /state\.heroPhoto = safeMediaSrc\(h\.src\)/);
+});
+
+test('image data URLs go to IndexedDB; metadata to localStorage (quota-safe)', () => {
+  assert.match(fpJs, /const IDB_NAME = 'commonunity-fieldprint'/);
+  assert.match(fpJs, /const IDB_STORE = 'images'/);
+  assert.match(fpJs, /localStorage\.setItem\(DRAFT_KEY/);
+  assert.match(fpJs, /idbPutImages\(currentOwner, images\)/);
+  // Honest fallbacks: full storage + images-too-large are reported, not hidden.
+  assert.match(fpJs, /this browser's storage is full/);
+  assert.match(fpJs, /images too large to store here/);
+});
+
+test('a draft is guarded by schema version + owner fingerprint (no cross-user bleed)', () => {
+  assert.match(fpJs, /const DRAFT_SCHEMA = 1/);
+  assert.match(fpJs, /const DRAFT_KEY = 'commonunity\.fieldprint\.draft\.v1'/);
+  const ld = fpJs.slice(fpJs.indexOf('async function loadDraft'), fpJs.indexOf('async function establishBaselineAndRestore'));
+  assert.match(ld, /record\.schema !== DRAFT_SCHEMA\) return false/);
+  assert.match(ld, /record\.owner !== currentOwner\) return false/);
+  // Owner is a fingerprint of the active identity/source, not a global key.
+  assert.match(fpJs, /function computeOwner\(/);
+  assert.match(fpJs, /return djb2\(sig\)/);
+});
+
+test('reload rehydrates the matching draft; revert + reset are available', () => {
+  assert.match(fpJs, /async function establishBaselineAndRestore\(/);
+  assert.match(fpJs, /baseline = snapshot\(\)/);
+  assert.match(fpJs, /const restored = await loadDraft\(\)/);
+  // Revert = reload saved; Reset = restore imported baseline + clear draft.
+  assert.match(fpJs, /async function revertToSaved\(/);
+  assert.match(fpJs, /async function resetToImported\(/);
+  assert.match(fpJs, /applySnapshot\(baseline\)/);
+  assert.match(fpJs, /localStorage\.removeItem\(DRAFT_KEY\)/);
+  assert.match(fpJs, /idbDelImages\(currentOwner\)/);
+});
+
+test('destructive resets are confirmed before wiping edits', () => {
+  const ws = fpJs.slice(fpJs.indexOf('function wireSave'));
+  assert.match(ws, /window\.confirm\('Revert to the last version saved on this device\?/);
+  assert.match(ws, /window\.confirm\('Reset to the imported Fieldprint\?/);
+});
+
+test('revert + reset cancel any queued autosave (no draft resurrection)', () => {
+  // A debounced save queued by a just-typed edit must not fire after a reset and
+  // re-create the draft the user just cleared. Both paths clear the timer first.
+  const rv = fpJs.slice(fpJs.indexOf('async function revertToSaved'), fpJs.indexOf('async function resetToImported'));
+  assert.match(rv, /clearTimeout\(saveTimer\)/);
+  const ri = fpJs.slice(fpJs.indexOf('async function resetToImported'), fpJs.indexOf('function baseEyebrow'));
+  assert.match(ri, /clearTimeout\(saveTimer\)/);
+});
+
+test('init + model bridge establish the baseline and restore on (re)load', () => {
+  assert.match(fpJs, /wireSave\(\);/);
+  assert.match(fpJs, /establishBaselineAndRestore\(\);/);
+});
+
 console.log('\n' + passed + ' checks passed.');

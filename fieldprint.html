@@ -36,6 +36,19 @@
 
       <div class="panel__scroll" id="panelScroll">
 
+        <!-- SAVE (pinned) — local, on-device draft only; not cloud/published -->
+        <section class="ctl ctl--save" aria-labelledby="lbl-save">
+          <div class="savebar">
+            <button class="savebtn" id="saveBtn" type="button">Save Fieldprint</button>
+            <span class="savestatus" id="saveStatus" data-state="idle" aria-live="polite">Saves to this device</span>
+          </div>
+          <div class="savebar__row">
+            <button class="linkbtn" id="revertSavedBtn" type="button" hidden>Revert to saved</button>
+            <button class="linkbtn" id="resetImportedBtn" type="button">Reset to imported</button>
+          </div>
+          <p class="ctl__hint ctl__hint--save">Saved on this device only — a private draft in this browser, not published to the web.</p>
+        </section>
+
         <!-- LOAD FIELD JSON (pinned above the accordions) -->
         <section class="ctl ctl--load" aria-labelledby="lbl-load">
           <div class="ctl__label">
