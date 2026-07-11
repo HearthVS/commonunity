@@ -36,245 +36,274 @@
 
       <div class="panel__scroll" id="panelScroll">
 
-        <!-- LOAD FIELD JSON -->
+        <!-- LOAD FIELD JSON (pinned above the accordions) -->
         <section class="ctl ctl--load" aria-labelledby="lbl-load">
           <div class="ctl__label">
             <h2 id="lbl-load">Load Field JSON</h2>
-            <p class="ctl__hint">Seed from a CommonUnity / cOMpass / Field JSON export. Normalized through the privacy firewall — raw birth data never crosses into this preview.</p>
           </div>
           <button class="loadbtn" id="loadJsonBtn" type="button">
             <svg class="loadbtn__ic" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M3 15v2h14v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Load Field JSON
           </button>
           <input type="file" id="loadJsonInput" accept="application/json,.json" hidden />
+          <p class="ctl__hint ctl__hint--load">Begin with a Field JSON export.</p>
           <p class="load-note" id="loadNote" aria-live="polite">Showing a demo field. Load a Field JSON to preview a real Fieldprint.</p>
         </section>
 
-        <!-- FIELDPRINT SUMMARY -->
-        <section class="ctl ctl--field" aria-labelledby="lbl-field">
-          <div class="ctl__label">
-            <h2 id="lbl-field">This person's Fieldprint</h2>
-            <p class="ctl__hint">Every asset below is generated from one symbolic field — not assembled from templates.</p>
-          </div>
-          <div class="fieldcard" id="fieldCard">
-            <div class="fieldcard__sigil" id="fieldSigil" aria-hidden="true"></div>
-            <div class="fieldcard__meta">
-              <span class="fieldcard__seed" id="fieldSeedLabel">Cipher seed</span>
-              <code class="fieldcard__code" id="fieldSeed">— — —</code>
-              <span class="fieldcard__pal" id="fieldPalName">Field palette</span>
+        <!-- ============ 1. IDENTITY (open) ============ -->
+        <details class="acc" id="accIdentity" open>
+          <summary class="acc__sum">
+            <span class="acc__title">Identity</span>
+            <span class="acc__chev" aria-hidden="true"></span>
+          </summary>
+          <div class="acc__body">
+            <p class="acc__hint">Your name, the sentence at the threshold, and the arrival portrait.</p>
+            <div class="field">
+              <label class="field__label" for="in-name">Display name</label>
+              <input class="field__input" id="in-name" type="text" data-bind="name" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="in-tag">Identity sentence</label>
+              <textarea class="field__input field__input--area" id="in-tag" rows="2" data-bind="tagline"></textarea>
+            </div>
+
+            <div class="imgeditor" id="heroImgEditor">
+              <span class="imgeditor__label">Arrival portrait</span>
+              <div class="imgeditor__btns">
+                <button class="minibtn" id="heroUploadBtn" type="button">Upload</button>
+                <button class="minibtn minibtn--ghost" id="heroRemoveBtn" type="button" hidden>Remove</button>
+              </div>
+              <input type="file" id="heroPhotoInput" accept="image/*" hidden />
+              <p class="imgeditor__note" id="heroPhotoNote">No portrait yet — the field shows a Cipher placeholder.</p>
+              <div class="imgfields" id="heroPhotoFields" hidden>
+                <label class="minilabel" for="heroAltInput">Alt text</label>
+                <input class="mini-input" id="heroAltInput" type="text" placeholder="Describe the portrait" />
+                <div class="focalrow">
+                  <div class="adj">
+                    <span class="adj__label">Focal X <span class="adj__val" id="heroFocalXVal">50%</span></span>
+                    <input type="range" id="heroFocalX" min="0" max="100" step="1" value="50" aria-label="Portrait focal X" />
+                  </div>
+                  <div class="adj">
+                    <span class="adj__label">Focal Y <span class="adj__val" id="heroFocalYVal">50%</span></span>
+                    <input type="range" id="heroFocalY" min="0" max="100" step="1" value="50" aria-label="Portrait focal Y" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </details>
 
-        <!-- 1. FIELDPRINT INTENSITY -->
-        <section class="ctl" aria-labelledby="lbl-intensity">
-          <div class="ctl__label">
-            <h2 id="lbl-intensity">Fieldprint intensity</h2>
-            <p class="ctl__hint">How present the field is on the page — from nearly bare to fully luminous.</p>
+        <!-- ============ 2. CONTENT / COPY (open) ============ -->
+        <details class="acc" id="accContent" open>
+          <summary class="acc__sum">
+            <span class="acc__title">Content</span>
+            <span class="acc__chev" aria-hidden="true"></span>
+          </summary>
+          <div class="acc__body">
+            <p class="acc__hint">The four questions every page answers. Edits appear live in the preview.</p>
+            <div id="sectionCopyControls" class="sectionctls"><!-- injected by JS --></div>
           </div>
-          <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-intensity" data-control="intensity">
-            <button role="radio" class="pill" data-value="quiet">Quiet</button>
-            <button role="radio" class="pill" data-value="balanced" aria-checked="true">Balanced</button>
-            <button role="radio" class="pill" data-value="luminous">Luminous</button>
-          </div>
-        </section>
+        </details>
 
-        <!-- 2. SIGIL PRESENCE -->
-        <section class="ctl" aria-labelledby="lbl-sigil">
-          <div class="ctl__label">
-            <h2 id="lbl-sigil">Cipher presence</h2>
-            <p class="ctl__hint">The personal Cipher mark — used as signature, watermark, or per-section glyph.</p>
-          </div>
-          <div class="segset segset--grid" role="radiogroup" aria-labelledby="lbl-sigil" data-control="sigil">
-            <button role="radio" class="tile tile--sig" data-value="none">
-              <span class="tile__viz" data-sig="none"></span>
-              <span class="tile__name">None</span>
-            </button>
-            <button role="radio" class="tile tile--sig" data-value="mark" aria-checked="true">
-              <span class="tile__viz" data-sig="mark"></span>
-              <span class="tile__name">Mark</span>
-            </button>
-            <button role="radio" class="tile tile--sig" data-value="watermark">
-              <span class="tile__viz" data-sig="watermark"></span>
-              <span class="tile__name">Watermark</span>
-            </button>
-            <button role="radio" class="tile tile--sig" data-value="glyphs">
-              <span class="tile__viz" data-sig="glyphs"></span>
-              <span class="tile__name">Section glyphs</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- 3. TORUS FIELD -->
-        <section class="ctl" aria-labelledby="lbl-torus">
-          <div class="ctl__label">
-            <h2 id="lbl-torus">Torus field</h2>
-            <p class="ctl__hint">The torus-derived texture — background atmosphere, section bands and image masks.</p>
-          </div>
-          <div class="segset segset--stack" role="radiogroup" aria-labelledby="lbl-torus" data-control="torus">
-            <button role="radio" class="seg" data-value="off">
-              <span class="seg__title">Off</span>
-              <span class="seg__desc">No field texture — bare surfaces</span>
-            </button>
-            <button role="radio" class="seg" data-value="subtle" aria-checked="true">
-              <span class="seg__title">Subtle</span>
-              <span class="seg__desc">Faint orbital lines behind content</span>
-            </button>
-            <button role="radio" class="seg" data-value="atmospheric">
-              <span class="seg__title">Atmospheric</span>
-              <span class="seg__desc">Torus bands, masked section imagery</span>
-            </button>
-            <button role="radio" class="seg" data-value="threshold">
-              <span class="seg__title">Full threshold</span>
-              <span class="seg__desc">Immersive field — the cOMpass arrival</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- 3b. CIPHER TEXTURE (subliminal full-bleed) + zoom/opacity -->
-        <section class="ctl" aria-labelledby="lbl-texture">
-          <div class="ctl__label">
-            <h2 id="lbl-texture">Cipher texture</h2>
-            <p class="ctl__hint">The Cipher mark as ambient texture. <b>Wallpaper</b> tiles it; <b>Inside-crop</b> zooms into one fragment so you travel within the mark.</p>
-          </div>
-          <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-texture" data-control="texture">
-            <button role="radio" class="pill" data-value="off">Off</button>
-            <button role="radio" class="pill" data-value="subtle" aria-checked="true">Subtle</button>
-            <button role="radio" class="pill" data-value="inside">Inside-crop</button>
-            <button role="radio" class="pill" data-value="wallpaper">Wallpaper</button>
-          </div>
-          <div class="adjrow" id="cipherAdjust">
-            <div class="adj">
-              <span class="adj__label">Zoom <span class="adj__val" id="zoomVal">420%</span></span>
-              <input type="range" id="cipherZoom" min="120" max="800" step="10" value="420"
-                     aria-label="Cipher texture zoom" />
-            </div>
-            <div class="adj">
-              <span class="adj__label">Opacity <span class="adj__val" id="opacityVal">20%</span></span>
-              <input type="range" id="cipherOpacity" min="0" max="100" step="1" value="20"
-                     aria-label="Cipher texture opacity" />
+        <!-- ============ 3. IMAGES (open) ============ -->
+        <details class="acc" id="accImages" open>
+          <summary class="acc__sum">
+            <span class="acc__title">Images</span>
+            <span class="acc__chev" aria-hidden="true"></span>
+          </summary>
+          <div class="acc__body">
+            <p class="acc__hint">One image per room. Private images never appear in the public page.</p>
+            <div id="roomImageControls" class="sectionctls"><!-- injected by JS --></div>
+            <div class="suggestbox" id="suggestBox" aria-disabled="true">
+              <span class="suggestbox__label">Suggested from your field</span>
+              <p class="suggestbox__note">Coming soon. Studio may one day propose images drawn from your field — nothing is ever added or published without your explicit confirmation.</p>
             </div>
           </div>
-        </section>
+        </details>
 
-        <!-- 4. TRANSITION (threshold, not carousel) -->
-        <section class="ctl" aria-labelledby="lbl-transition">
-          <div class="ctl__label">
-            <h2 id="lbl-transition">Threshold transition</h2>
-            <p class="ctl__hint">How the field attunes when the recipe changes — a slow arrival, not a slideshow. Reduced-motion is always respected.</p>
-          </div>
-          <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-transition" data-control="transition">
-            <button role="radio" class="pill" data-value="none">None</button>
-            <button role="radio" class="pill" data-value="fade" aria-checked="true">Fade</button>
-            <button role="radio" class="pill" data-value="threshold">Threshold</button>
-          </div>
-          <p class="ctl__note" id="motionNote" hidden>Your system requests reduced motion — the field is held still.</p>
-        </section>
+        <!-- ============ 4. COLOURS (closed) ============ -->
+        <details class="acc" id="accColours">
+          <summary class="acc__sum">
+            <span class="acc__title">Colours</span>
+            <span class="acc__chev" aria-hidden="true"></span>
+          </summary>
+          <div class="acc__body">
+            <p class="acc__hint">Your starting colours are drawn from the tonal relationships in your Cipher — a suggested harmony, not a rule.</p>
+            <div class="rolecolors" id="roleColors">
+              <label class="rolecolor"><span>Root</span><input type="color" id="roleColorRoot" value="#5a5647" /></label>
+              <label class="rolecolor"><span>Expression</span><input type="color" id="roleColorExpression" value="#5a5647" /></label>
+              <label class="rolecolor"><span>Radiance</span><input type="color" id="roleColorRadiance" value="#5a5647" /></label>
+            </div>
+            <button class="minibtn minibtn--ghost" id="resetColorsBtn" type="button">Reset to Cipher colours</button>
 
-        <!-- 5. HERO / ARRIVAL TREATMENT -->
-        <section class="ctl" aria-labelledby="lbl-hero">
-          <div class="ctl__label">
-            <h2 id="lbl-hero">Arrival image</h2>
-            <p class="ctl__hint">How the portrait meets the field at the threshold — contained to full-bleed.</p>
-          </div>
-          <div class="segset segset--grid" role="radiogroup" aria-labelledby="lbl-hero" data-control="hero">
-            <button role="radio" class="tile" data-value="contained" aria-checked="true">
-              <span class="tile__viz" data-viz="contained"></span>
-              <span class="tile__name">Contained in field</span>
-            </button>
-            <button role="radio" class="tile" data-value="bleed-right">
-              <span class="tile__viz" data-viz="bleed-right"></span>
-              <span class="tile__name">Bleed right</span>
-            </button>
-            <button role="radio" class="tile" data-value="bleed-left">
-              <span class="tile__viz" data-viz="bleed-left"></span>
-              <span class="tile__name">Bleed left</span>
-            </button>
-            <button role="radio" class="tile" data-value="full-bleed">
-              <span class="tile__viz" data-viz="full-bleed"></span>
-              <span class="tile__name">Full-bleed field</span>
-            </button>
-            <button role="radio" class="tile" data-value="text-only">
-              <span class="tile__viz" data-viz="text-only"></span>
-              <span class="tile__name">Bare threshold (no portrait)</span>
-            </button>
-          </div>
-          <div class="ctl__sub">
-            <label class="ctl__sublabel" id="lbl-photo">Portrait tone</label>
-            <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-photo" data-control="photo">
-              <button role="radio" class="pill" data-value="warm" aria-checked="true">Warm</button>
-              <button role="radio" class="pill" data-value="cool">Cool</button>
-              <button role="radio" class="pill" data-value="mono">Mono</button>
+            <div class="grp">
+              <label class="ctl__sublabel" id="lbl-palette">Palette</label>
+              <div class="segset segset--grid palettes" role="radiogroup" aria-labelledby="lbl-palette" data-control="palette">
+                <button role="radio" class="swatch swatch--live" data-value="om-field" aria-checked="true">
+                  <span class="swatch__chips" id="fieldPalChips"><i></i><i></i><i></i></span>
+                  <span class="swatch__name">OM field · live roles</span>
+                </button>
+                <button role="radio" class="swatch" data-value="om-dawn">
+                  <span class="swatch__chips" data-pal="om-dawn"><i></i><i></i><i></i></span>
+                  <span class="swatch__name">OM dawn</span>
+                </button>
+                <button role="radio" class="swatch" data-value="om-deep">
+                  <span class="swatch__chips" data-pal="om-deep"><i></i><i></i><i></i></span>
+                  <span class="swatch__name">OM deep field</span>
+                </button>
+                <button role="radio" class="swatch" data-value="om-ember">
+                  <span class="swatch__chips" data-pal="om-ember"><i></i><i></i><i></i></span>
+                  <span class="swatch__name">OM ember</span>
+                </button>
+                <button role="radio" class="swatch" data-value="om-signal">
+                  <span class="swatch__chips" data-pal="om-signal"><i></i><i></i><i></i></span>
+                  <span class="swatch__name">OM clear signal</span>
+                </button>
+              </div>
             </div>
           </div>
-        </section>
+        </details>
 
-        <!-- 6. FIELD PALETTE (OM Cipher) -->
-        <section class="ctl" aria-labelledby="lbl-palette">
-          <div class="ctl__label">
-            <h2 id="lbl-palette">Field palette</h2>
-            <p class="ctl__hint">OM Cipher colour as atmosphere — surfaces and light, never raw background + text.</p>
-          </div>
-          <div class="segset segset--grid palettes" role="radiogroup" aria-labelledby="lbl-palette" data-control="palette">
-            <button role="radio" class="swatch swatch--live" data-value="om-field" aria-checked="true">
-              <span class="swatch__chips" id="fieldPalChips"><i></i><i></i><i></i></span>
-              <span class="swatch__name">OM field · live roles</span>
-            </button>
-            <button role="radio" class="swatch" data-value="om-dawn">
-              <span class="swatch__chips" data-pal="om-dawn"><i></i><i></i><i></i></span>
-              <span class="swatch__name">OM dawn</span>
-            </button>
-            <button role="radio" class="swatch" data-value="om-deep">
-              <span class="swatch__chips" data-pal="om-deep"><i></i><i></i><i></i></span>
-              <span class="swatch__name">OM deep field</span>
-            </button>
-            <button role="radio" class="swatch" data-value="om-ember">
-              <span class="swatch__chips" data-pal="om-ember"><i></i><i></i><i></i></span>
-              <span class="swatch__name">OM ember</span>
-            </button>
-            <button role="radio" class="swatch" data-value="om-signal">
-              <span class="swatch__chips" data-pal="om-signal"><i></i><i></i><i></i></span>
-              <span class="swatch__name">OM clear signal</span>
-            </button>
-          </div>
-        </section>
+        <!-- ============ 5. FIELDPRINT / CIPHER (closed, advanced) ============ -->
+        <details class="acc" id="accField">
+          <summary class="acc__sum">
+            <span class="acc__title">Fieldprint &amp; Cipher</span>
+            <span class="acc__chev" aria-hidden="true"></span>
+          </summary>
+          <div class="acc__body">
 
-        <!-- 7. SECTION SIGNATURES -->
-        <section class="ctl" aria-labelledby="lbl-sig-mode">
-          <div class="ctl__label">
-            <h2 id="lbl-sig-mode">Section signatures</h2>
-            <p class="ctl__hint">Each public section carries its own field signature. Automatic follows the Fieldprint; manual lets you tune each one and its image role.</p>
-          </div>
-          <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-sig-mode" data-control="sigmode">
-            <button role="radio" class="pill" data-value="auto" aria-checked="true">Automatic</button>
-            <button role="radio" class="pill" data-value="manual">Manual</button>
-          </div>
-        </section>
+            <div class="grp">
+              <div class="fieldcard" id="fieldCard">
+                <div class="fieldcard__sigil" id="fieldSigil" aria-hidden="true"></div>
+                <div class="fieldcard__meta">
+                  <span class="fieldcard__seed" id="fieldSeedLabel">Cipher seed</span>
+                  <code class="fieldcard__code" id="fieldSeed">— — —</code>
+                  <span class="fieldcard__pal" id="fieldPalName">Field palette</span>
+                </div>
+              </div>
+            </div>
 
-        <!-- SECTIONS: signature + content + image role -->
-        <section class="ctl" aria-labelledby="lbl-sections">
-          <div class="ctl__label">
-            <h2 id="lbl-sections">Public sections</h2>
-            <p class="ctl__hint">The four questions every CommonUnity page answers — each with its signature, image role and editable copy.</p>
-          </div>
-          <div id="sectionControls" class="sectionctls"><!-- injected by JS --></div>
-        </section>
+            <div class="grp" aria-labelledby="lbl-intensity">
+              <div class="ctl__label"><h2 id="lbl-intensity">Fieldprint intensity</h2>
+                <p class="ctl__hint">How present the field is on the page — from nearly bare to fully luminous.</p></div>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-intensity" data-control="intensity">
+                <button role="radio" class="pill" data-value="quiet">Quiet</button>
+                <button role="radio" class="pill" data-value="balanced" aria-checked="true">Balanced</button>
+                <button role="radio" class="pill" data-value="luminous">Luminous</button>
+              </div>
+            </div>
 
-        <!-- IDENTITY -->
-        <section class="ctl" aria-labelledby="lbl-identity">
-          <div class="ctl__label">
-            <h2 id="lbl-identity">Identity</h2>
-            <p class="ctl__hint">Name and the single identity sentence at the threshold.</p>
+            <div class="grp" aria-labelledby="lbl-sigil">
+              <div class="ctl__label"><h2 id="lbl-sigil">Cipher presence</h2>
+                <p class="ctl__hint">The personal Cipher mark — used as signature, watermark, or per-section glyph.</p></div>
+              <div class="segset segset--grid" role="radiogroup" aria-labelledby="lbl-sigil" data-control="sigil">
+                <button role="radio" class="tile tile--sig" data-value="none">
+                  <span class="tile__viz" data-sig="none"></span><span class="tile__name">None</span>
+                </button>
+                <button role="radio" class="tile tile--sig" data-value="mark" aria-checked="true">
+                  <span class="tile__viz" data-sig="mark"></span><span class="tile__name">Mark</span>
+                </button>
+                <button role="radio" class="tile tile--sig" data-value="watermark">
+                  <span class="tile__viz" data-sig="watermark"></span><span class="tile__name">Watermark</span>
+                </button>
+                <button role="radio" class="tile tile--sig" data-value="glyphs">
+                  <span class="tile__viz" data-sig="glyphs"></span><span class="tile__name">Section glyphs</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grp" aria-labelledby="lbl-torus">
+              <div class="ctl__label"><h2 id="lbl-torus">Torus field</h2>
+                <p class="ctl__hint">The torus-derived texture — background atmosphere, section bands and image masks.</p></div>
+              <div class="segset segset--stack" role="radiogroup" aria-labelledby="lbl-torus" data-control="torus">
+                <button role="radio" class="seg" data-value="off">
+                  <span class="seg__title">Off</span><span class="seg__desc">No field texture — bare surfaces</span>
+                </button>
+                <button role="radio" class="seg" data-value="subtle" aria-checked="true">
+                  <span class="seg__title">Subtle</span><span class="seg__desc">Faint orbital lines behind content</span>
+                </button>
+                <button role="radio" class="seg" data-value="atmospheric">
+                  <span class="seg__title">Atmospheric</span><span class="seg__desc">Torus bands, masked section imagery</span>
+                </button>
+                <button role="radio" class="seg" data-value="threshold">
+                  <span class="seg__title">Full threshold</span><span class="seg__desc">Immersive field — the cOMpass arrival</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grp" aria-labelledby="lbl-texture">
+              <div class="ctl__label"><h2 id="lbl-texture">Cipher texture</h2>
+                <p class="ctl__hint">The Cipher mark as ambient texture. <b>Wallpaper</b> tiles it; <b>Inside-crop</b> zooms into one fragment so you travel within the mark.</p></div>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-texture" data-control="texture">
+                <button role="radio" class="pill" data-value="off">Off</button>
+                <button role="radio" class="pill" data-value="subtle" aria-checked="true">Subtle</button>
+                <button role="radio" class="pill" data-value="inside">Inside-crop</button>
+                <button role="radio" class="pill" data-value="wallpaper">Wallpaper</button>
+              </div>
+              <div class="adjrow" id="cipherAdjust">
+                <div class="adj">
+                  <span class="adj__label">Zoom <span class="adj__val" id="zoomVal">420%</span></span>
+                  <input type="range" id="cipherZoom" min="120" max="800" step="10" value="420" aria-label="Cipher texture zoom" />
+                </div>
+                <div class="adj">
+                  <span class="adj__label">Opacity <span class="adj__val" id="opacityVal">20%</span></span>
+                  <input type="range" id="cipherOpacity" min="0" max="100" step="1" value="20" aria-label="Cipher texture opacity" />
+                </div>
+              </div>
+            </div>
+
+            <div class="grp" aria-labelledby="lbl-transition">
+              <div class="ctl__label"><h2 id="lbl-transition">Threshold transition</h2>
+                <p class="ctl__hint">How the field attunes when the recipe changes — a slow arrival, not a slideshow. Reduced-motion is always respected.</p></div>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-transition" data-control="transition">
+                <button role="radio" class="pill" data-value="none">None</button>
+                <button role="radio" class="pill" data-value="fade" aria-checked="true">Fade</button>
+                <button role="radio" class="pill" data-value="threshold">Threshold</button>
+              </div>
+              <p class="ctl__note" id="motionNote" hidden>Your system requests reduced motion — the field is held still.</p>
+            </div>
+
+            <div class="grp" aria-labelledby="lbl-hero">
+              <div class="ctl__label"><h2 id="lbl-hero">Arrival treatment</h2>
+                <p class="ctl__hint">How the portrait meets the field at the threshold — contained to full-bleed.</p></div>
+              <div class="segset segset--grid" role="radiogroup" aria-labelledby="lbl-hero" data-control="hero">
+                <button role="radio" class="tile" data-value="contained" aria-checked="true">
+                  <span class="tile__viz" data-viz="contained"></span><span class="tile__name">Contained in field</span>
+                </button>
+                <button role="radio" class="tile" data-value="bleed-right">
+                  <span class="tile__viz" data-viz="bleed-right"></span><span class="tile__name">Bleed right</span>
+                </button>
+                <button role="radio" class="tile" data-value="bleed-left">
+                  <span class="tile__viz" data-viz="bleed-left"></span><span class="tile__name">Bleed left</span>
+                </button>
+                <button role="radio" class="tile" data-value="full-bleed">
+                  <span class="tile__viz" data-viz="full-bleed"></span><span class="tile__name">Full-bleed field</span>
+                </button>
+                <button role="radio" class="tile" data-value="text-only">
+                  <span class="tile__viz" data-viz="text-only"></span><span class="tile__name">Bare threshold (no portrait)</span>
+                </button>
+              </div>
+              <div class="ctl__sub">
+                <label class="ctl__sublabel" id="lbl-photo">Portrait tone</label>
+                <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-photo" data-control="photo">
+                  <button role="radio" class="pill" data-value="warm" aria-checked="true">Warm</button>
+                  <button role="radio" class="pill" data-value="cool">Cool</button>
+                  <button role="radio" class="pill" data-value="mono">Mono</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grp" aria-labelledby="lbl-sig-mode">
+              <div class="ctl__label"><h2 id="lbl-sig-mode">Section signatures</h2>
+                <p class="ctl__hint">Each public section carries its own field signature. Automatic follows the Fieldprint; manual holds the current layout.</p></div>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-sig-mode" data-control="sigmode">
+                <button role="radio" class="pill" data-value="auto" aria-checked="true">Automatic</button>
+                <button role="radio" class="pill" data-value="manual">Manual</button>
+              </div>
+            </div>
+
           </div>
-          <div class="field">
-            <label class="field__label" for="in-name">Display name</label>
-            <input class="field__input" id="in-name" type="text" data-bind="name" />
-          </div>
-          <div class="field">
-            <label class="field__label" for="in-tag">Identity sentence</label>
-            <textarea class="field__input field__input--area" id="in-tag" rows="2" data-bind="tagline"></textarea>
-          </div>
-        </section>
+        </details>
 
       </div><!-- /panel__scroll -->
     </aside>

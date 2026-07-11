@@ -244,4 +244,135 @@ test('the field stage is full-bleed — no preview-card wrapper / radius / black
   assert.doesNotMatch(fpCss, /radial-gradient\(120% 80% at 50% -10%,#1b1c14,#0b0c07/);
 });
 
+// ── v6 left-rail information architecture (5 accordions, Identity-first) ──────
+console.log('\nLeft-rail IA (accordions / identity photo / room images / colours)');
+
+test('the rail is five native <details> accordions in the approved order', () => {
+  const iId = fpHtml.indexOf('id="accIdentity"');
+  const iContent = fpHtml.indexOf('id="accContent"');
+  const iImages = fpHtml.indexOf('id="accImages"');
+  const iColours = fpHtml.indexOf('id="accColours"');
+  const iField = fpHtml.indexOf('id="accField"');
+  assert.ok(iId !== -1 && iContent !== -1 && iImages !== -1 && iColours !== -1 && iField !== -1,
+    'all five accordions present');
+  assert.ok(iId < iContent && iContent < iImages && iImages < iColours && iColours < iField,
+    'order must be Identity → Content → Images → Colours → Fieldprint/Cipher');
+  // Keyboard-accessible native disclosure with a chevron affordance.
+  assert.match(fpHtml, /<details class="acc" id="accIdentity" open>/);
+  assert.match(fpHtml, /<summary class="acc__sum">/);
+  assert.match(fpCss, /\.acc__chev/);
+});
+
+test('only Identity + Content + Images are open by default; Colours/Cipher collapsed', () => {
+  assert.match(fpHtml, /id="accIdentity" open>/);
+  assert.match(fpHtml, /id="accContent" open>/);
+  assert.match(fpHtml, /id="accImages" open>/);
+  // Colours and the advanced Cipher group carry no `open` attribute.
+  assert.match(fpHtml, /<details class="acc" id="accColours">/);
+  assert.match(fpHtml, /<details class="acc" id="accField">/);
+});
+
+test('Load Field JSON stays pinned above the accordions with compact copy', () => {
+  const iLoad = fpHtml.indexOf('class="ctl ctl--load"');
+  const iId = fpHtml.indexOf('id="accIdentity"');
+  assert.ok(iLoad !== -1 && iLoad < iId, 'Load JSON pinned above the first accordion');
+  assert.match(fpHtml, /Begin with a Field JSON export\./);
+  // The technical privacy-firewall paragraph is gone from the visible rail copy.
+  const load = fpHtml.slice(iLoad, iId);
+  assert.doesNotMatch(load, /firewall/i);
+  assert.doesNotMatch(load, /privacy/i);
+});
+
+test('no birth-data / Gene Keys / mechanics wording leaks into the normal UI', () => {
+  // Visible copy only — strip source comments and <meta> SEO/description.
+  const visible = fpHtml
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<meta\b[^>]*>/gi, '');
+  assert.doesNotMatch(visible, /gene key/i);
+  assert.doesNotMatch(visible, /birth data|birthdata|birth date/i);
+  // "sigil" is engine jargon — user-facing accordion titles say "Cipher".
+  assert.doesNotMatch(fpHtml, /class="acc__title">[^<]*[Ss]igil/);
+});
+
+test('Identity accordion activates the arrival-portrait editor', () => {
+  assert.match(fpHtml, /id="heroImgEditor"/);
+  assert.match(fpHtml, /id="heroUploadBtn"/);
+  assert.match(fpHtml, /id="heroRemoveBtn"/);
+  assert.match(fpHtml, /type="file" id="heroPhotoInput"/);
+  assert.match(fpHtml, /id="heroAltInput"/);
+  assert.match(fpHtml, /id="heroFocalX"/);
+  assert.match(fpHtml, /id="heroFocalY"/);
+  // JS wiring: upload → FileReader → safeMediaSrc → state.heroPhoto; remove clears.
+  assert.match(fpJs, /function wireHeroPhoto\(/);
+  assert.match(fpJs, /function applyHeroFocal\(/);
+  assert.match(fpJs, /function syncHeroEditor\(/);
+  const wh = fpJs.slice(fpJs.indexOf('function wireHeroPhoto'), fpJs.indexOf('function applyHeroFocal'));
+  assert.match(wh, /safeMediaSrc\(ev\.target\.result\)/);
+  assert.match(wh, /state\.heroPhoto = src/);
+});
+
+test('removing / rehydrating the portrait never keeps stale alt or focal framing', () => {
+  // Remove resets photo + alt + focal.
+  assert.match(fpJs, /state\.heroPhoto = ''; state\.heroAlt = '';/);
+  // Hydrate resets alt/focal and drops prior colour overrides.
+  assert.match(fpJs, /state\.heroFocalX = 50;\s*\n\s*state\.heroFocalY = 50;/);
+  assert.match(fpJs, /state\.roleOverrides = \{ root: null, expression: null, radiance: null \};/);
+});
+
+test('Content accordion drives four live room copy editors', () => {
+  assert.match(fpHtml, /id="sectionCopyControls"/);
+  assert.match(fpJs, /function buildCopyControls\(/);
+  assert.match(fpJs, /data-sectitle/);
+  assert.match(fpJs, /data-secbody/);
+  // Typing updates the live overview + open room without a full re-render.
+  assert.match(fpJs, /\.viz-sec-title/);
+  assert.match(fpJs, /\.room__title/);
+});
+
+test('Images accordion gives one full editor per room, decoupled from sigmode', () => {
+  assert.match(fpHtml, /id="roomImageControls"/);
+  assert.match(fpJs, /function buildImageControls\(/);
+  // Full per-room control surface.
+  assert.match(fpJs, /data-imgupload/);
+  assert.match(fpJs, /data-imgremove/);
+  assert.match(fpJs, /data-imgalt/);
+  assert.match(fpJs, /data-imgprivate/);
+  assert.match(fpJs, /data-imgfx/);
+  assert.match(fpJs, /data-imgfy/);
+  assert.match(fpJs, /data-imgop/);
+  assert.match(fpJs, /data-imgblend/);
+  // Room-image ROLE buttons are their own control (data-imgsec) — NOT gated by
+  // sigmode. buildImageControls carries no `sigmode === 'auto'` lock.
+  assert.match(fpJs, /roleopt[^\n]*data-imgsec/);
+  const bi = fpJs.indexOf('function buildImageControls');
+  const biBody = fpJs.slice(bi, fpJs.indexOf('function wireImageControls'));
+  assert.doesNotMatch(biBody, /sigmode/);
+});
+
+test('private room images are gated out of every rendered surface', () => {
+  assert.match(fpJs, /function visibleImage\(/);
+  assert.match(fpJs, /visibility !== 'private'/);
+  // The render paths consult the gate, not the raw image.
+  assert.match(fpJs, /const img = visibleImage\(sec\.image\)/);
+});
+
+test('a disabled "Suggested from your field" affordance promises no auto-insert', () => {
+  assert.match(fpHtml, /id="suggestBox"/);
+  assert.match(fpHtml, /Suggested from your field/);
+  assert.match(fpHtml, /without your explicit confirmation/i);
+});
+
+test('Colours accordion offers editable role colours + Cipher reset', () => {
+  assert.match(fpHtml, /type="color" id="roleColorRoot"/);
+  assert.match(fpHtml, /id="roleColorExpression"/);
+  assert.match(fpHtml, /id="roleColorRadiance"/);
+  assert.match(fpHtml, /id="resetColorsBtn"[^>]*>Reset to Cipher colours</);
+  assert.match(fpHtml, /drawn from the tonal relationships in your Cipher/);
+  // JS: overrides win over derived colours; reset clears them.
+  assert.match(fpJs, /function wireColors\(/);
+  assert.match(fpJs, /function syncColorInputs\(/);
+  assert.match(fpJs, /function activeRoleColor\(/);
+  assert.match(fpJs, /state\.roleOverrides\[which\] = inp\.value/);
+});
+
 console.log('\n' + passed + ' checks passed.');

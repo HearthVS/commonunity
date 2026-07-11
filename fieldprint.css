@@ -871,3 +871,79 @@ img,svg{display:block;max-width:100%}
 .public-badge{display:none;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-faint)}
 .app.is-public-preview .public-badge{display:inline}
 .app.is-public-preview .stage__views{display:none}
+
+/* ============================================================= */
+/* v6 — INTENT-ORDERED ACCORDIONS + AUTHORING CONTROLS           */
+/* ============================================================= */
+
+/* pinned Load JSON hint */
+.ctl__hint--load{margin-top:9px}
+
+/* ---- accordion groups (native details/summary, keyboard-accessible) ---- */
+.acc{border-bottom:1px solid var(--ui-line)}
+.acc:last-child{border-bottom:none}
+.acc__sum{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:18px 2px;cursor:pointer;list-style:none;user-select:none}
+.acc__sum::-webkit-details-marker{display:none}
+.acc__sum:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px;border-radius:6px}
+.acc__title{font-family:'Zodiak',serif;font-size:15px;font-weight:500;letter-spacing:.005em;color:var(--ui-fg)}
+.acc__chev{width:11px;height:11px;flex:none;position:relative}
+.acc__chev::before,.acc__chev::after{content:"";position:absolute;top:50%;width:7px;height:1.6px;
+  background:var(--ui-faint);transition:transform .22s var(--ease),background .22s var(--ease)}
+.acc__chev::before{left:0;transform:translateY(-50%) rotate(45deg)}
+.acc__chev::after{right:0;transform:translateY(-50%) rotate(-45deg)}
+.acc[open] > .acc__sum .acc__chev::before{transform:translateY(-50%) rotate(-45deg)}
+.acc[open] > .acc__sum .acc__chev::after{transform:translateY(-50%) rotate(45deg)}
+.acc__sum:hover .acc__chev::before,.acc__sum:hover .acc__chev::after{background:var(--ui-accent)}
+.acc__body{padding:0 0 22px}
+.acc__hint{font-size:11.5px;line-height:1.45;color:var(--ui-faint);margin-bottom:16px;max-width:34ch}
+
+/* nested control groups inside an accordion */
+.grp{padding:18px 0;border-top:1px solid var(--ui-line)}
+.grp:first-child{padding-top:2px;border-top:none}
+.grp .ctl__label{margin-bottom:14px}
+.grp .ctl__label h2{font-family:'Zodiak',serif;font-size:14px;font-weight:500;letter-spacing:.005em}
+
+/* ---- shared mini authoring controls ---- */
+.minibtn{border:1px solid var(--ui-line-2);border-radius:8px;padding:8px 14px;font-size:11.5px;
+  letter-spacing:.04em;color:var(--ui-fg);background:var(--ui-panel-2);transition:.16s var(--ease)}
+.minibtn:hover{border-color:var(--ui-accent);background:var(--ui-accent-soft)}
+.minibtn--ghost{background:none;color:var(--ui-muted)}
+.minibtn--ghost:hover{color:var(--ui-fg)}
+.minilabel{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ui-muted);margin:10px 0 6px}
+.mini-input{width:100%;background:#0d0e09;border:1px solid var(--ui-line-2);border-radius:8px;
+  color:var(--ui-fg);font-size:12px;padding:8px 10px;font-family:inherit;transition:.15s var(--ease)}
+.mini-input:focus{border-color:var(--ui-accent);outline:none}
+select.mini-input{cursor:pointer}
+.focalrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.toggle{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:11.5px;color:var(--ui-muted);cursor:pointer}
+.toggle input{width:15px;height:15px;flex:none;accent-color:var(--ui-accent);cursor:pointer}
+
+/* ---- arrival portrait editor (Identity) ---- */
+.imgeditor{margin-top:16px;padding-top:16px;border-top:1px solid var(--ui-line)}
+.imgeditor__label{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ui-muted);margin-bottom:9px}
+.imgeditor__btns{display:flex;gap:8px}
+.imgeditor__note{font-size:10.5px;line-height:1.45;color:var(--ui-faint);margin-top:9px}
+.imgctls{margin-top:6px}
+
+/* ---- per-room image editor cards reuse .seccard ---- */
+#roomImageControls .seccard .imgeditor__btns{margin-top:2px}
+#roomImageControls .rolerow{margin-top:6px}
+
+/* ---- suggested-from-field (disabled future affordance) ---- */
+.suggestbox{margin-top:16px;border:1px dashed var(--ui-line-2);border-radius:12px;padding:14px;
+  background:#0d0e09;opacity:.72}
+.suggestbox__label{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ui-muted);margin-bottom:6px}
+.suggestbox__note{font-size:10.5px;line-height:1.5;color:var(--ui-faint)}
+
+/* ---- role colour overrides (Colours) ---- */
+.rolecolors{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.rolecolor{display:flex;flex-direction:column;gap:7px;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ui-muted)}
+.rolecolor input[type="color"]{width:100%;height:34px;padding:0;border:1px solid var(--ui-line-2);
+  border-radius:8px;background:#0d0e09;cursor:pointer}
+.rolecolor input[type="color"]::-webkit-color-swatch-wrapper{padding:3px}
+.rolecolor input[type="color"]::-webkit-color-swatch{border:none;border-radius:5px}

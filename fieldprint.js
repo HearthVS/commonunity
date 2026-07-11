@@ -142,6 +142,10 @@
     tagline: 'I build quiet systems that help people understand each other.',
     eyebrow: 'CommonUnity',
     heroPhoto: '',
+    heroAlt: '',
+    heroFocalX: 50,
+    heroFocalY: 50,
+    roleOverrides: { root: null, expression: null, radiance: null },
     sections: SECTIONS.map((s) => ({ ...s, image: null, imgRole: null })),
     view: 'desktop',
     route: { view: 'overview', roomIdx: 0 },
@@ -161,7 +165,8 @@
   const vizTag = $('vizTag');
   const vizEyebrowText = $('vizEyebrowText');
   const vizFootName = $('vizFootName');
-  const sectionControls = $('sectionControls');
+  const sectionCopyControls = $('sectionCopyControls');
+  const roomImageControls = $('roomImageControls');
   const stage = document.querySelector('.stage');
   const stageState = $('stageState');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -274,9 +279,9 @@
     const chips = $('fieldPalChips');
     if (chips) {
       const c = chips.querySelectorAll('i');
-      if (c[0]) c[0].style.background = field.roles.root;
-      if (c[1]) c[1].style.background = field.roles.expression;
-      if (c[2]) c[2].style.background = field.roles.radiance;
+      if (c[0]) c[0].style.background = activeRoleColor('root');
+      if (c[1]) c[1].style.background = activeRoleColor('expression');
+      if (c[2]) c[2].style.background = activeRoleColor('radiance');
     }
   }
 
@@ -301,10 +306,40 @@
     }
     return torusCanvas;
   }
+  /* the active colour for a palette role — a user override (hex) wins, else the
+     Cipher-derived role colour, else a neutral fallback. */
+  function activeRoleColor(which) {
+    const ov = state.roleOverrides && state.roleOverrides[which];
+    if (ov) return ov;
+    return field ? field.roles[which] : DEFAULT_ROLES[which];
+  }
   function roleColor(which, alpha) {
-    const base = field ? field.roles[which] : null;
-    if (base && /\)$/.test(base)) return base.replace(/\)$/, ` / ${alpha})`);
+    const base = activeRoleColor(which);
+    if (base) {
+      const h = String(base).trim();
+      if (h[0] === '#') {
+        const x = h.slice(1);
+        const r = parseInt(x.slice(0, 2), 16), g = parseInt(x.slice(2, 4), 16), b = parseInt(x.slice(4, 6), 16);
+        if (isFinite(r) && isFinite(g) && isFinite(b)) return `rgba(${r},${g},${b},${alpha})`;
+      }
+      if (/\)$/.test(h)) return h.replace(/\)$/, ` / ${alpha})`);
+    }
     return `rgba(150,140,110,${alpha})`;
+  }
+  /* normalize any CSS colour (oklch / rgb / hex / name) to #rrggbb for the
+     native colour inputs, via computed style. */
+  function toHex(color) {
+    try {
+      const d = document.createElement('div');
+      d.style.color = String(color || '');
+      d.style.display = 'none';
+      document.body.appendChild(d);
+      const cs = getComputedStyle(d).color;
+      document.body.removeChild(d);
+      const m = cs && cs.match(/\d+(\.\d+)?/g);
+      if (!m || m.length < 3) return '#888888';
+      return '#' + m.slice(0, 3).map((n) => Math.round(+n).toString(16).padStart(2, '0')).join('');
+    } catch (_) { return '#888888'; }
   }
   function bakeTorusPoints() {
     const pts = [];
@@ -572,6 +607,11 @@
   /* =========================================================
      RENDER: visitor sections from state (with real imagery)
      ========================================================= */
+  /* a room image only renders publicly if it exists and is not marked private.
+     (Defense in depth on top of sanitizeImage, which also drops private.) */
+  function visibleImage(img) {
+    return (img && img.visibility !== 'private') ? img : null;
+  }
   function imageStyle(img) {
     const fx = (typeof img.focalX === 'number') ? img.focalX : 50;
     const fy = (typeof img.focalY === 'number') ? img.focalY : 50;
@@ -586,7 +626,7 @@
     state.sections.forEach((sec, i) => {
       const el = document.createElement('section');
       el.className = 'viz-section reveal';
-      const img = sec.image;
+      const img = visibleImage(sec.image);
       const layoutRole = img ? (IMG_LAYOUT[img.role] || 'inset') : sec.role;
       el.dataset.role = layoutRole;
       el.dataset.key = sec.key;
@@ -650,7 +690,7 @@
 
     const prevIdx = (idx - 1 + state.sections.length) % state.sections.length;
     const nextIdx = (idx + 1) % state.sections.length;
-    const img = sec.image;
+    const img = visibleImage(sec.image);
     const media = img
       ? `<div class="room__media reveal"><img class="room__photo" src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt || '')}" style="${escapeHtml(imageStyle(img))}" loading="lazy" /><div class="room__mediamask"></div></div>`
       : `<div class="room__media reveal" aria-hidden="true"><div class="room__abstract"></div><div class="room__mediamask"></div></div>`;
@@ -760,6 +800,8 @@
       if (hasPhoto) {
         if (heroImg.getAttribute('src') !== state.heroPhoto) heroImg.setAttribute('src', state.heroPhoto);
         heroImg.hidden = false;
+        heroImg.alt = state.heroAlt || '';
+        heroImg.style.objectPosition = `${state.heroFocalX}% ${state.heroFocalY}%`;
       } else {
         // No real media — never retain a stale portrait between models.
         heroImg.removeAttribute('src');
@@ -800,57 +842,309 @@
   /* =========================================================
      SECTION CONTROLS (image role + editable copy)
      ========================================================= */
-  function buildSectionControls() {
-    sectionControls.innerHTML = '';
+  /* ---- CONTENT / COPY editors (heading + body per room) ---- */
+  function buildCopyControls() {
+    if (!sectionCopyControls) return;
+    sectionCopyControls.innerHTML = '';
     state.sections.forEach((sec, i) => {
       const card = document.createElement('div');
       card.className = 'seccard';
-      const locked = state.sigmode === 'auto';
-      const activeRole = (sec.image && sec.image.role) || sec.imgRole || 'inset';
+      const glyph = makeSigil(state.seed, i + 1, { size: 16, stroke: 1.8 });
+      card.innerHTML = `
+        <div class="seccard__head">
+          <span class="seccard__title"><span class="seccard__glyph">${glyph}</span>${escapeHtml(sec.eyebrow)}</span>
+          <span class="seccard__idx">0${i + 1}</span>
+        </div>
+        <label class="minilabel" for="secTitle${i}">Heading</label>
+        <input class="mini-input" id="secTitle${i}" type="text" data-sectitle="${i}"
+          value="${escapeHtml(sec.title)}" aria-label="${escapeHtml(sec.eyebrow)} heading" />
+        <label class="minilabel" for="secBody${i}">Body</label>
+        <textarea class="seccard__area" id="secBody${i}" rows="3" data-secbody="${i}"
+          aria-label="${escapeHtml(sec.eyebrow)} body text">${escapeHtml(sec.body)}</textarea>`;
+      sectionCopyControls.appendChild(card);
+    });
+
+    sectionCopyControls.querySelectorAll('[data-sectitle]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = +inp.dataset.sectitle;
+        state.sections[idx].title = inp.value;
+        const target = vizBody.children[idx];
+        if (target) { const t = target.querySelector('.viz-sec-title'); if (t) t.textContent = inp.value; }
+        if (state.route.view === 'room' && state.route.roomIdx === idx) {
+          const rt = vizRoom.querySelector('.room__title'); if (rt) rt.textContent = inp.value;
+        }
+      });
+    });
+    sectionCopyControls.querySelectorAll('[data-secbody]').forEach((ta) => {
+      ta.addEventListener('input', () => {
+        const idx = +ta.dataset.secbody;
+        state.sections[idx].body = ta.value;
+        const target = vizBody.children[idx];
+        if (target) { const p = target.querySelector('.viz-sec-body'); if (p) p.textContent = ta.value; }
+      });
+    });
+  }
+
+  /* ---- IMAGES: one image per room (upload/role/alt/private/focal/opacity/blend).
+     Image role is fully independent of sigmode — automatic signatures never
+     disable these controls. ---- */
+  const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'soft-light'];
+  function buildImageControls() {
+    if (!roomImageControls) return;
+    roomImageControls.innerHTML = '';
+    state.sections.forEach((sec, i) => {
+      const card = document.createElement('div');
+      card.className = 'seccard';
+      const img = sec.image;
+      const hasImg = !!img;
+      const activeRole = (img && img.role) || sec.imgRole || 'inset';
+      const isPrivate = !!(img && img.visibility === 'private');
+      const fx = (img && typeof img.focalX === 'number') ? img.focalX : 50;
+      const fy = (img && typeof img.focalY === 'number') ? img.focalY : 50;
+      const op = (img && typeof img.opacity === 'number') ? Math.round(img.opacity * 100) : 100;
+      const blend = (img && img.blend) || 'normal';
+      const glyph = makeSigil(state.seed, i + 1, { size: 16, stroke: 1.8 });
       const roleBtns = ROLE_META.map((r) => `
-        <button role="radio" class="roleopt" data-sec="${i}" data-role="${r.value}"
-                aria-checked="${activeRole === r.value}" aria-label="${escapeHtml(sec.eyebrow)}: ${r.name} image" ${locked ? 'tabindex="-1"' : ''}>
+        <button role="radio" class="roleopt" data-imgsec="${i}" data-role="${r.value}"
+                aria-checked="${activeRole === r.value}" aria-label="${escapeHtml(sec.eyebrow)}: ${r.name} image">
           <span class="roleopt__ic" data-role="${r.value === 'full-bleed' ? 'bleed' : r.value === 'background' ? 'bleed' : r.value === 'artifact' ? 'side' : 'inset'}"></span>
           <span class="roleopt__name">${r.name}</span>
         </button>`).join('');
-      const glyph = makeSigil(state.seed, i + 1, { size: 16, stroke: 1.8 });
 
       card.innerHTML = `
         <div class="seccard__head">
           <span class="seccard__title"><span class="seccard__glyph">${glyph}</span>${escapeHtml(sec.eyebrow)}</span>
           <span class="seccard__idx">0${i + 1}</span>
         </div>
-        <span class="seccard__sig"><b>Signature:</b> ${SIG_LABEL[sec.sig] || ''}</span>
-        <span class="seccard__rolelabel">Field imagery role</span>
-        <div class="rolerow" role="radiogroup" data-locked="${locked}" aria-label="${escapeHtml(sec.eyebrow)} field imagery">${roleBtns}</div>
-        <textarea class="seccard__area" rows="3" data-secbody="${i}"
-          aria-label="${escapeHtml(sec.eyebrow)} section text">${escapeHtml(sec.body)}</textarea>`;
-      sectionControls.appendChild(card);
+        <div class="imgeditor__btns">
+          <button class="minibtn" data-imgupload="${i}" type="button">${hasImg ? 'Replace' : 'Upload'}</button>
+          <button class="minibtn minibtn--ghost" data-imgremove="${i}" type="button" ${hasImg ? '' : 'hidden'}>Remove</button>
+        </div>
+        <input type="file" accept="image/*" data-imgfile="${i}" hidden />
+        <div class="imgctls" ${hasImg ? '' : 'hidden'}>
+          <span class="seccard__rolelabel">Image role</span>
+          <div class="rolerow" role="radiogroup" aria-label="${escapeHtml(sec.eyebrow)} image role">${roleBtns}</div>
+          <label class="minilabel" for="imgAlt${i}">Alt text</label>
+          <input class="mini-input" id="imgAlt${i}" type="text" data-imgalt="${i}"
+            value="${escapeHtml((img && img.alt) || '')}" placeholder="Describe the image" />
+          <label class="toggle"><input type="checkbox" data-imgprivate="${i}" ${isPrivate ? 'checked' : ''} />
+            <span>Private — hide from the public page</span></label>
+          <div class="focalrow">
+            <div class="adj"><span class="adj__label">Focal X <span class="adj__val" data-fxval="${i}">${fx}%</span></span>
+              <input type="range" min="0" max="100" step="1" value="${fx}" data-imgfx="${i}" aria-label="${escapeHtml(sec.eyebrow)} image focal X" /></div>
+            <div class="adj"><span class="adj__label">Focal Y <span class="adj__val" data-fyval="${i}">${fy}%</span></span>
+              <input type="range" min="0" max="100" step="1" value="${fy}" data-imgfy="${i}" aria-label="${escapeHtml(sec.eyebrow)} image focal Y" /></div>
+          </div>
+          <div class="adj"><span class="adj__label">Opacity <span class="adj__val" data-opval="${i}">${op}%</span></span>
+            <input type="range" min="0" max="100" step="1" value="${op}" data-imgop="${i}" aria-label="${escapeHtml(sec.eyebrow)} image opacity" /></div>
+          <label class="minilabel" for="imgBlend${i}">Blend</label>
+          <select class="mini-input" id="imgBlend${i}" data-imgblend="${i}">
+            ${BLEND_MODES.map((b) => `<option value="${b}" ${blend === b ? 'selected' : ''}>${b}</option>`).join('')}
+          </select>
+        </div>`;
+      roomImageControls.appendChild(card);
     });
+    wireImageControls();
+  }
 
-    sectionControls.querySelectorAll('.roleopt').forEach((btn) => {
+  function ensureImage(i) {
+    if (!state.sections[i].image) {
+      state.sections[i].image = { src: '', role: state.sections[i].imgRole || 'inset', alt: '',
+        focalX: 50, focalY: 50, opacity: 1, blend: 'normal', visibility: 'public' };
+    }
+    return state.sections[i].image;
+  }
+  function updateImgLive(i) {
+    const img = state.sections[i].image;
+    if (!img) return;
+    const secEl = vizBody.children[i];
+    if (secEl) { const im = secEl.querySelector('.viz-sec-photo'); if (im) { im.setAttribute('style', imageStyle(img)); im.alt = img.alt || ''; } }
+    if (state.route.view === 'room' && state.route.roomIdx === i) {
+      const rm = vizRoom.querySelector('.room__photo'); if (rm) { rm.setAttribute('style', imageStyle(img)); rm.alt = img.alt || ''; }
+    }
+  }
+
+  function wireImageControls() {
+    roomImageControls.querySelectorAll('[data-imgupload]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        if (state.sigmode === 'auto') return;
-        const idx = +btn.dataset.sec;
+        const i = +btn.dataset.imgupload;
+        const inp = roomImageControls.querySelector(`[data-imgfile="${i}"]`);
+        if (inp) inp.click();
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgfile]').forEach((inp) => {
+      inp.addEventListener('change', (e) => {
+        const i = +inp.dataset.imgfile;
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const src = safeMediaSrc(ev.target.result);
+          if (src) {
+            const img = ensureImage(i);
+            img.src = src;
+            renderSections();
+            if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
+            buildImageControls();
+          }
+          inp.value = '';
+        };
+        reader.readAsDataURL(f);
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgremove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = +btn.dataset.imgremove;
+        state.sections[i].image = null;
+        renderSections();
+        if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
+        buildImageControls();
+      });
+    });
+    roomImageControls.querySelectorAll('.roleopt').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = +btn.dataset.imgsec;
         const role = btn.dataset.role;
-        state.sections[idx].imgRole = role;
-        if (state.sections[idx].image) state.sections[idx].image.role = role;
+        state.sections[i].imgRole = role;
+        if (state.sections[i].image) state.sections[i].image.role = role;
         btn.parentElement.querySelectorAll('.roleopt').forEach((b) =>
           b.setAttribute('aria-checked', b === btn ? 'true' : 'false'));
         renderSections();
+        if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
       });
     });
-
-    sectionControls.querySelectorAll('[data-secbody]').forEach((ta) => {
-      ta.addEventListener('input', () => {
-        const idx = +ta.dataset.secbody;
-        state.sections[idx].body = ta.value;
-        const target = vizBody.children[idx];
-        if (target) {
-          const p = target.querySelector('.viz-sec-body');
-          if (p) p.textContent = ta.value;
-        }
+    roomImageControls.querySelectorAll('[data-imgalt]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const i = +inp.dataset.imgalt;
+        const img = state.sections[i].image; if (!img) return;
+        img.alt = inp.value; updateImgLive(i);
       });
+    });
+    roomImageControls.querySelectorAll('[data-imgprivate]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const i = +cb.dataset.imgprivate;
+        const img = state.sections[i].image; if (!img) return;
+        img.visibility = cb.checked ? 'private' : 'public';
+        renderSections();
+        if (state.route.view === 'room' && state.route.roomIdx === i) renderRoom(i);
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgfx]').forEach((r) => {
+      r.addEventListener('input', () => {
+        const i = +r.dataset.imgfx;
+        const img = state.sections[i].image; if (!img) return;
+        img.focalX = +r.value;
+        const lbl = roomImageControls.querySelector(`[data-fxval="${i}"]`); if (lbl) lbl.textContent = r.value + '%';
+        updateImgLive(i);
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgfy]').forEach((r) => {
+      r.addEventListener('input', () => {
+        const i = +r.dataset.imgfy;
+        const img = state.sections[i].image; if (!img) return;
+        img.focalY = +r.value;
+        const lbl = roomImageControls.querySelector(`[data-fyval="${i}"]`); if (lbl) lbl.textContent = r.value + '%';
+        updateImgLive(i);
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgop]').forEach((r) => {
+      r.addEventListener('input', () => {
+        const i = +r.dataset.imgop;
+        const img = state.sections[i].image; if (!img) return;
+        img.opacity = Math.max(0, Math.min(1, (+r.value || 0) / 100));
+        const lbl = roomImageControls.querySelector(`[data-opval="${i}"]`); if (lbl) lbl.textContent = r.value + '%';
+        updateImgLive(i);
+      });
+    });
+    roomImageControls.querySelectorAll('[data-imgblend]').forEach((sel) => {
+      sel.addEventListener('change', () => {
+        const i = +sel.dataset.imgblend;
+        const img = state.sections[i].image; if (!img) return;
+        img.blend = sel.value; updateImgLive(i);
+      });
+    });
+  }
+
+  /* ---- IDENTITY: arrival portrait (upload / replace / remove / alt / focal).
+     Every src passes through safeMediaSrc; private/unsafe portraits never
+     render. Removal and rehydration always clear any stale <img> src. ---- */
+  function wireHeroPhoto() {
+    const up = $('heroUploadBtn'), rm = $('heroRemoveBtn'), file = $('heroPhotoInput'),
+      alt = $('heroAltInput'), fx = $('heroFocalX'), fy = $('heroFocalY');
+    if (up && file) up.addEventListener('click', () => file.click());
+    if (file) file.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) { return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const src = safeMediaSrc(ev.target.result);
+        if (src) { state.heroPhoto = src; applyComposition(); syncHeroEditor(); }
+        file.value = '';
+      };
+      reader.readAsDataURL(f);
+    });
+    if (rm) rm.addEventListener('click', () => {
+      state.heroPhoto = ''; state.heroAlt = '';
+      state.heroFocalX = 50; state.heroFocalY = 50;
+      applyComposition(); syncHeroEditor();
+    });
+    if (alt) alt.addEventListener('input', () => {
+      state.heroAlt = alt.value;
+      const heroImg = $('heroPhoto'); if (heroImg && state.heroPhoto) heroImg.alt = state.heroAlt;
+    });
+    if (fx) fx.addEventListener('input', () => applyHeroFocal('x', fx.value));
+    if (fy) fy.addEventListener('input', () => applyHeroFocal('y', fy.value));
+  }
+  function applyHeroFocal(axis, val) {
+    const n = Math.max(0, Math.min(100, +val || 0));
+    if (axis === 'x') { state.heroFocalX = n; const l = $('heroFocalXVal'); if (l) l.textContent = n + '%'; }
+    else { state.heroFocalY = n; const l = $('heroFocalYVal'); if (l) l.textContent = n + '%'; }
+    const heroImg = $('heroPhoto');
+    if (heroImg && state.heroPhoto) heroImg.style.objectPosition = `${state.heroFocalX}% ${state.heroFocalY}%`;
+  }
+  function syncHeroEditor() {
+    const has = !!state.heroPhoto;
+    const up = $('heroUploadBtn'), rm = $('heroRemoveBtn'), note = $('heroPhotoNote'),
+      fields = $('heroPhotoFields'), alt = $('heroAltInput'), fx = $('heroFocalX'),
+      fy = $('heroFocalY'), fxv = $('heroFocalXVal'), fyv = $('heroFocalYVal');
+    if (up) up.textContent = has ? 'Replace' : 'Upload';
+    if (rm) rm.hidden = !has;
+    if (note) note.hidden = has;
+    if (fields) fields.hidden = !has;
+    if (alt) alt.value = state.heroAlt || '';
+    if (fx) fx.value = String(state.heroFocalX);
+    if (fy) fy.value = String(state.heroFocalY);
+    if (fxv) fxv.textContent = state.heroFocalX + '%';
+    if (fyv) fyv.textContent = state.heroFocalY + '%';
+  }
+
+  /* ---- COLOURS: editable role colours over the Cipher-derived harmony.
+     Overrides are stored as hex and win over the derived tones; reset clears
+     them back to the Cipher colours. ---- */
+  const ROLE_KEYS = ['root', 'expression', 'radiance'];
+  function wireColors() {
+    const inputs = { root: $('roleColorRoot'), expression: $('roleColorExpression'), radiance: $('roleColorRadiance') };
+    ROLE_KEYS.forEach((which) => {
+      const inp = inputs[which];
+      if (!inp) return;
+      inp.addEventListener('input', () => {
+        state.roleOverrides[which] = inp.value;
+        applyFieldPalette(); renderSections(); applyComposition();
+        if (state.route.view === 'room') renderRoom(state.route.roomIdx);
+      });
+    });
+    const reset = $('resetColorsBtn');
+    if (reset) reset.addEventListener('click', () => {
+      state.roleOverrides = { root: null, expression: null, radiance: null };
+      applyFieldPalette(); syncColorInputs(); renderSections(); applyComposition();
+      if (state.route.view === 'room') renderRoom(state.route.roomIdx);
+    });
+  }
+  function syncColorInputs() {
+    const inputs = { root: $('roleColorRoot'), expression: $('roleColorExpression'), radiance: $('roleColorRadiance') };
+    ROLE_KEYS.forEach((which) => {
+      const inp = inputs[which];
+      if (inp) inp.value = toHex(activeRoleColor(which));
     });
   }
 
@@ -891,7 +1185,7 @@
       b.tabIndex = on ? 0 : -1;
     });
     state[key] = btn.dataset.value;
-    if (key === 'sigmode') { applyAutoSignatures(); buildSectionControls(); renderSections(); }
+    if (key === 'sigmode') { applyAutoSignatures(); renderSections(); }
     else if (key === 'palette' || key === 'photo' || key === 'sigil' || key === 'torus') { renderSections(); }
     else if (key === 'texture') { syncAdjustToState(); }
     applyComposition();
@@ -983,7 +1277,8 @@
         torusPoints = null;
       }
       renderFieldCard();
-      buildSectionControls();
+      buildCopyControls();
+      buildImageControls();
       renderSections();
       applyComposition();
       playTransition();
@@ -1045,6 +1340,12 @@
     const hero = (model.hero && typeof model.hero === 'object') ? model.hero : {};
     if (id.name) state.name = String(id.name);
     state.heroPhoto = safeMediaSrc(id.photo);
+    // A fresh model never inherits the previous portrait's alt/focal framing.
+    state.heroAlt = state.heroPhoto ? (typeof id.alt === 'string' ? id.alt : '') : '';
+    state.heroFocalX = 50;
+    state.heroFocalY = 50;
+    // Imported palettes replace any prior user colour overrides.
+    state.roleOverrides = { root: null, expression: null, radiance: null };
     if (hero.intro) state.tagline = String(hero.intro);
 
     const rooms = Array.isArray(model.rooms) ? model.rooms : [];
@@ -1115,9 +1416,12 @@
   function fullRender() {
     renderFieldCard();
     applyAutoSignatures();
-    buildSectionControls();
+    buildCopyControls();
+    buildImageControls();
     renderSections();
     syncControlsToState();
+    syncHeroEditor();
+    syncColorInputs();
     applyComposition();
     requestAnimationFrame(observeReveals);
     playTransition();
@@ -1221,7 +1525,8 @@
     buildDemoField();
     renderFieldCard();
     applyAutoSignatures();
-    buildSectionControls();
+    buildCopyControls();
+    buildImageControls();
     renderSections();
     wireRadioGroups();
     wireTextBindings();
@@ -1230,8 +1535,12 @@
     wireAdjust();
     wirePublicPreview();
     wireJsonLoad();
+    wireHeroPhoto();
+    wireColors();
     wireBridge();
     syncControlsToState();
+    syncHeroEditor();
+    syncColorInputs();
     applyComposition();
     requestAnimationFrame(observeReveals);
 
