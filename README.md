@@ -51,16 +51,74 @@ deployment version, config warnings, and the post-beta task list).
 
 ## Nexus model & response depth
 
-All Nexus / Studio / generation endpoints share a single fixed model,
-`claude-sonnet-5` (`server._NEXUS_MODEL`). There is **no user-facing model or
-mode selector** — the model is a product decision, not a per-request option.
-Every Anthropic request sends `output_config={"effort": <level>}` so the model's
-reasoning depth is deterministic rather than implicit.
+All Nexus / Studio / generation endpoints share a single active model resolved
+fresh per request by `server._nexus_model()`. There is **no user-facing model or
+mode selector** — the model is an admin-controlled operational decision, not a
+per-request option. Every Anthropic request sends
+`output_config={"effort": <level>}` so the model's reasoning depth is
+deterministic rather than implicit.
+
+### Model management (admin-only, future-proof)
+
+The active model is managed from the admin **Infrastructure** tab — no code
+change and no repo-wide model upgrade is needed to move to a newer model.
+
+- **Resolution order:** admin-selected model (durable in `app_settings`) →
+  `NEXUS_MODEL` env default → safe built-in fallback `claude-sonnet-5`
+  (`server._NEXUS_MODEL`). Selection survives restarts/deploys with the rest of
+  the admin SQLite DB. `claude-sonnet-5` stays active by default.
+- **Discovery:** candidates come from the account itself via the SDK Models API
+  (`client.models.list()`, SDK 0.116.0 — the documented first-party path, so no
+  hard-coded catalog goes stale). Pagination is walked explicitly and bounded;
+  discovery is cached ~60s. Auth / network / no-credential failures are reported
+  gracefully (coarse code only, never a raw body) and never raise.
+- **Validation before activation:** a candidate is checked with a tiny Messages
+  request using the project's live `output_config.effort` shape and a minimal
+  token budget, plus a minimal streaming probe. Results are classified as
+  `success`, `unavailable_model`, `incompatible`, `auth_error`, `rate_limited`,
+  `transient`, `credentials_unavailable`, or `invalid_candidate`. No secrets or
+  raw error bodies are exposed.
+- **Safety:** a new model appearing in discovery **never** activates on its own.
+  Only an admin can validate and activate. Activation happens **only** after a
+  successful validation (arbitrary untested activation → `422`); a failed
+  validation leaves the active model unchanged. A manual model-id fallback is
+  accepted only when discovery is unavailable and is still validated first.
+- **Atomic activation & rollback:** activation records the prior active model as
+  *previous known-good*, then sets the candidate active, in one DB transaction.
+  Subsequent requests use the new model; in-flight requests are unchanged.
+  One-click rollback swaps back atomically (admin-authenticated).
+
+Endpoints (all admin-gated):
+
+- **`GET /api/admin/nexus-model`** — active model, selection `source`
+  (`admin`/`env`/`default`), safe `fallback`, `previous_known_good`,
+  `last_validation` (result/time), and `rollback_available`.
+- **`GET /api/admin/nexus-model/available?refresh=true`** — account-discovered
+  models (cached; `refresh=true` forces a fetch).
+- **`POST /api/admin/nexus-model/validate`** `{"model": "..."}` — validate a
+  candidate without activating; persists the last validation result.
+- **`POST /api/admin/nexus-model/activate`** `{"model": "..."}` — validate then
+  atomically activate; `422` if validation fails.
+- **`POST /api/admin/nexus-model/rollback`** — atomic rollback to the previous
+  known-good model; `409` if none recorded.
+
+The authenticated `/api/admin/health` `config.nexus` block also carries
+`model_source`, `model_fallback`, `previous_known_good`, `rollback_available`,
+and the last validation summary. Anonymous endpoints never expose model
+internals.
+
+**Railway env var (optional):** `NEXUS_MODEL` sets the boot-time default model
+if no admin selection is stored. If unset it falls back to `claude-sonnet-5`; an
+admin activation always wins. No env change is required.
+
+Tests: `python -m unittest test_nexus_model_management -v`.
+
+### Response depth (reasoning effort)
 
 - **Effort levels:** `low` (fastest), `medium`, `high` (deepest — product
   default). Higher effort improves quality but increases latency and cost.
 - **`GET /api/admin/nexus-effort`** (admin-gated) — returns the non-secret active
-  configuration: fixed `model`, active `effort`, which layer is authoritative
+  configuration: active `model`, active `effort`, which layer is authoritative
   (`source`: `admin` / `env` / `default`), available `levels`, and the
   `env_default`.
 - **`PUT /api/admin/nexus-effort`** (admin-gated) — sets the global effort

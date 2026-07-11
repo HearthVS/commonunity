@@ -40,10 +40,59 @@ app.add_middleware(
 client = Anthropic()
 
 # ── Model configuration ──────────────────────────────────────────────────────
-# Single place to update the model for all Nexus/Studio/generation endpoints.
-# Current: claude-sonnet-5 (upgraded from claude-sonnet-4-6, July 2026 pre-beta
-# baseline). Fixed model — there is no user-facing model selector.
+# The active model for all Nexus/Studio/generation endpoints is resolved fresh
+# per request by `_nexus_model()`. It is admin-controlled and future-proof: an
+# operator picks a candidate from account-discovered models, validates it, then
+# activates it — with no code change and no repo-wide model upgrade.
+#
+# Resolution order, highest priority first:
+#   1. Admin-selected model persisted in app_settings (durable across restarts)
+#   2. NEXUS_MODEL env var (boot-time default / Railway fallback)
+#   3. `claude-sonnet-5` (safe built-in fallback)
+#
+# `_NEXUS_MODEL` is the safe built-in fallback only — never a hard runtime pin.
 _NEXUS_MODEL = "claude-sonnet-5"
+_NEXUS_MODEL_ENV = "NEXUS_MODEL"
+_NEXUS_MODEL_SETTING_KEY = "nexus_model"                 # active (admin-selected)
+_NEXUS_MODEL_PREV_SETTING_KEY = "nexus_model_previous"   # previous known-good
+_NEXUS_MODEL_VALIDATION_KEY = "nexus_model_validation"   # last validation (JSON)
+# Discovery (Models API) is cached briefly so opening the admin panel or
+# re-validating does not hammer the API. Short TTL — the account list is stable.
+_NEXUS_MODEL_DISCOVERY_TTL = 60.0
+_model_discovery_cache: dict = {"at": 0.0, "data": None}
+
+
+def _env_model_default() -> str:
+    """Boot-time model default: NEXUS_MODEL if set, else the built-in fallback."""
+    env = (os.getenv(_NEXUS_MODEL_ENV) or "").strip()
+    return env or _NEXUS_MODEL
+
+
+def _nexus_model() -> str:
+    """Active Nexus model. Admin DB selection wins (durable, deterministic,
+    visible in the control room), then the NEXUS_MODEL env default, then the
+    safe built-in fallback. Resolved fresh per request, so an admin activation
+    applies to subsequent calls — never to a response already streaming. A
+    settings-store hiccup never breaks generation; it falls back cleanly."""
+    try:
+        stored = (_get_setting(_NEXUS_MODEL_SETTING_KEY) or "").strip()
+        if stored:
+            return stored
+    except Exception:
+        pass
+    return _env_model_default()
+
+
+def _nexus_model_source() -> str:
+    """Which layer currently determines the active model (admin/env/default)."""
+    try:
+        if (_get_setting(_NEXUS_MODEL_SETTING_KEY) or "").strip():
+            return "admin"
+    except Exception:
+        pass
+    if (os.getenv(_NEXUS_MODEL_ENV) or "").strip():
+        return "env"
+    return "default"
 
 # ── Reasoning effort configuration ────────────────────────────────────────────
 # Sonnet 5 exposes a reasoning-effort control (output_config.effort). It defaults
@@ -95,7 +144,7 @@ def _nexus_effort() -> str:
 
 
 def _nexus_output_config() -> dict:
-    """output_config passed to every Anthropic Messages call so the fixed model
+    """output_config passed to every Anthropic Messages call so the active model
     runs at the active effort level."""
     return {"effort": _nexus_effort()}
 
@@ -175,6 +224,9 @@ class BrandVersionRequest(BaseModel):
 
 class NexusEffortRequest(BaseModel):
     effort: str = ""  # "low" | "medium" | "high"
+
+class NexusModelRequest(BaseModel):
+    model: str = ""  # candidate model id (validate / activate)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -527,7 +579,7 @@ DOCUMENT:
         full_text = ""
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=1500,
                 system=CV_EXTRACTION_PROMPT,
@@ -608,7 +660,7 @@ TRANSCRIPT:
         full_text = ""
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=3000,
                 system=TRANSCRIPT_ROUTING_PROMPT,
@@ -713,7 +765,7 @@ QUESTION: {request.query}"""
     async def stream():
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=800,
                 system=system,
@@ -793,7 +845,7 @@ Write a short contemplative starting point (2–3 sentences) to help this person
     async def stream():
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=INSPIRE_SYSTEM,
@@ -905,7 +957,7 @@ async def threshold_name_essay(req: NameEssayRequest):
 
     try:
         resp = client.messages.create(
-            model=_NEXUS_MODEL,
+            model=_nexus_model(),
             output_config=_nexus_output_config(),
             max_tokens=900,
             system=NAME_ESSAY_SYSTEM,
@@ -1015,7 +1067,7 @@ async def generate(request: GenerateRequest, req: Request):
         full_text = ""
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=2048,
                 system=system,
@@ -1705,13 +1757,251 @@ def _nexus_effort_state() -> dict:
     else:
         source = "default"
     return {
-        "model": _NEXUS_MODEL,
+        "model": _nexus_model(),
         "effort": stored or env_default,
         "source": source,
         "levels": list(_NEXUS_EFFORT_LEVELS),
         "env_default": env_default,
         "admin_override": stored,
     }
+
+
+# ── Model management (discovery / validation / activation / rollback) ─────────
+# A new model appearing in discovery NEVER becomes active on its own. Only an
+# admin can validate and activate a candidate; a failed validation leaves the
+# active model unchanged. All persistence uses the durable admin SQLite
+# app_settings table, so selection survives restarts/deploys.
+
+_MODEL_VALIDATION_RESULTS = (
+    "success",            # small Messages request accepted with our effort shape
+    "unavailable_model",  # model id not available to this API account (404)
+    "incompatible",       # effort/API shape rejected (400/422)
+    "auth_error",         # auth / permission failure (401/403)
+    "rate_limited",       # 429 — transient, not a model verdict
+    "transient",          # connection/timeout/5xx — transient, not a verdict
+    "credentials_unavailable",  # no API key configured locally
+    "invalid_candidate",  # empty / malformed candidate id
+    "error",              # unclassified
+)
+
+
+def _last_validation() -> Optional[dict]:
+    """Parsed last-validation record, or None if never validated."""
+    try:
+        raw = _get_setting(_NEXUS_MODEL_VALIDATION_KEY)
+        if raw:
+            return json.loads(raw)
+    except Exception:
+        pass
+    return None
+
+
+def _record_validation(result: dict) -> None:
+    """Persist the last validation outcome (non-secret) for the admin surface."""
+    try:
+        _set_setting(_NEXUS_MODEL_VALIDATION_KEY, json.dumps(result))
+    except Exception:
+        pass
+
+
+def _nexus_model_state() -> dict:
+    """Non-secret snapshot of the model-management surface for the admin panel:
+    active model, selection source, safe fallback, previous known-good, last
+    validation result/time, and rollback readiness. No secrets, no raw errors."""
+    active = _nexus_model()
+    prev = (_get_setting(_NEXUS_MODEL_PREV_SETTING_KEY) or "").strip()
+    env = (os.getenv(_NEXUS_MODEL_ENV) or "").strip()
+    return {
+        "model": active,
+        "source": _nexus_model_source(),
+        "fallback": _NEXUS_MODEL,
+        "env_default": env or None,
+        "previous_known_good": prev or None,
+        "rollback_available": bool(prev and prev != active),
+        "last_validation": _last_validation(),
+    }
+
+
+def _discover_models(force: bool = False) -> dict:
+    """List models available to this API account via the SDK Models API,
+    handling pagination and failures gracefully. Cached briefly. Never raises;
+    on any failure returns available=False with a coarse, non-secret error code
+    (never a raw API body). SDK 0.116.0 exposes `client.models.list()` returning
+    a paginated SyncPage[ModelInfo] — the documented first-party discovery path,
+    so no ad-hoc HTTP fallback is needed."""
+    now = time.time()
+    cached = _model_discovery_cache.get("data")
+    if not force and cached is not None and (now - _model_discovery_cache["at"]) < _NEXUS_MODEL_DISCOVERY_TTL:
+        out = dict(cached)
+        out["cached"] = True
+        return out
+
+    if not (os.getenv("ANTHROPIC_API_KEY") or "").strip():
+        return {"available": False, "models": [], "error": "credentials_unavailable",
+                "cached": False, "fetched_at": _now_iso()}
+
+    try:
+        models: list[dict] = []
+        page = client.models.list(limit=100)
+        # Explicit pagination: walk pages until exhausted, with a hard bound so a
+        # pathological account can never make this unbounded.
+        while True:
+            for m in getattr(page, "data", []) or []:
+                models.append({
+                    "id": getattr(m, "id", None),
+                    "display_name": getattr(m, "display_name", None),
+                    "created_at": str(getattr(m, "created_at", "") or ""),
+                })
+            if len(models) >= 500 or not page.has_next_page():
+                break
+            page = page.get_next_page()
+        data = {"available": True, "models": models, "error": None, "fetched_at": _now_iso()}
+    except Exception as exc:
+        # Discovery unavailable (auth, network, SDK). Coarse code only.
+        return {"available": False, "models": [], "error": _api_error_code(exc),
+                "cached": False, "fetched_at": _now_iso()}
+
+    _model_discovery_cache["at"] = now
+    _model_discovery_cache["data"] = data
+    out = dict(data)
+    out["cached"] = False
+    return out
+
+
+def _api_error_code(exc: Exception) -> str:
+    """Map an Anthropic/HTTP exception to a coarse, non-secret result code.
+    Uses the exception class + status code only — never the message body, which
+    can echo request content or connection strings."""
+    status = getattr(exc, "status_code", None)
+    name = type(exc).__name__
+    if status == 404 or name == "NotFoundError":
+        return "unavailable_model"
+    if status in (400, 422) or name in ("BadRequestError", "UnprocessableEntityError"):
+        return "incompatible"
+    if status in (401, 403) or name in ("AuthenticationError", "PermissionDeniedError"):
+        return "auth_error"
+    if status == 429 or name == "RateLimitError":
+        return "rate_limited"
+    if (isinstance(status, int) and status >= 500) or name in (
+        "APIConnectionError", "APITimeoutError", "InternalServerError", "APIStatusError",
+    ):
+        return "transient"
+    return "error"
+
+
+def _validate_model(model_id: str, check_streaming: bool = True) -> dict:
+    """Bounded, inexpensive compatibility check for a candidate model. Sends a
+    tiny Messages request with the project's live `output_config` effort shape
+    and a minimal token budget, then (optionally) a minimal streaming request.
+    Distinguishes unavailable model, incompatible effort/API shape, auth /
+    rate-limit / transient failure, and success. Never exposes secrets or raw
+    error bodies — only a coarse result code plus the exception class name."""
+    model_id = (model_id or "").strip()
+    result = {
+        "model": model_id,
+        "ok": False,
+        "result": "error",
+        "detail": "",
+        "streaming_ok": None,
+        "checked_at": _now_iso(),
+    }
+    if not model_id:
+        result["result"] = "invalid_candidate"
+        result["detail"] = "empty candidate id"
+        return result
+    if not (os.getenv("ANTHROPIC_API_KEY") or "").strip():
+        result["result"] = "credentials_unavailable"
+        return result
+
+    probe = [{"role": "user", "content": "ping"}]
+    try:
+        client.messages.create(
+            model=model_id,
+            max_tokens=16,
+            output_config=_nexus_output_config(),
+            messages=probe,
+        )
+    except Exception as exc:
+        result["result"] = _api_error_code(exc)
+        result["detail"] = type(exc).__name__
+        return result
+
+    result["ok"] = True
+    result["result"] = "success"
+
+    if check_streaming:
+        try:
+            with client.messages.stream(
+                model=model_id,
+                max_tokens=16,
+                output_config=_nexus_output_config(),
+                messages=probe,
+            ) as stream:
+                for _ in stream.text_stream:
+                    break
+            result["streaming_ok"] = True
+        except Exception:
+            # Streaming incompatibility is informational: the model passed the
+            # core Messages check, so activation is still permitted, but we
+            # surface that streaming could not be confirmed.
+            result["streaming_ok"] = False
+    return result
+
+
+def _activate_model(candidate: str, validation: dict) -> dict:
+    """Atomically activate a validated candidate: persist the currently-active
+    model as previous known-good, persist the candidate as active, and record
+    the validation. One DB transaction so a crash cannot leave a half-applied
+    state. Subsequent requests use the new model; in-flight requests are
+    unchanged (each resolves the model once, at send time)."""
+    candidate = (candidate or "").strip()
+    current = _nexus_model()
+    now = _now_iso()
+    with _admin_db() as conn:
+        if current and current != candidate:
+            conn.execute(
+                """INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+                   ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at""",
+                (_NEXUS_MODEL_PREV_SETTING_KEY, current, now),
+            )
+        conn.execute(
+            """INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at""",
+            (_NEXUS_MODEL_SETTING_KEY, candidate, now),
+        )
+        conn.execute(
+            """INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at""",
+            (_NEXUS_MODEL_VALIDATION_KEY, json.dumps(validation), now),
+        )
+        conn.commit()
+    _record_event("nexus_model_activated", route="/admin", source="admin", detail=candidate)
+    return _nexus_model_state()
+
+
+def _rollback_model() -> dict:
+    """Atomically roll back to the previous known-good model. Swaps active and
+    previous so the operator can toggle back if needed. Raises ValueError if
+    there is no previous known-good model recorded."""
+    prev = (_get_setting(_NEXUS_MODEL_PREV_SETTING_KEY) or "").strip()
+    if not prev:
+        raise ValueError("no previous known-good model")
+    current = _nexus_model()
+    now = _now_iso()
+    with _admin_db() as conn:
+        conn.execute(
+            """INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at""",
+            (_NEXUS_MODEL_SETTING_KEY, prev, now),
+        )
+        conn.execute(
+            """INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at""",
+            (_NEXUS_MODEL_PREV_SETTING_KEY, current, now),
+        )
+        conn.commit()
+    _record_event("nexus_model_rolled_back", route="/admin", source="admin", detail=prev)
+    return _nexus_model_state()
 
 
 def _mask_token(token: str | None) -> str:
@@ -3086,7 +3376,25 @@ def _config_readiness() -> dict:
     try:
         nexus = _nexus_effort_state()
     except Exception:
-        nexus = {"model": _NEXUS_MODEL, "effort": _env_effort_default(), "source": "default"}
+        nexus = {"model": _nexus_model(), "effort": _env_effort_default(), "source": "default"}
+    # Model-management readiness (source, previous known-good, last validation,
+    # rollback readiness) so an operator can confirm the swap surface is healthy
+    # without exposing model/deployment internals to anonymous endpoints.
+    try:
+        m = _nexus_model_state()
+        last_val = m.get("last_validation") or {}
+        nexus["model_source"] = m["source"]
+        nexus["model_fallback"] = m["fallback"]
+        nexus["previous_known_good"] = m["previous_known_good"]
+        nexus["rollback_available"] = m["rollback_available"]
+        nexus["last_validation"] = {
+            "model": last_val.get("model"),
+            "result": last_val.get("result"),
+            "ok": last_val.get("ok"),
+            "checked_at": last_val.get("checked_at"),
+        } if last_val else None
+    except Exception:
+        pass
     return {"status": status, "checks": checks, "warnings": warnings, "nexus": nexus}
 
 
@@ -3218,6 +3526,83 @@ async def admin_set_nexus_effort(request: Request, payload: NexusEffortRequest):
         detail=effort,
     )
     return _nexus_effort_state()
+
+
+@app.get("/api/admin/nexus-model")
+async def admin_get_nexus_model(request: Request):
+    """Admin: current model-management state — active model, selection source,
+    safe fallback, previous known-good, last validation result/time, rollback
+    readiness. Non-secret operational config only."""
+    _require_admin(request)
+    return _nexus_model_state()
+
+
+@app.get("/api/admin/nexus-model/available")
+async def admin_list_available_models(request: Request, refresh: bool = False):
+    """Admin: models discovered for this API account via the SDK Models API.
+    Cached briefly; pass ?refresh=true to force a fresh fetch. Discovery failure
+    (auth/network/no-credentials) is reported gracefully, never raised, and a
+    new model here does NOT become active — activation is a separate admin
+    action gated on validation."""
+    _require_admin(request)
+    return _discover_models(force=refresh)
+
+
+@app.post("/api/admin/nexus-model/validate")
+async def admin_validate_nexus_model(request: Request, payload: NexusModelRequest):
+    """Admin: run a bounded compatibility validation for a candidate model
+    without activating it. Persists the outcome as the last validation result.
+    A failed validation leaves the active model unchanged."""
+    _require_admin(request)
+    result = _validate_model(payload.model)
+    _record_validation(result)
+    _record_event(
+        "nexus_model_validated",
+        route="/admin",
+        source="admin",
+        detail=f"{result['model']}:{result['result']}",
+    )
+    return {"validation": result, "state": _nexus_model_state()}
+
+
+@app.post("/api/admin/nexus-model/activate")
+async def admin_activate_nexus_model(request: Request, payload: NexusModelRequest):
+    """Admin: validate then activate a candidate model. Activation happens ONLY
+    after a successful validation — arbitrary untested activation is rejected
+    (422). On success the swap is atomic: the previous active model is recorded
+    as previous known-good and the candidate becomes active for subsequent
+    requests. On validation failure the active model is unchanged."""
+    _require_admin(request)
+    candidate = (payload.model or "").strip()
+    if not candidate:
+        raise HTTPException(status_code=422, detail="model is required")
+    result = _validate_model(candidate)
+    _record_validation(result)
+    if not result["ok"]:
+        _record_event(
+            "nexus_model_activation_rejected",
+            route="/admin",
+            source="admin",
+            detail=f"{candidate}:{result['result']}",
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=f"validation failed ({result['result']}); model not activated",
+        )
+    state = _activate_model(candidate, result)
+    return {"validation": result, "state": state}
+
+
+@app.post("/api/admin/nexus-model/rollback")
+async def admin_rollback_nexus_model(request: Request):
+    """Admin: one-click atomic rollback to the previous known-good model.
+    Returns 409 if there is no previous model recorded."""
+    _require_admin(request)
+    try:
+        state = _rollback_model()
+    except ValueError:
+        raise HTTPException(status_code=409, detail="no previous known-good model to roll back to")
+    return {"state": state}
 
 
 @app.post("/api/admin/invites")
@@ -4103,7 +4488,7 @@ Return only the question or observation — no preamble, no attribution."""
     async def stream():
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=ROSE_SYSTEM,
@@ -4158,7 +4543,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
     async def stream():
         async for event, payload in _stream_with_retry(
             client,
-            model=_NEXUS_MODEL,
+            model=_nexus_model(),
             max_tokens=_NEXUS_SHORT_MAX_TOKENS,
             system=ROSE_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
@@ -4174,7 +4559,7 @@ Offer a single opening question or observation (1-2 sentences) that invites genu
                             companion=request.companion or "",
                             endpoint="rose-room-opening",
                             room=request.room or "",
-                            model=_NEXUS_MODEL,
+                            model=_nexus_model(),
                             input_tokens=payload.usage.input_tokens,
                             output_tokens=payload.usage.output_tokens,
                         )
@@ -4313,7 +4698,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
     async def stream():
         async for event, payload in _stream_with_retry(
             client,
-            model=_NEXUS_MODEL,
+            model=_nexus_model(),
             max_tokens=600 if is_studio else _NEXUS_SHORT_MAX_TOKENS,
             system=system,
             messages=messages,
@@ -4329,7 +4714,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
                             companion=request.companion or "",
                             endpoint="rose-mirror",
                             room=request.room or "",
-                            model=_NEXUS_MODEL,
+                            model=_nexus_model(),
                             input_tokens=payload.usage.input_tokens,
                             output_tokens=payload.usage.output_tokens,
                             invite_token=getattr(request, "invite_token", "") or "",
@@ -4416,7 +4801,7 @@ Task: {field_instructions.get(request.field, 'Write a synthesis.')}"""
     async def stream():
         try:
             with client.messages.stream(
-                model=_NEXUS_MODEL,
+                model=_nexus_model(),
                 output_config=_nexus_output_config(),
                 max_tokens=_NEXUS_SHORT_MAX_TOKENS,
                 system=INSPIRE_L2_SYSTEM,
@@ -4621,7 +5006,7 @@ async def hexagram_reader_translate(request: HexagramTranslateRequest):
 
     try:
         msg = client.messages.create(
-            model=_NEXUS_MODEL,
+            model=_nexus_model(),
             output_config=_nexus_output_config(),
             max_tokens=4096,
             system=system_prompt,
@@ -5967,7 +6352,7 @@ def _fo_describe_image(data: bytes, content_type: str) -> dict:
         import base64
         b64 = base64.standard_b64encode(data).decode("ascii")
         resp = client.messages.create(
-            model=_NEXUS_MODEL,
+            model=_nexus_model(),
             output_config=_nexus_output_config(),
             max_tokens=4096,
             messages=[{
