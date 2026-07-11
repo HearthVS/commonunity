@@ -369,6 +369,18 @@ img,svg{display:block;max-width:100%}
 .viz[data-has-photo="true"] .portrait{display:none}
 .viz[data-has-photo="true"] .viz-hero__mask{display:none}
 .viz[data-has-photo="true"] .viz-watermark{display:none}
+/* portrait zoom (transform set inline from the focal point) eases in smoothly */
+.viz-hero__photo{transition:transform .35s var(--ease)}
+
+/* CIPHER FIELD — the one optional Arrival Portrait overlay. A deterministic,
+   privacy-safe SVG (role colours + torus geometry) sits over the portrait with
+   a built-in face-safe centre mask. Only visible when the treatment is on AND a
+   real photo is present; intensity drives the whole layer opacity. */
+.viz-hero__cipher{position:absolute;inset:0;z-index:1;pointer-events:none;
+  opacity:0;transition:opacity .5s var(--ease);mix-blend-mode:soft-light}
+.viz-hero__cipher svg{width:100%;height:100%;display:block}
+.viz[data-overlay="cipher-field"][data-has-photo="true"] .viz-hero__cipher{
+  opacity:var(--hero-overlay-opacity,.28)}
 
 /* TRANSPARENT PORTRAIT — a PNG/WebP/SVG with real alpha composites straight
    over the atmospheric Fieldprint background. Strip the media card (no opaque

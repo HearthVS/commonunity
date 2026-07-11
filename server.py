@@ -5060,6 +5060,11 @@ async def serve_fieldprint_css(request: Request):
 async def serve_fieldprint_js(request: Request):
     return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint.js", media_type="application/javascript")
 
+
+@app.get("/fieldprint-cipher-field.js")
+async def serve_fieldprint_cipher_field_js(request: Request):
+    return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint-cipher-field.js", media_type="application/javascript")
+
 # CommonUnity public homepage (served at /home for now; intended for the
 # commonunity.io apex once Compass moves to compass.commonunity.io).
 @app.get("/home")
