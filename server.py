@@ -1143,6 +1143,38 @@ _ADMIN_SECRET_ENV = "ADMIN_COOKIE_SECRET"
 _ADMIN_DB_ENV = "COMMONUNITY_ADMIN_DB_PATH"
 _PUBLIC_BASE_URL_ENV = "COMMONUNITY_PUBLIC_BASE_URL"
 _INVITE_BASE_URL_ENV = "COMMONUNITY_INVITE_BASE_URL"
+_SHARED_FILES_PATH_ENV = "COMMONUNITY_SHARED_FILES_PATH"
+_SHARED_FILES_MAX_BYTES_ENV = "COMMONUNITY_SHARED_FILES_MAX_BYTES"
+_SHARED_FILES_DEFAULT_MAX_BYTES = 25 * 1024 * 1024  # 25 MB
+
+# Conservative allowlist of shareable formats. Each entry maps a lowercase file
+# extension to (canonical MIME type, disposition). "inline" renders in-browser
+# where safe; "attachment" forces a download for formats that are unsafe or
+# pointless to render inline (office documents, archives). HTML and SVG are
+# inline but are served from a locked-down, script-isolated context in the
+# public /share route (see serve_shared_file) — they never inherit the
+# authenticated app origin, so they cannot read admin/beta cookies or call
+# credentialed APIs.
+_SHARED_ALLOWED_TYPES = {
+    "html": ("text/html; charset=utf-8", "inline"),
+    "htm": ("text/html; charset=utf-8", "inline"),
+    "pdf": ("application/pdf", "inline"),
+    "png": ("image/png", "inline"),
+    "jpg": ("image/jpeg", "inline"),
+    "jpeg": ("image/jpeg", "inline"),
+    "webp": ("image/webp", "inline"),
+    "gif": ("image/gif", "inline"),
+    "svg": ("image/svg+xml", "inline"),
+    "txt": ("text/plain; charset=utf-8", "inline"),
+    "md": ("text/markdown; charset=utf-8", "inline"),
+    "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "attachment"),
+    "pptx": ("application/vnd.openxmlformats-officedocument.presentationml.presentation", "attachment"),
+    "xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "attachment"),
+    "zip": ("application/zip", "attachment"),
+}
+# Extensions whose contents can execute script in a top-level browsing context
+# and therefore MUST be served with the CSP sandbox isolation headers.
+_SHARED_SANDBOX_EXTS = {"html", "htm", "svg"}
 _BRANDED_INVITE_BASE_URL = "https://commonunity.io"
 _PRODUCTION_RAILWAY_BASE_URL = "https://commonunity-production.up.railway.app"
 _SMTP_HOST_ENV = "SMTP_HOST"
@@ -1687,6 +1719,31 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Admin-uploaded shared files (the "Library"). Bytes live on disk under the
+    # shared-files store (see _shared_files_dir); this table holds only opaque
+    # metadata + the public slug. stored_filename is a randomized internal name
+    # so we never trust the uploaded filename on disk. is_active gates public
+    # availability without destroying bytes; view_count mirrors the lightweight
+    # metrics pattern used elsewhere.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS shared_files (
+            id TEXT PRIMARY KEY,
+            slug TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL DEFAULT '',
+            original_filename TEXT NOT NULL DEFAULT '',
+            stored_filename TEXT NOT NULL,
+            ext TEXT NOT NULL DEFAULT '',
+            mime_type TEXT NOT NULL DEFAULT '',
+            disposition TEXT NOT NULL DEFAULT 'inline',
+            size_bytes INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            view_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_shared_files_slug ON shared_files(slug)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
     conn.execute(
@@ -1743,6 +1800,65 @@ def _set_setting(key: str, value: str) -> None:
             (key, value, _now_iso()),
         )
         conn.commit()
+
+
+def _shared_files_dir() -> pathlib.Path:
+    """Directory where uploaded shared-file bytes are persisted.
+
+    Resolution order:
+      1. COMMONUNITY_SHARED_FILES_PATH (explicit override — point at the volume).
+      2. If the admin DB path is explicitly configured (production/Railway),
+         store alongside it on the same persistent volume: <db_parent>/shared_files.
+      3. Local-dev fallback: <repo>/shared_files_store — deliberately OUTSIDE the
+         repo's data/ directory, which is exposed read-only via the /data static
+         mount. Keeping the store out of any StaticFiles mount ensures bytes are
+         only ever reachable through the isolation-header-controlled /share route.
+    """
+    configured = os.getenv(_SHARED_FILES_PATH_ENV, "").strip()
+    if configured:
+        return pathlib.Path(configured)
+    if os.getenv(_ADMIN_DB_ENV, "").strip():
+        return _admin_db_path().parent / "shared_files"
+    return _ROOT / "shared_files_store"
+
+
+def _shared_files_max_bytes() -> int:
+    raw = os.getenv(_SHARED_FILES_MAX_BYTES_ENV, "").strip()
+    if raw.isdigit() and int(raw) > 0:
+        return int(raw)
+    return _SHARED_FILES_DEFAULT_MAX_BYTES
+
+
+def _slugify(value: str) -> str:
+    """Reduce arbitrary text to a URL-safe slug: lowercase, [a-z0-9-] only."""
+    import re as _re
+    value = (value or "").strip().lower()
+    value = _re.sub(r"[^a-z0-9]+", "-", value).strip("-")
+    return value[:80]
+
+
+def _unique_slug(conn: sqlite3.Connection, base: str) -> str:
+    """Return a slug not already present in shared_files, suffixing -2, -3… on
+    collision. Falls back to a random token when no usable base is given."""
+    base = _slugify(base) or f"file-{secrets.token_hex(4)}"
+    candidate = base
+    n = 2
+    while conn.execute("SELECT 1 FROM shared_files WHERE slug = ?", (candidate,)).fetchone():
+        candidate = f"{base}-{n}"
+        n += 1
+    return candidate
+
+
+def _shared_public_url(request: Request, slug: str) -> str:
+    return f"{_public_base_url(request)}/share/{slug}"
+
+
+def _shared_row_to_dict(row: sqlite3.Row, request: Request) -> dict:
+    d = {key: row[key] for key in row.keys()}
+    d["is_active"] = bool(d.get("is_active"))
+    d["public_url"] = _shared_public_url(request, d["slug"])
+    d.pop("stored_filename", None)  # internal-only; never expose the on-disk name
+    return d
 
 
 def _nexus_effort_state() -> dict:
@@ -2949,6 +3065,138 @@ async def admin_logout(request: Request):
     response = HTMLResponse('{"ok":true}', media_type="application/json")
     response.delete_cookie(_ADMIN_COOKIE, path="/")
     return response
+
+
+# ── Shared files (admin "Library") ───────────────────────────────────────────
+# Admin uploads a file once and receives a stable public /share/<slug> link.
+# Bytes are stored under _shared_files_dir() with a randomized internal name;
+# metadata lives in the shared_files table. Public serving (with per-format
+# isolation) is handled by serve_shared_file below.
+
+class SharedFileStateRequest(BaseModel):
+    active: bool = True
+
+
+@app.get("/api/admin/shared-files")
+async def admin_list_shared_files(request: Request):
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM shared_files ORDER BY created_at DESC, id DESC LIMIT 500"
+        ).fetchall()
+    return {
+        "files": [_shared_row_to_dict(r, request) for r in rows],
+        "max_bytes": _shared_files_max_bytes(),
+        "allowed_extensions": sorted(_SHARED_ALLOWED_TYPES.keys()),
+    }
+
+
+@app.post("/api/admin/shared-files")
+async def admin_upload_shared_file(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str = Form(default=""),
+    slug: str = Form(default=""),
+):
+    _require_admin(request)
+
+    raw_name = (file.filename or "").strip()
+    # Guard against path traversal in the uploaded name before we derive an ext.
+    if "/" in raw_name or "\\" in raw_name or ".." in raw_name:
+        raw_name = os.path.basename(raw_name.replace("\\", "/"))
+    ext = raw_name.rsplit(".", 1)[-1].lower() if "." in raw_name else ""
+    if ext not in _SHARED_ALLOWED_TYPES:
+        allowed = ", ".join(sorted(_SHARED_ALLOWED_TYPES.keys()))
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '.{ext or raw_name}'. Allowed: {allowed}",
+        )
+
+    max_bytes = _shared_files_max_bytes()
+    data = await file.read()
+    size = len(data)
+    if size == 0:
+        raise HTTPException(status_code=400, detail="File is empty.")
+    if size > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File is {size} bytes; the limit is {max_bytes} bytes "
+                   f"({max_bytes // (1024 * 1024)} MB).",
+        )
+
+    mime_type, disposition = _SHARED_ALLOWED_TYPES[ext]
+    file_id = secrets.token_urlsafe(12)
+    stored_filename = f"{secrets.token_hex(16)}.{ext}"
+    store = _shared_files_dir()
+    store.mkdir(parents=True, exist_ok=True)
+    dest = store / stored_filename
+    # Containment check: the resolved destination must stay inside the store.
+    if store.resolve() not in dest.resolve().parents:
+        raise HTTPException(status_code=500, detail="Storage path resolution failed.")
+    dest.write_bytes(data)
+
+    slug_base = slug.strip() or title.strip() or raw_name.rsplit(".", 1)[0]
+    now = _now_iso()
+    try:
+        with _admin_db() as conn:
+            unique = _unique_slug(conn, slug_base)
+            conn.execute(
+                """
+                INSERT INTO shared_files
+                    (id, slug, title, original_filename, stored_filename, ext,
+                     mime_type, disposition, size_bytes, is_active, view_count, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)
+                """,
+                (file_id, unique, title.strip()[:200], raw_name[:255], stored_filename,
+                 ext, mime_type, disposition, size, now),
+            )
+            row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+    except Exception:
+        # Roll back the orphaned bytes if metadata insert fails.
+        try:
+            dest.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
+    _record_event("shared_file_uploaded", route="/admin", source="admin",
+                  detail=f"{ext}:{size}")
+    return {"file": _shared_row_to_dict(row, request)}
+
+
+@app.post("/api/admin/shared-files/{file_id}/state")
+async def admin_set_shared_file_state(request: Request, file_id: str, payload: SharedFileStateRequest):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="File not found.")
+        conn.execute(
+            "UPDATE shared_files SET is_active = ? WHERE id = ?",
+            (1 if payload.active else 0, file_id),
+        )
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+    return {"file": _shared_row_to_dict(row, request)}
+
+
+@app.delete("/api/admin/shared-files/{file_id}")
+async def admin_delete_shared_file(request: Request, file_id: str):
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="File not found.")
+        stored_filename = row["stored_filename"]
+        conn.execute("DELETE FROM shared_files WHERE id = ?", (file_id,))
+    # Remove bytes after the row is gone so the public URL is already dead.
+    try:
+        store = _shared_files_dir()
+        target = (store / stored_filename).resolve()
+        if store.resolve() in target.parents and target.is_file():
+            target.unlink()
+    except Exception as exc:
+        print(f"shared file byte cleanup failed: {exc}")
+    _record_event("shared_file_deleted", route="/admin", source="admin")
+    return {"ok": True, "id": file_id}
 
 
 @app.get("/api/admin/brand/versions")
@@ -4843,6 +5091,65 @@ if _os.path.isdir(_ashtanga_exam_dir):
 _hatha_exam_dir = _os.path.join(_os.path.dirname(__file__), 'hatha-practical-exam')
 if _os.path.isdir(_hatha_exam_dir):
     app.mount("/hatha-practical-exam", StaticFiles(directory=_hatha_exam_dir, html=True), name="hatha-practical-exam")
+
+@app.get("/share/{slug}")
+async def serve_shared_file(request: Request, slug: str):
+    """Public serving of an admin-uploaded shared file.
+
+    Security model:
+      • Only active rows are served; unknown/inactive/deleted slugs → 404.
+      • Bytes are read from a randomized internal filename resolved strictly
+        inside the shared-files store (directory-traversal containment check),
+        so a crafted slug can never reach arbitrary paths.
+      • Every response carries X-Content-Type-Options: nosniff and a strict
+        Referrer-Policy so the file cannot sniff into another type or leak the
+        admin referrer.
+      • HTML and SVG (the script-capable formats) are served with a CSP
+        `sandbox` that OMITS allow-same-origin. That forces the document into a
+        unique opaque origin: it cannot read commonunity.io cookies
+        (admin/beta), localStorage, or make credentialed same-origin API calls,
+        while still allowing a useful standalone presentation (scripts, forms,
+        popups). frame-ancestors 'none' blocks clickjacking embeds.
+      • Office documents and ZIP archives are sent as attachments (download).
+    """
+    slug = (slug or "").strip()
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM shared_files WHERE slug = ? AND is_active = 1", (slug,)
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Shared file not found.")
+        conn.execute("UPDATE shared_files SET view_count = view_count + 1 WHERE id = ?", (row["id"],))
+
+    store = _shared_files_dir()
+    path = (store / row["stored_filename"]).resolve()
+    if store.resolve() not in path.parents or not path.is_file():
+        raise HTTPException(status_code=404, detail="Shared file is unavailable.")
+
+    ext = row["ext"]
+    mime_type = row["mime_type"]
+    disposition = row["disposition"]
+
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "public, max-age=300",
+    }
+    if ext in _SHARED_SANDBOX_EXTS:
+        headers["Content-Security-Policy"] = (
+            "sandbox allow-scripts allow-forms allow-popups allow-modals "
+            "allow-downloads allow-popups-to-escape-sandbox; frame-ancestors 'none'"
+        )
+        headers["X-Frame-Options"] = "DENY"
+
+    if disposition == "attachment":
+        safe_name = _slugify(os.path.splitext(row["original_filename"])[0]) or "download"
+        headers["Content-Disposition"] = f'attachment; filename="{safe_name}.{ext}"'
+    else:
+        headers["Content-Disposition"] = "inline"
+
+    return FileResponse(path, media_type=mime_type, headers=headers)
+
 
 # Serve pitch/presentation decks as self-contained static sites. Each deck
 # lives in its own slug folder under decks/ (e.g. decks/<slug>/index.html) and

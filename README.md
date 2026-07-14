@@ -49,6 +49,71 @@ deployment churn.
 Both surfaces render in the admin **Infrastructure** tab (live health summary +
 deployment version, config warnings, and the post-beta task list).
 
+## Shared files ("Library")
+
+Self-service file hosting from the admin panel. An authenticated admin uploads a
+file once in the **Library** tab and immediately receives a stable public share
+link — no code change or deploy required.
+
+**Config (env vars)**
+
+| Var | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `COMMONUNITY_SHARED_FILES_PATH` | optional | see below | Directory for uploaded bytes. Point this at the Railway persistent volume. |
+| `COMMONUNITY_SHARED_FILES_MAX_BYTES` | optional | `26214400` (25 MB) | Per-file upload size limit. |
+
+Storage path resolution when `COMMONUNITY_SHARED_FILES_PATH` is unset:
+1. If `COMMONUNITY_ADMIN_DB_PATH` is set (production), files are stored in
+   `shared_files/` next to the admin DB — i.e. on the same persistent volume.
+2. Otherwise (local dev) files go to `shared_files_store/` in the repo root,
+   which is deliberately **outside** `data/` so they are never exposed by the
+   `/data` static mount.
+
+**Railway requirement:** uploaded bytes must live on the mounted persistent
+volume, or they are lost on redeploy. Set `COMMONUNITY_SHARED_FILES_PATH` to a
+path on the same volume as `COMMONUNITY_ADMIN_DB_PATH` (e.g. `/data/shared_files`),
+or rely on the default which co-locates them with the admin DB. Metadata lives in
+the existing admin SQLite DB (`shared_files` table), so it is durable with the
+rest of admin state.
+
+**Supported formats** (allowlist — everything else is rejected with 415):
+`.html/.htm`, `.pdf`, `.png/.jpg/.jpeg/.webp/.gif/.svg`, `.txt/.md`,
+`.docx/.pptx/.xlsx`, `.zip`. Empty files and files above the size limit are
+rejected (400 / 413).
+
+**Public URL:** `https://commonunity.io/share/<slug>`. The slug is derived from
+the custom slug, else the title, else the filename; collisions get a `-2`, `-3`
+suffix. PDFs, images and text render inline; office documents and ZIP download.
+Deactivating an item makes the URL 404 without deleting bytes; deleting removes
+the bytes and permanently disables the URL.
+
+**Security model:**
+- Bytes are written under randomized internal filenames (the uploaded name is
+  never trusted on disk) and read back through a path-containment check, so a
+  crafted slug cannot traverse out of the store.
+- The store is kept out of every `StaticFiles` mount; files are reachable only
+  through the header-controlled `/share/<slug>` route.
+- All responses set `X-Content-Type-Options: nosniff` and
+  `Referrer-Policy: no-referrer`.
+- HTML and SVG (the script-capable formats) are served with a
+  `Content-Security-Policy: sandbox …` that **omits** `allow-same-origin`,
+  forcing the document into a unique opaque origin. It can present freely
+  (scripts, forms, popups) but cannot read commonunity.io admin/beta cookies,
+  localStorage, or make credentialed same-origin API calls. `frame-ancestors
+  'none'` + `X-Frame-Options: DENY` block clickjacking.
+
+**Residual risk:** the sandbox gives uploaded HTML an opaque origin but it is
+still served from the `commonunity.io` host. This blocks cookie/storage/API
+access (verified by tests) but shares the registrable domain. For stronger
+isolation of untrusted HTML, serve the `/share` route from a dedicated
+`share.commonunity.io` (or a separate sandbox domain) in the future so it cannot
+share any origin state with the app at all.
+
+Tests: `python -m unittest test_shared_files -v` (auth gating, HTML/PDF upload +
+link generation, byte serving, isolation headers, disallowed/empty/oversized
+rejection, slug collisions, traversal resistance, list, deactivate/delete
+lifecycle, and health/admin regressions).
+
 ## Nexus model & response depth
 
 All Nexus / Studio / generation endpoints share a single active model resolved
