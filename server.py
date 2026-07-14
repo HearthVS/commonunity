@@ -4844,6 +4844,13 @@ _hatha_exam_dir = _os.path.join(_os.path.dirname(__file__), 'hatha-practical-exa
 if _os.path.isdir(_hatha_exam_dir):
     app.mount("/hatha-practical-exam", StaticFiles(directory=_hatha_exam_dir, html=True), name="hatha-practical-exam")
 
+# Serve pitch/presentation decks as self-contained static sites. Each deck
+# lives in its own slug folder under decks/ (e.g. decks/<slug>/index.html) and
+# is reachable at /decks/<slug>/. html=True serves each folder's index.html.
+_decks_dir = _os.path.join(_os.path.dirname(__file__), 'decks')
+if _os.path.isdir(_decks_dir):
+    app.mount("/decks", StaticFiles(directory=_decks_dir, html=True), name="decks")
+
 # Serve CommonUnity SDK (shared gene keys engine + key schema JS builds)
 _sdk_dir = pathlib.Path(__file__).parent / "sdk"
 if _sdk_dir.exists():
