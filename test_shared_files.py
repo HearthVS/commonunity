@@ -198,7 +198,115 @@ class UploadAndServeTests(unittest.TestCase):
         self.assertEqual(self.c.get("/share/does-not-exist").status_code, 404)
 
 
+class LinkEntryTests(unittest.TestCase):
+    """The 'Add existing link' follow-up: alias entries that redirect."""
+
+    def setUp(self):
+        self.c = _auth_client()
+
+    def _create_link(self, url, title="", slug=""):
+        return self.c.post(
+            "/api/admin/shared-links",
+            json={"target_url": url, "title": title, "slug": slug},
+        )
+
+    def test_requires_auth(self):
+        anon = TestClient(server.app)
+        r = anon.post("/api/admin/shared-links", json={"target_url": "https://commonunity.io/x"})
+        self.assertEqual(r.status_code, 401)
+
+    def test_create_link_and_alias_redirects(self):
+        target = "https://commonunity.io/decks/minimum-viable-digital-self/"
+        r = self._create_link(target, title="Minimum Viable Digital Self", slug="mvds")
+        self.assertEqual(r.status_code, 200, r.text)
+        f = r.json()["file"]
+        self.assertEqual(f["kind"], "link")
+        self.assertEqual(f["slug"], "mvds")
+        self.assertEqual(f["target_url"], target)
+        self.assertEqual(f["target_host"], "commonunity.io")
+        self.assertTrue(f["public_url"].endswith("/share/mvds"))
+
+        red = self.c.get("/share/mvds", follow_redirects=False)
+        self.assertIn(red.status_code, (302, 307))
+        self.assertEqual(red.headers["location"], target)
+        self.assertEqual(red.headers.get("referrer-policy"), "no-referrer")
+
+    def test_generated_slug_from_title(self):
+        r = self._create_link("https://commonunity.io/page", title="Investor Brief")
+        self.assertEqual(r.json()["file"]["slug"], "investor-brief")
+
+    def test_generated_slug_from_host_when_no_title_or_slug(self):
+        r = self._create_link("https://example.org/some/path")
+        # Slug derives from the host when nothing else is supplied.
+        self.assertTrue(r.json()["file"]["slug"].startswith("example-org"))
+
+    def test_slug_collision_with_file(self):
+        _upload(self.c, "collide.pdf", b"%PDF-1.4 x", "application/pdf", slug="shared")
+        r = self._create_link("https://commonunity.io/a", slug="shared")
+        # A link must not steal a slug already held by a file entry.
+        self.assertEqual(r.json()["file"]["slug"], "shared-2")
+
+    def test_external_https_allowed(self):
+        r = self._create_link("https://example.com/deck", slug="ext")
+        self.assertEqual(r.status_code, 200)
+        red = self.c.get("/share/ext", follow_redirects=False)
+        self.assertEqual(red.headers["location"], "https://example.com/deck")
+
+    def test_reject_javascript_scheme(self):
+        r = self._create_link("javascript:alert(1)")
+        self.assertEqual(r.status_code, 400)
+
+    def test_reject_data_scheme(self):
+        self.assertEqual(self._create_link("data:text/html,<h1>x</h1>").status_code, 400)
+
+    def test_reject_file_scheme(self):
+        self.assertEqual(self._create_link("file:///etc/passwd").status_code, 400)
+
+    def test_reject_embedded_credentials(self):
+        self.assertEqual(self._create_link("https://user:pass@evil.example/").status_code, 400)
+
+    def test_reject_empty_and_malformed(self):
+        self.assertEqual(self._create_link("").status_code, 400)
+        self.assertEqual(self._create_link("not a url").status_code, 400)
+        self.assertEqual(self._create_link("https://").status_code, 400)
+
+    def test_reject_control_chars(self):
+        # CRLF injection attempt into the eventual Location header (sent in the
+        # JSON body, so it reaches the validator verbatim).
+        r = self._create_link("https://commonunity.io/a\r\nSet-Cookie: x")
+        self.assertEqual(r.status_code, 400)
+
+    def test_reject_overlong_url(self):
+        self.assertEqual(self._create_link("https://commonunity.io/" + "a" * 3000).status_code, 400)
+
+    def test_link_lifecycle_deactivate_reactivate_delete(self):
+        r = self._create_link("https://commonunity.io/deck", slug="life-link")
+        fid = r.json()["file"]["id"]
+        self.assertIn(self.c.get("/share/life-link", follow_redirects=False).status_code, (302, 307))
+
+        d = self.c.post(f"/api/admin/shared-files/{fid}/state", json={"active": False})
+        self.assertEqual(d.status_code, 200)
+        self.assertFalse(d.json()["file"]["is_active"])
+        self.assertEqual(self.c.get("/share/life-link", follow_redirects=False).status_code, 404)
+
+        self.c.post(f"/api/admin/shared-files/{fid}/state", json={"active": True})
+        self.assertIn(self.c.get("/share/life-link", follow_redirects=False).status_code, (302, 307))
+
+        self.assertEqual(self.c.delete(f"/api/admin/shared-files/{fid}").status_code, 200)
+        self.assertEqual(self.c.get("/share/life-link", follow_redirects=False).status_code, 404)
+
+    def test_link_appears_in_list_with_kind(self):
+        self._create_link("https://commonunity.io/listed", slug="listed-link")
+        files = self.c.get("/api/admin/shared-files").json()["files"]
+        item = next(f for f in files if f["slug"] == "listed-link")
+        self.assertEqual(item["kind"], "link")
+        self.assertNotIn("stored_filename", item)
+
+
 class RegressionTests(unittest.TestCase):
+    def setUp(self):
+        self.c = _auth_client()
+
     def test_health_admin_and_status_unaffected(self):
         c = TestClient(server.app)
         self.assertEqual(c.get("/health").status_code, 200)
@@ -206,6 +314,16 @@ class RegressionTests(unittest.TestCase):
         self.assertEqual(c.get("/admin").status_code, 200)
         # Admin status endpoint still ungated and returns shape.
         self.assertIn("unlocked", c.get("/api/admin/status").json())
+
+    def test_file_upload_still_works_and_keeps_security_headers(self):
+        # The link follow-up must not regress the file path or its isolation.
+        r = _upload(self.c, "still.html", b"<h1>ok</h1>", "text/html", slug="still-file")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["file"]["kind"], "file")
+        pub = self.c.get("/share/still-file")
+        self.assertEqual(pub.status_code, 200)
+        self.assertIn("sandbox", pub.headers.get("content-security-policy", ""))
+        self.assertEqual(pub.headers.get("x-content-type-options"), "nosniff")
 
 
 if __name__ == "__main__":

@@ -55,6 +55,14 @@ Self-service file hosting from the admin panel. An authenticated admin uploads a
 file once in the **Library** tab and immediately receives a stable public share
 link — no code change or deploy required.
 
+The Library holds two kinds of entry, both surfaced under the same
+`https://commonunity.io/share/<slug>` alias space:
+- **Files** — bytes uploaded and hosted here (see below).
+- **Links** — an alias for an already-hosted URL (e.g. a deck at
+  `https://commonunity.io/decks/…/`). Use **Add existing link** to give it a
+  short slug/title without re-uploading anything; the alias issues a temporary
+  redirect to the target.
+
 **Config (env vars)**
 
 | Var | Required | Default | Purpose |
@@ -87,6 +95,19 @@ suffix. PDFs, images and text render inline; office documents and ZIP download.
 Deactivating an item makes the URL 404 without deleting bytes; deleting removes
 the bytes and permanently disables the URL.
 
+**Link entries:** created via **Add existing link** (or `POST
+/api/admin/shared-links` with `{target_url, title?, slug?}`). Only `http`/`https`
+targets are accepted — `javascript:`, `data:`, `file:`, URLs with embedded
+credentials, control characters, and malformed or overlong (>2048 char) URLs are
+rejected (400). Links carry no bytes: `/share/<slug>` returns a **307 temporary
+redirect** to the validated target with `Referrer-Policy: no-referrer` and
+`Cache-Control: no-store`. Validation-at-creation (scheme allowlist, no control
+chars) prevents any response-header/response-splitting injection into
+`Location`. Slugs share one namespace with files (a link cannot claim a slug a
+file already holds — it gets a `-2` suffix). Deactivate/reactivate/delete behave
+the same as files, except delete only removes metadata (there are no bytes). The
+list labels each row as **LINK** or **FILE** and shows the destination host/path.
+
 **Security model:**
 - Bytes are written under randomized internal filenames (the uploaded name is
   never trusted on disk) and read back through a path-containment check, so a
@@ -112,7 +133,9 @@ share any origin state with the app at all.
 Tests: `python -m unittest test_shared_files -v` (auth gating, HTML/PDF upload +
 link generation, byte serving, isolation headers, disallowed/empty/oversized
 rejection, slug collisions, traversal resistance, list, deactivate/delete
-lifecycle, and health/admin regressions).
+lifecycle, link creation + alias redirect, generated slugs, file/link slug
+collision, invalid scheme/credential/malformed URL rejection, link lifecycle,
+and health/admin regressions).
 
 ## Nexus model & response depth
 

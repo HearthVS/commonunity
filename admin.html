@@ -286,6 +286,8 @@
     }
     .message.error, td.error { color: #d98a8a; }
     .message a { color: var(--gold, #d6b36a); word-break: break-all; }
+    .status.kind-link { background: rgba(79,95,143,0.22); color: #b7c2e6; }
+    .status.kind-file { background: rgba(111,154,132,0.20); color: #a9d0bd; }
     .section-divider {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
@@ -1311,7 +1313,7 @@
         <div class="section-intro">
           <div>
             <h2>Library</h2>
-            <p>Upload a file once and receive a public share link. Supports HTML, PDF, images, text, office documents, and ZIP. HTML is served in a sandboxed, isolated context that cannot read CommonUnity cookies or sessions.</p>
+            <p>Upload a file, or add an existing link, and receive a stable public share alias at <code>/share/&lt;slug&gt;</code>. Uploads support HTML, PDF, images, text, office documents, and ZIP (HTML runs in a sandboxed, isolated origin). Links redirect to an already-hosted page — nothing is uploaded or duplicated.</p>
           </div>
         </div>
 
@@ -1341,16 +1343,35 @@
           </div>
 
           <div class="panel card">
-            <h2>How share links work</h2>
-            <p class="hint">Each upload gets a stable URL at <code>/share/&lt;slug&gt;</code> on commonunity.io. PDFs, images and text render inline; office files and ZIP download. Uploaded HTML runs in a unique sandboxed origin — it can present freely but cannot access admin or beta cookies, storage, or credentialed APIs. Deactivating hides a link without deleting bytes; deleting removes the bytes and kills the URL permanently.</p>
+            <h2>Add existing link</h2>
+            <p class="hint" data-testid="library-link-help">Alias an already-hosted page (e.g. a deck at <code>/decks/…</code>) to a short <code>/share/&lt;slug&gt;</code> URL. Only <code>http</code>/<code>https</code> links are accepted; the alias redirects to the target.</p>
+            <form id="lib-link-form" class="fields" data-testid="library-link-form">
+              <div>
+                <label for="lib-link-url">Target URL</label>
+                <input id="lib-link-url" type="url" required placeholder="https://commonunity.io/decks/minimum-viable-digital-self/" data-testid="library-link-url-input">
+              </div>
+              <div class="split">
+                <div>
+                  <label for="lib-link-title">Display title optional</label>
+                  <input id="lib-link-title" placeholder="e.g. Minimum Viable Digital Self" data-testid="library-link-title-input">
+                </div>
+                <div>
+                  <label for="lib-link-slug">Custom slug optional</label>
+                  <input id="lib-link-slug" placeholder="mvds" data-testid="library-link-slug-input">
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit" id="lib-link-submit" data-testid="library-link-submit">Save &amp; generate alias</button>
+            </form>
+            <div class="message hidden" id="lib-link-message" data-testid="library-link-message"></div>
+            <div class="message hidden" id="lib-link-result" data-testid="library-link-result-box"></div>
           </div>
         </section>
 
         <section class="panel card" style="margin-top:18px;">
           <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
             <div>
-              <h2>Shared files</h2>
-              <p class="hint">Every uploaded item, its public link, and controls.</p>
+              <h2>Library items</h2>
+              <p class="hint">Every uploaded file and saved link, its public alias, and controls.</p>
             </div>
             <div class="actions" style="margin:0">
               <button class="btn-secondary" onclick="loadLibrary()" data-testid="library-reload">Reload</button>
@@ -1359,12 +1380,12 @@
           <div class="table-wrap" style="margin-top:14px;">
             <table data-testid="library-table">
               <thead>
-                <tr><th>Title / file</th><th>Type</th><th>Size</th><th>Status</th><th>Views</th><th>Link</th><th>Actions</th></tr>
+                <tr><th>Title</th><th>Kind</th><th>Type / destination</th><th>Status</th><th>Views</th><th>Share alias</th><th>Actions</th></tr>
               </thead>
               <tbody id="lib-tbody"></tbody>
             </table>
           </div>
-          <div id="lib-empty" class="hidden" data-testid="library-empty" style="padding:18px 4px;color:var(--text-faint);">No files uploaded yet. Your first share link will appear here.</div>
+          <div id="lib-empty" class="hidden" data-testid="library-empty" style="padding:18px 4px;color:var(--text-faint);">Nothing here yet. Upload a file or add a link to create your first share alias.</div>
         </section>
       </div><!-- /tab-pane library -->
 
@@ -1880,25 +1901,60 @@
       if (empty) empty.classList.add('hidden');
       tbody.innerHTML = state.library.map(f => {
         const active = f.is_active;
+        const isLink = f.kind === 'link';
         const statusPill = `<span class="status ${active ? '' : 'revoked'}" data-testid="library-status-${f.id}">${active ? 'active' : 'inactive'}</span>`;
-        const link = active
+        const kindPill = `<span class="status ${isLink ? 'kind-link' : 'kind-file'}" data-testid="library-kind-${f.id}">${isLink ? 'LINK' : 'FILE'}</span>`;
+        const alias = active
           ? `<a href="${escapeHtml(f.public_url)}" target="_blank" rel="noopener" data-testid="library-link-${f.id}">${escapeHtml('/share/' + f.slug)}</a>`
           : '<span class="muted">—</span>';
+        const subtitle = isLink
+          ? escapeHtml(f.target_display || f.target_host || '')
+          : escapeHtml(f.original_filename || '');
+        const typeCell = isLink
+          ? `<span class="muted" title="${escapeHtml(f.target_url || '')}" data-testid="library-dest-${f.id}">↪ ${escapeHtml(f.target_host || 'link')}</span>`
+          : `${escapeHtml((f.ext || '').toUpperCase())} · ${fmtBytes(f.size_bytes)}`;
         const toggleLabel = active ? 'Deactivate' : 'Activate';
         return `<tr data-testid="library-row-${f.id}">
-          <td><strong>${escapeHtml(f.title || f.original_filename || f.slug)}</strong><div class="muted">${escapeHtml(f.original_filename || '')}</div></td>
-          <td>${escapeHtml((f.ext || '').toUpperCase())}</td>
-          <td>${fmtBytes(f.size_bytes)}</td>
+          <td><strong>${escapeHtml(f.title || f.original_filename || f.slug)}</strong><div class="muted">${subtitle}</div></td>
+          <td>${kindPill}</td>
+          <td>${typeCell}</td>
           <td>${statusPill}</td>
           <td data-testid="library-views-${f.id}">${f.view_count || 0}</td>
-          <td>${link}</td>
+          <td>${alias}</td>
           <td style="white-space:nowrap">
-            <button class="btn-secondary btn-sm" data-lib-copy="${f.id}" data-testid="library-copy-${f.id}">Copy link</button>
+            <button class="btn-secondary btn-sm" data-lib-copy="${f.id}" data-testid="library-copy-${f.id}">Copy</button>
+            <button class="btn-secondary btn-sm" data-lib-open="${f.id}" data-testid="library-open-${f.id}">Open</button>
             <button class="btn-secondary btn-sm" data-lib-toggle="${f.id}" data-lib-active="${active ? '0' : '1'}" data-testid="library-toggle-${f.id}">${toggleLabel}</button>
             <button class="btn-secondary btn-sm" data-lib-delete="${f.id}" data-testid="library-delete-${f.id}">Delete</button>
           </td>
         </tr>`;
       }).join('');
+    }
+
+    // Renders a generated share alias into a result box with a copy control.
+    function showShareResult(boxId, url, testidPrefix) {
+      const box = $(boxId);
+      if (!box) return;
+      box.innerHTML = '';
+      const label = document.createElement('div');
+      label.className = 'muted';
+      label.textContent = 'Public share alias:';
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = url;
+      a.setAttribute('data-testid', `${testidPrefix}-link`);
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-secondary btn-sm';
+      copyBtn.textContent = 'Copy';
+      copyBtn.setAttribute('data-testid', `${testidPrefix}-copy`);
+      copyBtn.style.marginLeft = '10px';
+      copyBtn.addEventListener('click', async () => {
+        const ok = await copyTextToClipboard(url);
+        copyBtn.textContent = ok ? 'Copied' : 'Copy failed';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
+      });
+      box.appendChild(label); box.appendChild(a); box.appendChild(copyBtn);
+      box.classList.remove('hidden');
     }
 
     // Upload handler
@@ -1923,27 +1979,7 @@
         }
         const { file } = await res.json();
         libMsg('lib-message', 'Uploaded successfully.');
-        const box = $('lib-link-box');
-        box.innerHTML = '';
-        const label = document.createElement('div');
-        label.className = 'muted';
-        label.textContent = 'Public share link:';
-        const a = document.createElement('a');
-        a.href = file.public_url; a.target = '_blank'; a.rel = 'noopener';
-        a.textContent = file.public_url;
-        a.setAttribute('data-testid', 'library-new-link');
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn-secondary btn-sm';
-        copyBtn.textContent = 'Copy';
-        copyBtn.setAttribute('data-testid', 'library-new-copy');
-        copyBtn.style.marginLeft = '10px';
-        copyBtn.addEventListener('click', async () => {
-          const ok = await copyTextToClipboard(file.public_url);
-          copyBtn.textContent = ok ? 'Copied' : 'Copy failed';
-          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
-        });
-        box.appendChild(label); box.appendChild(a); box.appendChild(copyBtn);
-        box.classList.remove('hidden');
+        showShareResult('lib-link-box', file.public_url, 'library-new');
         e.target.reset();
         loadLibrary();
       } catch (err) {
@@ -1953,10 +1989,40 @@
       }
     });
 
+    // Add-existing-link handler
+    document.getElementById('lib-link-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = $('lib-link-submit');
+      const url = $('lib-link-url').value.trim();
+      $('lib-link-result').classList.add('hidden');
+      if (!url) { libMsg('lib-link-message', 'Enter a target URL.', 'error'); return; }
+      btn.disabled = true;
+      libMsg('lib-link-message', 'Saving…');
+      try {
+        const { file } = await api('/api/admin/shared-links', {
+          method: 'POST',
+          body: JSON.stringify({
+            target_url: url,
+            title: $('lib-link-title').value.trim(),
+            slug: $('lib-link-slug').value.trim(),
+          }),
+        });
+        libMsg('lib-link-message', 'Link saved.');
+        showShareResult('lib-link-result', file.public_url, 'library-link-new');
+        e.target.reset();
+        loadLibrary();
+      } catch (err) {
+        libMsg('lib-link-message', err.message || 'Could not save link', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     // Row action delegation
     document.getElementById('lib-tbody').addEventListener('click', async (e) => {
       const t = e.target;
       const copyId = t.dataset?.libCopy;
+      const openId = t.dataset?.libOpen;
       const toggleId = t.dataset?.libToggle;
       const deleteId = t.dataset?.libDelete;
       if (copyId) {
@@ -1966,6 +2032,9 @@
         const orig = t.textContent;
         t.textContent = ok ? 'Copied' : 'Copy failed';
         setTimeout(() => { t.textContent = orig; }, 1600);
+      } else if (openId) {
+        const f = state.library.find(x => x.id === openId);
+        if (f) window.open(f.public_url, '_blank', 'noopener');
       } else if (toggleId) {
         const makeActive = t.dataset.libActive === '1';
         t.disabled = true;
@@ -1975,8 +2044,12 @@
         } catch (err) { alert(err.message || 'Update failed'); t.disabled = false; }
       } else if (deleteId) {
         const f = state.library.find(x => x.id === deleteId);
-        const name = f ? (f.title || f.original_filename || f.slug) : 'this file';
-        if (!confirm(`Delete "${name}"? This removes the stored file and permanently disables its public link.`)) return;
+        const name = f ? (f.title || f.original_filename || f.slug) : 'this item';
+        const isLink = f && f.kind === 'link';
+        const msg = isLink
+          ? `Delete "${name}"? This permanently disables its /share alias. The linked page itself is not affected.`
+          : `Delete "${name}"? This removes the stored file and permanently disables its public link.`;
+        if (!confirm(msg)) return;
         t.disabled = true;
         try {
           await api(`/api/admin/shared-files/${deleteId}`, { method: 'DELETE' });

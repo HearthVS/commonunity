@@ -1744,6 +1744,16 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_shared_files_slug ON shared_files(slug)")
+    # A Library entry is either an uploaded 'file' (bytes on disk) or a 'link'
+    # (an alias that redirects to an already-hosted target_url — no bytes).
+    # Existing DBs predate these columns and CREATE TABLE IF NOT EXISTS won't
+    # add them, so backfill idempotently. DEFAULT 'file'/'' means every legacy
+    # row stays a file entry with no data migration.
+    _sf_cols = {r[1] for r in conn.execute("PRAGMA table_info(shared_files)").fetchall()}
+    if "kind" not in _sf_cols:
+        conn.execute("ALTER TABLE shared_files ADD COLUMN kind TEXT NOT NULL DEFAULT 'file'")
+    if "target_url" not in _sf_cols:
+        conn.execute("ALTER TABLE shared_files ADD COLUMN target_url TEXT NOT NULL DEFAULT ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
     conn.execute(
@@ -1849,6 +1859,52 @@ def _unique_slug(conn: sqlite3.Connection, base: str) -> str:
     return candidate
 
 
+_SHARED_LINK_MAX_URL_LEN = 2048
+
+
+def _validate_share_target_url(raw: str) -> str:
+    """Validate and normalize a user-supplied redirect target for a link entry.
+
+    Accepts only absolute http/https URLs with a host and no embedded
+    credentials. Rejects dangerous schemes (javascript:, data:, file:, …),
+    empty/malformed input, over-length values, and any control character
+    (defends against header/response-splitting in the eventual Location header).
+    Returns the cleaned URL or raises HTTPException(400).
+    """
+    value = (raw or "").strip()
+    if not value:
+        raise HTTPException(status_code=400, detail="Target URL is required.")
+    if len(value) > _SHARED_LINK_MAX_URL_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target URL is too long (max {_SHARED_LINK_MAX_URL_LEN} characters).",
+        )
+    # Any control / whitespace-in-the-middle character (CR, LF, tab, NUL, …)
+    # is rejected outright: it has no place in a URL and is the classic
+    # response-splitting vector once the value lands in a Location header.
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7f for ch in value):
+        raise HTTPException(status_code=400, detail="Target URL contains invalid characters.")
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Target URL is malformed.")
+    if parts.scheme.lower() not in {"http", "https"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Only http:// and https:// links are allowed.",
+        )
+    if not parts.netloc or not parts.hostname:
+        raise HTTPException(status_code=400, detail="Target URL must include a host.")
+    # Reject embedded credentials (user:pass@host) — both an exfiltration and a
+    # phishing-obfuscation risk.
+    if "@" in parts.netloc or parts.username or parts.password:
+        raise HTTPException(
+            status_code=400,
+            detail="Target URL must not contain embedded credentials.",
+        )
+    return value
+
+
 def _shared_public_url(request: Request, slug: str) -> str:
     return f"{_public_base_url(request)}/share/{slug}"
 
@@ -1856,8 +1912,20 @@ def _shared_public_url(request: Request, slug: str) -> str:
 def _shared_row_to_dict(row: sqlite3.Row, request: Request) -> dict:
     d = {key: row[key] for key in row.keys()}
     d["is_active"] = bool(d.get("is_active"))
+    d["kind"] = d.get("kind") or "file"
     d["public_url"] = _shared_public_url(request, d["slug"])
     d.pop("stored_filename", None)  # internal-only; never expose the on-disk name
+    # For link entries, expose a safe host+path summary so the admin UI can
+    # label the destination without re-parsing the raw URL client-side.
+    target = d.get("target_url") or ""
+    if d["kind"] == "link" and target:
+        try:
+            p = urlsplit(target)
+            d["target_host"] = p.hostname or ""
+            d["target_display"] = (p.hostname or "") + (p.path or "")
+        except ValueError:
+            d["target_host"] = ""
+            d["target_display"] = ""
     return d
 
 
@@ -3077,6 +3145,12 @@ class SharedFileStateRequest(BaseModel):
     active: bool = True
 
 
+class SharedLinkRequest(BaseModel):
+    target_url: str
+    title: str = ""
+    slug: str = ""
+
+
 @app.get("/api/admin/shared-files")
 async def admin_list_shared_files(request: Request):
     _require_admin(request)
@@ -3163,6 +3237,35 @@ async def admin_upload_shared_file(
     return {"file": _shared_row_to_dict(row, request)}
 
 
+@app.post("/api/admin/shared-links")
+async def admin_create_shared_link(request: Request, payload: SharedLinkRequest):
+    """Create a 'link' Library entry: a stable /share/<slug> alias that
+    redirects to an already-hosted target_url. No bytes are stored — only
+    metadata in the shared_files table (kind='link', target_url set)."""
+    _require_admin(request)
+    target = _validate_share_target_url(payload.target_url)
+    title = (payload.title or "").strip()[:200]
+    host = urlsplit(target).hostname or ""
+    slug_base = (payload.slug or "").strip() or title or host
+    entry_id = secrets.token_urlsafe(12)
+    now = _now_iso()
+    with _admin_db() as conn:
+        unique = _unique_slug(conn, slug_base)
+        conn.execute(
+            """
+            INSERT INTO shared_files
+                (id, slug, title, original_filename, stored_filename, ext,
+                 mime_type, disposition, size_bytes, is_active, view_count,
+                 created_at, kind, target_url)
+            VALUES (?, ?, ?, '', '', '', '', '', 0, 1, 0, ?, 'link', ?)
+            """,
+            (entry_id, unique, title, now, target),
+        )
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (entry_id,)).fetchone()
+    _record_event("shared_link_created", route="/admin", source="admin")
+    return {"file": _shared_row_to_dict(row, request)}
+
+
 @app.post("/api/admin/shared-files/{file_id}/state")
 async def admin_set_shared_file_state(request: Request, file_id: str, payload: SharedFileStateRequest):
     _require_admin(request)
@@ -3186,16 +3289,20 @@ async def admin_delete_shared_file(request: Request, file_id: str):
         if row is None:
             raise HTTPException(status_code=404, detail="File not found.")
         stored_filename = row["stored_filename"]
+        kind = row["kind"] if "kind" in row.keys() else "file"
         conn.execute("DELETE FROM shared_files WHERE id = ?", (file_id,))
-    # Remove bytes after the row is gone so the public URL is already dead.
-    try:
-        store = _shared_files_dir()
-        target = (store / stored_filename).resolve()
-        if store.resolve() in target.parents and target.is_file():
-            target.unlink()
-    except Exception as exc:
-        print(f"shared file byte cleanup failed: {exc}")
-    _record_event("shared_file_deleted", route="/admin", source="admin")
+    # Link entries have no bytes — deleting the row is the whole operation.
+    # For file entries, remove bytes after the row is gone so the public URL is
+    # already dead.
+    if kind == "file" and stored_filename:
+        try:
+            store = _shared_files_dir()
+            target = (store / stored_filename).resolve()
+            if store.resolve() in target.parents and target.is_file():
+                target.unlink()
+        except Exception as exc:
+            print(f"shared file byte cleanup failed: {exc}")
+    _record_event("shared_file_deleted", route="/admin", source="admin", detail=kind)
     return {"ok": True, "id": file_id}
 
 
@@ -5120,6 +5227,22 @@ async def serve_shared_file(request: Request, slug: str):
         if row is None:
             raise HTTPException(status_code=404, detail="Shared file not found.")
         conn.execute("UPDATE shared_files SET view_count = view_count + 1 WHERE id = ?", (row["id"],))
+
+    # Link entries: redirect to the stored (validated-at-creation) target. The
+    # target was strictly validated on write (http/https only, no control
+    # characters), so it cannot carry a response-splitting payload into the
+    # Location header. Use a temporary redirect so the alias stays authoritative
+    # and can be repointed by deactivating/deleting; no-referrer prevents the
+    # commonunity.io alias from leaking to the destination.
+    if (row["kind"] if "kind" in row.keys() else "file") == "link":
+        target = row["target_url"] or ""
+        if not target:
+            raise HTTPException(status_code=404, detail="Shared link is unavailable.")
+        return RedirectResponse(
+            url=target,
+            status_code=307,
+            headers={"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"},
+        )
 
     store = _shared_files_dir()
     path = (store / row["stored_filename"]).resolve()
