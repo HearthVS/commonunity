@@ -2297,6 +2297,8 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
@@ -2313,85 +2315,60 @@ input, textarea { font: inherit; color: inherit; }
   gap: var(--space-2);
 }
 
-/* ── Active-project tab strip ─────────────────────────────────────────
-   A contextual lens sitting above the depth-mode bar. Deliberately lighter
-   and quieter than the depth tablist so the two axes read as distinct: this
-   names WHICH active project the field is focused on; the depth bar below
-   selects HOW deep into that field you are looking. Selecting a project sets
-   [data-fo-project] on the surface (see the switcher IIFE), letting the
-   workspace visibly "become" that project. Presentational only — no fetch,
-   submit, Nexus call, or record change. */
-.fo-project-bar {
+/* ── Workspace selector (compact segmented control) ───────────────────
+   Sits in the notepad header beside the title. Switches the main surface
+   between the ordinary Field Observations depth workspace and selectable
+   active projects (one active surface at a time). Deliberately compact so it
+   never squeezes the header actions; the track scrolls horizontally at narrow
+   widths. Presentational only — no fetch, submit, Nexus call, or record
+   change. */
+.fo-view-tabs {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: var(--space-2) var(--space-4) 0;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 30%, transparent);
   overflow-x: auto;
+  max-width: 100%;
 }
-.fo-project-bar::before {
-  content: "Project";
-  flex: none;
-  margin-right: var(--space-2);
-  font-family: var(--font-body);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  opacity: 0.7;
-}
-/* Pill tabs — softer than the depth tabs' underline treatment. */
-.fo-project-tab {
+.fo-view-tab {
   appearance: none;
   background: none;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 999px;
   padding: 3px var(--space-3);
   font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-faint);
   cursor: pointer;
   white-space: nowrap;
-  transition: color var(--transition), border-color var(--transition),
-              background-color var(--transition), box-shadow var(--transition);
+  transition: color var(--transition), background-color var(--transition),
+              box-shadow var(--transition);
 }
-.fo-project-tab:hover { color: var(--text-muted, var(--text)); }
-.fo-project-tab.active {
+.fo-view-tab:hover { color: var(--text-muted, var(--text)); }
+.fo-view-tab.active {
   color: var(--accent-color, var(--setup-accent));
-  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 10%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, var(--surface, #fff2));
 }
-.fo-project-tab:focus-visible {
+.fo-view-tab:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
 }
-/* Restrained context cue: once a project is active the strip settles onto a
-   faint divider so the whole field below reads as held "within" that project.
-   Kept subtle so the depth-mode atmosphere and text contrast stay intact; no
-   background-image is set here, leaving the depth-mode wash untouched. */
-.notepad-surface[data-fo-project] .fo-project-bar {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 22%, transparent);
-  padding-bottom: var(--space-2);
-}
+/* Workspace tabpanels — only one is shown at a time (see the switcher IIFE). */
+.fo-view[hidden] { display: none; }
 
-/* ── Living Digital Expression — project context card ─────────────────
-   A restrained read-only card that surfaces the current room's cOMpass
-   content when the active project is Living Digital Expression. Sits
-   between the project strip and the depth bar; capped height so it never
-   crowds the capture surface. Presentational only. */
+/* ── Living Digital Expression — project context ──────────────────────
+   Read-only surfacing of the current room's cOMpass content. Fills the LDE
+   workspace region (it is a full tabpanel now, not a stacked card) and
+   scrolls within it. Presentational only. */
 .fo-project-context {
-  margin: 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, var(--border));
-  border-radius: var(--radius-md, 10px);
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 5%, transparent);
-  max-height: 34vh;
+  padding: var(--space-4) var(--space-5);
   overflow-y: auto;
 }
-.fo-project-context[hidden] { display: none; }
 .fo-pc-head {
   display: flex;
   align-items: baseline;
@@ -10922,8 +10899,19 @@ body.hw-open { overflow: hidden; }
     <div class="room-workbench">
       <div class="notepad-surface">
         <div class="notepad-header">
-  <div style="display:flex;align-items:center;gap:var(--space-2);">
-          <span class="notepad-label">Field Observations</span>
+  <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;min-width:0;">
+          <!-- Workspace selector. A compact segmented control that swaps the
+               main surface between the ordinary Field Observations depth
+               workspace and selectable active projects (Living Digital
+               Expression today; future projects join this registry-driven
+               group). One active surface at a time; the choice persists to
+               localStorage. Client-side only — never partitions, migrates,
+               hides, or relabels observation records, and never touches the
+               Archive. -->
+          <div class="fo-view-tabs" id="fo-view-tabs" role="tablist" aria-label="Field Observations workspace">
+            <button type="button" class="fo-view-tab active" id="fo-view-tab-observations" data-fo-view="observations" role="tab" aria-selected="true" aria-controls="fo-view-observations" tabindex="0">Field Observations</button>
+            <button type="button" class="fo-view-tab" id="fo-view-tab-lde" data-fo-view="living-digital-expression" role="tab" aria-selected="false" aria-controls="fo-view-lde" tabindex="-1">Living Digital Expression</button>
+          </div>
           <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Observations"><i>i</i></button>
         </div>
           <div class="notepad-actions">
@@ -10933,41 +10921,37 @@ body.hw-open { overflow: hidden; }
             <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
           </div>
         </div>
-        <!-- Active-project tab strip. A contextual lens over the whole Field
-             Observations surface: selecting a project sets data-fo-project on
-             the notepad surface so the workspace visibly "becomes" that project,
-             without adding new panels or touching depth behaviour. MVP ships a
-             single project (Living Digital Expression) backed by a small local
-             registry so more active projects can be added later with minimal
-             code. Client-side only; the choice persists to localStorage. It
-             never partitions, migrates, hides, or relabels observation records,
-             and it never touches the Archive. -->
-        <div class="fo-project-bar" id="fo-project-bar" role="tablist" aria-label="Active studio projects">
-          <button type="button" class="fo-project-tab active" data-fo-project="living-digital-expression" role="tab" aria-selected="true" tabindex="0">Living Digital Expression</button>
-        </div>
-        <!-- Living Digital Expression — project context. Read-only surfacing of
-             the currently opened room's cOMpass content from the person's own
-             state (state.compassData.points[currentRoom]); provenance shown. The
-             save action pushes a structured, provenance-tagged record through the
+        <!-- Living Digital Expression — project view (tabpanel). Selected from
+             the header workspace tabs, it swaps into the same surface region as
+             the ordinary Field Observations workspace below — one active surface
+             at a time, not a stacked card. Read-only surfacing of the currently
+             opened room's cOMpass content from the person's own state
+             (state.compassData.points[currentRoom]); provenance shown. The save
+             action pushes a structured, provenance-tagged record through the
              EXISTING Field Observations store (studioCreateFieldObservation). It
              deliberately does NOT write Fieldprint: Fieldprint exposes no safe
              partial/blank-fill inbound contract (only a destructive full
              hydrateFromModel that resets sections + hero framing), so this stages
              the structured payload in the closest existing durable primitive
              instead of overwriting fields. No new store, no overwrite, no
-             migration; the Archive is untouched. Shown only while the active
-             project is Living Digital Expression. -->
-        <section class="fo-project-context" id="fo-project-context" hidden aria-live="polite">
-          <div class="fo-pc-head">
-            <span class="fo-pc-eyebrow" id="fo-pc-eyebrow">Living Digital Expression</span>
-            <span class="fo-pc-source" id="fo-pc-source"></span>
-          </div>
-          <div class="fo-pc-body" id="fo-pc-body"></div>
-          <div class="fo-pc-actions" id="fo-pc-actions" hidden>
-            <button type="button" class="fo-pc-save-btn" id="fo-pc-save-btn">Save this context to Field Observations</button>
-            <p class="fo-pc-note">Saves a structured, sourced copy into your Field Observations — durable and available to Nexus. It does not auto-fill Fieldprint yet.</p>
-          </div>
-        </section>
+             migration; the Archive is untouched. Hidden until its tab is chosen. -->
+        <div class="fo-view fo-view-lde" id="fo-view-lde" role="tabpanel" aria-labelledby="fo-view-tab-lde" hidden>
+          <section class="fo-project-context" id="fo-project-context" aria-live="polite">
+            <div class="fo-pc-head">
+              <span class="fo-pc-eyebrow" id="fo-pc-eyebrow">Living Digital Expression</span>
+              <span class="fo-pc-source" id="fo-pc-source"></span>
+            </div>
+            <div class="fo-pc-body" id="fo-pc-body"></div>
+            <div class="fo-pc-actions" id="fo-pc-actions" hidden>
+              <button type="button" class="fo-pc-save-btn" id="fo-pc-save-btn">Save this context to Field Observations</button>
+              <p class="fo-pc-note">Saves a structured, sourced copy into your Field Observations — durable and available to Nexus. It does not auto-fill Fieldprint yet.</p>
+            </div>
+          </section>
+        </div>
+        <!-- Field Observations view (tabpanel) — the ordinary depth mode bar +
+             panels, wrapped so the whole workspace can swap out when a project
+             view is selected. Default active surface. -->
+        <div class="fo-view fo-view-observations" id="fo-view-observations" role="tabpanel" aria-labelledby="fo-view-tab-observations">
         <!-- Field Observations depth / mode bar. Client-side only; the active
              mode is persisted to localStorage. "Now" is the live capture
              surface (unchanged). The others are scaffold placeholders. -->
@@ -11093,6 +11077,7 @@ body.hw-open { overflow: hidden; }
             </div>
           </div>
         </div>
+        </div><!-- /fo-view-observations -->
       </div>
     </div>
 
@@ -29764,85 +29749,91 @@ if (document.readyState === 'loading') {
 })();
 </script>
 <script>
-// ── Active-project tab strip ────────────────────────────────────────────────
-// A contextual lens over the whole Field Observations surface. Selecting a
-// project sets data-fo-project on the notepad surface so the workspace visibly
-// "becomes" that project — a future-ready scaffold, not per-project data yet.
-// MVP ships a single project backed by a small local registry so more active
-// projects can be added later with minimal code. This is client-side only: it
-// toggles the active tab, mirrors the choice onto the surface, and persists it
-// to localStorage. It NEVER partitions, migrates, hides, or relabels any
-// observation record, never adds panels, never touches the depth-mode bar or
-// the Archive, and never submits/fetches/calls Nexus.
+// ── Field Observations workspace selector ───────────────────────────────────
+// A compact segmented control in the notepad header that swaps the main surface
+// between the ordinary Field Observations depth workspace and selectable active
+// projects (Living Digital Expression today; future projects join the registry
+// below). One active surface at a time — selecting a project hides the depth
+// mode bar/panels and shows that project's panel in the same region, and vice
+// versa. Client-side only: it toggles the active tab, swaps the tabpanels, and
+// persists the choice to localStorage (default: the familiar Field Observations
+// workspace). It NEVER partitions, migrates, hides, or relabels any observation
+// record, never touches the Archive, and never submits/fetches/calls Nexus.
 (function () {
-  // Local registry. Add future active projects here (id must be a stable,
-  // URL/attribute-safe slug). The Archive is deliberately excluded and can
-  // never be a project — any archive-like id is filtered out defensively.
+  // Registry of selectable active projects that share the surface. Each renders
+  // as one header tab beside the base "Field Observations" view and needs a
+  // matching tabpanel with id "fo-view-<id>". Add future projects here (id must
+  // be a stable, attribute-safe slug). The Archive is deliberately excluded and
+  // can never be a project — any archive-like id is filtered out defensively.
   const FO_PROJECTS = [
     { id: 'living-digital-expression', label: 'Living Digital Expression' },
   ];
-  const FO_PROJECT_KEY = 'fo-project';
+  const FO_VIEW_KEY = 'fo-view';
+  const BASE_VIEW = 'observations'; // the ordinary Field Observations workspace
   const ARCHIVE_IDS = ['archive', 'archived', 'the-archive'];
 
-  const bar = document.getElementById('fo-project-bar');
-  if (!bar) return;
-  const surface = bar.closest('.notepad-surface');
+  const tablist = document.getElementById('fo-view-tabs');
+  if (!tablist) return;
+  const surface = tablist.closest('.notepad-surface');
 
-  // Defensive filter: never render or select an Archive-like id.
+  // Defensive filter: never expose an Archive-like id as a project view.
   const projects = FO_PROJECTS.filter(
     (p) => p && p.id && !ARCHIVE_IDS.includes(String(p.id).toLowerCase())
   );
-  if (!projects.length) return;
-  const ids = projects.map((p) => p.id);
-  const DEFAULT_ID = ids[0]; // exactly "Living Digital Expression" in the MVP
+  const VIEWS = [BASE_VIEW].concat(projects.map((p) => p.id));
 
-  // Resolve a stored value to a valid project id; anything stale/invalid or
-  // Archive-like falls back to the default.
-  function resolveProject(value) {
-    return ids.includes(value) ? value : DEFAULT_ID;
+  // Resolve a stored value to a valid view; anything stale/invalid or
+  // Archive-like falls back to the familiar base workspace.
+  function resolveView(value) {
+    return VIEWS.includes(value) ? value : BASE_VIEW;
   }
 
-  const tabs = Array.from(bar.querySelectorAll('.fo-project-tab'));
+  const tabs = Array.from(tablist.querySelectorAll('.fo-view-tab'));
+  function panelFor(view) { return document.getElementById('fo-view-' + view); }
 
-  function applyProject(id) {
-    id = resolveProject(id);
-    // Stable context attribute — the whole surface "becomes" this project.
-    if (surface) surface.setAttribute('data-fo-project', id);
+  function applyView(view) {
+    view = resolveView(view);
+    if (surface) surface.setAttribute('data-fo-view', view);
     tabs.forEach((tab) => {
-      const isActive = tab.dataset.foProject === id;
+      const isActive = tab.dataset.foView === view;
       tab.classList.toggle('active', isActive);
       tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
       // Roving tabindex so the tablist is a single tab stop.
       tab.tabIndex = isActive ? 0 : -1;
     });
-    renderProjectContext();
+    // One active surface at a time: show the selected tabpanel, hide the rest.
+    VIEWS.forEach((v) => {
+      const panel = panelFor(v);
+      if (panel) panel.hidden = v !== view;
+    });
+    if (view === 'living-digital-expression') renderProjectContext();
   }
 
-  let stored = DEFAULT_ID;
-  try { stored = localStorage.getItem(FO_PROJECT_KEY) || DEFAULT_ID; } catch (_) {}
-  // NB: initial applyProject() is deferred to the end of this IIFE so the
-  // context-card elements/state it renders through are already initialised
-  // (avoids a temporal-dead-zone reference during first paint).
+  let stored = BASE_VIEW;
+  try { stored = localStorage.getItem(FO_VIEW_KEY) || BASE_VIEW; } catch (_) {}
+  // NB: initial applyView() is deferred to the end of this IIFE so the context
+  // elements/state it renders through are already initialised (avoids a
+  // temporal-dead-zone reference during first paint).
 
-  function selectProject(id, focus) {
-    applyProject(id);
-    try { localStorage.setItem(FO_PROJECT_KEY, resolveProject(id)); } catch (_) {}
+  function selectView(view, focus) {
+    applyView(view);
+    try { localStorage.setItem(FO_VIEW_KEY, resolveView(view)); } catch (_) {}
     if (focus) {
-      const active = tabs.find((t) => t.dataset.foProject === resolveProject(id));
+      const active = tabs.find((t) => t.dataset.foView === resolveView(view));
       if (active) active.focus();
     }
   }
 
-  bar.addEventListener('click', (e) => {
-    const tab = e.target.closest('.fo-project-tab');
+  tablist.addEventListener('click', (e) => {
+    const tab = e.target.closest('.fo-view-tab');
     if (!tab) return;
-    selectProject(tab.dataset.foProject, false);
+    selectView(tab.dataset.foView, false);
   });
 
-  // Arrow / Home / End keyboard support for the new tablist (scoped here only;
-  // the existing depth tablist is intentionally left unchanged).
-  bar.addEventListener('keydown', (e) => {
-    const tab = e.target.closest('.fo-project-tab');
+  // Arrow / Home / End keyboard support for the workspace tablist (scoped here
+  // only; the depth mode tablist is intentionally left unchanged).
+  tablist.addEventListener('keydown', (e) => {
+    const tab = e.target.closest('.fo-view-tab');
     if (!tab) return;
     const i = tabs.indexOf(tab);
     if (i < 0) return;
@@ -29857,7 +29848,7 @@ if (document.readyState === 'loading') {
       default: return;
     }
     e.preventDefault();
-    selectProject(tabs[next].dataset.foProject, true);
+    selectView(tabs[next].dataset.foView, true);
   });
 
   // ── Living Digital Expression — project context ───────────────────────────
@@ -29949,15 +29940,16 @@ if (document.readyState === 'loading') {
 
   function renderProjectContext() {
     if (!ctxEl) return;
-    const activeProject = surface ? surface.getAttribute('data-fo-project') : DEFAULT_ID;
+    // The LDE panel's visibility is owned by the header tab; this only fills its
+    // content. The project id is fixed — this card is the Living Digital
+    // Expression workspace.
     const room = (typeof currentRoom !== 'undefined') ? currentRoom : null;
     const compass = (window.state && window.state.compassData) ? window.state.compassData : null;
     const roomMeta = (typeof ROOM_META !== 'undefined') ? ROOM_META : null;
-    const view = buildProjectContextView(activeProject, DEFAULT_ID, room, compass, roomMeta);
+    const view = buildProjectContextView('living-digital-expression', 'living-digital-expression', room, compass, roomMeta);
     ctxView = view;
 
-    if (!view.visible) { ctxEl.hidden = true; return; }
-    ctxEl.hidden = false;
+    if (!view.visible) return;
     if (ctxEyebrow) ctxEyebrow.textContent = view.eyebrow || 'Living Digital Expression';
     if (ctxSource) ctxSource.textContent = view.source || '';
 
@@ -30029,13 +30021,17 @@ if (document.readyState === 'loading') {
   }
 
   // Expose so the room-entry path can refresh the card when the open room
-  // changes while Living Digital Expression is active.
-  window.studioRenderProjectContext = renderProjectContext;
+  // changes. No-op unless the Living Digital Expression view is the active
+  // surface, so it never does work for the ordinary Field Observations view.
+  window.studioRenderProjectContext = function () {
+    const active = surface ? surface.getAttribute('data-fo-view') : BASE_VIEW;
+    if (active === 'living-digital-expression') renderProjectContext();
+  };
 
-  // Initial application, now that the context-card elements and state are
-  // initialised. applyProject() sets the active tab + surface attribute and
-  // paints the context card via renderProjectContext().
-  applyProject(stored);
+  // Initial application, now that the context elements and state are
+  // initialised. applyView() sets the active tab, swaps the tabpanels, and (if
+  // the LDE view is active) paints the context via renderProjectContext().
+  applyView(stored);
 })();
 </script>
 </body>
