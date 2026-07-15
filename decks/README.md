@@ -34,4 +34,5 @@ request without the trailing slash is redirected to add one.
 
 ## Current decks
 
-- [`minimum-viable-digital-self`](minimum-viable-digital-self/) — CommonUnity pitch deck (26 slides).
+- [`minimum-viable-digital-self`](minimum-viable-digital-self/) — CommonUnity pitch deck (26 slides). Canonical baseline; unchanged.
+- [`minimum-viable-digital-self-session-2026-07-16`](minimum-viable-digital-self-session-2026-07-16/) — 17-slide session cut of the canonical deck for the 16 July 2026 Unplugged Forum seminar. Derived from the baseline above, which remains unchanged.
