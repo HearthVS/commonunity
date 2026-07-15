@@ -69,8 +69,13 @@ test('fieldprint.html runs NO cipher engine / vendor scripts (privacy seam)', ()
   assert.doesNotMatch(fpHtml, /om_cipher/i);
   assert.doesNotMatch(fpHtml, /compass_cipher/i);
   assert.doesNotMatch(fpHtml, /vendor\//);
-  const scripts = fpHtml.match(/<script\b[^>]*src=/g) || [];
-  assert.equal(scripts.length, 1, 'exactly one script (fieldprint.js) expected');
+  // Only first-party, same-origin /fieldprint*.js modules may load. These are
+  // DOM/network-free helpers fed a scrubbed model; no engine or vendor bundle.
+  const srcs = [...fpHtml.matchAll(/<script\b[^>]*\bsrc="([^"]*)"/g)].map((m) => m[1]);
+  assert.ok(srcs.length >= 1, 'at least the fieldprint.js surface script expected');
+  for (const s of srcs) {
+    assert.match(s, /^\/fieldprint[\w-]*\.js$/, `only first-party /fieldprint*.js scripts allowed, saw ${s}`);
+  }
   assert.match(fpHtml, /<script src="\/fieldprint\.js">/);
 });
 
@@ -699,7 +704,7 @@ test('snapshot() persists artifacts (tag/title/note) alongside room copy', () =>
 });
 
 test('applySnapshot() restores artifacts string-sanitized and rejects raw fields', () => {
-  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 2000);
+  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 4300);
   assert.match(app, /if \(Array\.isArray\(ss\.artifacts\)\)/);
   // Only tag/title/note are copied, each coerced to String — no raw/private field.
   assert.match(app, /tag: String\(\(a && a\.tag\) \|\| ''\)/);
@@ -889,6 +894,172 @@ test('the Fieldprint surface flushes its draft on request and acks before releas
   assert.match(fpJs, /if \(saveTimer\) Promise\.resolve\(flushSave\(\)\)/);   // only write when edits pending
   assert.match(fpJs, /postToParent\(\{ type: 'fieldprint-flushed' \}\)/);
   assert.match(fpJs, /function flushSave\(\) \{ clearTimeout\(saveTimer\); return saveDraft\(\); \}/);
+});
+
+/* =========================================================
+   FEATURE A — ARRIVAL GRAPHIC OVERLAY (static layer)
+   ========================================================= */
+test('overlay state defaults are static and off (no rAF-driven layer)', () => {
+  assert.match(fpJs, /overlay:\s*\{[\s\S]*?source:\s*'off'/);
+  assert.match(fpJs, /const OVERLAY_SOURCES = \['off', 'cipher', 'torus', 'upload'\];/);
+  assert.match(fpJs, /const OVERLAY_BLENDS = \['normal', 'multiply', 'screen', 'soft-light'\];/);
+});
+
+test('overlaySrc() resolves each source safely (scrubbed cipher / static torus / validated upload)', () => {
+  const fn = fpJs.slice(fpJs.indexOf('function overlaySrc()'), fpJs.indexOf('function applyOverlay()'));
+  assert.match(fn, /o\.source === 'off'\) return ''/);
+  assert.match(fn, /o\.source === 'cipher'.*svgToDataUrl\(scrubSvg\(svg\)\)/);
+  assert.match(fn, /o\.source === 'torus'\) return svgToDataUrl\(torusOverlaySvg\(\)\)/);
+  assert.match(fn, /o\.source === 'upload'\) return safeOverlaySrc\(o\.src\)/);
+});
+
+test('torus overlay is a static SVG (no Canvas / no requestAnimationFrame)', () => {
+  const fn = fpJs.slice(fpJs.indexOf('function torusOverlaySvg()'), fpJs.indexOf('function scrubOverlaySvg'));
+  assert.match(fn, /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.doesNotMatch(fn, /requestAnimationFrame|getContext|canvas/i);
+  // Colours are hex-normalized so the standalone SVG renders without oklch.
+  assert.match(fn, /toHex\(activeRoleColor\('radiance'\)\)/);
+});
+
+test('uploaded overlay is restricted to PNG / WebP / scrubbed SVG only', () => {
+  const fn = fpJs.slice(fpJs.indexOf('function safeOverlaySrc'), fpJs.indexOf('function cipherSvg'));
+  // SVG payloads are decoded, required to be real SVG, then scrubbed + re-encoded.
+  assert.match(fn, /data:image\\\/svg\\\+xml/);
+  assert.match(fn, /scrubOverlaySvg\(text\)/);
+  // Raster uploads allow only png/webp — never gif/jpeg passthrough here.
+  assert.match(fn, /data:image\\\/\(png\|webp\)/);
+  // Scrub strips scripts, foreignObject, on* handlers and external href.
+  const scrub = fpJs.slice(fpJs.indexOf('function scrubOverlaySvg'), fpJs.indexOf('function safeOverlaySrc'));
+  assert.match(scrub, /<script\[\\s\\S\]\*\?<\\\/script>/);
+  assert.match(scrub, /<foreignObject/);
+  assert.match(scrub, /on\\w\+/);
+  assert.match(scrub, /xlink:href\|href/);
+});
+
+test('applyOverlay() layers via CSS transform/opacity only (no filter/backdrop animation)', () => {
+  const fn = fpJs.slice(fpJs.indexOf('function applyOverlay()'), fpJs.indexOf('function fitIntro'));
+  assert.match(fn, /wrap\.style\.transform = `translate\(-50%,-50%\) rotate\(\$\{rot\}deg\)`/);
+  assert.match(fn, /wrap\.style\.opacity/);
+  assert.match(fn, /wrap\.style\.mixBlendMode/);
+  assert.doesNotMatch(fn, /backdrop-filter|requestAnimationFrame|filter:blur/);
+  // Hidden (and src cleared) when there is no resolved source.
+  assert.match(fn, /if \(!src\) \{ wrap\.hidden = true;/);
+});
+
+test('overlay DOM layer sits above media but below copy (below all text/nav)', () => {
+  // DOM order: media → overlay → copy inside .viz-hero.
+  assert.match(fpHtml, /viz-hero__mask[\s\S]*?viz-hero__overlay[\s\S]*?viz-hero__copy/);
+  assert.match(fpHtml, /id="heroOverlay"[^>]*hidden/);
+  assert.match(fpHtml, /id="heroOverlayImg"/);
+  // CSS z-index: overlay 1, copy 2 → overlay never covers text.
+  assert.match(fpCss, /\.viz-hero__overlay\{position:absolute;z-index:1/);
+  assert.match(fpCss, /\.viz-hero__copy\{position:relative;z-index:2/);
+  // Rendered through <img> only → script-inert for SVG payloads.
+  assert.match(fpHtml, /<img class="viz-hero__overlay-img"/);
+});
+
+test('overlay controls expose source / upload / position / scale / opacity / blend / reset', () => {
+  assert.match(fpHtml, /id="overlaySourceSeg"/);
+  ['off', 'cipher', 'torus', 'upload'].forEach((v) => assert.match(fpHtml, new RegExp(`data-overlaysrc="${v}"`)));
+  assert.match(fpHtml, /id="overlayFileInput"[^>]*accept="image\/png,image\/webp,image\/svg\+xml"/);
+  ['overlayX', 'overlayY', 'overlayScale', 'overlayOpacityR', 'overlayRotate'].forEach((id) =>
+    assert.match(fpHtml, new RegExp(`id="${id}"`)));
+  ['normal', 'multiply', 'screen', 'soft-light'].forEach((v) => assert.match(fpHtml, new RegExp(`data-overlayblend="${v}"`)));
+  assert.match(fpHtml, /id="overlayResetBtn"/);
+  // Reset returns overlay to the off/static defaults.
+  assert.match(fpJs, /state\.overlay = \{ source: 'off', src: '', x: 50, y: 42, scale: 62, opacity: 0\.9, blend: 'normal', rotate: 0 \}/);
+});
+
+test('overlay is persisted in the snapshot and re-validated on restore', () => {
+  const snap = fpJs.slice(fpJs.indexOf('function snapshot()'), fpJs.indexOf('function applySnapshot'));
+  assert.match(snap, /overlay:\s*\{[\s\S]*?source: state\.overlay\.source/);
+  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 4300);
+  assert.match(app, /OVERLAY_SOURCES\.indexOf\(o\.source\) !== -1 \? o\.source : 'off'/);
+  // Uploaded overlay src is scrubbed again on the way back in.
+  assert.match(app, /safeOverlaySrc\(o\.src\)/);
+});
+
+test('uploaded overlay artwork lives in IDB (on-device) and never in the published model', () => {
+  // toStorable moves an uploaded overlay data-URL into the images map (IDB).
+  const ts = fpJs.slice(fpJs.indexOf('function toStorable'), fpJs.indexOf('function fromStorable'));
+  assert.match(ts, /meta\.overlay\.source === 'upload' && meta\.overlay\.src/);
+  assert.match(ts, /images\.overlay = meta\.overlay\.src; meta\.overlay\.src = ''/);
+  // fromStorable re-attaches it only from IDB.
+  const fs = fpJs.slice(fpJs.indexOf('function fromStorable'), fpJs.indexOf('function fromStorable') + 500);
+  assert.match(fs, /snap\.overlay\.hasImage && images && images\.overlay/);
+  // The studio postMessage model has NO overlay key → uploaded media cannot publish.
+  const model = studio.slice(studio.indexOf('phRenderPublicHome'), studio.indexOf('phRenderPublicHome') + 4000);
+  assert.doesNotMatch(model, /overlay\.src|heroOverlay/);
+});
+
+/* =========================================================
+   FEATURE B — INTUITIVE TEXT FIT / SIZE
+   ========================================================= */
+test('intro fit defaults to auto with bounded width/size state', () => {
+  assert.match(fpJs, /introFit:\s*'auto'/);
+  assert.match(fpJs, /introWidth:\s*26/);
+  assert.match(fpJs, /introSize:\s*22/);
+});
+
+test('fitIntro() measures on demand (no loop) and is bounded by accessible min/max', () => {
+  const fn = fpJs.slice(fpJs.indexOf('function fitIntro()'), fpJs.indexOf('function updateStageState'));
+  // Manual honours an explicit clamped size; auto binary-searches largest fit.
+  assert.match(fn, /state\.introFit === 'manual'/);
+  assert.match(fn, /const MIN = 15, MAX = 40/);
+  assert.match(fn, /vizTag\.scrollHeight <= avail/);
+  assert.doesNotMatch(fn, /requestAnimationFrame|setInterval|setTimeout/);
+  // Width control sets the text-box measure in ch.
+  assert.match(fn, /vizTag\.style\.maxWidth = measure \+ 'ch'/);
+});
+
+test('fitIntro re-runs on resize and viewport-mode change (never overflow after reflow)', () => {
+  assert.match(fpJs, /resizeRaf = requestAnimationFrame\(\(\) => \{ drawFieldTorus\(\); fitIntro\(\); \}\)/);
+  assert.match(fpJs, /requestAnimationFrame\(\(\) => \{ drawFieldTorus\(\); fitIntro\(\); \}\);/);
+});
+
+test('intro fit controls (auto/manual + width + manual size) are present', () => {
+  assert.match(fpHtml, /id="introFitSeg"/);
+  assert.match(fpHtml, /data-introfit="auto"/);
+  assert.match(fpHtml, /data-introfit="manual"/);
+  assert.match(fpHtml, /id="introWidth"[^>]*min="16"[^>]*max="52"/);
+  assert.match(fpHtml, /id="introSizeRow"[^>]*hidden/);
+  assert.match(fpHtml, /id="introSize"[^>]*min="15"[^>]*max="40"/);
+});
+
+test('per-room Text size (Small/Medium/Large) is wired and applied to the narrative only', () => {
+  // Control rendered per room card.
+  assert.match(fpJs, /data-sectextsize="\$\{i\}"/);
+  ['small', 'medium', 'large'].forEach((v) => assert.match(fpJs, new RegExp(`data-textsize="${v}"`)));
+  // Room article carries the size; CSS scopes it to .room__narrative.
+  assert.match(fpJs, /data-textsize="\$\{sec\.textSize \|\| 'medium'\}"/);
+  assert.match(fpCss, /\.room\[data-textsize="small"\] \.room__narrative/);
+  assert.match(fpCss, /\.room\[data-textsize="large"\] \.room__narrative/);
+});
+
+test('typography settings persist in the snapshot (public-preview parity via same render path)', () => {
+  const snap = fpJs.slice(fpJs.indexOf('function snapshot()'), fpJs.indexOf('function applySnapshot'));
+  assert.match(snap, /introFit: state\.introFit, introWidth: state\.introWidth, introSize: state\.introSize/);
+  assert.match(snap, /textSize: s\.textSize \|\| 'medium'/);
+  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 4300);
+  assert.match(app, /state\.introFit = s\.introFit === 'manual' \? 'manual' : 'auto'/);
+  assert.match(app, /clampNum\(s\.introWidth, 16, 52, 26\)/);
+  assert.match(app, /\['small', 'medium', 'large'\]\.indexOf\(ss\.textSize\)/);
+});
+
+test('no continuous rAF or expensive always-on compositing is reintroduced by A or B', () => {
+  // The overlay layer uses no animation timer.
+  const ov = fpJs.slice(fpJs.indexOf('function applyOverlay()'), fpJs.indexOf('function fitIntro'));
+  assert.doesNotMatch(ov, /requestAnimationFrame|setInterval/);
+  // Overlay CSS uses transform/opacity only, no blur/backdrop layer.
+  const css = fpCss.slice(fpCss.indexOf('.viz-hero__overlay{'), fpCss.indexOf('.viz-hero__overlay-img') + 120);
+  assert.doesNotMatch(css, /filter:blur|backdrop-filter/);
+});
+
+test('no foreign lexicon introduced; Work/Lens/Field/Call room language preserved', () => {
+  // Guard against the specifically banned term leaking into the surface copy.
+  assert.doesNotMatch(fpHtml, /outer layer/i);
+  assert.doesNotMatch(fpJs, /outer layer/i);
+  assert.doesNotMatch(fpCss, /outer layer/i);
 });
 
 console.log('\n' + passed + ' checks passed.');

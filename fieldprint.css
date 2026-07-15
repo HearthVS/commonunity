@@ -312,6 +312,13 @@ img,svg{display:block;max-width:100%}
 .viz-hero__media{position:relative;overflow:hidden}
 .viz-hero__copy{position:relative;z-index:2;padding:0 clamp(28px,7vw,92px)}
 
+/* Arrival graphic overlay — static layer above portrait/field, below all text.
+   Positioned by JS (left/top/width/transform/opacity/mix-blend-mode); pure image. */
+.viz-hero__overlay{position:absolute;z-index:1;pointer-events:none;
+  transform:translate(-50%,-50%);will-change:auto}
+.viz-hero__overlay[hidden]{display:none}
+.viz-hero__overlay-img{display:block;width:100%;height:auto}
+
 .viz-eyebrow{display:inline-flex;align-items:center;gap:11px;font-family:'General Sans',sans-serif;font-size:12px;
   letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:22px}
 .viz-eyebrow__sigil{width:20px;height:20px;color:var(--accent);opacity:0;transition:opacity .4s var(--ease)}
@@ -802,6 +809,10 @@ img,svg{display:block;max-width:100%}
   font-size:clamp(32px,5.4vw,58px);line-height:1.04;color:var(--fg);max-width:16ch}
 .room__narrative{font-family:'Switzer',sans-serif;font-weight:300;
   font-size:clamp(16px,1.5vw,19px);line-height:1.72;color:var(--fg);opacity:.84;max-width:68ch}
+/* Per-room narrative text size (Small/Medium/Large). Applies to the body copy
+   only — measure scales with size so line length stays readable. */
+.room[data-textsize="small"] .room__narrative{font-size:clamp(14px,1.25vw,16px);max-width:62ch}
+.room[data-textsize="large"] .room__narrative{font-size:clamp(18px,1.85vw,23px);line-height:1.68;max-width:56ch}
 
 /* inset figure lives inside the masthead column as an integrated editorial plate */
 .room__figure{margin:0;position:relative}

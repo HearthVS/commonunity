@@ -132,6 +132,71 @@
                 </div>
               </div>
             </div>
+
+            <!-- Intro text fit: Auto shrinks a long sentence to fit; Manual sets size. -->
+            <div class="subgrp" id="introFitEditor">
+              <span class="minilabel" id="lbl-introfit">Intro text fit</span>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-introfit" id="introFitSeg">
+                <button role="radio" class="pill pill--sm" type="button" data-introfit="auto" aria-checked="true" tabindex="0">Auto</button>
+                <button role="radio" class="pill pill--sm" type="button" data-introfit="manual" aria-checked="false" tabindex="-1">Manual</button>
+              </div>
+              <div class="adj">
+                <span class="adj__label">Text box width <span class="adj__val" id="introWidthVal">26ch</span></span>
+                <input type="range" id="introWidth" min="16" max="52" step="1" value="26" aria-label="Intro text box width" />
+              </div>
+              <div class="adj" id="introSizeRow" hidden>
+                <span class="adj__label">Font size <span class="adj__val" id="introSizeVal">22px</span></span>
+                <input type="range" id="introSize" min="15" max="40" step="1" value="22" aria-label="Intro font size" />
+              </div>
+            </div>
+
+            <!-- Arrival graphic overlay: a static layer above portrait/field, below text. -->
+            <div class="subgrp" id="overlayEditor">
+              <span class="minilabel" id="lbl-overlaysrc">Graphic overlay</span>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-overlaysrc" id="overlaySourceSeg">
+                <button role="radio" class="pill pill--sm" type="button" data-overlaysrc="off" aria-checked="true" tabindex="0">Off</button>
+                <button role="radio" class="pill pill--sm" type="button" data-overlaysrc="cipher" aria-checked="false" tabindex="-1">OM Cipher</button>
+                <button role="radio" class="pill pill--sm" type="button" data-overlaysrc="torus" aria-checked="false" tabindex="-1">Torus</button>
+                <button role="radio" class="pill pill--sm" type="button" data-overlaysrc="upload" aria-checked="false" tabindex="-1">Upload</button>
+              </div>
+              <div class="imgeditor__btns" id="overlayUploadRow" hidden>
+                <button class="minibtn" id="overlayUploadBtn" type="button">Upload artwork</button>
+                <input type="file" id="overlayFileInput" accept="image/png,image/webp,image/svg+xml" hidden />
+              </div>
+              <p class="imgeditor__note" id="overlayNote" hidden></p>
+              <div id="overlayControls" hidden>
+                <div class="adj">
+                  <span class="adj__label">Position X <span class="adj__val" id="overlayXVal">50%</span></span>
+                  <input type="range" id="overlayX" min="0" max="100" step="1" value="50" aria-label="Overlay position X" />
+                </div>
+                <div class="adj">
+                  <span class="adj__label">Position Y <span class="adj__val" id="overlayYVal">42%</span></span>
+                  <input type="range" id="overlayY" min="0" max="100" step="1" value="42" aria-label="Overlay position Y" />
+                </div>
+                <div class="adj">
+                  <span class="adj__label">Size <span class="adj__val" id="overlayScaleVal">62%</span></span>
+                  <input type="range" id="overlayScale" min="10" max="100" step="1" value="62" aria-label="Overlay size" />
+                </div>
+                <div class="adj">
+                  <span class="adj__label">Opacity <span class="adj__val" id="overlayOpacityRVal">90%</span></span>
+                  <input type="range" id="overlayOpacityR" min="0" max="100" step="1" value="90" aria-label="Overlay opacity" />
+                </div>
+                <div class="adj">
+                  <span class="adj__label">Rotate <span class="adj__val" id="overlayRotateVal">0°</span></span>
+                  <input type="range" id="overlayRotate" min="-180" max="180" step="1" value="0" aria-label="Overlay rotation" />
+                </div>
+                <div class="adj adj--fade">
+                  <span class="minilabel" id="lbl-overlayblend">Blend</span>
+                  <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-overlayblend" id="overlayBlendSeg">
+                    <button role="radio" class="pill pill--sm" type="button" data-overlayblend="normal" aria-checked="true" tabindex="0">Normal</button>
+                    <button role="radio" class="pill pill--sm" type="button" data-overlayblend="multiply" aria-checked="false" tabindex="-1">Multiply</button>
+                    <button role="radio" class="pill pill--sm" type="button" data-overlayblend="screen" aria-checked="false" tabindex="-1">Screen</button>
+                    <button role="radio" class="pill pill--sm" type="button" data-overlayblend="soft-light" aria-checked="false" tabindex="-1">Soft light</button>
+                  </div>
+                </div>
+                <button class="minibtn minibtn--ghost" id="overlayResetBtn" type="button">Reset overlay</button>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -392,6 +457,9 @@
               <div class="portrait" data-photo="warm"></div>
               <div class="viz-hero__cipher" id="heroCipherField"></div>
               <div class="viz-hero__mask" id="heroMask"></div>
+            </div>
+            <div class="viz-hero__overlay" id="heroOverlay" aria-hidden="true" hidden>
+              <img class="viz-hero__overlay-img" id="heroOverlayImg" alt="" />
             </div>
             <div class="viz-hero__copy">
               <span class="viz-eyebrow" id="vizEyebrow">

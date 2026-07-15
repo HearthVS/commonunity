@@ -124,6 +124,10 @@
     radiance: 'oklch(0.55 0.204 318)',
   };
 
+  /* graphic-overlay sources + the short, readable blend set */
+  const OVERLAY_SOURCES = ['off', 'cipher', 'torus', 'upload'];
+  const OVERLAY_BLENDS = ['normal', 'multiply', 'screen', 'soft-light'];
+
   /* ---------- in-memory state ---------- */
   const state = {
     seed: 'om-field',
@@ -151,8 +155,25 @@
     heroFadeStrength: 0.6,
     heroOverlay: 'off',      // Cipher Field treatment: 'off' | 'cipher-field'
     heroOverlayIntensity: 0.5,
+    // Arrival intro (identity sentence) sizing. Auto fits the sentence to the
+    // available box; manual exposes an explicit size. Width is the text measure.
+    introFit: 'auto',        // auto / manual
+    introWidth: 26,          // text-box measure (ch)
+    introSize: 22,           // manual font size (px), bounded 15..40
+    // Manual arrival GRAPHIC OVERLAY — a static layer distinct from the portrait,
+    // the field background and the text. Never a live Canvas loop. Uploaded art is
+    // held on-device only (never posted to the published model).
+    overlay: {
+      source: 'off',        // off / cipher / torus / upload
+      src: '',              // sanitized data-URL when source === 'upload'
+      x: 50, y: 42,         // position (% of stage, centre-anchored)
+      scale: 62,            // box width (% of stage width), 10..100
+      opacity: 0.9,         // 0..1
+      blend: 'normal',      // normal / multiply / screen / soft-light
+      rotate: 0,            // degrees, -180..180
+    },
     roleOverrides: { root: null, expression: null, radiance: null },
-    sections: SECTIONS.map((s) => ({ ...s, image: null, imgRole: null })),
+    sections: SECTIONS.map((s) => ({ ...s, image: null, imgRole: null, textSize: 'medium' })),
     view: 'desktop',
     route: { view: 'overview', roomIdx: 0 },
     hydrated: false,
@@ -228,6 +249,58 @@
   }
   function monoSvg(svg) {
     return String(svg || '').replace(/oklch\([^)]*\)/g, 'currentColor');
+  }
+
+  /* ---------- graphic overlay: safe sources ---------- */
+  // Encode an SVG string as a data URL for an <img> (script-inert context).
+  function svgToDataUrl(svg) {
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(String(svg || ''));
+  }
+  // A static, deterministic torus graphic (no Canvas, no animation) drawn from
+  // the live role colours — an optional member of the CommonUnity graphic family.
+  function torusOverlaySvg() {
+    const c1 = toHex(activeRoleColor('radiance'));
+    const c2 = toHex(activeRoleColor('expression'));
+    const c3 = toHex(activeRoleColor('root'));
+    let rings = '';
+    for (let i = 0; i < 9; i++) {
+      const rx = 122 - i * 11, ry = rx * 0.46, op = (0.5 - i * 0.045).toFixed(2);
+      rings += `<ellipse cx="140" cy="140" rx="${rx}" ry="${ry}" fill="none" stroke="${i % 2 ? c2 : c1}" stroke-width="1.5" opacity="${op}"/>`;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280">`
+      + `<defs><radialGradient id="tg" cx="50%" cy="42%" r="62%">`
+      + `<stop offset="0%" stop-color="${c1}" stop-opacity="0.55"/>`
+      + `<stop offset="55%" stop-color="${c2}" stop-opacity="0.18"/>`
+      + `<stop offset="100%" stop-color="${c3}" stop-opacity="0"/></radialGradient></defs>`
+      + `<circle cx="140" cy="140" r="130" fill="url(#tg)"/>`
+      + `<g transform="rotate(-18 140 140)">${rings}</g></svg>`;
+  }
+  // Strip anything executable/external from an uploaded SVG payload. The overlay
+  // is only ever rendered through an <img>, which already neutralises scripts;
+  // this is defence in depth so nothing active survives even that.
+  function scrubOverlaySvg(svgText) {
+    return String(svgText || '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+      .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/(?:xlink:href|href)\s*=\s*"(?!#)[^"]*"/gi, '')
+      .replace(/(?:xlink:href|href)\s*=\s*'(?!#)[^']*'/gi, '');
+  }
+  // Overlay uploads accept PNG / WebP / SVG only. SVG payloads are scrubbed and
+  // re-encoded; raster payloads pass through the shared data-URL allowlist.
+  function safeOverlaySrc(dataUrl) {
+    const s = (typeof dataUrl === 'string') ? dataUrl.trim() : '';
+    if (/^data:image\/svg\+xml/i.test(s)) {
+      let payload = s.replace(/^data:image\/svg\+xml[^,]*,/i, '');
+      const isB64 = /;base64/i.test(s.slice(0, s.indexOf(',')));
+      let text;
+      try { text = isB64 ? atob(payload) : decodeURIComponent(payload); }
+      catch (_) { try { text = decodeURIComponent(payload); } catch (__) { return ''; } }
+      if (!/<svg[\s\S]*<\/svg>/i.test(text)) return '';
+      return svgToDataUrl(scrubOverlaySvg(text));
+    }
+    return /^data:image\/(png|webp);/i.test(s) ? s : '';
   }
 
   /* the active Cipher SVG (single source: the scrubbed model mark or none) */
@@ -761,7 +834,7 @@
       : '';
 
     vizRoom.innerHTML = `
-      <article class="room room--editorial" data-imgrole="${role}">
+      <article class="room room--editorial" data-imgrole="${role}" data-textsize="${sec.textSize || 'medium'}">
         ${bgHTML}
         <div class="room__wrap">
           <div class="room__top">
@@ -910,6 +983,8 @@
 
     applyFieldPalette();
     applyCipherWeave();
+    applyOverlay();
+    fitIntro();
     drawFieldTorus();
     updateStageState();
   }
@@ -939,6 +1014,72 @@
       cipherFieldSig = sig;
     }
     viz.style.setProperty('--hero-overlay-opacity', String(CF.overlayOpacity(state.heroOverlayIntensity)));
+  }
+
+  /* =========================================================
+     ARRIVAL GRAPHIC OVERLAY — a static layer above the portrait /
+     field but below all text and navigation. Pure DOM/<img>; no rAF.
+     ========================================================= */
+  function overlaySrc() {
+    const o = state.overlay;
+    if (!o || o.source === 'off') return '';
+    if (o.source === 'cipher') { const svg = cipherSvg(); return svg ? svgToDataUrl(scrubSvg(svg)) : ''; }
+    if (o.source === 'torus') return svgToDataUrl(torusOverlaySvg());
+    if (o.source === 'upload') return safeOverlaySrc(o.src) || '';
+    return '';
+  }
+  function applyOverlay() {
+    const wrap = $('heroOverlay');
+    if (!wrap) return;
+    const img = $('heroOverlayImg');
+    const o = state.overlay;
+    const src = overlaySrc();
+    if (!src) { wrap.hidden = true; if (img) img.removeAttribute('src'); return; }
+    wrap.hidden = false;
+    if (img && img.getAttribute('src') !== src) img.setAttribute('src', src);
+    const x = clampNum(o.x, 0, 100, 50), y = clampNum(o.y, 0, 100, 42);
+    const scale = clampNum(o.scale, 10, 100, 62), rot = clampNum(o.rotate, -180, 180, 0);
+    wrap.style.left = x + '%';
+    wrap.style.top = y + '%';
+    wrap.style.width = scale + '%';
+    wrap.style.transform = `translate(-50%,-50%) rotate(${rot}deg)`;
+    wrap.style.opacity = String(clamp01(numOr(o.opacity, 0.9)));
+    wrap.style.mixBlendMode = OVERLAY_BLENDS.indexOf(o.blend) !== -1 ? o.blend : 'normal';
+  }
+
+  /* Fit the arrival intro sentence to its box. Auto shrinks the size (within an
+     accessible min/max) so a long sentence never overflows the picture/stage;
+     manual holds an explicit size. Runs on demand only — never on a loop. */
+  function fitIntro() {
+    if (!vizTag) return;
+    const measure = clampNum(state.introWidth, 16, 52, 26);
+    vizTag.style.maxWidth = measure + 'ch';
+    const MIN = 15, MAX = 40;
+    if (state.introFit === 'manual') {
+      vizTag.style.fontSize = clampNum(state.introSize, MIN, MAX, 22) + 'px';
+      return;
+    }
+    // Auto: binary-search the largest size that keeps the sentence within the
+    // vertical space left in the hero below the tagline's top edge (reserving
+    // room for the scroll hint). A few synchronous measurements — no animation.
+    const hero = viz.querySelector('.viz-hero');
+    const scroll = viz.querySelector('.viz-hero__scroll');
+    let avail;
+    if (hero) {
+      const heroBottom = hero.getBoundingClientRect().bottom;
+      const tagTop = vizTag.getBoundingClientRect().top;
+      const scrollH = scroll ? scroll.getBoundingClientRect().height + 40 : 56;
+      avail = Math.max(80, heroBottom - tagTop - scrollH);
+    } else {
+      avail = Math.round(window.innerHeight * 0.4);
+    }
+    let lo = MIN, hi = MAX, best = MIN;
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      vizTag.style.fontSize = mid + 'px';
+      if (vizTag.scrollHeight <= avail) { best = mid; lo = mid; } else { hi = mid; }
+    }
+    vizTag.style.fontSize = best.toFixed(1) + 'px';
   }
 
   function updateStageState() {
@@ -1005,7 +1146,13 @@
           value="${escapeHtml(sec.prompt || '')}" aria-label="Room 0${i + 1} closing line" />
         <label class="minilabel" for="secEnter${i}">Entry phrase</label>
         <input class="mini-input" id="secEnter${i}" type="text" data-secenter="${i}"
-          value="${escapeHtml(sec.enter || '')}" aria-label="Room 0${i + 1} entry phrase" />`;
+          value="${escapeHtml(sec.enter || '')}" aria-label="Room 0${i + 1} entry phrase" />
+        <span class="minilabel" id="secTextSizeLbl${i}">Text size</span>
+        <div class="segset segset--row" role="radiogroup" aria-labelledby="secTextSizeLbl${i}" data-sectextsize="${i}">
+          <button role="radio" class="pill" type="button" data-textsize="small" aria-checked="${(sec.textSize || 'medium') === 'small'}">Small</button>
+          <button role="radio" class="pill" type="button" data-textsize="medium" aria-checked="${(sec.textSize || 'medium') === 'medium'}">Medium</button>
+          <button role="radio" class="pill" type="button" data-textsize="large" aria-checked="${(sec.textSize || 'medium') === 'large'}">Large</button>
+        </div>`;
       sectionCopyControls.appendChild(card);
     });
 
@@ -1081,6 +1228,24 @@
         state.sections[idx].enter = inp.value;
         renderSections();
         liveRoom(idx);
+      });
+    });
+    // Per-room narrative text size (Small/Medium/Large). Applies only to the
+    // room's editorial body copy, not to system chrome or heading hierarchy.
+    const TEXT_SIZES = ['small', 'medium', 'large'];
+    sectionCopyControls.querySelectorAll('[data-sectextsize]').forEach((seg) => {
+      seg.querySelectorAll('button[data-textsize]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = +seg.dataset.sectextsize;
+          const v = btn.getAttribute('data-textsize');
+          if (TEXT_SIZES.indexOf(v) === -1) return;
+          state.sections[idx].textSize = v;
+          seg.querySelectorAll('button[data-textsize]').forEach((b) => {
+            b.setAttribute('aria-checked', b === btn ? 'true' : 'false');
+          });
+          liveRoom(idx);
+          markDirty();
+        });
       });
     });
 
@@ -1494,6 +1659,141 @@
     if (overlayIntVal) overlayIntVal.textContent = opct + '%';
   }
 
+  /* ---- ARRIVAL GRAPHIC OVERLAY controls (source / upload / transform). ---- */
+  function wireOverlay() {
+    const seg = $('overlaySourceSeg');
+    if (seg) seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-overlaysrc]');
+      if (!btn) return;
+      const v = btn.getAttribute('data-overlaysrc');
+      if (OVERLAY_SOURCES.indexOf(v) === -1) return;
+      state.overlay.source = v;
+      applyOverlay(); syncOverlayEditor(); markDirty();
+    });
+    const up = $('overlayUploadBtn'), file = $('overlayFileInput');
+    if (up && file) up.addEventListener('click', () => file.click());
+    if (file) file.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const src = safeOverlaySrc(ev.target.result);
+        if (src) {
+          state.overlay.src = src;
+          state.overlay.source = 'upload';
+          applyOverlay(); syncOverlayEditor(); markDirty();
+          setOverlayNote(true, 'Artwork added — on-device only.');
+        } else {
+          setOverlayNote(false, 'Unsupported file. Use PNG, WebP or SVG.');
+        }
+        file.value = '';
+      };
+      reader.readAsDataURL(f);
+    });
+    const sliders = [
+      ['overlayX', 'x', 0, 100], ['overlayY', 'y', 0, 100],
+      ['overlayScale', 'scale', 10, 100], ['overlayOpacityR', 'opacity', 0, 100],
+      ['overlayRotate', 'rotate', -180, 180],
+    ];
+    sliders.forEach(([id, key, lo, hi]) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const n = clampNum(el.value, lo, hi, +el.value || 0);
+        state.overlay[key] = (key === 'opacity') ? n / 100 : n;
+        applyOverlay(); syncOverlayEditor(); markDirty();
+      });
+    });
+    const blend = $('overlayBlendSeg');
+    if (blend) blend.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-overlayblend]');
+      if (!btn) return;
+      const v = btn.getAttribute('data-overlayblend');
+      if (OVERLAY_BLENDS.indexOf(v) === -1) return;
+      state.overlay.blend = v;
+      applyOverlay(); syncOverlayEditor(); markDirty();
+    });
+    const reset = $('overlayResetBtn');
+    if (reset) reset.addEventListener('click', () => {
+      state.overlay = { source: 'off', src: '', x: 50, y: 42, scale: 62, opacity: 0.9, blend: 'normal', rotate: 0 };
+      applyOverlay(); syncOverlayEditor(); setOverlayNote(false, ''); markDirty();
+    });
+  }
+  function setOverlayNote(ok, text) {
+    const n = $('overlayNote');
+    if (!n) return;
+    n.textContent = text || '';
+    n.hidden = !text;
+    n.classList.toggle('is-ok', !!ok);
+  }
+  function syncOverlayEditor() {
+    const o = state.overlay;
+    const seg = $('overlaySourceSeg');
+    if (seg) seg.querySelectorAll('[data-overlaysrc]').forEach((b) => {
+      const on = b.getAttribute('data-overlaysrc') === o.source;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    const controls = $('overlayControls');
+    if (controls) controls.hidden = (o.source === 'off');
+    const uploadRow = $('overlayUploadRow');
+    if (uploadRow) uploadRow.hidden = (o.source !== 'upload');
+    const set = (id, val, suffix) => {
+      const el = $(id); if (el) el.value = String(val);
+      const lbl = $(id + 'Val'); if (lbl) lbl.textContent = val + (suffix || '');
+    };
+    set('overlayX', Math.round(clampNum(o.x, 0, 100, 50)), '%');
+    set('overlayY', Math.round(clampNum(o.y, 0, 100, 42)), '%');
+    set('overlayScale', Math.round(clampNum(o.scale, 10, 100, 62)), '%');
+    set('overlayOpacityR', Math.round(clamp01(numOr(o.opacity, 0.9)) * 100), '%');
+    set('overlayRotate', Math.round(clampNum(o.rotate, -180, 180, 0)), '°');
+    const blend = $('overlayBlendSeg');
+    if (blend) blend.querySelectorAll('[data-overlayblend]').forEach((b) => {
+      const on = b.getAttribute('data-overlayblend') === o.blend;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+  }
+
+  /* ---- ARRIVAL INTRO text fit (auto/manual + measure + manual size). ---- */
+  function wireIntroFit() {
+    const seg = $('introFitSeg');
+    if (seg) seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-introfit]');
+      if (!btn) return;
+      state.introFit = btn.getAttribute('data-introfit') === 'manual' ? 'manual' : 'auto';
+      fitIntro(); syncIntroEditor(); markDirty();
+    });
+    const w = $('introWidth');
+    if (w) w.addEventListener('input', () => {
+      state.introWidth = clampNum(w.value, 16, 52, 26);
+      const l = $('introWidthVal'); if (l) l.textContent = Math.round(state.introWidth) + 'ch';
+      fitIntro(); markDirty();
+    });
+    const s = $('introSize');
+    if (s) s.addEventListener('input', () => {
+      state.introSize = clampNum(s.value, 15, 40, 22);
+      const l = $('introSizeVal'); if (l) l.textContent = Math.round(state.introSize) + 'px';
+      fitIntro(); markDirty();
+    });
+  }
+  function syncIntroEditor() {
+    const seg = $('introFitSeg');
+    if (seg) seg.querySelectorAll('[data-introfit]').forEach((b) => {
+      const on = b.getAttribute('data-introfit') === state.introFit;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    const sizeRow = $('introSizeRow');
+    if (sizeRow) sizeRow.hidden = (state.introFit !== 'manual');
+    const w = $('introWidth'), wv = $('introWidthVal');
+    if (w) w.value = String(Math.round(state.introWidth));
+    if (wv) wv.textContent = Math.round(state.introWidth) + 'ch';
+    const s = $('introSize'), sv = $('introSizeVal');
+    if (s) s.value = String(Math.round(state.introSize));
+    if (sv) sv.textContent = Math.round(state.introSize) + 'px';
+  }
+
   /* ---- COLOURS: editable role colours over the Cipher-derived harmony.
      Overrides are stored as hex and win over the derived tones; reset clears
      them back to the Cipher colours. ---- */
@@ -1641,7 +1941,7 @@
         });
         state.view = btn.dataset.view;
         stage.classList.toggle('is-mobile', state.view === 'mobile');
-        requestAnimationFrame(drawFieldTorus);
+        requestAnimationFrame(() => { drawFieldTorus(); fitIntro(); });
       });
     });
   }
@@ -1810,6 +2110,8 @@
     renderSections();
     syncControlsToState();
     syncHeroEditor();
+    syncOverlayEditor();
+    syncIntroEditor();
     syncColorInputs();
     applyComposition();
     requestAnimationFrame(observeReveals);
@@ -1948,6 +2250,7 @@
 
   const clamp01 = (n) => Math.max(0, Math.min(1, n));
   const numOr = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
+  const clampNum = (v, lo, hi, d) => Math.max(lo, Math.min(hi, numOr(+v, d)));
   function djb2(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h.toString(36); }
 
   // Fingerprint the active identity/source so a draft never bleeds across people.
@@ -1980,9 +2283,16 @@
           palette: state.palette,
         },
       },
+      introFit: state.introFit, introWidth: state.introWidth, introSize: state.introSize,
+      overlay: {
+        source: state.overlay.source, src: state.overlay.src || '',
+        x: state.overlay.x, y: state.overlay.y, scale: state.overlay.scale,
+        opacity: state.overlay.opacity, blend: state.overlay.blend, rotate: state.overlay.rotate,
+      },
       sections: state.sections.map((s) => ({
         key: s.key, eyebrow: s.eyebrow, title: s.title, body: s.body,
         narrative: s.narrative, prompt: s.prompt, enter: s.enter, imgRole: s.imgRole || null,
+        textSize: s.textSize || 'medium',
         artifacts: Array.isArray(s.artifacts)
           ? s.artifacts.map((a) => ({ tag: a.tag || '', title: a.title || '', note: a.note || '' }))
           : [],
@@ -2026,6 +2336,22 @@
     state.heroPhoto = safeMediaSrc(h.src) || '';
     state.heroPhotoHasAlpha = false;
     if (state.heroPhoto) detectHeroAlpha(state.heroPhoto);
+    if (s.introFit != null) state.introFit = s.introFit === 'manual' ? 'manual' : 'auto';
+    if (s.introWidth != null) state.introWidth = clampNum(s.introWidth, 16, 52, 26);
+    if (s.introSize != null) state.introSize = clampNum(s.introSize, 15, 40, 22);
+    if (s.overlay) {
+      const o = s.overlay;
+      state.overlay.source = OVERLAY_SOURCES.indexOf(o.source) !== -1 ? o.source : 'off';
+      // Overlay uploads are re-validated (scrubbed) on the way back in.
+      state.overlay.src = (state.overlay.source === 'upload') ? (safeOverlaySrc(o.src) || '') : '';
+      if (!state.overlay.src && state.overlay.source === 'upload') state.overlay.source = 'off';
+      state.overlay.x = clampNum(o.x, 0, 100, 50);
+      state.overlay.y = clampNum(o.y, 0, 100, 42);
+      state.overlay.scale = clampNum(o.scale, 10, 100, 62);
+      state.overlay.opacity = clamp01(numOr(o.opacity, 0.9));
+      state.overlay.blend = OVERLAY_BLENDS.indexOf(o.blend) !== -1 ? o.blend : 'normal';
+      state.overlay.rotate = clampNum(o.rotate, -180, 180, 0);
+    }
     if (Array.isArray(s.sections)) {
       s.sections.forEach((ss, i) => {
         const tgt = state.sections[i];
@@ -2045,6 +2371,7 @@
           }));
         }
         tgt.imgRole = ss.imgRole || null;
+        tgt.textSize = ['small', 'medium', 'large'].indexOf(ss.textSize) !== -1 ? ss.textSize : 'medium';
         // sanitizeImage re-runs privacy/safety filtering (defense in depth).
         tgt.image = (ss.image && ss.image.src) ? sanitizeImage(ss.image) : null;
       });
@@ -2069,6 +2396,11 @@
     const images = {};
     if (meta.hero && meta.hero.src) { images.hero = meta.hero.src; meta.hero.src = ''; meta.hero.hasImage = true; }
     else if (meta.hero) meta.hero.hasImage = false;
+    // Uploaded overlay artwork is on-device only (IDB), never in the published
+    // model. Split its data-URL out like other images so localStorage stays lean.
+    if (meta.overlay && meta.overlay.source === 'upload' && meta.overlay.src) {
+      images.overlay = meta.overlay.src; meta.overlay.src = ''; meta.overlay.hasImage = true;
+    } else if (meta.overlay) { meta.overlay.hasImage = false; }
     meta.sections.forEach((ss, i) => {
       if (!ss.image) return;
       if (ss.image.visibility === 'private') { ss.image = null; return; }  // never persist private media
@@ -2079,6 +2411,7 @@
   function fromStorable(meta, images) {
     const snap = meta;
     if (snap.hero && snap.hero.hasImage && images && images.hero) snap.hero.src = images.hero;
+    if (snap.overlay && snap.overlay.hasImage && images && images.overlay) snap.overlay.src = images.overlay;
     (snap.sections || []).forEach((ss, i) => {
       if (ss && ss.image && ss.image.hasImage && images && images['room' + i]) ss.image.src = images['room' + i];
     });
@@ -2258,11 +2591,15 @@
     wirePublicPreview();
     wireJsonLoad();
     wireHeroPhoto();
+    wireOverlay();
+    wireIntroFit();
     wireColors();
     wireSave();
     wireBridge();
     syncControlsToState();
     syncHeroEditor();
+    syncOverlayEditor();
+    syncIntroEditor();
     syncColorInputs();
     applyComposition();
     requestAnimationFrame(observeReveals);
@@ -2272,7 +2609,7 @@
     let resizeRaf = 0;
     window.addEventListener('resize', () => {
       cancelAnimationFrame(resizeRaf);
-      resizeRaf = requestAnimationFrame(drawFieldTorus);
+      resizeRaf = requestAnimationFrame(() => { drawFieldTorus(); fitIntro(); });
     });
     const scroller = $('stageScroll');
     if (scroller) scroller.addEventListener('scroll', wakeTorus, { passive: true });
