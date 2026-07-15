@@ -2313,6 +2313,143 @@ input, textarea { font: inherit; color: inherit; }
   gap: var(--space-2);
 }
 
+/* ── Active-project tab strip ─────────────────────────────────────────
+   A contextual lens sitting above the depth-mode bar. Deliberately lighter
+   and quieter than the depth tablist so the two axes read as distinct: this
+   names WHICH active project the field is focused on; the depth bar below
+   selects HOW deep into that field you are looking. Selecting a project sets
+   [data-fo-project] on the surface (see the switcher IIFE), letting the
+   workspace visibly "become" that project. Presentational only — no fetch,
+   submit, Nexus call, or record change. */
+.fo-project-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-4) 0;
+  overflow-x: auto;
+}
+.fo-project-bar::before {
+  content: "Project";
+  flex: none;
+  margin-right: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+/* Pill tabs — softer than the depth tabs' underline treatment. */
+.fo-project-tab {
+  appearance: none;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 3px var(--space-3);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition),
+              background-color var(--transition), box-shadow var(--transition);
+}
+.fo-project-tab:hover { color: var(--text-muted, var(--text)); }
+.fo-project-tab.active {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 10%, transparent);
+}
+.fo-project-tab:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, transparent);
+}
+/* Restrained context cue: once a project is active the strip settles onto a
+   faint divider so the whole field below reads as held "within" that project.
+   Kept subtle so the depth-mode atmosphere and text contrast stay intact; no
+   background-image is set here, leaving the depth-mode wash untouched. */
+.notepad-surface[data-fo-project] .fo-project-bar {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 22%, transparent);
+  padding-bottom: var(--space-2);
+}
+
+/* ── Living Digital Expression — project context card ─────────────────
+   A restrained read-only card that surfaces the current room's cOMpass
+   content when the active project is Living Digital Expression. Sits
+   between the project strip and the depth bar; capped height so it never
+   crowds the capture surface. Presentational only. */
+.fo-project-context {
+  margin: 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, var(--border));
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 5%, transparent);
+  max-height: 34vh;
+  overflow-y: auto;
+}
+.fo-project-context[hidden] { display: none; }
+.fo-pc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+.fo-pc-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-color, var(--setup-accent));
+}
+.fo-pc-source {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+.fo-pc-body { font-size: 12px; line-height: 1.6; color: var(--text-muted, var(--text)); }
+.fo-pc-empty { font-size: 12px; font-style: italic; line-height: 1.6; color: var(--text-faint); margin: 0; }
+.fo-pc-field { margin: 0 0 var(--space-2); }
+.fo-pc-field:last-child { margin-bottom: 0; }
+.fo-pc-field-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+.fo-pc-field-value { white-space: pre-wrap; }
+.fo-pc-list { margin: 2px 0 0; padding-left: 1.1em; }
+.fo-pc-list li { margin: 0 0 2px; }
+.fo-pc-actions { margin-top: var(--space-3); }
+.fo-pc-save-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 45%, transparent);
+  border-radius: 999px;
+  padding: 4px var(--space-4);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+  color: var(--accent-color, var(--setup-accent));
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition), border-color var(--transition), opacity var(--transition);
+}
+.fo-pc-save-btn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 20%, transparent); }
+.fo-pc-save-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 20%, transparent);
+}
+.fo-pc-save-btn[disabled] { opacity: 0.6; cursor: default; }
+.fo-pc-note { font-size: 10px; font-style: italic; line-height: 1.5; color: var(--text-faint); margin: var(--space-2) 0 0; }
+
 /* ── Field Observations depth / mode bar ─────────────────────────────
    Client-side view switcher for the central Field Observations surface.
    "Now" is the live capture surface (unchanged behaviour). The other
@@ -10796,6 +10933,41 @@ body.hw-open { overflow: hidden; }
             <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
           </div>
         </div>
+        <!-- Active-project tab strip. A contextual lens over the whole Field
+             Observations surface: selecting a project sets data-fo-project on
+             the notepad surface so the workspace visibly "becomes" that project,
+             without adding new panels or touching depth behaviour. MVP ships a
+             single project (Living Digital Expression) backed by a small local
+             registry so more active projects can be added later with minimal
+             code. Client-side only; the choice persists to localStorage. It
+             never partitions, migrates, hides, or relabels observation records,
+             and it never touches the Archive. -->
+        <div class="fo-project-bar" id="fo-project-bar" role="tablist" aria-label="Active studio projects">
+          <button type="button" class="fo-project-tab active" data-fo-project="living-digital-expression" role="tab" aria-selected="true" tabindex="0">Living Digital Expression</button>
+        </div>
+        <!-- Living Digital Expression — project context. Read-only surfacing of
+             the currently opened room's cOMpass content from the person's own
+             state (state.compassData.points[currentRoom]); provenance shown. The
+             save action pushes a structured, provenance-tagged record through the
+             EXISTING Field Observations store (studioCreateFieldObservation). It
+             deliberately does NOT write Fieldprint: Fieldprint exposes no safe
+             partial/blank-fill inbound contract (only a destructive full
+             hydrateFromModel that resets sections + hero framing), so this stages
+             the structured payload in the closest existing durable primitive
+             instead of overwriting fields. No new store, no overwrite, no
+             migration; the Archive is untouched. Shown only while the active
+             project is Living Digital Expression. -->
+        <section class="fo-project-context" id="fo-project-context" hidden aria-live="polite">
+          <div class="fo-pc-head">
+            <span class="fo-pc-eyebrow" id="fo-pc-eyebrow">Living Digital Expression</span>
+            <span class="fo-pc-source" id="fo-pc-source"></span>
+          </div>
+          <div class="fo-pc-body" id="fo-pc-body"></div>
+          <div class="fo-pc-actions" id="fo-pc-actions" hidden>
+            <button type="button" class="fo-pc-save-btn" id="fo-pc-save-btn">Save this context to Field Observations</button>
+            <p class="fo-pc-note">Saves a structured, sourced copy into your Field Observations — durable and available to Nexus. It does not auto-fill Fieldprint yet.</p>
+          </div>
+        </section>
         <!-- Field Observations depth / mode bar. Client-side only; the active
              mode is persisted to localStorage. "Now" is the live capture
              surface (unchanged). The others are scaffold placeholders. -->
@@ -12965,6 +13137,9 @@ async function fetchRosePrompt(context) {
 // ============================================================
 function enterRoom(roomKey) {
   currentRoom = roomKey;
+  // Refresh the Living Digital Expression context card for the newly opened
+  // room (no-op when that project/card is not active).
+  if (typeof window.studioRenderProjectContext === 'function') window.studioRenderProjectContext();
   const meta = ROOM_META[roomKey];
 
   // Soft gate: gently pulse sidebar if no name or GK data
@@ -29586,6 +29761,281 @@ if (document.readyState === 'loading') {
     applyMode(mode);
     try { localStorage.setItem(FO_MODE_KEY, mode); } catch (_) {}
   });
+})();
+</script>
+<script>
+// ── Active-project tab strip ────────────────────────────────────────────────
+// A contextual lens over the whole Field Observations surface. Selecting a
+// project sets data-fo-project on the notepad surface so the workspace visibly
+// "becomes" that project — a future-ready scaffold, not per-project data yet.
+// MVP ships a single project backed by a small local registry so more active
+// projects can be added later with minimal code. This is client-side only: it
+// toggles the active tab, mirrors the choice onto the surface, and persists it
+// to localStorage. It NEVER partitions, migrates, hides, or relabels any
+// observation record, never adds panels, never touches the depth-mode bar or
+// the Archive, and never submits/fetches/calls Nexus.
+(function () {
+  // Local registry. Add future active projects here (id must be a stable,
+  // URL/attribute-safe slug). The Archive is deliberately excluded and can
+  // never be a project — any archive-like id is filtered out defensively.
+  const FO_PROJECTS = [
+    { id: 'living-digital-expression', label: 'Living Digital Expression' },
+  ];
+  const FO_PROJECT_KEY = 'fo-project';
+  const ARCHIVE_IDS = ['archive', 'archived', 'the-archive'];
+
+  const bar = document.getElementById('fo-project-bar');
+  if (!bar) return;
+  const surface = bar.closest('.notepad-surface');
+
+  // Defensive filter: never render or select an Archive-like id.
+  const projects = FO_PROJECTS.filter(
+    (p) => p && p.id && !ARCHIVE_IDS.includes(String(p.id).toLowerCase())
+  );
+  if (!projects.length) return;
+  const ids = projects.map((p) => p.id);
+  const DEFAULT_ID = ids[0]; // exactly "Living Digital Expression" in the MVP
+
+  // Resolve a stored value to a valid project id; anything stale/invalid or
+  // Archive-like falls back to the default.
+  function resolveProject(value) {
+    return ids.includes(value) ? value : DEFAULT_ID;
+  }
+
+  const tabs = Array.from(bar.querySelectorAll('.fo-project-tab'));
+
+  function applyProject(id) {
+    id = resolveProject(id);
+    // Stable context attribute — the whole surface "becomes" this project.
+    if (surface) surface.setAttribute('data-fo-project', id);
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.foProject === id;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      // Roving tabindex so the tablist is a single tab stop.
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+    renderProjectContext();
+  }
+
+  let stored = DEFAULT_ID;
+  try { stored = localStorage.getItem(FO_PROJECT_KEY) || DEFAULT_ID; } catch (_) {}
+  // NB: initial applyProject() is deferred to the end of this IIFE so the
+  // context-card elements/state it renders through are already initialised
+  // (avoids a temporal-dead-zone reference during first paint).
+
+  function selectProject(id, focus) {
+    applyProject(id);
+    try { localStorage.setItem(FO_PROJECT_KEY, resolveProject(id)); } catch (_) {}
+    if (focus) {
+      const active = tabs.find((t) => t.dataset.foProject === resolveProject(id));
+      if (active) active.focus();
+    }
+  }
+
+  bar.addEventListener('click', (e) => {
+    const tab = e.target.closest('.fo-project-tab');
+    if (!tab) return;
+    selectProject(tab.dataset.foProject, false);
+  });
+
+  // Arrow / Home / End keyboard support for the new tablist (scoped here only;
+  // the existing depth tablist is intentionally left unchanged).
+  bar.addEventListener('keydown', (e) => {
+    const tab = e.target.closest('.fo-project-tab');
+    if (!tab) return;
+    const i = tabs.indexOf(tab);
+    if (i < 0) return;
+    let next = -1;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown': next = (i + 1) % tabs.length; break;
+      case 'ArrowLeft':
+      case 'ArrowUp':   next = (i - 1 + tabs.length) % tabs.length; break;
+      case 'Home':      next = 0; break;
+      case 'End':       next = tabs.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    selectProject(tabs[next].dataset.foProject, true);
+  });
+
+  // ── Living Digital Expression — project context ───────────────────────────
+  // Read-only surfacing of the currently opened room's cOMpass content, drawn
+  // from the person's own state (state.compassData.points[currentRoom]). The
+  // save action reuses the EXISTING durable Field Observations store; it never
+  // writes Fieldprint (no safe partial contract exists), never overwrites, and
+  // never touches the Archive. Only shown while the active project is Living
+  // Digital Expression.
+  const ROOMS = ['work', 'lens', 'field', 'call'];
+
+  // Pure view-model: given the active project, the open room, the person's
+  // compass data, and the room metadata table, decide what the context card
+  // should show. No DOM, no globals — kept pure so the branching is verifiable.
+  function buildProjectContextView(projectId, defaultId, room, compassData, roomMeta) {
+    // The context card belongs to Living Digital Expression only.
+    if (projectId !== defaultId || defaultId !== 'living-digital-expression') {
+      return { visible: false };
+    }
+    const meta = (roomMeta && room && roomMeta[room]) ? roomMeta[room] : null;
+    const roomTitle = meta ? meta.title : '';
+    const eyebrow = roomTitle ? ('Living Digital Expression · ' + roomTitle) : 'Living Digital Expression';
+
+    if (!room || ROOMS.indexOf(room) === -1) {
+      return { visible: true, mode: 'no-room', eyebrow: 'Living Digital Expression',
+        source: '', canSave: false,
+        empty: 'Open a room — The Work, The Lens, The Field, or The Call — to bring its cOMpass context into this project.' };
+    }
+    const point = (compassData && compassData.points && compassData.points[room]) || null;
+    if (!compassData || !compassData.points) {
+      return { visible: true, mode: 'no-compass', eyebrow: eyebrow, source: '', canSave: false,
+        empty: 'No cOMpass data imported yet. Import your Compass session in Studio Setup and it will surface here.' };
+    }
+    if (!point) {
+      return { visible: true, mode: 'no-point', eyebrow: eyebrow, source: 'from your cOMpass', canSave: false,
+        empty: 'Your cOMpass has no content for ' + (roomTitle || 'this room') + ' yet.' };
+    }
+
+    // Provenance line. gk_num/gk_line are public Gene Key coordinates already
+    // used elsewhere in Studio; the gkLabel names the room's dimension.
+    const gkNum = (point.gk_num !== undefined && point.gk_num !== null && point.gk_num !== '') ? String(point.gk_num) : '';
+    const gkLine = (point.gk_line !== undefined && point.gk_line !== null && point.gk_line !== '') ? String(point.gk_line) : '';
+    const gkCoord = gkNum ? (gkLine ? (gkNum + '.' + gkLine) : gkNum) : '';
+    const gkLabel = meta && meta.gkLabel ? meta.gkLabel : '';
+    let source = 'from your cOMpass';
+    if (gkLabel || gkCoord) {
+      source += ' · ' + [gkLabel, gkCoord].filter(Boolean).join(' ');
+    }
+
+    // Only surface fields that are actually present (defensive, order stable).
+    const fields = [];
+    const str = (v) => (typeof v === 'string' ? v.trim() : '');
+    if (str(point.summary))     fields.push({ label: 'Summary', value: str(point.summary) });
+    if (str(point.web_intro))   fields.push({ label: 'Intro', value: str(point.web_intro) });
+    if (str(point.theme))       fields.push({ label: 'Theme', value: str(point.theme) });
+    if (str(point.web_closing)) fields.push({ label: 'Closing', value: str(point.web_closing) });
+    const highlights = Array.isArray(point.highlights)
+      ? point.highlights.map(str).filter(Boolean) : [];
+    if (highlights.length) fields.push({ label: 'Highlights', items: highlights });
+
+    if (!fields.length) {
+      return { visible: true, mode: 'no-point', eyebrow: eyebrow, source: source, canSave: false,
+        empty: 'Your cOMpass has no readable content for ' + (roomTitle || 'this room') + ' yet.' };
+    }
+
+    // Structured, provenance-tagged payload for the durable save.
+    const lines = [eyebrow + ' (from your cOMpass)'];
+    if (source) lines.push(source);
+    lines.push('');
+    fields.forEach((f) => {
+      if (f.items) lines.push(f.label + ':\n- ' + f.items.join('\n- '));
+      else lines.push(f.label + ': ' + f.value);
+    });
+    return {
+      visible: true, mode: 'content', eyebrow: eyebrow, source: source, canSave: true,
+      fields: fields,
+      payloadText: lines.join('\n'),
+      sourceLabel: 'cOMpass · ' + (roomTitle || 'Room'),
+    };
+  }
+
+  const ctxEl = document.getElementById('fo-project-context');
+  const ctxEyebrow = document.getElementById('fo-pc-eyebrow');
+  const ctxSource = document.getElementById('fo-pc-source');
+  const ctxBody = document.getElementById('fo-pc-body');
+  const ctxActions = document.getElementById('fo-pc-actions');
+  const ctxSaveBtn = document.getElementById('fo-pc-save-btn');
+  let ctxView = null; // last rendered view-model (source of truth for save)
+
+  function renderProjectContext() {
+    if (!ctxEl) return;
+    const activeProject = surface ? surface.getAttribute('data-fo-project') : DEFAULT_ID;
+    const room = (typeof currentRoom !== 'undefined') ? currentRoom : null;
+    const compass = (window.state && window.state.compassData) ? window.state.compassData : null;
+    const roomMeta = (typeof ROOM_META !== 'undefined') ? ROOM_META : null;
+    const view = buildProjectContextView(activeProject, DEFAULT_ID, room, compass, roomMeta);
+    ctxView = view;
+
+    if (!view.visible) { ctxEl.hidden = true; return; }
+    ctxEl.hidden = false;
+    if (ctxEyebrow) ctxEyebrow.textContent = view.eyebrow || 'Living Digital Expression';
+    if (ctxSource) ctxSource.textContent = view.source || '';
+
+    if (ctxBody) {
+      ctxBody.textContent = '';
+      if (view.mode !== 'content') {
+        const p = document.createElement('p');
+        p.className = 'fo-pc-empty';
+        p.textContent = view.empty || '';
+        ctxBody.appendChild(p);
+      } else {
+        // Build with textContent only — cOMpass content is user data and must
+        // never be injected as HTML.
+        view.fields.forEach((f) => {
+          const wrap = document.createElement('div');
+          wrap.className = 'fo-pc-field';
+          const label = document.createElement('span');
+          label.className = 'fo-pc-field-label';
+          label.textContent = f.label;
+          wrap.appendChild(label);
+          if (f.items) {
+            const ul = document.createElement('ul');
+            ul.className = 'fo-pc-list';
+            f.items.forEach((it) => {
+              const li = document.createElement('li');
+              li.textContent = it;
+              ul.appendChild(li);
+            });
+            wrap.appendChild(ul);
+          } else {
+            const val = document.createElement('div');
+            val.className = 'fo-pc-field-value';
+            val.textContent = f.value;
+            wrap.appendChild(val);
+          }
+          ctxBody.appendChild(wrap);
+        });
+      }
+    }
+    if (ctxActions) ctxActions.hidden = !view.canSave;
+    if (ctxSaveBtn) {
+      ctxSaveBtn.disabled = false;
+      ctxSaveBtn.textContent = 'Save this context to Field Observations';
+    }
+  }
+
+  if (ctxSaveBtn) {
+    ctxSaveBtn.addEventListener('click', async () => {
+      const view = ctxView;
+      if (!view || !view.canSave || !view.payloadText) return;
+      if (typeof studioCreateFieldObservation !== 'function') {
+        if (typeof showToast === 'function') showToast('Could not save right now.');
+        return;
+      }
+      ctxSaveBtn.disabled = true;
+      ctxSaveBtn.textContent = 'Saving…';
+      try {
+        await studioCreateFieldObservation(view.payloadText, view.sourceLabel);
+        ctxSaveBtn.textContent = 'Saved to Field Observations';
+        if (typeof showToast === 'function') {
+          showToast('Saved to Field Observations — find it under Remembered.');
+        }
+      } catch (_) {
+        ctxSaveBtn.disabled = false;
+        ctxSaveBtn.textContent = 'Save this context to Field Observations';
+        if (typeof showToast === 'function') showToast('Could not save right now.');
+      }
+    });
+  }
+
+  // Expose so the room-entry path can refresh the card when the open room
+  // changes while Living Digital Expression is active.
+  window.studioRenderProjectContext = renderProjectContext;
+
+  // Initial application, now that the context-card elements and state are
+  // initialised. applyProject() sets the active tab + surface attribute and
+  // paints the context card via renderProjectContext().
+  applyProject(stored);
 })();
 </script>
 </body>
