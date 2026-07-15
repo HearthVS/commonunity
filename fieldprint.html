@@ -133,6 +133,19 @@
               </div>
             </div>
 
+            <!-- Portrait layout: how the arrival portrait meets the field, contained → full-bleed. -->
+            <div class="subgrp" id="heroLayoutEditor">
+              <span class="minilabel" id="lbl-hero">Portrait layout</span>
+              <p class="imgeditor__note imgeditor__note--tight">From a contained frame to a full-bleed field that crosses the whole arrival stage.</p>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-hero" data-control="hero">
+                <button role="radio" class="pill pill--sm" type="button" data-value="contained" aria-checked="true" tabindex="0">Contained</button>
+                <button role="radio" class="pill pill--sm" type="button" data-value="bleed-left" aria-checked="false" tabindex="-1">Bleed left</button>
+                <button role="radio" class="pill pill--sm" type="button" data-value="bleed-right" aria-checked="false" tabindex="-1">Bleed right</button>
+                <button role="radio" class="pill pill--sm" type="button" data-value="full-bleed" aria-checked="false" tabindex="-1">Full bleed</button>
+                <button role="radio" class="pill pill--sm" type="button" data-value="text-only" aria-checked="false" tabindex="-1">No portrait</button>
+              </div>
+            </div>
+
             <!-- Intro text fit: Auto shrinks a long sentence to fit; Manual sets size. -->
             <div class="subgrp" id="introFitEditor">
               <span class="minilabel" id="lbl-introfit">Intro text fit</span>
@@ -370,33 +383,13 @@
               <p class="ctl__note" id="motionNote" hidden>Your system requests reduced motion — the field is held still.</p>
             </div>
 
-            <div class="grp" aria-labelledby="lbl-hero">
-              <div class="ctl__label"><h2 id="lbl-hero">Arrival treatment</h2>
-                <p class="ctl__hint">How the portrait meets the field at the threshold — contained to full-bleed.</p></div>
-              <div class="segset segset--grid" role="radiogroup" aria-labelledby="lbl-hero" data-control="hero">
-                <button role="radio" class="tile" data-value="contained" aria-checked="true">
-                  <span class="tile__viz" data-viz="contained"></span><span class="tile__name">Contained in field</span>
-                </button>
-                <button role="radio" class="tile" data-value="bleed-right">
-                  <span class="tile__viz" data-viz="bleed-right"></span><span class="tile__name">Bleed right</span>
-                </button>
-                <button role="radio" class="tile" data-value="bleed-left">
-                  <span class="tile__viz" data-viz="bleed-left"></span><span class="tile__name">Bleed left</span>
-                </button>
-                <button role="radio" class="tile" data-value="full-bleed">
-                  <span class="tile__viz" data-viz="full-bleed"></span><span class="tile__name">Full-bleed field</span>
-                </button>
-                <button role="radio" class="tile" data-value="text-only">
-                  <span class="tile__viz" data-viz="text-only"></span><span class="tile__name">Bare threshold (no portrait)</span>
-                </button>
-              </div>
-              <div class="ctl__sub">
-                <label class="ctl__sublabel" id="lbl-photo">Portrait tone</label>
-                <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-photo" data-control="photo">
-                  <button role="radio" class="pill" data-value="warm" aria-checked="true">Warm</button>
-                  <button role="radio" class="pill" data-value="cool">Cool</button>
-                  <button role="radio" class="pill" data-value="mono">Mono</button>
-                </div>
+            <div class="grp" aria-labelledby="lbl-photo">
+              <div class="ctl__label"><h2 id="lbl-photo">Portrait tone</h2>
+                <p class="ctl__hint">The colour temperature of the arrival portrait. Layout now lives with the portrait in Identity.</p></div>
+              <div class="segset segset--row" role="radiogroup" aria-labelledby="lbl-photo" data-control="photo">
+                <button role="radio" class="pill" data-value="warm" aria-checked="true">Warm</button>
+                <button role="radio" class="pill" data-value="cool">Cool</button>
+                <button role="radio" class="pill" data-value="mono">Mono</button>
               </div>
             </div>
 

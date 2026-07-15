@@ -1062,4 +1062,63 @@ test('no foreign lexicon introduced; Work/Lens/Field/Call room language preserve
   assert.doesNotMatch(fpCss, /outer layer/i);
 });
 
+// ── Portrait layout control: visible in Identity, every option is real ───────
+console.log('\nPortrait layout control (Identity > Arrival portrait)');
+
+test('an obvious Portrait layout control lives in the Identity accordion, not buried in Field', () => {
+  const iId = fpHtml.indexOf('id="accIdentity"');
+  const iContent = fpHtml.indexOf('id="accContent"');
+  const iField = fpHtml.indexOf('id="accField"');
+  const layout = fpHtml.indexOf('id="heroLayoutEditor"');
+  const heroGroup = fpHtml.indexOf('data-control="hero"');
+  // The control and its radiogroup sit inside Identity (before Content).
+  assert.ok(layout !== -1 && layout > iId && layout < iContent, 'Portrait layout editor is in the Identity accordion');
+  assert.ok(heroGroup > iId && heroGroup < iContent, 'the data-control="hero" group is in Identity');
+  // A human-readable label users can find.
+  assert.match(fpHtml, /id="lbl-hero">Portrait layout</);
+  // The old "Arrival treatment" home in Field is gone; only ONE hero group exists.
+  assert.doesNotMatch(fpHtml, /Arrival treatment/);
+  assert.equal((fpHtml.match(/data-control="hero"/g) || []).length, 1, 'exactly one hero control (no duplicate to desync)');
+  // The Field accordion still keeps Portrait tone (photo) wiring intact.
+  const photoGroup = fpHtml.indexOf('data-control="photo"');
+  assert.ok(photoGroup > iField, 'Portrait tone stays in the Field accordion');
+});
+
+test('every exposed layout choice maps to a real renderer data-hero state (no dead options)', () => {
+  const grpStart = fpHtml.indexOf('id="heroLayoutEditor"');
+  const grp = fpHtml.slice(grpStart, fpHtml.indexOf('</div>', fpHtml.indexOf('data-control="hero"', grpStart) + 200) + 6);
+  const values = [...grp.matchAll(/data-value="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(values, ['contained', 'bleed-left', 'bleed-right', 'full-bleed', 'text-only'],
+    'concise, ordered layout choices');
+  // Each choice must have a matching renderer rule .viz[data-hero="<v>"] in CSS.
+  for (const v of values) {
+    assert.match(fpCss, new RegExp('\\.viz\\[data-hero="' + v + '"\\]'), `renderer rule exists for ${v}`);
+  }
+  // The renderer applies the chosen mode immediately via viz.dataset.hero.
+  assert.match(fpJs, /viz\.dataset\.hero = state\.hero/);
+});
+
+test('Full bleed removes the contained-card constraints and covers the stage edge to edge', () => {
+  // Contained is a rounded, shadowed media box capped in height.
+  assert.match(fpCss, /\.viz\[data-hero="contained"\] \.viz-hero__media\{[^}]*border-radius:5px/);
+  assert.match(fpCss, /\.viz\[data-hero="contained"\] \.viz-hero__media\{[^}]*box-shadow/);
+  // Full-bleed drops the box entirely: absolutely positioned, inset:0, no radius/gutter.
+  assert.match(fpCss, /\.viz\[data-hero="full-bleed"\] \.viz-hero\{[^}]*padding:0/);
+  assert.match(fpCss, /\.viz\[data-hero="full-bleed"\] \.viz-hero__media\{position:absolute;inset:0/);
+  // The stage itself is already full-bleed (no card cap / radius / gutter).
+  assert.match(fpCss, /\.viz\{max-width:none;border-radius:0;box-shadow:none\}/);
+  assert.match(fpCss, /\.stage__scroll\{padding:0\}/);
+});
+
+test('layout persists through the public-safe snapshot and rehydrates; text/overlay stay layered', () => {
+  // hero.mode is the persisted layout, restored in applySnapshot.
+  const snap = fpJs.slice(fpJs.indexOf('function snapshot()'), fpJs.indexOf('function applySnapshot'));
+  assert.match(snap, /mode: state\.hero/);
+  const app = fpJs.slice(fpJs.indexOf('function applySnapshot'), fpJs.indexOf('function applySnapshot') + 4300);
+  assert.match(app, /if \(h\.mode\) state\.hero = h\.mode/);
+  // Copy sits above portrait; graphic overlay sits above portrait but below copy.
+  assert.match(fpCss, /\.viz-hero__copy\{position:relative;z-index:2/);
+  assert.match(fpCss, /\.viz-hero__overlay\{[^}]*z-index:1/);
+});
+
 console.log('\n' + passed + ' checks passed.');
