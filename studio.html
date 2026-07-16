@@ -12669,6 +12669,15 @@ function loadState() {
       } else if (!state.compassDraftMeta.points) {
         state.compassDraftMeta.points = {};
       }
+      // One-time versioned upgrade of a rehydrated Level 2 document that predates
+      // the preamble promotion (blank raw-only Work). Draft-only, baseline
+      // untouched, stamped so it never repeats — then persisted so a later refresh
+      // sees the migrated state without re-running.
+      if (typeof cuMigrateLevel2Draft === 'function' &&
+          state.level2 && state.level2.version === 'studio-level2-v1' &&
+          state.level2.upgrade !== 'preamble-v1') {
+        try { cuMigrateLevel2Draft(state); saveState(); } catch (_) {}
+      }
       // Keep window.state in sync — see the explicit assignment at
       // the end of this script block; loadState() rebinds `state`
       // to a new object, so re-publish the reference.
@@ -14297,6 +14306,12 @@ function studioApplyLevel2Import(raw, compassDraft, kind) {
       sourceIdentity: { companion: (compassDraft && compassDraft.companion) || null, importedAt: null },
       baselineCapturedAt: null,
     };
+    // Re-importing a Level 2 document exported before preamble promotion: run the
+    // one-time upgrade on the restored DRAFT (baseline stays frozen/untouched),
+    // stamped so a subsequent re-import or refresh is a no-op.
+    if (typeof cuMigrateLevel2Draft === 'function') {
+      try { cuMigrateLevel2Draft(state); } catch (_) {}
+    }
   } else if (kind === 'compass' && typeof cuInitLevel2FromCompass === 'function') {
     const l2 = cuInitLevel2FromCompass(compassDraft);
     state.compassData = l2.draft;
@@ -14307,11 +14322,25 @@ function studioApplyLevel2Import(raw, compassDraft, kind) {
       sourceIdentity: { companion: (compassDraft && compassDraft.companion) || null, importedAt: nowIso },
       baselineCapturedAt: nowIso,
     };
+    // Legacy raw-only rooms (a synthesised preamble sitting above transcript
+    // blocks, no curated fields) get their preamble promoted into the DRAFT's
+    // empty Summary. The frozen baseline is never touched. Idempotent.
+    if (typeof cuUpgradeCompassDraft === 'function') {
+      try {
+        const up = cuUpgradeCompassDraft(state.compassData, state.compassDraftMeta.points, ['work','lens','field','call']);
+        if (up.length) state.level2.upgrade = 'preamble-v1';
+      } catch (_) {}
+    }
   } else {
     // Legacy studio-v1 (or missing helpers): keep the draft, no baseline.
     state.compassBaseline = null;
     state.compassDraftMeta = { points: {} };
     state.level2 = null;
+    // A legacy studio-v1 draft can still carry raw-only rooms; promote the
+    // preamble into an empty Summary on the draft (no baseline exists to guard).
+    if (typeof cuUpgradeCompassDraft === 'function') {
+      try { cuUpgradeCompassDraft(state.compassData, state.compassDraftMeta.points, ['work','lens','field','call']); } catch (_) {}
+    }
   }
 }
 
@@ -30108,6 +30137,81 @@ function cuFieldprintHasStructured(norm) {
             (norm.insights && norm.insights.length));
 }
 
+// Deterministic, no-fabrication reader of a cOMpass `raw` string. Transcript
+// mining appends each imported block under a literal marker line
+// (`--- From transcript: <file> ---`); anything BEFORE the first such marker is
+// the session's own pre-transcript synthesised preamble. We return that preamble
+// ONLY when the separation is explicit (a marker exists), it is a substantive
+// paragraph, and it carries no transcript/`[Guide:]` facilitation notes — those
+// stay source-only. No heading/theme/highlight is ever invented from raw text.
+function cuCompassPreamble(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
+  var s = raw.replace(/\r\n/g, '\n');
+  var m = s.search(/(^|\n)[ \t]*-{2,}[ \t]*From transcript:/i);
+  if (m === -1) m = s.search(/(^|\n)[ \t]*From transcript:/i);
+  if (m === -1) return '';                 // no explicit separation → never promote
+  var pre = s.slice(0, m);
+  var kept = pre.split('\n').filter(function (ln) {
+    var t = ln.trim();
+    if (!t) return false;
+    if (/^\[Guide:/i.test(t)) return false;
+    if (/^-{2,}[ \t]*From transcript:/i.test(t)) return false;
+    return true;
+  }).join('\n').trim();
+  if (kept.split(/\s+/).filter(Boolean).length < 12) return '';   // not substantive
+  if (/\[Guide:/i.test(kept) || /From transcript:/i.test(kept)) return '';  // never leak
+  return kept;
+}
+
+// Non-destructive legacy upgrade for a Level 2 DRAFT (never the baseline).
+// Promotes each room's clean pre-transcript preamble into an EMPTY `summary`
+// only, tagging provenance. Idempotent: a room whose summary already has content
+// is left untouched, so re-running (or re-importing) never re-migrates. Returns
+// the list of room keys upgraded. `meta` is the compassDraftMeta.points bag.
+function cuUpgradeCompassDraft(draft, meta, rooms) {
+  var upgraded = [];
+  if (!draft || !draft.points) return upgraded;
+  var keys = Array.isArray(rooms) ? rooms : Object.keys(draft.points);
+  var nowIso = new Date().toISOString();
+  keys.forEach(function (room) {
+    var pt = draft.points[room];
+    if (!pt || typeof pt !== 'object') return;
+    if (cuFpStr(pt.summary)) return;                 // already has a summary → skip (idempotent)
+    var pre = cuCompassPreamble(pt.raw);
+    if (!pre) return;
+    pt.summary = pre;
+    if (meta && typeof meta === 'object') {
+      if (!meta[room]) meta[room] = {};
+      meta[room].summary = { origin: 'manual', updatedAt: nowIso, upgraded: 'preamble' };
+    }
+    upgraded.push(room);
+  });
+  return upgraded;
+}
+
+// One-time versioned migration for an ALREADY-ESTABLISHED Level 2 state (e.g. a
+// document created by a build that shipped raw-only Work). Runs the preamble
+// upgrade against the editable DRAFT only, never the frozen baseline, and stamps
+// `level2.upgrade='preamble-v1'` so it is applied at most once — even when there
+// was nothing promotable (a transcript-only room stays blank and keeps showing
+// the Structure-with-Nexus CTA, but is not re-checked on every load). Returns the
+// list of rooms actually promoted. Safe to call on any state: it no-ops unless a
+// studio-level2-v1 document is present and not yet stamped.
+function cuMigrateLevel2Draft(st) {
+  if (!st || !st.level2 || st.level2.version !== 'studio-level2-v1') return [];
+  if (st.level2.upgrade === 'preamble-v1') return [];   // already migrated → no-op
+  var upgraded = [];
+  if (typeof cuUpgradeCompassDraft === 'function' && st.compassData && st.compassData.points) {
+    if (!st.compassDraftMeta || typeof st.compassDraftMeta !== 'object') st.compassDraftMeta = { points: {} };
+    if (!st.compassDraftMeta.points) st.compassDraftMeta.points = {};
+    try {
+      upgraded = cuUpgradeCompassDraft(st.compassData, st.compassDraftMeta.points, ['work', 'lens', 'field', 'call']);
+    } catch (_) {}
+  }
+  st.level2.upgrade = 'preamble-v1';   // stamp once, even if nothing was promotable
+  return upgraded;
+}
+
 // Discriminate an imported JSON payload:
 //   'level2'    — a stUdio Level 2 document (carries an immutable baseline).
 //   'studio-v1' — a legacy stUdio export (compassData draft, NO baseline).
@@ -30400,6 +30504,9 @@ try {
       fields: fields,
       rawSource: norm.rawSource,
       hasStructured: cuFieldprintHasStructured(norm),
+      // Raw source present but no structured field yet — offer a one-click
+      // Nexus structuring pass (reviewed, never auto-written).
+      needsStructuring: !!norm.rawSource && !cuFieldprintHasStructured(norm),
     };
   }
 
@@ -30515,6 +30622,25 @@ try {
     evolveBtn.addEventListener('click', () => evolveRoom(view.room));
     roomBar.appendChild(evolveBtn);
     ctxBody.appendChild(roomBar);
+
+    // Raw source present, nothing structured yet: offer a prominent one-click
+    // Nexus structuring pass. It reuses the reviewed Evolve flow (each field is
+    // streamed then Accept/Edit/Reject) — nothing is written without review.
+    if (view.needsStructuring) {
+      const banner = document.createElement('div');
+      banner.className = 'fo-pc-structure-cta';
+      const msg = document.createElement('p');
+      msg.className = 'fo-pc-field-hint';
+      msg.textContent = 'This room has source material but no structured content yet. Structure it with Nexus, then review each suggestion before it’s saved.';
+      banner.appendChild(msg);
+      const structureBtn = document.createElement('button');
+      structureBtn.type = 'button';
+      structureBtn.className = 'fo-pc-mini-btn';
+      structureBtn.textContent = 'Structure with Nexus ✦';
+      structureBtn.addEventListener('click', () => evolveRoom(view.room));
+      banner.appendChild(structureBtn);
+      ctxBody.appendChild(banner);
+    }
 
     view.fields.forEach((f) => {
       const wrap = document.createElement('div');

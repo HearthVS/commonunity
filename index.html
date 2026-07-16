@@ -6778,6 +6778,55 @@ function _buildOmCipherInputFromCompass(s) {
   };
 }
 
+// Deterministic, no-fabrication reader of a cOMpass `raw` string. Transcript
+// mining appends each imported block under a literal marker line
+// (`--- From transcript: <file> ---`); text BEFORE the first such marker is the
+// session's own pre-transcript synthesised preamble. Returned ONLY when the
+// separation is explicit, substantive, and carries no transcript/`[Guide:]`
+// facilitation notes — those stay source-only. Kept byte-identical to studio's
+// cuCompassPreamble so the producer and the Studio legacy-upgrade agree.
+function cuCompassPreamble(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
+  var s = raw.replace(/\r\n/g, '\n');
+  var m = s.search(/(^|\n)[ \t]*-{2,}[ \t]*From transcript:/i);
+  if (m === -1) m = s.search(/(^|\n)[ \t]*From transcript:/i);
+  if (m === -1) return '';
+  var pre = s.slice(0, m);
+  var kept = pre.split('\n').filter(function (ln) {
+    var t = ln.trim();
+    if (!t) return false;
+    if (/^\[Guide:/i.test(t)) return false;
+    if (/^-{2,}[ \t]*From transcript:/i.test(t)) return false;
+    return true;
+  }).join('\n').trim();
+  if (kept.split(/\s+/).filter(Boolean).length < 12) return '';
+  if (/\[Guide:/i.test(kept) || /From transcript:/i.test(kept)) return '';
+  return kept;
+}
+
+// Export finalizer: return a shallow-cloned points bag where any room that has a
+// clean pre-transcript preamble but an EMPTY summary gets that preamble promoted
+// into `summary`. Purely additive — never fabricates heading/theme/highlights,
+// never overwrites existing content, never mutates live state. This is why a
+// raw-only room (e.g. Work populated only by transcript mining) still ships a
+// canonical Summary under its own key instead of exporting raw-only.
+function cuFinalizeCompassPoints(points) {
+  if (!points || typeof points !== 'object') return points;
+  var out = {};
+  Object.keys(points).forEach(function (key) {
+    var pt = points[key];
+    if (!pt || typeof pt !== 'object') { out[key] = pt; return; }
+    var copy = Object.assign({}, pt);
+    var hasSummary = typeof copy.summary === 'string' && copy.summary.trim();
+    if (!hasSummary) {
+      var pre = cuCompassPreamble(copy.raw);
+      if (pre) copy.summary = pre;
+    }
+    out[key] = copy;
+  });
+  return out;
+}
+
 function buildCompassExport(s) {
   // Default to global state so callers can invoke buildCompassExport()
   // without args from the page (the root Compass runtime is DOM/state
@@ -7022,6 +7071,11 @@ function buildCompassExport(s) {
       }
     }
   } catch (_) { /* graceful — never block a save */ }
+
+  // Finalize per-room canonical fields on the exported copy (not live state):
+  // promote a clean pre-transcript preamble into an empty Summary so every room
+  // — including a raw-only Work — ships a canonical structured field.
+  try { out.points = cuFinalizeCompassPoints(s.points); } catch (_) { /* keep verbatim points on any failure */ }
 
   return out;
 }
@@ -7748,18 +7802,20 @@ function populateL3(point, data) {
       ? data.highlights.map(compassApplyDisplayName) : data.highlights
   };
 
-  // Heading
+  // Heading — persist to state whenever generation returned content, even if
+  // the DOM input for this room isn't currently mounted (state/export is the
+  // source of truth; the textarea is only a mirror).
   const headingEl = document.querySelector(`[data-key="${point}.web_heading"]`);
-  if (headingEl && data.heading) {
-    headingEl.value = data.heading;
+  if (data.heading) {
     state.points[point].web_heading = data.heading;
+    if (headingEl) headingEl.value = data.heading;
   }
 
   // Intro
   const introEl = document.querySelector(`[data-key="${point}.web_intro"]`);
-  if (introEl && data.intro) {
-    introEl.value = data.intro;
+  if (data.intro) {
     state.points[point].web_intro = data.intro;
+    if (introEl) introEl.value = data.intro;
   }
 
   // Highlights
@@ -7770,9 +7826,9 @@ function populateL3(point, data) {
 
   // Closing
   const closingEl = document.querySelector(`[data-key="${point}.web_closing"]`);
-  if (closingEl && data.closing) {
-    closingEl.value = data.closing;
+  if (data.closing) {
     state.points[point].web_closing = data.closing;
+    if (closingEl) closingEl.value = data.closing;
   }
 
   // Questions — inject into facilitator panel
