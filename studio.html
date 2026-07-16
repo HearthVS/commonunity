@@ -30127,9 +30127,23 @@ function cuFpList(arr) {
 // so the editor can show it as "source material, not yet structured".
 function cuNormalizeFieldprintPoint(point) {
   var p = point || {};
+  var summary = cuFpStr(p.summary);
+  // Derive-on-read: a room whose only content is a clean synthesised `raw`
+  // (e.g. The Work, populated by transcript mining and never sent through
+  // /generate) surfaces that clean note as its Summary so the editor
+  // auto-populates on first open — regardless of whether the one-time preamble
+  // migration ever ran or was already stamped. This is the canonical boundary
+  // that makes the raw-only regression impossible to recur. It never overwrites
+  // an existing summary and never promotes transcript/[Guide:] material (that
+  // guarantee lives in cuCompassPreamble); if raw is not cleanly promotable the
+  // field stays empty and the "Structure with Nexus" CTA is offered as before.
+  if (!summary && typeof cuCompassPreamble === 'function') {
+    var pre = cuCompassPreamble(p.raw);
+    if (pre) summary = pre;
+  }
   return {
     web_heading: cuFpStr(p.web_heading),
-    summary:     cuFpStr(p.summary),
+    summary:     summary,
     web_intro:   cuFpStr(p.web_intro),
     theme:       cuFpStr(p.theme),
     web_closing: cuFpStr(p.web_closing),
@@ -30148,18 +30162,20 @@ function cuFieldprintHasStructured(norm) {
 
 // Deterministic, no-fabrication reader of a cOMpass `raw` string. Transcript
 // mining appends each imported block under a literal marker line
-// (`--- From transcript: <file> ---`); anything BEFORE the first such marker is
-// the session's own pre-transcript synthesised preamble. We return that preamble
-// ONLY when the separation is explicit (a marker exists), it is a substantive
-// paragraph, and it carries no transcript/`[Guide:]` facilitation notes — those
-// stay source-only. No heading/theme/highlight is ever invented from raw text.
+// (`--- From transcript: <file> ---`). The promotable text is everything BEFORE
+// the first such marker — the session's own synthesised note. When there is NO
+// marker at all, the whole raw is a single synthesised note: the common
+// one-transcript case appends the first block with no marker, so Work would
+// otherwise stay blank. In every case we promote ONLY when the kept text is
+// substantive and carries no `[Guide:]` facilitation note and no transcript
+// dialogue; anything transcript-like stays source-only, nothing is fabricated.
+// Kept byte-identical to studio's cuCompassPreamble so producer and Studio agree.
 function cuCompassPreamble(raw) {
   if (typeof raw !== 'string' || !raw.trim()) return '';
   var s = raw.replace(/\r\n/g, '\n');
   var m = s.search(/(^|\n)[ \t]*-{2,}[ \t]*From transcript:/i);
   if (m === -1) m = s.search(/(^|\n)[ \t]*From transcript:/i);
-  if (m === -1) return '';                 // no explicit separation → never promote
-  var pre = s.slice(0, m);
+  var pre = (m === -1) ? s : s.slice(0, m);   // no marker → the whole note
   var kept = pre.split('\n').filter(function (ln) {
     var t = ln.trim();
     if (!t) return false;
@@ -30167,8 +30183,9 @@ function cuCompassPreamble(raw) {
     if (/^-{2,}[ \t]*From transcript:/i.test(t)) return false;
     return true;
   }).join('\n').trim();
-  if (kept.split(/\s+/).filter(Boolean).length < 12) return '';   // not substantive
-  if (/\[Guide:/i.test(kept) || /From transcript:/i.test(kept)) return '';  // never leak
+  if (kept.split(/\s+/).filter(Boolean).length < 12) return '';
+  if (/\[Guide:/i.test(kept) || /From transcript:/i.test(kept)) return '';
+  if (/(^|\n)[ \t]*(Me|Them|Interviewer|Speaker)[ \t]*:/i.test(kept)) return '';
   return kept;
 }
 

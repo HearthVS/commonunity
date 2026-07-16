@@ -69,6 +69,42 @@ class RequestContractTests(unittest.TestCase):
         self.assertIn("authenticity", p)
 
 
+class VoiceTests(unittest.TestCase):
+    """First person is the hard default for public FieldPrint prose. The prompt
+    must state it unambiguously, must not carry any 'as appropriate' escape
+    hatch, and headings must stay natural noun phrases (no forced pronoun)."""
+
+    def test_prompt_makes_first_person_the_default(self):
+        p = server.INSPIRE_L2_SYSTEM.lower()
+        self.assertIn("first person", p)
+        self.assertIn("voice", p)
+        # The room contracts are third-person descriptors; the prompt must say so
+        # explicitly so the model does not mirror them.
+        self.assertIn("not a template for the output voice", p)
+
+    def test_prompt_has_no_third_person_escape_hatch(self):
+        p = server.INSPIRE_L2_SYSTEM.lower()
+        self.assertNotIn("third-person as appropriate", p)
+        self.assertNotIn("first-person or third-person", p)
+        self.assertNotIn("or third person as appropriate", p)
+
+    def test_prose_field_instructions_require_first_person(self):
+        for f in ("theme", "insight", "summary", "intro", "closing"):
+            self.assertIn("first person", server.field_instructions[f].lower(),
+                          f"{f} instruction must require first person")
+
+    def test_heading_instruction_stays_natural_not_third_person(self):
+        h = server.field_instructions["heading"].lower()
+        self.assertNotIn("first person", h, "a heading is not forced into a pronoun")
+        self.assertIn("never third person", h)
+
+    def test_voice_line_is_first_person(self):
+        v = server._INSPIRE_VOICE_LINE.lower()
+        self.assertIn("first person", v)
+        self.assertIn("she", v)   # named as forbidden third-person pronouns
+        self.assertIn("heading", v)
+
+
 class AudienceBlockTests(unittest.TestCase):
     def test_empty_audience_is_blank(self):
         self.assertEqual(server._inspire_audience_block({}), "")
@@ -276,6 +312,23 @@ class InspireLayer2PayloadTests(unittest.TestCase):
     def test_works_with_no_audience_or_evidence(self):
         msg = self._run({"point": "call", "field": "heading"})
         self.assertIn("The Call", msg)
+
+    def test_prose_request_carries_first_person_voice_to_model(self):
+        # A live prose request must carry the first-person voice rule into BOTH
+        # the static system prompt and the per-request user message the model
+        # actually receives, and the field-specific Task must require it too.
+        msg = self._run({"point": "work", "field": "summary"}).lower()
+        self.assertIn("first person", msg)  # assembled voice line + Task
+        self.assertNotIn("first-person or third-person", msg)
+        self.assertIn("first person", self.captured["system"].lower())
+
+    def test_heading_request_still_carries_voice_rule(self):
+        # Evolve-room and heading requests inherit the same voice rule; the
+        # heading stays a natural noun phrase but the rule is still present in
+        # the assembled message.
+        msg = self._run({"point": "work", "field": "heading"}).lower()
+        self.assertIn("first person", msg)
+        self.assertIn("never third person", msg)
 
 
 if __name__ == "__main__":
