@@ -98,6 +98,17 @@ class AudienceBlockTests(unittest.TestCase):
         self.assertIn("A", block)
         self.assertIn("B", block)
 
+    def test_canonical_statements_are_sent_once(self):
+        # The normalized client sends one freeform answer per canonical key and
+        # does NOT duplicate it across the specific facet keys. The block must
+        # render each statement exactly once (no fabricated fan-out).
+        block = server._inspire_audience_block({
+            "audience_statement": "Independent makers who value craft.",
+            "arrival_statement": "Land calm and book a first call.",
+        })
+        self.assertEqual(block.count("Independent makers who value craft."), 1)
+        self.assertEqual(block.count("Land calm and book a first call."), 1)
+
 
 class EvidenceBlockTests(unittest.TestCase):
     def test_empty_evidence_is_blank(self):
@@ -126,6 +137,26 @@ class EvidenceBlockTests(unittest.TestCase):
         # 1500-char cap plus the label prefix.
         self.assertLess(len(block), 1700)
 
+    def test_document_summary_is_accepted_as_evidence(self):
+        # A derived `summary` is safe extracted evidence and must surface even
+        # when no explicit `text` is present.
+        block = server._inspire_evidence_block({"documents": [
+            {"type": "cv", "name": "profile-cv.pdf",
+             "summary": "Product development across three startups."},
+        ]})
+        self.assertIn("Product development across three startups.", block)
+        self.assertIn("profile-cv.pdf", block)
+
+    def test_document_raw_fields_are_ignored(self):
+        # Only text/summary are read; arbitrary raw byte/content fields are never
+        # forwarded, so sealed uploads cannot leak through the documents slot.
+        block = server._inspire_evidence_block({"documents": [
+            {"name": "sealed.pdf", "content": "RAW SEALED BYTES",
+             "data": "MORE RAW BYTES"},
+        ]})
+        self.assertNotIn("RAW SEALED BYTES", block)
+        self.assertNotIn("MORE RAW BYTES", block)
+
 
 class AdminPromptSurfaceTests(unittest.TestCase):
     def test_requires_admin(self):
@@ -141,8 +172,9 @@ class AdminPromptSurfaceTests(unittest.TestCase):
         self.assertIn("system_prompt", d)
         self.assertEqual(
             d["audience_contract"],
-            ["people_to_reach", "connection_welcomed",
-             "visitor_should_understand", "visitor_should_feel", "visitor_should_do"],
+            ["audience_statement", "people_to_reach", "connection_welcomed",
+             "arrival_statement", "visitor_should_understand",
+             "visitor_should_feel", "visitor_should_do"],
         )
 
     def test_no_secret_leakage(self):
@@ -220,6 +252,26 @@ class InspireLayer2PayloadTests(unittest.TestCase):
         })
         self.assertNotIn("SEALED BASELINE", msg)
         self.assertIn("public background", msg)
+
+    def test_canonical_answer_only_audience_reaches_model_once(self):
+        # Mirrors the normalized client payload: one canonical statement per
+        # Spark answer, no duplicate facet keys. The answer must reach the model
+        # exactly once and carry no question scaffolding.
+        msg = self._run({
+            "point": "work", "field": "summary",
+            "audience": {
+                "audience_statement": "Independent makers who value craft.",
+                "arrival_statement": "Land calm and book a first call.",
+            },
+            "evidence": {"documents": [
+                {"type": "cv", "name": "profile-cv.pdf",
+                 "summary": "Product development across three startups."},
+            ]},
+        })
+        self.assertEqual(msg.count("Independent makers who value craft."), 1)
+        self.assertIn("Land calm and book a first call.", msg)
+        self.assertIn("Product development across three startups.", msg)
+        self.assertNotIn("Who do you most hope", msg)
 
     def test_works_with_no_audience_or_evidence(self):
         msg = self._run({"point": "call", "field": "heading"})

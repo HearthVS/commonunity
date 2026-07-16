@@ -30751,38 +30751,62 @@ try {
   }
 
   // ── Nexus context builders (global audience + approved evidence) ──────────
+  // Spark captures are stored as the composed note "> <prompt>\n\n<answer>", so
+  // the raw excerpt carries the question as a leading markdown blockquote. Strip
+  // that scaffolding (and, defensively, a leading un-quoted copy of the prompt)
+  // so only the person's own answer reaches Nexus.
+  function cuCleanCaptureText(raw, promptText) {
+    var s = String(raw == null ? '' : raw);
+    var lines = s.split('\n');
+    var kept = [];
+    var skipping = true;
+    for (var i = 0; i < lines.length; i++) {
+      var t = lines[i].trim();
+      if (skipping && (t === '' || t.charAt(0) === '>')) continue; // drop leading blank/quote lines
+      skipping = false;
+      kept.push(lines[i]);
+    }
+    var out = kept.join('\n').trim();
+    var p = String(promptText == null ? '' : promptText).trim();
+    if (p && out.indexOf(p) === 0) out = out.slice(p.length).trim();
+    return out;
+  }
+
   // FieldPrint has ONE audience for the whole presence, so audience context is
   // built once (not per room) and every room's Inspire request receives it
-  // identically. Two Spark answers feed the five-key contract: the "who / what
-  // connection" answer (captures.audience) and the arrival "feel · know · do"
-  // answer (captures.threshold). The server folds consecutive identical values
-  // into one line, so mapping one sentence to several facets stays honest — it
-  // never fabricates distinctions the person did not draw.
+  // identically. Each source is a single freeform Spark answer, so we send it
+  // once under a canonical statement key rather than pretending to parse it into
+  // separate facets: the "who / what connection" answer (captures.audience) →
+  // `audience_statement`, and the arrival "feel · know · do" answer
+  // (captures.threshold) → `arrival_statement`. The specific keys
+  // (people_to_reach, connection_welcomed, visitor_should_*) stay in the
+  // contract but are only populated when separately supplied — never by
+  // duplicating one combined answer across them.
   function cuAudienceContext(st) {
     st = st || {};
     const caps = (st.builder && st.builder.captures) || {};
-    function latest(id) {
+    function latestClean(id) {
       const arr = caps[id];
       if (!Array.isArray(arr) || !arr.length) return '';
       const last = arr[arr.length - 1];
-      return (last && typeof last.excerpt === 'string') ? last.excerpt.trim() : '';
+      if (!last) return '';
+      return cuCleanCaptureText(last.excerpt, last.prompt);
     }
-    const who = latest('audience');
-    const arrival = latest('threshold');
+    const who = latestClean('audience');
+    const arrival = latestClean('threshold');
     const ctx = {};
-    if (who) { ctx.people_to_reach = who; ctx.connection_welcomed = who; }
-    if (arrival) {
-      ctx.visitor_should_understand = arrival;
-      ctx.visitor_should_feel = arrival;
-      ctx.visitor_should_do = arrival;
-    }
+    if (who) ctx.audience_statement = who;
+    if (arrival) ctx.arrival_statement = arrival;
     return ctx;
   }
 
   // Approved, voluntarily-provided profile evidence only. Reads the persisted
   // profile (work_background, education) — never sealed/private raw OM Cipher
-  // inputs. `documents` is reserved for future uploaded material and stays empty
-  // for now. Both fields may be array or string in the profile; flatten to text.
+  // inputs. Both fields may be array or string in the profile; flatten to text.
+  // `documents` carries only DERIVED/EXTRACTED document evidence: an item's
+  // `summary` (or an already-extracted `text`) plus its name/type metadata. Raw
+  // file bytes or full private content are never read or forwarded, so there is
+  // no upload of arbitrary sealed material — only the safe extracted summary.
   function cuEvidenceContext(st) {
     st = st || {};
     const profile = (st.compassData && st.compassData.profile) || {};
@@ -30804,7 +30828,22 @@ try {
     const ed = flatten(profile.education).trim();
     if (wb) ev.work_background = wb;
     if (ed) ev.education = ed;
-    ev.documents = [];
+    const docs = [];
+    const rawDocs = Array.isArray(profile.documents) ? profile.documents : [];
+    rawDocs.forEach(function (d) {
+      if (!d || typeof d !== 'object') return;
+      // Extracted text only: summary is the derived, safe field; `text` is
+      // accepted if already extracted. We deliberately ignore any raw/content
+      // byte fields so sealed uploads can never leak.
+      const text = String(d.summary || d.text || '').trim();
+      if (!text) return;
+      docs.push({
+        label: String(d.name || d.type || 'Document').trim(),
+        text: text,
+        source: String(d.type || 'profile').trim(),
+      });
+    });
+    ev.documents = docs;
     return ev;
   }
 

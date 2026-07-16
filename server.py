@@ -5112,8 +5112,9 @@ class InspireLayer2Request(BaseModel):
     # Global audience context (whole-FieldPrint, not per-room). Keys mirror the
     # agreed contract; any may be empty. Owner-stated only — Nexus writes FOR
     # these people, never invents new ones. See NEXUS_FIELDPRINT_PROMPT.
-    audience: dict = {}     # people_to_reach, connection_welcomed,
-                            # visitor_should_understand/_feel/_do
+    audience: dict = {}     # audience_statement, arrival_statement (canonical,
+                            # one freeform answer each) + optional specific keys
+                            # people_to_reach/connection_welcomed/visitor_should_*
     # Approved uploaded evidence the person voluntarily provided (upload is
     # consent to Nexus use). Sealed/private raw OM Cipher inputs are NEVER sent
     # here — only surfaced profile/document material. `documents` is a
@@ -5189,10 +5190,16 @@ field_instructions = {
     "closing": "Write the Closing: 1–2 sentences that leave the reader with a resonant final thought for this room.",
 }
 
-# Ordered (contract-key, human label) pairs for the audience block.
+# Ordered (contract-key, human label) pairs for the audience block. The two
+# `*_statement` keys are canonical: each holds one freeform Spark answer as the
+# person wrote it (who + connection; arrival feel/know/do), sent once rather
+# than split into facets we cannot honestly parse. The specific keys remain in
+# the contract for when a separate, dedicated answer is supplied for one facet.
 _AUDIENCE_FIELDS = [
+    ("audience_statement",        "Who they hope to reach, and the connection they would welcome"),
     ("people_to_reach",           "People they most hope will find them"),
     ("connection_welcomed",       "Connection they would welcome"),
+    ("arrival_statement",         "What a visitor should feel, understand, and do on arrival"),
     ("visitor_should_understand", "What a visitor should understand"),
     ("visitor_should_feel",       "What a visitor should feel"),
     ("visitor_should_do",         "What a visitor should do"),
@@ -5238,10 +5245,13 @@ def _inspire_evidence_block(evidence: dict) -> str:
         for doc in docs[:5]:
             if not isinstance(doc, dict):
                 continue
-            text = str(doc.get("text", "") or "").strip()
+            # Extracted evidence only: an already-extracted `text` or the derived
+            # `summary`. Raw file bytes / full sealed content are never read.
+            text = str(doc.get("text") or doc.get("summary") or "").strip()
             if not text:
                 continue
-            label = str(doc.get("label") or doc.get("source") or "Document").strip()
+            label = str(doc.get("label") or doc.get("name")
+                        or doc.get("source") or doc.get("type") or "Document").strip()
             parts.append(label + ": " + text[:1500])
     if not parts:
         return ""
@@ -5260,7 +5270,8 @@ def _nexus_fieldprint_prompt_state() -> dict:
         "field_instructions": field_instructions,
         "room_contracts": NEXUS_ROOM_CONTRACTS,
         "audience_contract": [k for k, _ in _AUDIENCE_FIELDS],
-        "evidence_contract": ["work_background", "education", "documents[]"],
+        "evidence_contract": ["work_background", "education",
+                              "documents[] (extracted text/summary only)"],
         "editable": False,
         "editing_deferred": (
             "Read-only MVP. The prompt is a source-controlled, versioned constant so "
