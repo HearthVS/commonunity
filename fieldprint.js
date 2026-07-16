@@ -2102,6 +2102,36 @@
     state.hydrated = true;
   }
 
+  /* Non-destructive content prefill from the Studio FieldPrint editor tab.
+     Merges ONLY the named text/artifact fields into matching sections by key.
+     Hero framing, palette/roleOverrides, cipher, images, section role/imgRole,
+     and any field not present in the payload are left exactly as they are.
+     Returns the number of fields actually applied. */
+  function applyPrefill(sections) {
+    if (!Array.isArray(sections) || !Array.isArray(state.sections)) return 0;
+    const TEXT_FIELDS = ['eyebrow', 'title', 'body', 'narrative', 'prompt'];
+    let applied = 0;
+    sections.forEach((incoming) => {
+      if (!incoming || typeof incoming !== 'object') return;
+      const target = state.sections.find((s) => s && s.key === incoming.key);
+      if (!target) return;
+      TEXT_FIELDS.forEach((f) => {
+        if (incoming[f] != null) { target[f] = String(incoming[f]); applied++; }
+      });
+      if (incoming.artifacts != null && Array.isArray(incoming.artifacts)) {
+        target.artifacts = incoming.artifacts
+          .filter((a) => a && (a.title || a.note))
+          .map((a) => ({
+            tag: (typeof a.tag === 'string' && a.tag) ? a.tag : 'Signal',
+            title: a.title != null ? String(a.title) : '',
+            note: a.note != null ? String(a.note) : '',
+          }));
+        applied++;
+      }
+    });
+    return applied;
+  }
+
   function fullRender() {
     renderFieldCard();
     applyAutoSignatures();
@@ -2158,7 +2188,7 @@
     try { window.parent.postMessage(msg, window.location.origin); } catch (_) {}
   }
   function wireBridge() {
-    window.addEventListener('message', (e) => {
+    window.addEventListener('message', async (e) => {
       if (e.source !== window.parent) return;
       if (e.origin !== window.location.origin) return;
       const d = e.data;
@@ -2167,8 +2197,33 @@
         hydrateFromModel(d.model);
         fullRender();
         setLoadNote(true, 'Live Fieldprint from your Studio data.');
-        // Re-baseline to the imported field, then restore a matching draft.
-        establishBaselineAndRestore();
+        // Re-baseline to the imported field, then restore a matching draft under
+        // the Studio-supplied owner key (stable across reloads).
+        establishBaselineAndRestore(d.owner);
+      } else if (d.type === 'fieldprint-prefill') {
+        // Non-destructive content handoff from the Studio FieldPrint editor.
+        // On a cold reload no model was hydrated this load, so we may be sitting
+        // on built-in demo defaults under the wrong owner. Adopt the owner the
+        // parent targeted and RESTORE that person's saved draft first — otherwise
+        // we'd merge onto defaults and then persist those defaults over the real
+        // draft. loadDraft() only applies a record whose owner matches, so a
+        // foreign draft is never read into this identity. We never hydrate a full
+        // model and never import raw here.
+        if (d.owner != null && d.owner !== '' && String(d.owner) !== currentOwner) {
+          currentOwner = String(d.owner);
+          baseline = snapshot();          // safe reset baseline for this identity
+          await loadDraft();              // restores the matching saved draft, if any
+        }
+        const applied = applyPrefill(d.sections);
+        if (applied) {
+          renderSections();
+          markDirty();
+          setLoadNote(true, 'Applied ' + applied + ' field' + (applied === 1 ? '' : 's') + ' from Studio — your framing and images are unchanged.');
+          // Persist immediately under the correct owner so the merge survives an
+          // actual page refresh, not just same-frame memory.
+          try { await flushSave(); } catch (_) {}
+        }
+        postToParent({ type: 'fieldprint-prefilled', applied: applied });
       } else if (d.type === 'fieldprint-flush') {
         // Studio is closing the overlay: commit any queued autosave, then ack so
         // the parent can safely release (blank) the iframe without data loss.
@@ -2518,9 +2573,14 @@
 
   // Capture the imported/demo field as the reset baseline, then restore any
   // matching on-device draft on top of it.
-  async function establishBaselineAndRestore() {
+  async function establishBaselineAndRestore(ownerOverride) {
     baseline = snapshot();
-    currentOwner = computeOwner();
+    // Prefer an owner key supplied by the embedding Studio (stable across cold
+    // reloads and page refreshes); fall back to the locally-derived fingerprint
+    // for the standalone Builder. Both sides must agree so a saved draft is
+    // found again on the next open.
+    currentOwner = (ownerOverride != null && ownerOverride !== '')
+      ? String(ownerOverride) : computeOwner();
     // Does a matching draft already exist? (drives Revert affordance)
     let record = null;
     try { record = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (_) {}

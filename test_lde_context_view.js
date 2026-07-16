@@ -1,15 +1,13 @@
-/* Living Digital Expression context view-model — regression tests.
+/* FieldPrint editor view-model — regression tests.
    Run: node --test test_lde_context_view.js   (Node 20+, no dependencies)
 
    Extracts the pure buildProjectContextView() from studio.html (no copy) and
-   verifies readable-content extraction across the real cOMpass field shapes.
-
-   Regression guarded: the Life's Work / "The Work" room whose body lives only
-   in `raw` (and/or whose highlights are objects) previously resolved its
-   provenance but rendered "no readable content". The extractor must read the
-   same field shapes phCompassContentSeed/dimSeed already read in this file:
-   web_heading, web_intro|summary|raw body, web_closing, theme, and
-   string-or-object highlights/insights. */
+   verifies the developmental editor view-model. This tab was intentionally
+   reworked: instead of a read-only "content"/"no-point" card that poured `raw`
+   into Summary, it is now a structured editor that renders the SAME seven
+   editable fields for every room (Heading, Summary, Introduction, Theme,
+   Closing, Highlights, Insights). `raw` is surfaced separately as rawSource and
+   is NEVER poured into an editable field. */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
@@ -18,8 +16,6 @@ const path = require('node:path');
 
 const HTML = fs.readFileSync(path.join(__dirname, 'studio.html'), 'utf8');
 
-// Pull the function source out of studio.html by brace-matching from its
-// declaration, so we test the shipped code rather than a duplicate.
 function extractFn(name) {
   const start = HTML.indexOf('function ' + name + '(');
   assert.ok(start > -1, name + ' must exist in studio.html');
@@ -33,9 +29,12 @@ function extractFn(name) {
   return HTML.slice(start, i);
 }
 
-// buildProjectContextView closes over a module-level ROOMS const; provide it.
+// buildProjectContextView closes over ROOMS and the shared pure helpers.
+const DEPS = ['cuFpStr', 'cuFpList', 'cuNormalizeFieldprintPoint',
+  'cuFieldprintHasStructured', 'cuFieldprintFields'];
 const factory = new Function(
   'ROOMS',
+  DEPS.map(extractFn).join('\n') + '\n' +
   extractFn('buildProjectContextView') + '\nreturn buildProjectContextView;'
 );
 const buildProjectContextView = factory(['work', 'lens', 'field', 'call']);
@@ -48,53 +47,90 @@ const ROOM_META = {
 };
 const LDE = 'living-digital-expression';
 const view = (room, compass) => buildProjectContextView(LDE, LDE, room, compass, ROOM_META);
+const FIELD_LABELS = ['Heading', 'Summary', 'Introduction', 'Theme', 'Closing', 'Highlights', 'Insights'];
 
-test('Life\'s Work with body only in `raw` renders content (regression)', () => {
-  const compass = { points: { work: { gk_num: 5, gk_line: 5, raw: 'The real Life\'s Work reflection text.' } } };
-  const v = view('work', compass);
-  assert.strictEqual(v.mode, 'content', 'raw-only body must resolve to content, not no-point');
-  assert.ok(v.canSave, 'content mode is saveable');
-  const summary = v.fields.find((f) => f.label === 'Summary');
-  assert.ok(summary && /Life's Work reflection/.test(summary.value), 'raw surfaces as the Summary body');
-  assert.ok(/Life's Work reflection/.test(v.payloadText), 'raw flows into the save payload');
-});
-
-test('object-shaped highlights are read, not discarded (regression)', () => {
-  const compass = { points: { work: { gk_num: 5, gk_line: 5,
-    highlights: [{ text: 'first insight' }, 'second insight', { label: 'third' }] } } };
-  const v = view('work', compass);
-  assert.strictEqual(v.mode, 'content');
-  const hl = v.fields.find((f) => f.label === 'Highlights');
-  assert.deepStrictEqual(hl.items, ['first insight', 'second insight', 'third']);
-});
-
-test('web_heading and insights surface as readable fields', () => {
-  const compass = { points: { work: { gk_num: 5, gk_line: 5,
-    web_heading: 'My heading', insights: [{ title: 'an insight' }] } } };
-  const v = view('work', compass);
-  assert.ok(v.fields.some((f) => f.label === 'Heading' && f.value === 'My heading'));
-  assert.ok(v.fields.some((f) => f.label === 'Insights' && f.items[0] === 'an insight'));
-});
-
-test('curated rooms still render summary + intro unchanged (no regression)', () => {
-  const compass = { points: { lens: { gk_num: 12, gk_line: 3,
-    summary: 'S text', web_intro: 'I text', web_closing: 'C text', theme: 'T' } } };
+test('every room renders the same seven structured editable fields in order', () => {
+  const compass = { points: { lens: { summary: 'S', web_intro: 'I', theme: 'T' } } };
   const v = view('lens', compass);
-  assert.strictEqual(v.mode, 'content');
-  const labels = v.fields.map((f) => f.label);
-  assert.deepStrictEqual(labels, ['Summary', 'Intro', 'Theme', 'Closing']);
-  // raw fallback must NOT fire when curated copy exists
-  const compass2 = { points: { lens: { summary: 'S', web_intro: 'I', raw: 'RAW' } } };
-  assert.ok(!/RAW/.test(view('lens', compass2).payloadText), 'raw is body fallback only');
+  assert.strictEqual(v.mode, 'editor');
+  assert.strictEqual(v.canEdit, true);
+  assert.deepStrictEqual(v.fields.map((f) => f.label), FIELD_LABELS);
+  // Text vs list kinds are consistent.
+  const byKey = Object.fromEntries(v.fields.map((f) => [f.key, f]));
+  assert.strictEqual(byKey.highlights.kind, 'list');
+  assert.strictEqual(byKey.insights.kind, 'list');
+  assert.strictEqual(byKey.summary.kind, 'text');
 });
 
-test('truly empty point still yields honest no-point empty state', () => {
-  const v = view('work', { points: { work: { gk_num: 5, gk_line: 5 } } });
-  assert.strictEqual(v.mode, 'no-point');
-  assert.ok(v.visible && !v.canSave && v.empty);
+test("Life's Work with body only in `raw` exposes rawSource, never in a field", () => {
+  const compass = { points: { work: { gk_num: 5, gk_line: 5, raw: "The real Life's Work reflection text." } } };
+  const v = view('work', compass);
+  assert.strictEqual(v.mode, 'editor', 'raw-only point still opens the editor');
+  assert.match(v.rawSource, /Life's Work reflection/, 'raw is surfaced as rawSource');
+  assert.strictEqual(v.hasStructured, false, 'raw-only has no structured content yet');
+  const summary = v.fields.find((f) => f.key === 'summary');
+  const intro = v.fields.find((f) => f.key === 'web_intro');
+  assert.strictEqual(summary.value, '', 'raw is NOT poured into Summary');
+  assert.strictEqual(intro.value, '', 'raw is NOT poured into Introduction');
 });
 
-test('provenance resolves independently of body fields', () => {
+test('object-shaped highlights/insights are read into list items', () => {
+  const compass = { points: { work: {
+    highlights: [{ text: 'first insight' }, 'second insight', { label: 'third' }],
+    insights: [{ title: 'an insight' }],
+  } } };
+  const v = view('work', compass);
+  const hl = v.fields.find((f) => f.key === 'highlights');
+  const ins = v.fields.find((f) => f.key === 'insights');
+  assert.deepStrictEqual(hl.items, ['first insight', 'second insight', 'third']);
+  assert.deepStrictEqual(ins.items, ['an insight']);
+  assert.strictEqual(v.hasStructured, true);
+});
+
+test('curated room surfaces heading/summary/intro/theme/closing as field values', () => {
+  const compass = { points: { lens: {
+    web_heading: 'H', summary: 'S text', web_intro: 'I text', theme: 'T', web_closing: 'C text',
+  } } };
+  const v = view('lens', compass);
+  const byKey = Object.fromEntries(v.fields.map((f) => [f.key, f]));
+  assert.strictEqual(byKey.web_heading.value, 'H');
+  assert.strictEqual(byKey.summary.value, 'S text');
+  assert.strictEqual(byKey.web_intro.value, 'I text');
+  assert.strictEqual(byKey.theme.value, 'T');
+  assert.strictEqual(byKey.web_closing.value, 'C text');
+});
+
+test('eyebrow names the room; source carries Gene Key provenance', () => {
   const v = view('work', { points: { work: { gk_num: 5, gk_line: 5, raw: 'x' } } });
+  assert.strictEqual(v.eyebrow, 'FieldPrint · The Work');
   assert.match(v.source, /Life's Work 5\.5/);
+});
+
+test('empty point still opens the editor with empty (editable) fields', () => {
+  const v = view('work', { points: { work: { gk_num: 5, gk_line: 5 } } });
+  assert.strictEqual(v.mode, 'editor', 'empty structured fields remain editable');
+  assert.strictEqual(v.canEdit, true);
+  assert.strictEqual(v.hasStructured, false);
+  v.fields.forEach((f) => {
+    if (f.kind === 'text') assert.strictEqual(f.value, '');
+    else assert.deepStrictEqual(f.items, []);
+  });
+});
+
+test('no open room → honest no-room empty state, not editable', () => {
+  const v = view(null, { points: {} });
+  assert.strictEqual(v.mode, 'no-room');
+  assert.strictEqual(v.canEdit, false);
+  assert.ok(v.empty && /Open a room/.test(v.empty));
+});
+
+test('no cOMpass imported → honest no-compass empty state', () => {
+  const v = view('work', null);
+  assert.strictEqual(v.mode, 'no-compass');
+  assert.strictEqual(v.canEdit, false);
+  assert.ok(v.empty && /No cOMpass data/.test(v.empty));
+});
+
+test('view is invisible for any non-FieldPrint project id', () => {
+  assert.strictEqual(buildProjectContextView('other', LDE, 'work', { points: {} }, ROOM_META).visible, false);
 });
