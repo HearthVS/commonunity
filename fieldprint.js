@@ -144,6 +144,7 @@
     sigmode: 'auto',
     name: 'Markus Lehto',
     tagline: 'I build quiet systems that help people understand each other.',
+    heroCta: 'enter the field',
     eyebrow: 'CommonUnity',
     heroPhoto: '',
     heroAlt: '',
@@ -190,6 +191,7 @@
   const vizRoom = $('vizRoom');
   const vizName = $('vizName');
   const vizTag = $('vizTag');
+  const vizHeroCta = $('vizHeroCta');
   const vizEyebrowText = $('vizEyebrowText');
   const vizFootName = $('vizFootName');
   const sectionCopyControls = $('sectionCopyControls');
@@ -973,6 +975,7 @@
 
     vizName.textContent = state.name || 'Untitled';
     vizTag.textContent = state.tagline || '';
+    if (vizHeroCta) vizHeroCta.textContent = state.heroCta || 'enter the field';
     vizEyebrowText.textContent = state.eyebrow || 'CommonUnity';
     vizFootName.textContent = state.name || 'Untitled';
 
@@ -2036,6 +2039,7 @@
     // Imported palettes replace any prior user colour overrides.
     state.roleOverrides = { root: null, expression: null, radiance: null };
     if (hero.intro) state.tagline = String(hero.intro);
+    if (hero.cta) state.heroCta = String(hero.cta);
 
     const rooms = Array.isArray(model.rooms) ? model.rooms : [];
     state.sections = SECTION_KEYS.map((key, i) => {
@@ -2107,10 +2111,21 @@
      Hero framing, palette/roleOverrides, cipher, images, section role/imgRole,
      and any field not present in the payload are left exactly as they are.
      Returns the number of fields actually applied. */
-  function applyPrefill(sections) {
-    if (!Array.isArray(sections) || !Array.isArray(state.sections)) return 0;
-    const TEXT_FIELDS = ['eyebrow', 'title', 'body', 'narrative', 'prompt'];
+  function applyPrefill(sections, arrival) {
     let applied = 0;
+    // Global Arrival welcome → the hero identity sentence (tagline) and the
+    // hero entry CTA. This is an explicitly authorised overwrite of those two
+    // hero fields: a non-empty message/CTA sent from Studio replaces whatever
+    // the Builder held. Everything else — portrait, palette, framing, images,
+    // layout and unsent fields — is left untouched.
+    if (arrival && typeof arrival === 'object') {
+      const msg = typeof arrival.message === 'string' ? arrival.message.trim() : '';
+      if (msg) { state.tagline = msg; applied++; }
+      const cta = typeof arrival.cta === 'string' ? arrival.cta.trim() : '';
+      if (cta) { state.heroCta = cta; applied++; }
+    }
+    if (!Array.isArray(sections) || !Array.isArray(state.sections)) return applied;
+    const TEXT_FIELDS = ['eyebrow', 'title', 'body', 'narrative', 'prompt'];
     sections.forEach((incoming) => {
       if (!incoming || typeof incoming !== 'object') return;
       const target = state.sections.find((s) => s && s.key === incoming.key);
@@ -2119,14 +2134,16 @@
         if (incoming[f] != null) { target[f] = String(incoming[f]); applied++; }
       });
       if (incoming.artifacts != null && Array.isArray(incoming.artifacts)) {
-        target.artifacts = incoming.artifacts
+        const mapped = incoming.artifacts
           .filter((a) => a && (a.title || a.note))
           .map((a) => ({
             tag: (typeof a.tag === 'string' && a.tag) ? a.tag : 'Signal',
             title: a.title != null ? String(a.title) : '',
             note: a.note != null ? String(a.note) : '',
           }));
-        applied++;
+        // Only count as an applied field when real artifact content is present,
+        // so the success feedback never over-reports empty payloads.
+        if (mapped.length) { target.artifacts = mapped; applied++; }
       }
     });
     return applied;
@@ -2214,9 +2231,16 @@
           baseline = snapshot();          // safe reset baseline for this identity
           await loadDraft();              // restores the matching saved draft, if any
         }
-        const applied = applyPrefill(d.sections);
+        const applied = applyPrefill(d.sections, d.arrival);
         if (applied) {
+          // Refresh the hero preview (identity sentence + entry CTA, rendered by
+          // applyComposition) and the Identity text inputs so an explicitly sent
+          // Arrival is actually visible — updating state alone left the old
+          // tagline and CTA on screen.
           renderSections();
+          syncControlsToState();
+          syncHeroEditor();
+          applyComposition();
           markDirty();
           setLoadNote(true, 'Applied ' + applied + ' field' + (applied === 1 ? '' : 's') + ' from Studio — your framing and images are unchanged.');
           // Persist immediately under the correct owner so the merge survives an
@@ -2325,6 +2349,7 @@
       tagline: state.tagline,
       hero: {
         mode: state.hero, photo: state.photo, alt: state.heroAlt,
+        cta: state.heroCta,
         focalX: state.heroFocalX, focalY: state.heroFocalY,
         zoom: state.heroZoom,
         fadeMode: state.heroFadeMode, fadeStrength: state.heroFadeStrength,
@@ -2373,6 +2398,7 @@
     if (s.name != null) state.name = String(s.name);
     if (s.tagline != null) state.tagline = String(s.tagline);
     const h = s.hero || {};
+    if (h.cta != null) state.heroCta = String(h.cta);
     if (h.mode) state.hero = h.mode;
     if (h.photo) state.photo = h.photo;
     state.heroAlt = h.alt || '';

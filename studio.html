@@ -20740,7 +20740,7 @@ if (document.readyState === 'loading') {
       };
 
       // Coverage counters — for the honest source note.
-      var counts = { compass: 0, captured: 0, mixed: 0, empty: 0, total: 0 };
+      var counts = { compass: 0, captured: 0, mixed: 0, empty: 0, arrival: 0, total: 0 };
       Object.keys(sections).forEach(function (k) {
         counts.total += 1;
         counts[sections[k].source] += 1;
@@ -24143,12 +24143,20 @@ if (document.readyState === 'loading') {
         personName ? personName : ''
       );
       var heroIntroCompass = lpFirst(pl.web_intro, pw.web_intro, pl.summary, pw.summary);
+      // Global Arrival welcome is the approved, whole-presence hero copy and
+      // takes precedence over any per-room (lens-first) compass text. CTA is
+      // carried alongside for the Builder / public render.
+      var arrival = (window.state && window.state.level2 && window.state.level2.arrival) || {};
+      var arrivalMsg = (typeof arrival.message === 'string') ? arrival.message.trim() : '';
+      var arrivalCta = (typeof arrival.cta === 'string' && arrival.cta.trim()) ? arrival.cta.trim() : '';
       var heroCaptured = !!(capThreshold || capThresholdIntro);
       var hero = {
         heading: heroHeading ? lpTrim(heroHeading, 140) : (personName || ''),
-        intro:   capThresholdIntro || (heroIntroCompass ? lpTrim(heroIntroCompass, 480) : ''),
-        source:  heroCaptured ? (heroIntroCompass ? 'mixed' : 'captured')
-                              : (heroIntroCompass || heroHeading ? 'compass' : 'empty')
+        intro:   arrivalMsg || capThresholdIntro || (heroIntroCompass ? lpTrim(heroIntroCompass, 480) : ''),
+        cta:     arrivalCta,
+        source:  arrivalMsg ? 'arrival'
+                            : (heroCaptured ? (heroIntroCompass ? 'mixed' : 'captured')
+                                            : (heroIntroCompass || heroHeading ? 'compass' : 'empty'))
       };
 
       // ── Four sections ──────────────────────────────────────
@@ -24183,7 +24191,7 @@ if (document.readyState === 'loading') {
         hero: hero, work: workSec, lens: lensSec,
         field: fieldSec, call: callSec, invitation: invitation
       };
-      var counts = { compass: 0, captured: 0, mixed: 0, empty: 0, total: 0 };
+      var counts = { compass: 0, captured: 0, mixed: 0, empty: 0, arrival: 0, total: 0 };
       Object.keys(sections).forEach(function (k) {
         counts.total += 1;
         counts[sections[k].source] += 1;
@@ -24209,6 +24217,10 @@ if (document.readyState === 'loading') {
         name: personName || '',
         sections: sections,
         counts: counts,
+        // Global Arrival welcome + CTA — the whole-presence hero copy, plumbed
+        // through so phPublicHomeModel resolves it onto model.hero ahead of any
+        // per-room compass text. Never sourced from the frozen baseline.
+        arrival: { message: arrivalMsg, cta: arrivalCta },
         transcripts: { count: transcripts.length },
         sourceSeeds: sourceSeeds,
         // The person's chosen visitor composition (HOME_COMPOSITION). Plumbed
@@ -26364,6 +26376,7 @@ if (document.readyState === 'loading') {
     // Pending non-destructive content prefill from the FieldPrint editor tab.
     // Held until the iframe reports ready, then posted once.
     var phV5PendingPrefill = null;
+    var phV5PendingArrival = null;
     var phV5PrefillAck = null;
     // Explicit intent for the NEXT fieldprint-ready. A bare/passive ready (e.g.
     // the iframe's own load-time handshake, or a stray reload) carries intent
@@ -26529,14 +26542,16 @@ if (document.readyState === 'loading') {
     // leaves hero framing, roleOverrides, palette, cipher, images and any
     // unselected fields untouched. Returns true if a message was posted.
     function phV5FlushPrefill() {
-      if (!phV5PendingPrefill) return false;
+      if (!phV5PendingPrefill && !phV5PendingArrival) return false;
       var frame = document.getElementById('fieldprint-v5-frame');
       if (!frame || !frame.contentWindow) return false;
-      var sections = phV5PendingPrefill;
+      var sections = phV5PendingPrefill || [];
+      var arrival = phV5PendingArrival || null;
       phV5PendingPrefill = null;
+      phV5PendingArrival = null;
       try {
         frame.contentWindow.postMessage(
-          { type: 'fieldprint-prefill', sections: sections, owner: phV5OwnerKey() },
+          { type: 'fieldprint-prefill', sections: sections, arrival: arrival, owner: phV5OwnerKey() },
           window.location.origin);
         return true;
       } catch (_) { return false; }
@@ -26545,9 +26560,18 @@ if (document.readyState === 'loading') {
     // Called by the FieldPrint editor's "Send to FieldPrint Builder" handoff.
     // Opens the Builder overlay and delivers the reviewed content prefill.
     // `onAck` (optional) is invoked with the Builder's acknowledgement.
-    function phV5SendPrefill(sections, onAck) {
-      if (!sections) return;
-      phV5PendingPrefill = sections;
+    function phV5SendPrefill(sections, arrival, onAck) {
+      // Back-compat: (sections, onAck) still supported.
+      if (typeof arrival === 'function') { onAck = arrival; arrival = null; }
+      var hasSections = Array.isArray(sections) && sections.length;
+      var hasArrival = arrival && typeof arrival === 'object' &&
+        (String(arrival.message || '').trim() || String(arrival.cta || '').trim());
+      if (!hasSections && !hasArrival) return;
+      phV5PendingPrefill = hasSections ? sections : null;
+      phV5PendingArrival = hasArrival ? {
+        message: String(arrival.message || '').trim(),
+        cta: String(arrival.cta || '').trim()
+      } : null;
       phV5PrefillAck = typeof onAck === 'function' ? onAck : null;
       // Reviewed handoff: set 'prefill' intent so the ready handler (fresh load)
       // or the inline path (already-live surface) posts ONLY the reviewed
@@ -27407,11 +27431,15 @@ if (document.readyState === 'loading') {
       var name  = pmFirst(input.name, content.name);
       var photo = pmStr(content.photo);
 
-      // Hero / threshold — person copy first, then seed, then public fallback.
+      // Hero / threshold — the approved global Arrival welcome takes precedence
+      // over any per-room (lens-first) copy; then person hero copy, seed, and a
+      // public fallback. CTA (default handled downstream) rides alongside.
       var heroSec = previewSections.hero || {};
+      var arrivalIn = (input.arrival && typeof input.arrival === 'object') ? input.arrival : {};
       var hero = {
         heading: pmFirst(heroSec.heading, seedThreshold.heading, name),
-        intro:   pmFirst(heroSec.intro, seedThreshold.intro) || PH_PUBLIC_FALLBACKS.heroIntro
+        intro:   pmFirst(arrivalIn.message, heroSec.intro, seedThreshold.intro) || PH_PUBLIC_FALLBACKS.heroIntro,
+        cta:     pmFirst(arrivalIn.cta, heroSec.cta)
       };
 
       // Rooms — warm public labels/eyebrows, never the raw dimension key.
@@ -30634,6 +30662,10 @@ try {
 
     setStatus(view.hasStructured ? '' : 'No structured content yet — write freely below.', false);
 
+    // Global Arrival — shared across every room, rendered before the room-
+    // specific fields. Not a fifth room; persisted once under level2.arrival.
+    ctxBody.appendChild(renderArrivalSection());
+
     // Optional room-level Evolve (runs Inspire on each text field in turn).
     const roomBar = document.createElement('div');
     roomBar.className = 'fo-pc-field-head';
@@ -30735,9 +30767,9 @@ try {
   }
 
   // ── Nexus Inspire — stream a suggestion, then Accept / Edit / Reject ───────
-  function inspireStream(body, onChunk) {
+  function inspireStream(body, onChunk, path) {
     const base = (typeof API_BASE === 'string') ? API_BASE : '';
-    return fetch(base + '/inspire-layer2', {
+    return fetch(base + (path || '/inspire-layer2'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }).then((res) => {
       if (!res.ok || !res.body) throw new Error('inspire failed');
@@ -30864,6 +30896,77 @@ try {
     return ev;
   }
 
+  // ── Global Arrival — one first-person welcome shared across all rooms ───────
+  // Persisted under the forward-compatible level2.arrival contract
+  // ({ message, cta, origin, version, updatedAt }). Never mutates the frozen
+  // cOMpass baseline. A missing level2 holder is created lazily so a legacy
+  // draft can still carry an Arrival.
+  const ARRIVAL_DEFAULT_CTA = 'Come in';
+  function cuArrivalState() {
+    const st = window.state;
+    if (!st) return { message: '', cta: ARRIVAL_DEFAULT_CTA };
+    if (!st.level2 || typeof st.level2 !== 'object') st.level2 = { version: 'studio-level2-v1' };
+    let a = st.level2.arrival;
+    if (!a || typeof a !== 'object') {
+      a = { message: '', cta: ARRIVAL_DEFAULT_CTA, origin: '', version: 'arrival-v1' };
+      st.level2.arrival = a;
+    }
+    if (typeof a.message !== 'string') a.message = '';
+    if (typeof a.cta !== 'string' || !a.cta) a.cta = ARRIVAL_DEFAULT_CTA;
+    return a;
+  }
+
+  // Write the Arrival, tagging provenance. Never called silently over an
+  // accepted/manual message — the caller (Accept/Edit or a manual edit) is
+  // always an explicit person action.
+  function writeArrival(patch, origin) {
+    const a = cuArrivalState();
+    if (patch && patch.message != null) a.message = String(patch.message);
+    if (patch && patch.cta != null) a.cta = String(patch.cta) || ARRIVAL_DEFAULT_CTA;
+    a.origin = origin || a.origin || 'manual';
+    a.version = a.version || 'arrival-v1';
+    a.updatedAt = new Date().toISOString();
+    scheduleSave();
+  }
+
+  // Accepted, publishable content of the four aspects, for Arrival synthesis.
+  // Reuses the shared normalizer so only structured web-safe fields cross —
+  // never raw transcripts or mechanics.
+  function cuArrivalRoomsContext(st) {
+    st = st || {};
+    const points = (st.compassData && st.compassData.points) || {};
+    const out = {};
+    ROOMS.forEach((room) => {
+      const norm = cuNormalizeFieldprintPoint(points[room] || {});
+      const pt = {};
+      if (norm.summary) pt.summary = norm.summary;
+      if (norm.web_intro) pt.web_intro = norm.web_intro;
+      if (norm.theme) pt.theme = norm.theme;
+      if (norm.web_heading) pt.web_heading = norm.web_heading;
+      if (norm.web_closing) pt.web_closing = norm.web_closing;
+      if (Object.keys(pt).length) out[room] = pt;
+    });
+    return out;
+  }
+
+  // Aspects that have no structured content yet — surfaced as a small note so
+  // the person knows the welcome is synthesised from what is present, not all
+  // four. Non-blocking.
+  function cuArrivalMissingAspects(st) {
+    const ctx = cuArrivalRoomsContext(st);
+    return ROOMS.filter((room) => !ctx[room]);
+  }
+
+  function arrivalBody(st) {
+    st = st || {};
+    return {
+      companion: st.person || '',
+      rooms: cuArrivalRoomsContext(st),
+      audience: cuAudienceContext(st),
+      evidence: cuEvidenceContext(st),
+    };
+  }
+
   function inspireBody(room, fieldKey) {
     const st = window.state || {};
     // Use the ORIGINAL cOMpass source (baseline) for grounding, plus the current
@@ -30967,6 +31070,138 @@ try {
     return jobs.reduce((p, job) => p.then(job), Promise.resolve());
   }
 
+  // ── Global Arrival section — rendered once, above every room's fields ──────
+  // A shared first-person welcome + a separate CTA (default "Come in"). Nexus
+  // synthesises it from all four aspects; the suggestion is reviewed with the
+  // same Accept / Edit / Reject pattern and never silently overwrites an
+  // accepted or manually-edited message.
+  function renderArrivalSection() {
+    const st = window.state || {};
+    const a = cuArrivalState();
+    const sec = document.createElement('div');
+    sec.className = 'fo-pc-field fo-pc-arrival';
+    sec.dataset.arrival = '1';
+
+    const head = document.createElement('div');
+    head.className = 'fo-pc-field-head';
+    const label = document.createElement('span');
+    label.className = 'fo-pc-field-label';
+    label.textContent = 'Arrival — your welcome';
+    head.appendChild(label);
+    const right = document.createElement('span');
+    right.style.display = 'flex';
+    right.style.gap = '6px';
+    right.style.alignItems = 'baseline';
+    const prov = document.createElement('span');
+    prov.className = 'fo-pc-provenance';
+    prov.textContent = a.origin === 'nexus' ? 'Nexus-assisted'
+      : (a.origin === 'manual' && a.message ? 'your edit' : '');
+    right.appendChild(prov);
+    const insBtn = document.createElement('button');
+    insBtn.type = 'button';
+    insBtn.className = 'fo-pc-inspire-btn';
+    insBtn.textContent = 'Shape my welcome with Nexus ✦';
+    right.appendChild(insBtn);
+    head.appendChild(right);
+    sec.appendChild(head);
+
+    const hint = document.createElement('p');
+    hint.className = 'fo-pc-field-hint';
+    hint.textContent = 'One shared welcome that greets every visitor before any room. First person, 35–60 words.';
+    sec.appendChild(hint);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'fo-pc-input';
+    ta.rows = 3;
+    ta.dataset.arrivalMessage = '1';
+    ta.value = a.message || '';
+    ta.addEventListener('input', () => {
+      writeArrival({ message: ta.value }, 'manual');
+      prov.textContent = ta.value ? 'your edit' : '';
+    });
+    sec.appendChild(ta);
+
+    // CTA — kept separate from the welcome. Default "Come in".
+    const ctaRow = document.createElement('div');
+    ctaRow.className = 'fo-pc-field-head';
+    const ctaLabel = document.createElement('span');
+    ctaLabel.className = 'fo-pc-field-hint';
+    ctaLabel.textContent = 'Button label';
+    ctaRow.appendChild(ctaLabel);
+    const cta = document.createElement('input');
+    cta.type = 'text';
+    cta.className = 'fo-pc-input';
+    cta.style.maxWidth = '180px';
+    cta.dataset.arrivalCta = '1';
+    cta.value = a.cta || ARRIVAL_DEFAULT_CTA;
+    cta.addEventListener('input', () => { writeArrival({ cta: cta.value }, a.origin || 'manual'); });
+    ctaRow.appendChild(cta);
+    sec.appendChild(ctaRow);
+
+    const missing = cuArrivalMissingAspects(st);
+    if (missing.length) {
+      const note = document.createElement('p');
+      note.className = 'fo-pc-note';
+      const names = missing.map((r) => (ROOM_META && ROOM_META[r] ? ROOM_META[r].title : r));
+      note.textContent = 'Synthesised from what you have so far. Still to add: ' + names.join(', ') + '.';
+      sec.appendChild(note);
+    }
+
+    insBtn.addEventListener('click', () => arrivalInspire(sec, insBtn, ta, prov));
+    return sec;
+  }
+
+  function arrivalInspire(sec, btn, ta, prov) {
+    if (!sec) return Promise.resolve();
+    const existing = sec.querySelector('.fo-pc-suggestion');
+    if (existing) existing.remove();
+    if (btn) { btn.disabled = true; btn.textContent = 'Shaping…'; }
+
+    const box = document.createElement('div');
+    box.className = 'fo-pc-suggestion';
+    const txt = document.createElement('div');
+    txt.className = 'fo-pc-suggestion-text';
+    txt.textContent = 'Listening…';
+    box.appendChild(txt);
+    sec.appendChild(box);
+
+    const finish = () => { if (btn) { btn.disabled = false; btn.textContent = 'Shape my welcome with Nexus ✦'; } };
+
+    return inspireStream(arrivalBody(window.state || {}), (t) => { txt.textContent = t; }, '/inspire-arrival')
+      .then((full) => {
+        finish();
+        const suggestion = (full || '').trim();
+        if (!suggestion) { txt.textContent = 'No welcome came through. Try again.'; return; }
+        txt.textContent = suggestion;
+        const actions = document.createElement('div');
+        actions.className = 'fo-pc-suggestion-actions';
+
+        const accept = document.createElement('button');
+        accept.type = 'button'; accept.className = 'fo-pc-mini-btn'; accept.textContent = 'Accept';
+        accept.addEventListener('click', () => {
+          if (ta) ta.value = suggestion;
+          writeArrival({ message: suggestion }, 'nexus');
+          if (prov) prov.textContent = 'Nexus-assisted';
+          box.remove();
+        });
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'fo-pc-mini-btn'; edit.textContent = 'Edit';
+        edit.addEventListener('click', () => {
+          if (ta) { ta.value = suggestion; ta.focus(); }
+          writeArrival({ message: suggestion }, 'manual');
+          if (prov) prov.textContent = 'your edit';
+          box.remove();
+        });
+        const reject = document.createElement('button');
+        reject.type = 'button'; reject.className = 'fo-pc-mini-btn'; reject.textContent = 'Reject';
+        reject.addEventListener('click', () => box.remove());
+
+        actions.appendChild(accept); actions.appendChild(edit); actions.appendChild(reject);
+        box.appendChild(actions);
+      })
+      .catch(() => { finish(); txt.textContent = 'Nexus could not respond right now.'; });
+  }
+
   // ── Compare with cOMpass ───────────────────────────────────────────────────
   function renderCompare() {
     if (!ctxCompare) return;
@@ -31048,87 +31283,53 @@ try {
     return rows;
   }
 
-  function renderHandoffReview() {
-    if (!ctxHandoff) return;
-    if (ctxCompare) { ctxCompare.hidden = true; ctxCompare.textContent = ''; }
-    ctxHandoff.textContent = '';
-    ctxHandoff.hidden = false;
-    const rows = buildHandoffSections();
-    if (!rows.length) {
-      const p = document.createElement('p');
-      p.className = 'fo-pc-empty';
-      p.textContent = 'Nothing to send yet — add some content first.';
-      ctxHandoff.appendChild(p);
-      return;
-    }
-    const intro = document.createElement('p');
-    intro.className = 'fo-pc-compare-summary';
-    intro.textContent = 'Review what to send to the FieldPrint Builder. Only checked content is applied; hero framing, colours, images and anything you didn’t select stay as they are in the Builder.';
-    ctxHandoff.appendChild(intro);
-
-    rows.forEach((r) => {
-      const rt = document.createElement('div');
-      rt.className = 'fo-pc-compare-room-title';
-      rt.textContent = r.title;
-      ctxHandoff.appendChild(rt);
-      r.fields.forEach((f) => {
-        const row = document.createElement('label');
-        row.className = 'fo-pc-handoff-row';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.checked = true;
-        cb.dataset.room = r.room; cb.dataset.secKey = r.secKey; cb.dataset.fieldKey = f.key;
-        row.appendChild(cb);
-        const span = document.createElement('span');
-        const preview = f.isList ? (f.value.map((a) => a.title).join(', ')) : f.value;
-        span.textContent = f.label + ' — ' + String(preview).slice(0, 90) + (String(preview).length > 90 ? '…' : '');
-        row.appendChild(span);
-        ctxHandoff.appendChild(row);
-      });
+  // Flatten every handoff row into non-destructive Builder section payloads —
+  // ALL non-empty accepted fields across all rooms (no per-field selection).
+  // Keyed by Builder section key; only fields present here will be merged.
+  function handoffRowsToSections(rows) {
+    return rows.map((r) => {
+      const sec = { key: r.secKey };
+      r.fields.forEach((f) => { sec[f.key] = f.value; });
+      return sec;
     });
-    const note = document.createElement('p');
-    note.className = 'fo-pc-note';
-    note.textContent = 'Theme has no matching Builder field and is not sent.';
-    ctxHandoff.appendChild(note);
-
-    const confirm = document.createElement('button');
-    confirm.type = 'button'; confirm.className = 'fo-pc-btn fo-pc-btn-primary';
-    confirm.textContent = 'Send selected to Builder';
-    confirm.addEventListener('click', () => {
-      const sections = collectHandoffSelection(rows);
-      if (!sections.length) { if (typeof showToast === 'function') showToast('Select at least one field to send.'); return; }
-      if (typeof window.phV5SendPrefill === 'function') {
-        window.phV5SendPrefill(sections, function (ack) {
-          if (typeof showToast === 'function') {
-            const n = ack && typeof ack.applied === 'number' ? ack.applied : 0;
-            showToast(n ? ('FieldPrint Builder updated ' + n + ' field' + (n === 1 ? '' : 's') + ' — hero framing and images untouched.')
-                        : 'FieldPrint Builder received your content.');
-          }
-        });
-        if (typeof showToast === 'function') showToast('Sending selected content to the FieldPrint Builder…');
-        ctxHandoff.hidden = true; ctxHandoff.textContent = '';
-      } else if (typeof showToast === 'function') {
-        showToast('Builder is not available right now.');
-      }
-    });
-    ctxHandoff.appendChild(confirm);
   }
 
-  function collectHandoffSelection(rows) {
-    const bySec = {};
-    ctxHandoff.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-      if (!cb.checked) return;
-      const secKey = cb.dataset.secKey; const room = cb.dataset.room; const fieldKey = cb.dataset.fieldKey;
-      const r = rows.find((x) => x.room === room);
-      const f = r && r.fields.find((x) => x.key === fieldKey);
-      if (!f) return;
-      if (!bySec[secKey]) bySec[secKey] = { key: secKey };
-      bySec[secKey][fieldKey] = f.value;
+  // One-click "Send to FieldPrint Builder": sends all non-empty accepted room
+  // fields plus the global Arrival, opens the Builder, and gives clear success
+  // feedback. Non-destructive — only the explicitly-sent fields are merged; the
+  // Builder's hero framing, colours, images, layout and unsent fields are left
+  // untouched. If there is nothing sendable, says so instead of failing silently.
+  function sendAllToBuilder() {
+    const st = window.state || {};
+    const rows = buildHandoffSections();
+    const sections = handoffRowsToSections(rows);
+    const a = cuArrivalState();
+    const arrival = (String(a.message || '').trim() || String(a.cta || '').trim())
+      ? { message: String(a.message || '').trim(), cta: String(a.cta || '').trim() || ARRIVAL_DEFAULT_CTA }
+      : null;
+
+    if (!sections.length && !arrival) {
+      if (typeof showToast === 'function') {
+        showToast('Nothing to send yet — write or accept some content (or shape your Arrival welcome) first.');
+      }
+      return;
+    }
+    if (typeof window.phV5SendPrefill !== 'function') {
+      if (typeof showToast === 'function') showToast('Builder is not available right now.');
+      return;
+    }
+    window.phV5SendPrefill(sections, arrival, function (ack) {
+      if (typeof showToast !== 'function') return;
+      const n = ack && typeof ack.applied === 'number' ? ack.applied : 0;
+      showToast(n ? ('FieldPrint Builder updated ' + n + ' field' + (n === 1 ? '' : 's') +
+                     ' — hero framing, images and layout untouched.')
+                  : 'FieldPrint Builder received your content.');
     });
-    return Object.keys(bySec).map((k) => bySec[k]);
+    if (typeof showToast === 'function') showToast('Opening the FieldPrint Builder with your content…');
   }
 
   if (btnCompare) btnCompare.addEventListener('click', renderCompare);
-  if (btnBuilder) btnBuilder.addEventListener('click', renderHandoffReview);
+  if (btnBuilder) btnBuilder.addEventListener('click', sendAllToBuilder);
   if (btnSaveJson) btnSaveJson.addEventListener('click', () => {
     if (typeof studioSaveJSON === 'function') studioSaveJSON();
   });
