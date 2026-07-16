@@ -10538,16 +10538,10 @@ body.hw-open { overflow: hidden; }
       Load
     </button>
     <input type="file" id="studio-load-file" accept=".json" style="display:none">
-    <!-- Studio Path header button removed for v0.1 dashboard de-crowding;
-         Living Profile remains as the single-click L1 entry. The Studio
-         Path modal is still reachable from the entrance trail CTA and
-         from the Oṁ widget so no functionality is lost. -->
-    <button type="button" class="studio-path-btn studio-path-lp-btn" id="studio-path-living-profile-header"
-            title="Open the Living Profile builder (Level 1)">
-      <span class="spb-dot" aria-hidden="true"></span>
-      Living Profile
-      <span class="spb-levels">L1</span>
-    </button>
+    <!-- Studio Path header button and Living Profile pill removed for
+         dashboard de-crowding (Fieldprint is the current priority). Both
+         Studio Path and Living Profile remain reachable from the entrance
+         trail CTAs and the Oṁ widget, so no functionality is lost. -->
     </div>
 
     <!-- ON AIR timer pill -->
@@ -28674,11 +28668,8 @@ if (document.readyState === 'loading') {
     var entrancePathBtn = document.getElementById('studio-path-open-entrance');
     if (headerPathBtn)   headerPathBtn.addEventListener('click', openModal);
     if (entrancePathBtn) entrancePathBtn.addEventListener('click', openModal);
-    // Direct Living Profile entry from the Studio toolbar — gives the
-    // owner a single-click path into Level 1 without crossing the
-    // Studio Path modal first.
-    var headerLpBtn = document.getElementById('studio-path-living-profile-header');
-    if (headerLpBtn) headerLpBtn.addEventListener('click', openLivingProfile);
+    // Living Profile entry from the entrance trail CTA. (The toolbar
+    // pill was removed for dashboard de-crowding; entrance access stays.)
     var lpEntranceBtn = document.getElementById('living-profile-open-entrance');
     if (lpEntranceBtn) lpEntranceBtn.addEventListener('click', openLivingProfile);
     var wpEntranceBtn = document.getElementById('website-preview-open-entrance');
