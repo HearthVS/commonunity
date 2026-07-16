@@ -29899,15 +29899,35 @@ if (document.readyState === 'loading') {
     }
 
     // Only surface fields that are actually present (defensive, order stable).
+    // Field sources mirror the canonical cOMpass content contract used by
+    // phCompassContentSeed/dimSeed elsewhere in this file (web_heading, then
+    // web_intro|summary|raw for the body, web_closing, and object-or-string
+    // highlights/insights) so every room resolves the same way this app already
+    // reads it — not a narrower subset that silently drops readable content.
     const fields = [];
     const str = (v) => (typeof v === 'string' ? v.trim() : '');
-    if (str(point.summary))     fields.push({ label: 'Summary', value: str(point.summary) });
-    if (str(point.web_intro))   fields.push({ label: 'Intro', value: str(point.web_intro) });
+    // Highlights/insights entries may be plain strings or objects carrying the
+    // text under text/label/title (see normHighlights); read both shapes.
+    const listOf = (arr) => Array.isArray(arr)
+      ? arr.map((h) => str(typeof h === 'string' ? h : (h && (h.text || h.label || h.title)))).filter(Boolean)
+      : [];
+    if (str(point.web_heading)) fields.push({ label: 'Heading', value: str(point.web_heading) });
+    const summaryVal = str(point.summary);
+    const introVal = str(point.web_intro);
+    if (summaryVal) fields.push({ label: 'Summary', value: summaryVal });
+    if (introVal)   fields.push({ label: 'Intro', value: introVal });
+    // Some rooms (e.g. Life's Work) carry their body only in `raw`; surface it
+    // as the body when no curated summary/intro exists, matching dimSeed's
+    // firstStr(web_intro, summary, raw) precedence rather than showing nothing.
+    if (!summaryVal && !introVal && str(point.raw)) {
+      fields.push({ label: 'Summary', value: str(point.raw) });
+    }
     if (str(point.theme))       fields.push({ label: 'Theme', value: str(point.theme) });
     if (str(point.web_closing)) fields.push({ label: 'Closing', value: str(point.web_closing) });
-    const highlights = Array.isArray(point.highlights)
-      ? point.highlights.map(str).filter(Boolean) : [];
+    const highlights = listOf(point.highlights);
     if (highlights.length) fields.push({ label: 'Highlights', items: highlights });
+    const insights = listOf(point.insights);
+    if (insights.length) fields.push({ label: 'Insights', items: insights });
 
     if (!fields.length) {
       return { visible: true, mode: 'no-point', eyebrow: eyebrow, source: source, canSave: false,
