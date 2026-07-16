@@ -3892,6 +3892,17 @@ async def admin_get_nexus_model(request: Request):
     return _nexus_model_state()
 
 
+@app.get("/api/admin/nexus-prompt")
+async def admin_get_nexus_prompt(request: Request):
+    """Admin: read-only snapshot of the live Nexus FieldPrint prompt — its
+    version label, full system text, per-field instructions, room contracts, and
+    the audience/evidence contracts the endpoint accepts. Non-secret. The prompt
+    is a versioned source constant, so there is no runtime edit surface; the
+    `editing_deferred` field explains why live editing is out of scope for MVP."""
+    _require_admin(request)
+    return _nexus_fieldprint_prompt_state()
+
+
 @app.get("/api/admin/nexus-model/available")
 async def admin_list_available_models(request: Request, refresh: bool = False):
     """Admin: models discovered for this API account via the SDK Models API.
@@ -5098,30 +5109,183 @@ class InspireLayer2Request(BaseModel):
     gk_shadow: str = ""
     gk_gift: str = ""
     gk_siddhi: str = ""
+    # Global audience context (whole-FieldPrint, not per-room). Keys mirror the
+    # agreed contract; any may be empty. Owner-stated only — Nexus writes FOR
+    # these people, never invents new ones. See NEXUS_FIELDPRINT_PROMPT.
+    audience: dict = {}     # audience_statement, arrival_statement (canonical,
+                            # one freeform answer each) + optional specific keys
+                            # people_to_reach/connection_welcomed/visitor_should_*
+    # Approved uploaded evidence the person voluntarily provided (upload is
+    # consent to Nexus use). Sealed/private raw OM Cipher inputs are NEVER sent
+    # here — only surfaced profile/document material. `documents` is a
+    # forward-compatible list of {label, text, source} for future uploads.
+    evidence: dict = {}     # work_background, education, documents[]
 
-INSPIRE_L2_SYSTEM = """You are a synthesis companion in the CommonUnity facilitation methodology.
+# ── Nexus FieldPrint Prompt v1 ───────────────────────────────────────────
+# Versioned constitutional prompt for public FieldPrint synthesis. FieldPrint
+# is the person's outward-facing personal hOMepage — their minimum viable
+# digital self, connected to their wider (Web 2) audience. The version label
+# is admin-inspectable via GET /api/admin/nexus-prompt; text lives in source so
+# changes ship through review (no insecure runtime prompt-edit endpoint).
+NEXUS_FIELDPRINT_PROMPT_VERSION = "nexus-fieldprint-prompt-v1"
 
-You are helping someone distil their own reflections into clear, resonant language for their personal compass profile. You are not interpreting for them — you are offering a first draft they can refine.
+INSPIRE_L2_SYSTEM = """You are Nexus, CommonUnity's editorial synthesis companion (""" + NEXUS_FIELDPRINT_PROMPT_VERSION + """).
 
-For THEME: Write one clear sentence (8–15 words) capturing the essential thread of this compass point. Grounded, specific, first-person or third-person as appropriate.
+You prepare public FieldPrint language. A FieldPrint is the person's outward-facing personal hOMepage — the minimum viable digital self that connects who they really are to their wider (Web 2) audience. It transmits the person's real self. It never manufactures a brand.
 
-For INSIGHT: Write one insight block (2–3 sentences) — a specific observation about how this person operates in this direction. Concrete, not abstract.
+WHAT YOU SYNTHESISE
+You integrate up to four sources of approved source context, and nothing else:
+  1. cOMpass orientation — the person's immutable baseline (Gene Key profile, room reflections).
+  2. OM Cipher / profile evidence — material the person VOLUNTARILY uploaded (e.g. work background, education). Uploading it is their consent for you to use it. Use only what appears in the request; never sealed or private raw inputs.
+  3. stUdio development — Spark captures and drafts the person has written.
+  4. Audience context — who the person hopes to reach, and what a visitor should understand, feel, and do.
 
-For SUMMARY: Write 2–3 sentences for public sharing — clear, resonant, professional. Something they'd be proud to have on their website or profile.
+CONSTITUTION (non-negotiable)
+  • Preserve the person's meaning, vocabulary, perspective, authorship, and factual accuracy. The words stay theirs.
+  • Do not invent facts, achievements, roles, dates, relationships, intentions, or claims. If context is thin, write less — never fabricate.
+  • Use uploaded material selectively. Do not reproduce a CV or LinkedIn dump; draw the relevant thread, not the whole record.
+  • Write for the intended audience without reshaping the person to appeal, using marketing clichés, generic AI prose, or spiritual generalities.
+  • Help the right visitors recognise the person, understand their work and orientation, and know how to connect.
+  • Authenticity outranks optimisation.
+  • Every suggestion is a proposal — the person explicitly accepts, edits, or rejects it before anything becomes public.
 
-For HEADING: Write a short, evocative title (3–7 words) for this compass room. No trailing punctuation, no quotation marks.
+AUDIENCE GUIDANCE
+Write for the people this person hopes to reach, while remaining faithful to the person's real voice, experience, and orientation. Use the audience context to make the FieldPrint understandable, relevant, and inviting. Do not reshape the person to appeal to an audience, imitate marketing language, or manufacture a personal brand. Help the right visitors recognize who this person is, understand what matters to them, and see how they might connect. When authenticity and audience optimization appear to conflict, preserve authenticity and improve clarity.
 
-For INTRODUCTION: Write 1–2 welcoming sentences that open this room for a reader arriving at it.
+ROOM CONTRACTS
+  • The Work — what they make, offer, practise, and contribute.
+  • The Lens — how they perceive and interpret.
+  • The Field — the conditions that sustain them and their communities.
+  • The Call — what draws them forward, and what they serve.
 
-For CLOSING: Write 1–2 sentences that leave the reader with a resonant final thought for this room.
+FIELD OUTPUT CONSTRAINTS
+For THEME: one clear sentence (8–15 words) capturing the essential thread of this room. Grounded and specific.
+For INSIGHT: one insight block (2–3 sentences) — a specific, concrete observation, not abstract.
+For SUMMARY: 2–3 sentences for public sharing — clear, resonant, and true to the person.
+For HEADING: a short, evocative title (3–7 words) for this room. No trailing punctuation, no quotation marks.
+For INTRODUCTION: 1–2 welcoming sentences that open this room for a reader arriving at it.
+For CLOSING: 1–2 sentences that leave the reader with a resonant final thought for this room.
 
-Draw directly on the Gene Key profile and any answers provided. Make it feel specific to this person.
 If prior draft content or source material is provided, evolve and refine it rather than starting over.
 Return plain text only. No markdown, no labels, no preamble."""
 
+# Room contracts, echoed into the user message so each field request (and each
+# step of a room-level Evolve) carries the same room framing.
+NEXUS_ROOM_CONTRACTS = {
+    "work":  "The Work — what they make, offer, practise, and contribute.",
+    "lens":  "The Lens — how they perceive and interpret.",
+    "field": "The Field — the conditions that sustain them and their communities.",
+    "call":  "The Call — what draws them forward, and what they serve.",
+}
+
+# Per-field output instruction. Module-level so the admin prompt surface can
+# report it alongside the system prompt (kept as the name `field_instructions`
+# for the FieldPrint-editor field-coverage regression test).
+field_instructions = {
+    "theme": "Write the Core Theme: one clear sentence capturing the essential thread.",
+    "insight": "Write one Insight Block: 2–3 sentences of a specific, concrete observation.",
+    "summary": "Write the Public Summary: 2–3 sentences suitable for a website or profile.",
+    "heading": "Write the Heading: a short, evocative title (3–7 words) for this room. No trailing punctuation.",
+    "intro": "Write the Introduction: 1–2 welcoming sentences that open this room for a reader.",
+    "closing": "Write the Closing: 1–2 sentences that leave the reader with a resonant final thought for this room.",
+}
+
+# Ordered (contract-key, human label) pairs for the audience block. The two
+# `*_statement` keys are canonical: each holds one freeform Spark answer as the
+# person wrote it (who + connection; arrival feel/know/do), sent once rather
+# than split into facets we cannot honestly parse. The specific keys remain in
+# the contract for when a separate, dedicated answer is supplied for one facet.
+_AUDIENCE_FIELDS = [
+    ("audience_statement",        "Who they hope to reach, and the connection they would welcome"),
+    ("people_to_reach",           "People they most hope will find them"),
+    ("connection_welcomed",       "Connection they would welcome"),
+    ("arrival_statement",         "What a visitor should feel, understand, and do on arrival"),
+    ("visitor_should_understand", "What a visitor should understand"),
+    ("visitor_should_feel",       "What a visitor should feel"),
+    ("visitor_should_do",         "What a visitor should do"),
+]
+
+
+def _inspire_audience_block(audience: dict) -> str:
+    """Owner-stated audience context. Consecutive keys that share the same
+    answer (one Spark answer covers several facets) are folded into one line so
+    the same sentence is not repeated. Empty keys are skipped."""
+    if not isinstance(audience, dict):
+        return ""
+    groups: list[tuple[list[str], str]] = []
+    for key, label in _AUDIENCE_FIELDS:
+        val = str(audience.get(key, "") or "").strip()
+        if not val:
+            continue
+        if groups and groups[-1][1] == val:
+            groups[-1][0].append(label)
+        else:
+            groups.append(([label], val))
+    if not groups:
+        return ""
+    lines = [" · ".join(labels) + ": " + val for labels, val in groups]
+    return ("Audience context (owner-stated — write FOR these people; do not invent "
+            "others, and do not reshape the person to appeal to them):\n" + "\n".join(lines))
+
+
+def _inspire_evidence_block(evidence: dict) -> str:
+    """Approved, voluntarily-uploaded profile/document evidence. Never sealed or
+    private raw OM Cipher inputs — only surfaced material passed in the request."""
+    if not isinstance(evidence, dict):
+        return ""
+    parts = []
+    wb = str(evidence.get("work_background", "") or "").strip()
+    ed = str(evidence.get("education", "") or "").strip()
+    if wb:
+        parts.append("Work background: " + wb[:1500])
+    if ed:
+        parts.append("Education: " + ed[:1000])
+    docs = evidence.get("documents")
+    if isinstance(docs, list):
+        for doc in docs[:5]:
+            if not isinstance(doc, dict):
+                continue
+            # Extracted evidence only: an already-extracted `text` or the derived
+            # `summary`. Raw file bytes / full sealed content are never read.
+            text = str(doc.get("text") or doc.get("summary") or "").strip()
+            if not text:
+                continue
+            label = str(doc.get("label") or doc.get("name")
+                        or doc.get("source") or doc.get("type") or "Document").strip()
+            parts.append(label + ": " + text[:1500])
+    if not parts:
+        return ""
+    return ("Approved uploaded evidence (the person voluntarily provided this — use it "
+            "selectively for accuracy; do not reproduce it wholesale or fabricate beyond it):\n"
+            + "\n\n".join(parts))
+
+
+def _nexus_fieldprint_prompt_state() -> dict:
+    """Non-secret snapshot of the live FieldPrint prompt for admin review.
+    Read-only: the prompt is a versioned source constant, so there is no runtime
+    edit surface (see `editing_deferred`)."""
+    return {
+        "version": NEXUS_FIELDPRINT_PROMPT_VERSION,
+        "system_prompt": INSPIRE_L2_SYSTEM,
+        "field_instructions": field_instructions,
+        "room_contracts": NEXUS_ROOM_CONTRACTS,
+        "audience_contract": [k for k, _ in _AUDIENCE_FIELDS],
+        "evidence_contract": ["work_background", "education",
+                              "documents[] (extracted text/summary only)"],
+        "editable": False,
+        "editing_deferred": (
+            "Read-only MVP. The prompt is a source-controlled, versioned constant so "
+            "changes ship through code review; a runtime prompt-edit endpoint would need "
+            "the same validate/activate/rollback safeguards as Nexus model management "
+            "before it could be exposed safely."
+        ),
+    }
+
+
 @app.post("/inspire-layer2")
 async def inspire_layer2(request: InspireLayer2Request):
-    """Generate a Layer 2 synthesis field draft from GK profile + QA answers."""
+    """Generate a Layer 2 FieldPrint field draft from cOMpass orientation,
+    approved profile evidence, stUdio material, and global audience context."""
 
     point_names = {"work": "The Work (Life's Work)", "lens": "The Lens (Evolution)",
                    "field": "The Field (Radiance)", "call": "The Call (Purpose)"}
@@ -5143,25 +5307,22 @@ async def inspire_layer2(request: InspireLayer2Request):
         if qa_lines:
             qa_text = "\n\n".join(qa_lines)
 
-    field_instructions = {
-        "theme": "Write the Core Theme: one clear sentence capturing the essential thread.",
-        "insight": "Write one Insight Block: 2–3 sentences of a specific, concrete observation.",
-        "summary": "Write the Public Summary: 2–3 sentences suitable for a website or profile.",
-        "heading": "Write the Heading: a short, evocative title (3–7 words) for this room. No trailing punctuation.",
-        "intro": "Write the Introduction: 1–2 welcoming sentences that open this room for a reader.",
-        "closing": "Write the Closing: 1–2 sentences that leave the reader with a resonant final thought for this room.",
-    }
+    room_contract = NEXUS_ROOM_CONTRACTS.get(request.point, "")
+    evidence_block = _inspire_evidence_block(request.evidence)
+    audience_block = _inspire_audience_block(request.audience)
 
-    user_msg = f"""Compass point: {point_label}
-{_companion_prompt_line(request.companion) if request.companion else 'Companion: Unknown'}
-
-Gene Key profile: {' · '.join(gk_parts) if gk_parts else 'Not provided'}
-
-{f'Session notes:{chr(10)}{request.session_notes[:2000]}' if request.session_notes.strip() else ''}
-
-{f'Reflections:{chr(10)}{qa_text}' if qa_text else 'No written reflections yet.'}
-
-Task: {field_instructions.get(request.field, 'Write a synthesis.')}"""
+    sections = [
+        f"Compass room: {point_label}",
+        f"Room contract: {room_contract}" if room_contract else "",
+        _companion_prompt_line(request.companion) if request.companion else "Companion: Unknown",
+        f"Gene Key profile: {' · '.join(gk_parts) if gk_parts else 'Not provided'}",
+        evidence_block,
+        audience_block,
+        f"Session notes:\n{request.session_notes[:2000]}" if request.session_notes.strip() else "",
+        f"Reflections:\n{qa_text}" if qa_text else "No written reflections yet.",
+        f"Task: {field_instructions.get(request.field, 'Write a synthesis.')}",
+    ]
+    user_msg = "\n\n".join(s for s in sections if s)
 
     async def stream():
         try:

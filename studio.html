@@ -18564,6 +18564,10 @@ if (document.readyState === 'loading') {
           desc: 'The invitation that makes welcome real rather than performative.',
           aliases: ['contact-invitation'],
           compassPaths: ['profile.linkedin_url', 'profile.email', 'profile.website'] },
+        { id: 'audience',      section: 'call',  label: 'Audience · who this is for',
+          prompt: 'Who do you most hope will find you here, and what kind of connection would you welcome with them?',
+          desc: 'The one global audience for the whole FieldPrint — the people you hope to reach and the connection you would welcome. Shared context for every Nexus room; never a per-room brand target.',
+          kind: 'text' },
         // ── Visual identity placeholders (v0.2, not generated yet) ──
         { id: 'profile-image', section: 'work', label: 'Profile image · visual representation',
           prompt: 'A profile image (or placeholder) that represents you honestly. Visual identity is not generated yet — this is a placeholder slot.',
@@ -18704,6 +18708,11 @@ if (document.readyState === 'loading') {
     { id: 'sp-profile-call-sum',     movement: 'Practice',      arc: 'Shadow → Gift',  section: 'call',  builder: 'profile', target: 'call-summary',  prompt: 'What is calling you right now that you have not yet given permission to? Write the shape of it.' },
     { id: 'sp-profile-contact',      movement: 'Relationship',  arc: 'Shadow → Gift',  section: 'call',  builder: 'profile', target: 'contact',       prompt: 'How do you welcome people in — and what terms make the welcome real rather than performative?' },
     { id: 'sp-profile-name',         movement: 'Relationship',  arc: 'Shadow → Gift',  section: 'work',  builder: 'profile', target: 'name-context',  prompt: 'Beyond your name: what wider context do you stand in? Lineages, places, communities that locate you.' },
+    // Global audience prompt. FieldPrint has ONE audience (the whole public
+    // presence), so this lives on the profile (Level-1 identity) layer that hOMe
+    // and OS both inherit. Answer flows to state.builder.captures.audience and,
+    // via cuAudienceContext(), into the Nexus audience contract.
+    { id: 'sp-profile-audience',     movement: 'Relationship',  arc: 'Shadow → Gift',  section: 'call',  builder: 'profile', target: 'audience',      prompt: 'Who do you most hope will find you here, and what kind of connection would you welcome with them?' },
 
     // ── Website ────────────────────────────────────────────
     { id: 'sp-site-threshold',       movement: 'Attention',     arc: 'Shadow → Gift',  section: 'work',  builder: 'website', target: 'threshold',     prompt: 'If your website were a threshold into your field, what should someone feel, know, and do when they arrive?' },
@@ -30741,6 +30750,103 @@ try {
     });
   }
 
+  // ── Nexus context builders (global audience + approved evidence) ──────────
+  // Spark captures are stored as the composed note "> <prompt>\n\n<answer>", so
+  // the raw excerpt carries the question as a leading markdown blockquote. Strip
+  // that scaffolding (and, defensively, a leading un-quoted copy of the prompt)
+  // so only the person's own answer reaches Nexus.
+  function cuCleanCaptureText(raw, promptText) {
+    var s = String(raw == null ? '' : raw);
+    var lines = s.split('\n');
+    var kept = [];
+    var skipping = true;
+    for (var i = 0; i < lines.length; i++) {
+      var t = lines[i].trim();
+      if (skipping && (t === '' || t.charAt(0) === '>')) continue; // drop leading blank/quote lines
+      skipping = false;
+      kept.push(lines[i]);
+    }
+    var out = kept.join('\n').trim();
+    var p = String(promptText == null ? '' : promptText).trim();
+    if (p && out.indexOf(p) === 0) out = out.slice(p.length).trim();
+    return out;
+  }
+
+  // FieldPrint has ONE audience for the whole presence, so audience context is
+  // built once (not per room) and every room's Inspire request receives it
+  // identically. Each source is a single freeform Spark answer, so we send it
+  // once under a canonical statement key rather than pretending to parse it into
+  // separate facets: the "who / what connection" answer (captures.audience) →
+  // `audience_statement`, and the arrival "feel · know · do" answer
+  // (captures.threshold) → `arrival_statement`. The specific keys
+  // (people_to_reach, connection_welcomed, visitor_should_*) stay in the
+  // contract but are only populated when separately supplied — never by
+  // duplicating one combined answer across them.
+  function cuAudienceContext(st) {
+    st = st || {};
+    const caps = (st.builder && st.builder.captures) || {};
+    function latestClean(id) {
+      const arr = caps[id];
+      if (!Array.isArray(arr) || !arr.length) return '';
+      const last = arr[arr.length - 1];
+      if (!last) return '';
+      return cuCleanCaptureText(last.excerpt, last.prompt);
+    }
+    const who = latestClean('audience');
+    const arrival = latestClean('threshold');
+    const ctx = {};
+    if (who) ctx.audience_statement = who;
+    if (arrival) ctx.arrival_statement = arrival;
+    return ctx;
+  }
+
+  // Approved, voluntarily-provided profile evidence only. Reads the persisted
+  // profile (work_background, education) — never sealed/private raw OM Cipher
+  // inputs. Both fields may be array or string in the profile; flatten to text.
+  // `documents` carries only DERIVED/EXTRACTED document evidence: an item's
+  // `summary` (or an already-extracted `text`) plus its name/type metadata. Raw
+  // file bytes or full private content are never read or forwarded, so there is
+  // no upload of arbitrary sealed material — only the safe extracted summary.
+  function cuEvidenceContext(st) {
+    st = st || {};
+    const profile = (st.compassData && st.compassData.profile) || {};
+    function flatten(v) {
+      if (!v) return '';
+      if (Array.isArray(v)) {
+        return v.map(function (e) {
+          if (!e) return '';
+          if (typeof e === 'string') return e;
+          return [e.degree || e.qualification || e.role || e.title,
+                  e.institution || e.school || e.company || e.org].filter(Boolean).join(', ');
+        }).filter(Boolean).join('; ');
+      }
+      if (typeof v === 'string') return v;
+      return '';
+    }
+    const ev = {};
+    const wb = flatten(profile.work_background).trim();
+    const ed = flatten(profile.education).trim();
+    if (wb) ev.work_background = wb;
+    if (ed) ev.education = ed;
+    const docs = [];
+    const rawDocs = Array.isArray(profile.documents) ? profile.documents : [];
+    rawDocs.forEach(function (d) {
+      if (!d || typeof d !== 'object') return;
+      // Extracted text only: summary is the derived, safe field; `text` is
+      // accepted if already extracted. We deliberately ignore any raw/content
+      // byte fields so sealed uploads can never leak.
+      const text = String(d.summary || d.text || '').trim();
+      if (!text) return;
+      docs.push({
+        label: String(d.name || d.type || 'Document').trim(),
+        text: text,
+        source: String(d.type || 'profile').trim(),
+      });
+    });
+    ev.documents = docs;
+    return ev;
+  }
+
   function inspireBody(room, fieldKey) {
     const st = window.state || {};
     // Use the ORIGINAL cOMpass source (baseline) for grounding, plus the current
@@ -30759,6 +30865,11 @@ try {
       gk_num: basePt.gk_num != null ? String(basePt.gk_num) : '',
       gk_line: basePt.gk_line != null ? String(basePt.gk_line) : '',
       gk_shadow: basePt.gk_shadow || '', gk_gift: basePt.gk_gift || '', gk_siddhi: basePt.gk_siddhi || '',
+      // Global (whole-FieldPrint) audience + approved evidence. Identical for
+      // every room so the whole presence speaks to one audience with one set of
+      // facts; never sourced from the frozen cOMpass baseline.
+      audience: cuAudienceContext(st),
+      evidence: cuEvidenceContext(st),
     };
   }
 
@@ -30819,7 +30930,12 @@ try {
       .catch(() => { finish(); txt.textContent = 'Nexus could not respond right now.'; });
   }
 
-  // Room-level Evolve: run Inspire on each mapped text field in sequence.
+  // Room-level Evolve: run Inspire on each mapped text field in sequence. Each
+  // field goes through the same inspireBody(room, key), so every suggestion in
+  // a single Evolve pass carries identical room contract, global audience, and
+  // approved evidence context — the room stays coherent across fields without a
+  // riskier single-shot whole-room generation. (Cut line: per-field requests,
+  // not one structured room payload; see PR notes.)
   function evolveRoom(room) {
     const wraps = Array.from(ctxBody.querySelectorAll('.fo-pc-field'));
     const jobs = [];
