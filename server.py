@@ -5149,6 +5149,9 @@ CONSTITUTION (non-negotiable)
   • Authenticity outranks optimisation.
   • Every suggestion is a proposal — the person explicitly accepts, edits, or rejects it before anything becomes public.
 
+VOICE (non-negotiable default)
+Write every piece of public prose in the FIRST PERSON, as the person speaking about themselves — using "I", "my", "me". First person is the hard default for SUMMARY, INTRODUCTION, THEME, CLOSING, and INSIGHT. Never write about the person in the third person — do not use "she", "he", "they", or the person's name as the grammatical subject of the copy — unless the request explicitly carries a different, person-selected voice. The ROOM CONTRACTS below are phrased in the third person ONLY so they can describe each room to you; they are NOT a template for the output voice, and you must not mirror their pronouns. HEADING is the single exception: a heading may be a natural noun phrase with no pronoun (for example, "Holding Space for Clarity") and must read naturally — never force a pronoun into a heading and never phrase a heading in the third person.
+
 AUDIENCE GUIDANCE
 Write for the people this person hopes to reach, while remaining faithful to the person's real voice, experience, and orientation. Use the audience context to make the FieldPrint understandable, relevant, and inviting. Do not reshape the person to appeal to an audience, imitate marketing language, or manufacture a personal brand. Help the right visitors recognize who this person is, understand what matters to them, and see how they might connect. When authenticity and audience optimization appear to conflict, preserve authenticity and improve clarity.
 
@@ -5159,14 +5162,14 @@ ROOM CONTRACTS
   • The Call — what draws them forward, and what they serve.
 
 FIELD OUTPUT CONSTRAINTS
-For THEME: one clear sentence (8–15 words) capturing the essential thread of this room. Grounded and specific.
-For INSIGHT: one insight block (2–3 sentences) — a specific, concrete observation, not abstract.
-For SUMMARY: 2–3 sentences for public sharing — clear, resonant, and true to the person.
-For HEADING: a short, evocative title (3–7 words) for this room. No trailing punctuation, no quotation marks.
-For INTRODUCTION: 1–2 welcoming sentences that open this room for a reader arriving at it.
-For CLOSING: 1–2 sentences that leave the reader with a resonant final thought for this room.
+For THEME: one clear sentence (8–15 words) in the first person capturing the essential thread of this room. Grounded and specific.
+For INSIGHT: one insight block (2–3 sentences) in the first person — a specific, concrete observation, not abstract.
+For SUMMARY: 2–3 sentences in the first person for public sharing — clear, resonant, and true to me.
+For HEADING: a short, evocative title (3–7 words) for this room. A natural noun phrase; no pronoun is required, no trailing punctuation, no quotation marks, never third person.
+For INTRODUCTION: 1–2 welcoming sentences in the first person that open this room for a reader arriving at it.
+For CLOSING: 1–2 sentences in the first person that leave the reader with a resonant final thought for this room.
 
-If prior draft content or source material is provided, evolve and refine it rather than starting over.
+If prior draft content or source material is provided, evolve and refine it rather than starting over — keeping it in the first person.
 Return plain text only. No markdown, no labels, no preamble."""
 
 # Room contracts, echoed into the user message so each field request (and each
@@ -5178,16 +5181,26 @@ NEXUS_ROOM_CONTRACTS = {
     "call":  "The Call — what draws them forward, and what they serve.",
 }
 
+# Echoed into every /inspire-layer2 request (single field and each step of a
+# room-level Evolve) so the first-person default sits directly beside the
+# third-person room-contract framing and cannot be misread as the output voice.
+_INSPIRE_VOICE_LINE = (
+    "Voice: Write this in the FIRST PERSON, as the person speaking about "
+    "themselves (I / my / me). Do not write about them in the third person "
+    "(no she / he / they, no name as subject). A HEADING may be a natural noun "
+    "phrase with no pronoun, but never third person."
+)
+
 # Per-field output instruction. Module-level so the admin prompt surface can
 # report it alongside the system prompt (kept as the name `field_instructions`
 # for the FieldPrint-editor field-coverage regression test).
 field_instructions = {
-    "theme": "Write the Core Theme: one clear sentence capturing the essential thread.",
-    "insight": "Write one Insight Block: 2–3 sentences of a specific, concrete observation.",
-    "summary": "Write the Public Summary: 2–3 sentences suitable for a website or profile.",
-    "heading": "Write the Heading: a short, evocative title (3–7 words) for this room. No trailing punctuation.",
-    "intro": "Write the Introduction: 1–2 welcoming sentences that open this room for a reader.",
-    "closing": "Write the Closing: 1–2 sentences that leave the reader with a resonant final thought for this room.",
+    "theme": "Write the Core Theme in the first person: one clear sentence capturing the essential thread.",
+    "insight": "Write one Insight Block in the first person: 2–3 sentences of a specific, concrete observation.",
+    "summary": "Write the Public Summary in the first person: 2–3 sentences suitable for a website or profile.",
+    "heading": "Write the Heading: a short, evocative title (3–7 words) for this room — a natural noun phrase, no trailing punctuation, never third person.",
+    "intro": "Write the Introduction in the first person: 1–2 welcoming sentences that open this room for a reader.",
+    "closing": "Write the Closing in the first person: 1–2 sentences that leave the reader with a resonant final thought for this room.",
 }
 
 # Ordered (contract-key, human label) pairs for the audience block. The two
@@ -5269,6 +5282,7 @@ def _nexus_fieldprint_prompt_state() -> dict:
         "system_prompt": INSPIRE_L2_SYSTEM,
         "field_instructions": field_instructions,
         "room_contracts": NEXUS_ROOM_CONTRACTS,
+        "voice_line": _INSPIRE_VOICE_LINE,
         "audience_contract": [k for k, _ in _AUDIENCE_FIELDS],
         "evidence_contract": ["work_background", "education",
                               "documents[] (extracted text/summary only)"],
@@ -5314,6 +5328,7 @@ async def inspire_layer2(request: InspireLayer2Request):
     sections = [
         f"Compass room: {point_label}",
         f"Room contract: {room_contract}" if room_contract else "",
+        _INSPIRE_VOICE_LINE,
         _companion_prompt_line(request.companion) if request.companion else "Companion: Unknown",
         f"Gene Key profile: {' · '.join(gk_parts) if gk_parts else 'Not provided'}",
         evidence_block,

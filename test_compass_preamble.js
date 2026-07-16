@@ -74,7 +74,7 @@ const I = indexFactory();
 
 // View-model sandbox (mirrors test_lde_context_view.js wiring).
 const viewFactory = new Function('ROOMS',
-  ['cuFpStr', 'cuFpList', 'cuNormalizeFieldprintPoint', 'cuFieldprintHasStructured', 'cuFieldprintFields']
+  ['cuFpStr', 'cuFpList', 'cuCompassPreamble', 'cuNormalizeFieldprintPoint', 'cuFieldprintHasStructured', 'cuFieldprintFields']
     .map((n) => extractFrom(STUDIO, n)).join('\n') + '\n' +
   extractFrom(STUDIO, 'buildProjectContextView') + '\nreturn buildProjectContextView;');
 const buildView = viewFactory(['work', 'lens', 'field', 'call']);
@@ -97,12 +97,40 @@ test('preamble parser promotes the clean pre-transcript paragraph, drops markers
   assert.strictEqual(pre, PREAMBLE, 'exactly the synthesised paragraph, nothing after the marker');
 });
 
-test('parser refuses to promote when separation is not explicit or content is thin', () => {
-  assert.strictEqual(S.pre('Just a short note.'), '', 'no transcript marker → never promote');
+test('parser refuses to promote thin or empty content', () => {
+  assert.strictEqual(S.pre('Just a short note.'), '', 'thin content is never promoted');
   assert.strictEqual(S.pre('Only six words before the marker here.\n--- From transcript: x ---\nMe: hi'),
     '', 'a too-thin preamble is not substantive enough to promote');
   assert.strictEqual(S.pre(''), '');
   assert.strictEqual(S.pre(null), '');
+});
+
+// ── The real production shape: one imported transcript. index.html appends the
+//    FIRST block with NO `--- From transcript: ---` marker (only subsequent
+//    blocks get one), and per-room `content` is the server's synthesised
+//    analysis (clean prose, not dialogue). Such a marker-less clean note must be
+//    promoted in full — this is the raw-only Work regression. ──────────────────
+const WORK_SINGLE_TRANSCRIPT =
+  "My real work is helping teams turn tangled problems into clear, shippable " +
+  "steps. I hold the shape of a project so the people in it can move with " +
+  "confidence, and I care most about the moment something finally clicks.";
+
+test('parser promotes a clean marker-less synthesised note (single-transcript Work)', () => {
+  const pre = S.pre(WORK_SINGLE_TRANSCRIPT);
+  assert.strictEqual(pre, WORK_SINGLE_TRANSCRIPT, 'the whole clean note is promotable');
+  NO_LEAK(pre);
+});
+
+test('parser still refuses a marker-less raw that is actually transcript dialogue', () => {
+  const dialogue = 'Me: so what does your work look like day to day?\n' +
+    'Them: I mostly help people find clarity.\nMe: say more about that part.';
+  assert.strictEqual(S.pre(dialogue), '', 'unmarked dialogue stays source-only, never promoted');
+  const guideOnly = '[Guide: this is a long facilitation note with plenty of words to clear the count]';
+  assert.strictEqual(S.pre(guideOnly), '', 'a guide-only note is never promoted');
+});
+
+test('the producer and Studio parsers still agree on the marker-less clean note', () => {
+  assert.strictEqual(I.pre(WORK_SINGLE_TRANSCRIPT), S.pre(WORK_SINGLE_TRANSCRIPT));
 });
 
 test('a preamble that is itself guide-laden is NOT promoted (stays source-only)', () => {
@@ -188,6 +216,31 @@ test('after promotion, the Work editor shows the Summary and no longer flags str
   NO_LEAK(byKey.summary.value);
   assert.strictEqual(v.hasStructured, true);
   assert.strictEqual(v.needsStructuring, false, 'no CTA once a structured field exists');
+});
+
+// ── Derive-on-read: the canonical fix. A raw-only Work auto-populates its
+//    Summary on first open through cuNormalizeFieldprintPoint — WITHOUT any
+//    migration, export finalizer, or persisted summary. This is why the
+//    regression cannot recur even for an already-stamped Level 2 state. ─────────
+test('raw-only Work auto-populates its Summary on open with no migration run', () => {
+  const compass = { points: { work: { gk_num: 5, gk_line: 5, raw: WORK_SINGLE_TRANSCRIPT } } };
+  const v = view('work', compass);
+  assert.strictEqual(v.mode, 'editor');
+  const byKey = Object.fromEntries(v.fields.map((f) => [f.key, f]));
+  assert.strictEqual(byKey.summary.value, WORK_SINGLE_TRANSCRIPT,
+    'the clean synthesised note is surfaced as Summary at the normalization boundary');
+  NO_LEAK(byKey.summary.value);
+  assert.strictEqual(v.hasStructured, true, 'the room now reads as structured');
+  assert.strictEqual(v.needsStructuring, false, 'no CTA once the Summary is populated');
+  // The live point is never mutated by reading it — derivation is view-time only.
+  assert.strictEqual(compass.points.work.summary, undefined, 'derive-on-read never persists');
+});
+
+test('derive-on-read never overrides an existing (edited) Summary', () => {
+  const compass = { points: { work: { raw: WORK_SINGLE_TRANSCRIPT, summary: 'The summary I wrote myself.' } } };
+  const v = view('work', compass);
+  const byKey = Object.fromEntries(v.fields.map((f) => [f.key, f]));
+  assert.strictEqual(byKey.summary.value, 'The summary I wrote myself.', 'user content wins');
 });
 
 test('raw with no promotable preamble → all fields blank, prominent Structure-with-Nexus offered', () => {
