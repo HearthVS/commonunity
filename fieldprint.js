@@ -2107,10 +2107,19 @@
      Hero framing, palette/roleOverrides, cipher, images, section role/imgRole,
      and any field not present in the payload are left exactly as they are.
      Returns the number of fields actually applied. */
-  function applyPrefill(sections) {
-    if (!Array.isArray(sections) || !Array.isArray(state.sections)) return 0;
-    const TEXT_FIELDS = ['eyebrow', 'title', 'body', 'narrative', 'prompt'];
+  function applyPrefill(sections, arrival) {
     let applied = 0;
+    // Global Arrival welcome → the hero identity sentence (tagline). Applied
+    // non-destructively: only when a non-empty message was explicitly sent; the
+    // portrait, palette, framing, images and layout are all left untouched. The
+    // CTA has no dedicated global slot in the Builder yet, so it is accepted but
+    // not rendered (carried forward-compatibly by the Studio value).
+    if (arrival && typeof arrival === 'object') {
+      const msg = typeof arrival.message === 'string' ? arrival.message.trim() : '';
+      if (msg) { state.tagline = msg; applied++; }
+    }
+    if (!Array.isArray(sections) || !Array.isArray(state.sections)) return applied;
+    const TEXT_FIELDS = ['eyebrow', 'title', 'body', 'narrative', 'prompt'];
     sections.forEach((incoming) => {
       if (!incoming || typeof incoming !== 'object') return;
       const target = state.sections.find((s) => s && s.key === incoming.key);
@@ -2214,9 +2223,10 @@
           baseline = snapshot();          // safe reset baseline for this identity
           await loadDraft();              // restores the matching saved draft, if any
         }
-        const applied = applyPrefill(d.sections);
+        const applied = applyPrefill(d.sections, d.arrival);
         if (applied) {
           renderSections();
+          syncHeroEditor();
           markDirty();
           setLoadNote(true, 'Applied ' + applied + ' field' + (applied === 1 ? '' : 's') + ' from Studio — your framing and images are unchanged.');
           // Persist immediately under the correct owner so the merge survives an

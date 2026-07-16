@@ -331,5 +331,103 @@ class InspireLayer2PayloadTests(unittest.TestCase):
         self.assertIn("never third person", msg)
 
 
+class ArrivalPromptTests(unittest.TestCase):
+    """The global Arrival welcome synthesises all four aspects into one first-
+    person greeting. It must be versioned, first person, and must never name a
+    room or leak internal vocabulary in the task the model receives."""
+
+    def test_arrival_task_is_versioned_and_first_person(self):
+        self.assertEqual(server.NEXUS_ARRIVAL_VERSION, "nexus-arrival-prompt-v1")
+        t = server.NEXUS_ARRIVAL_TASK.lower()
+        self.assertIn("arrival", t)
+        self.assertIn("first person", t)
+        self.assertIn("35", t)  # word bound present
+        self.assertIn("invent nothing", t)
+
+    def test_arrival_task_forbids_room_names_and_third_person(self):
+        t = server.NEXUS_ARRIVAL_TASK.lower()
+        self.assertIn("do not name", t)
+        self.assertIn("never write in the third person", t)
+
+    def test_rooms_block_reads_only_public_fields_and_folds(self):
+        block = server._inspire_rooms_block({
+            "work": {"summary": "I build calm tools.", "raw": "SECRET RAW"},
+            "lens": {"theme": "I notice patterns first."},
+            "field": {},
+            "call": {"web_closing": "I serve quiet communities."},
+        })
+        self.assertIn("I build calm tools.", block)
+        self.assertIn("I notice patterns first.", block)
+        self.assertIn("I serve quiet communities.", block)
+        # Raw transcript material must never surface in the arrival source block.
+        self.assertNotIn("SECRET RAW", block)
+        # An empty aspect contributes no line.
+        self.assertEqual(server._inspire_rooms_block({}), "")
+        self.assertEqual(server._inspire_rooms_block(None), "")
+
+    def test_admin_prompt_surface_exposes_arrival(self):
+        c = _auth_client()
+        d = c.get("/api/admin/nexus-prompt").json()
+        self.assertEqual(d["arrival_version"], "nexus-arrival-prompt-v1")
+        self.assertIn("arrival", d["arrival_task"].lower())
+
+
+class ArrivalPayloadTests(unittest.TestCase):
+    """A live /inspire-arrival request must carry the four aspects + audience +
+    evidence into the model message, keep the first-person voice, and never send
+    the frozen cOMpass baseline."""
+
+    def setUp(self):
+        self.captured = {}
+        self._orig_stream = server.client.messages.stream
+
+        def _fake_stream(**kwargs):
+            self.captured.clear()
+            self.captured.update(kwargs)
+            return _FakeStream()
+
+        server.client.messages.stream = _fake_stream
+        self.c = TestClient(server.app)
+
+    def tearDown(self):
+        server.client.messages.stream = self._orig_stream
+
+    def _run(self, body):
+        with self.c.stream("POST", "/inspire-arrival", json=body) as r:
+            self.assertEqual(r.status_code, 200)
+            for _ in r.iter_lines():
+                pass
+        return self.captured["messages"][0]["content"]
+
+    def test_all_aspects_audience_evidence_reach_the_model(self):
+        msg = self._run({
+            "rooms": {
+                "work": {"summary": "I design consensus tools."},
+                "lens": {"theme": "I read the room before the argument."},
+                "field": {"summary": "I thrive with patient makers."},
+                "call": {"web_closing": "I want belonging to be buildable."},
+            },
+            "audience": {"audience_statement": "Community builders."},
+            "evidence": {"work_background": "A decade in civic tech."},
+        })
+        for s in ("I design consensus tools.", "I read the room before the argument.",
+                  "I thrive with patient makers.", "I want belonging to be buildable.",
+                  "Community builders.", "A decade in civic tech."):
+            self.assertIn(s, msg)
+
+    def test_arrival_carries_first_person_voice(self):
+        msg = self._run({"rooms": {"work": {"summary": "I make things."}}}).lower()
+        self.assertIn("first person", msg)
+        self.assertIn("first person", self.captured["system"].lower())
+
+    def test_arrival_never_accepts_a_baseline(self):
+        msg = self._run({
+            "rooms": {"lens": {"summary": "public lens copy"}},
+            "compassBaseline": {"points": {"lens": {"raw": "SEALED BASELINE"}}},
+        })
+        self.assertNotIn("SEALED BASELINE", msg)
+        self.assertIn("public lens copy", msg)
+
+
 if __name__ == "__main__":
     unittest.main()

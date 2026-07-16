@@ -5121,6 +5121,19 @@ class InspireLayer2Request(BaseModel):
     # forward-compatible list of {label, text, source} for future uploads.
     evidence: dict = {}     # work_background, education, documents[]
 
+
+class ArrivalRequest(BaseModel):
+    """Global Arrival (welcome) synthesis input. Carries the ACCEPTED public
+    copy of all four aspects plus the same audience + evidence contracts as
+    /inspire-layer2. It never carries the frozen cOMpass baseline, raw
+    transcripts, or mechanics — only surfaced, publishable material."""
+    companion: str = ""
+    # { work|lens|field|call: { summary, web_intro, theme, web_heading,
+    #   web_closing } } — accepted, normalized public fields only.
+    rooms: dict = {}
+    audience: dict = {}     # same shape as InspireLayer2Request.audience
+    evidence: dict = {}     # same shape as InspireLayer2Request.evidence
+
 # ── Nexus FieldPrint Prompt v1 ───────────────────────────────────────────
 # Versioned constitutional prompt for public FieldPrint synthesis. FieldPrint
 # is the person's outward-facing personal hOMepage — their minimum viable
@@ -5203,6 +5216,67 @@ field_instructions = {
     "closing": "Write the Closing in the first person: 1–2 sentences that leave the reader with a resonant final thought for this room.",
 }
 
+# ── Global Arrival synthesis ─────────────────────────────────────────────────
+# The Arrival message is the single first-person welcome that greets every
+# visitor before any room. It synthesises the accepted content of all four
+# aspects (Work + Lens orient; Field + Call invite) plus audience + evidence.
+# It is NOT a room and must never name the rooms or expose internal vocabulary.
+NEXUS_ARRIVAL_VERSION = "nexus-arrival-prompt-v1"
+
+# Human-labelled ordering of the four aspects for the source-context block. The
+# labels describe what each aspect contributes so the model can weave them —
+# they are NOT output labels and must not appear in the welcome text.
+_ARRIVAL_ASPECTS = [
+    ("work",  "What I create and contribute"),
+    ("lens",  "How I see and interpret"),
+    ("field", "What sustains me and who I thrive with"),
+    ("call",  "What draws me forward"),
+]
+
+# The per-aspect accepted fields worth weaving into a welcome, in priority order.
+_ARRIVAL_ASPECT_FIELDS = ("summary", "web_intro", "theme", "web_heading", "web_closing")
+
+NEXUS_ARRIVAL_TASK = (
+    "Task: Write the ARRIVAL — one short welcome, written in the first person, "
+    "that greets every visitor before they enter anything. 35–60 words, ideally "
+    "two sentences. "
+    "Sentence one orients the visitor in who I am and what I do, synthesising "
+    "what I create/contribute with how I see. Sentence two naturally invites the "
+    "people I hope to reach, drawing on what sustains me and what draws me "
+    "forward. Do NOT name or list any rooms, sections, or aspects. Do NOT use any "
+    "product or internal vocabulary. Never write in the third person. Invent "
+    "nothing — if a source is thin, lean on what is present and write less. "
+    "Return the welcome as plain text only: no heading, no label, no quotation marks."
+)
+
+
+def _inspire_rooms_block(rooms: dict) -> str:
+    """Fold the accepted content of the four aspects into a single source block
+    for Arrival synthesis. Reads only public-safe copy fields (never `raw`,
+    transcripts, or mechanics); each aspect is summarised by its most
+    self-describing accepted field so the welcome weaves real material only."""
+    if not isinstance(rooms, dict):
+        return ""
+    lines = []
+    for key, label in _ARRIVAL_ASPECTS:
+        pt = rooms.get(key)
+        if not isinstance(pt, dict):
+            continue
+        val = ""
+        for f in _ARRIVAL_ASPECT_FIELDS:
+            v = str(pt.get(f, "") or "").strip()
+            if v:
+                val = v
+                break
+        if val:
+            lines.append(f"{label}: {val[:600]}")
+    if not lines:
+        return ""
+    return ("Accepted source material (my own words across what I do, how I see, "
+            "what sustains me, and what draws me forward — weave these, do not "
+            "quote room names):\n" + "\n".join(lines))
+
+
 # Ordered (contract-key, human label) pairs for the audience block. The two
 # `*_statement` keys are canonical: each holds one freeform Spark answer as the
 # person wrote it (who + connection; arrival feel/know/do), sent once rather
@@ -5283,6 +5357,8 @@ def _nexus_fieldprint_prompt_state() -> dict:
         "field_instructions": field_instructions,
         "room_contracts": NEXUS_ROOM_CONTRACTS,
         "voice_line": _INSPIRE_VOICE_LINE,
+        "arrival_version": NEXUS_ARRIVAL_VERSION,
+        "arrival_task": NEXUS_ARRIVAL_TASK,
         "audience_contract": [k for k, _ in _AUDIENCE_FIELDS],
         "evidence_contract": ["work_background", "education",
                               "documents[] (extracted text/summary only)"],
@@ -5336,6 +5412,47 @@ async def inspire_layer2(request: InspireLayer2Request):
         f"Session notes:\n{request.session_notes[:2000]}" if request.session_notes.strip() else "",
         f"Reflections:\n{qa_text}" if qa_text else "No written reflections yet.",
         f"Task: {field_instructions.get(request.field, 'Write a synthesis.')}",
+    ]
+    user_msg = "\n\n".join(s for s in sections if s)
+
+    async def stream():
+        try:
+            with client.messages.stream(
+                model=_nexus_model(),
+                output_config=_nexus_output_config(),
+                max_tokens=_NEXUS_SHORT_MAX_TOKENS,
+                system=INSPIRE_L2_SYSTEM,
+                messages=[{"role": "user", "content": user_msg}]
+            ) as s:
+                for text in s.text_stream:
+                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/inspire-arrival")
+async def inspire_arrival(request: ArrivalRequest):
+    """Synthesise the global Arrival welcome from the accepted content of all
+    four aspects plus audience + evidence. Shares the versioned FieldPrint
+    system prompt (voice + safeguards) with /inspire-layer2 and streams SSE
+    identically, so the client reuses the same accept/edit/reject review."""
+    rooms_block = _inspire_rooms_block(request.rooms)
+    evidence_block = _inspire_evidence_block(request.evidence)
+    audience_block = _inspire_audience_block(request.audience)
+
+    sections = [
+        "Synthesis target: the global Arrival — a single welcome shown to every "
+        "visitor before any room. It is not a room and must not name one.",
+        _INSPIRE_VOICE_LINE,
+        _companion_prompt_line(request.companion) if request.companion else "Companion: Unknown",
+        rooms_block,
+        evidence_block,
+        audience_block,
+        NEXUS_ARRIVAL_TASK,
     ]
     user_msg = "\n\n".join(s for s in sections if s)
 
