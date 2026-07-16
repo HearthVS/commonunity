@@ -12889,17 +12889,20 @@ function initEntrance() {
   portal.appendChild(portalRingEl);
   const portalRingProgress = document.getElementById('portal-ring-progress');
 
-  // Animate ring glow pulse
+  // Animate ring glow pulse — only while holding, before the portal opens.
+  // Stops rescheduling once the portal is opened so no idle rAF loop lingers.
   let ringGlowT = 0;
+  let ringGlowRaf = null;
   function animRingGlow() {
-    if (!portalOpened && portalHoldStart) {
+    if (portalOpened) { ringGlowRaf = null; return; }
+    if (portalHoldStart) {
       ringGlowT += 0.08;
       const pulse = 0.7 + 0.3 * Math.sin(ringGlowT * 3);
       if (portalRingProgress) portalRingProgress.style.stroke = `rgba(167,139,250,${pulse})`;
     }
-    requestAnimationFrame(animRingGlow);
+    ringGlowRaf = requestAnimationFrame(animRingGlow);
   }
-  requestAnimationFrame(animRingGlow);
+  ringGlowRaf = requestAnimationFrame(animRingGlow);
 
   function openPortal() {
     if (portalOpened) return;
@@ -12917,6 +12920,9 @@ function initEntrance() {
     // Scroll sidebar so chooser is visible
     const sidebar = document.getElementById('entrance-right');
     if (sidebar && chooser) setTimeout(() => chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    // Rooms have populated the sidebar — settle the torus on its current frame
+    // and halt its render loop so it stops burning GPU/CPU on the entrance.
+    if (window.torusStop) window.torusStop();
   }
 
   function cancelPortalHold() {
@@ -18049,22 +18055,15 @@ function initTorusPortal() {
     }, { passive: true });
   }
 
-  // Speed up when portal opens
-  const portalEl = document.getElementById('portal');
-  if (portalEl) {
-    new MutationObserver(() => {
-      if (portalEl.classList.contains('doors-open')) activated = true;
-    }).observe(portalEl, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  // ── Sleep / wake control ─────────────────────────────────────
+  // ── Sleep / wake / stop control ──────────────────────────────
   let rafId = null;
   let sleeping = false;
   let sleepTimer = null;
+  let stopped = false;          // permanent halt once the portal opens
   const IDLE_SLEEP_MS = 30000;  // 30 seconds
 
   function wakeTorus() {
-    if (!sleeping) return;
+    if (stopped || !sleeping) return;
     sleeping = false;
     scheduleSleep();
     if (!rafId) rafId = requestAnimationFrame(draw);
@@ -18077,10 +18076,32 @@ function initTorusPortal() {
 
   function scheduleSleep() {
     clearTimeout(sleepTimer);
+    if (stopped) return;
     sleepTimer = setTimeout(sleepTorus, IDLE_SLEEP_MS);
   }
 
-  // Wake on any interaction with the portal
+  // Permanently halt the torus once the portal has opened and the rooms have
+  // populated the sidebar. Settles on the current frame (no clear) and cancels
+  // the rAF loop + idle timer so no render work continues. Gated so hover and
+  // torusResume cannot silently reschedule the loop afterwards.
+  function stopTorus() {
+    if (stopped) return;
+    stopped = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    clearTimeout(sleepTimer);
+    sleepTimer = null;
+  }
+
+  // Stop for good the moment the portal opens (doors-open === rooms revealed),
+  // covering every path that opens it (hold-to-open and direct facet entry).
+  const portalEl = document.getElementById('portal');
+  if (portalEl) {
+    new MutationObserver(() => {
+      if (portalEl.classList.contains('doors-open')) { activated = true; stopTorus(); }
+    }).observe(portalEl, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // Wake on any interaction with the portal (no-op once stopped)
   if (portalWrapEl) {
     ['mouseenter','touchstart','mousemove'].forEach(ev =>
       portalWrapEl.addEventListener(ev, wakeTorus, { passive: true })
@@ -18089,7 +18110,8 @@ function initTorusPortal() {
 
   // Pause when entering a room, resume when returning to entrance
   window.torusPause  = sleepTorus;
-  window.torusResume = () => { sleeping = false; scheduleSleep(); if (!rafId) rafId = requestAnimationFrame(draw); };
+  window.torusResume = () => { if (stopped) return; sleeping = false; scheduleSleep(); if (!rafId) rafId = requestAnimationFrame(draw); };
+  window.torusStop   = stopTorus;
 
   function draw() {
     rafId = requestAnimationFrame(draw);
