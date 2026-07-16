@@ -2361,13 +2361,16 @@ input, textarea { font: inherit; color: inherit; }
 /* Workspace tabpanels — only one is shown at a time (see the switcher IIFE). */
 .fo-view[hidden] { display: none; }
 
-/* ── Living Digital Expression — project context ──────────────────────
-   Read-only surfacing of the current room's cOMpass content. Fills the LDE
-   workspace region (it is a full tabpanel now, not a stacked card) and
-   scrolls within it. Presentational only. */
+/* ── FieldPrint — stUdio developmental editor ─────────────────────────
+   The current room's cOMpass content, shown as the same structured, editable
+   fields for every room. Edits write the Level 2 draft only. The panel is a
+   flex column: the context scrolls, the action bar stays reachable at bottom. */
+.fo-view-lde { display: flex; flex-direction: column; min-height: 0; }
 .fo-project-context {
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .fo-pc-head {
   display: flex;
@@ -2375,7 +2378,7 @@ input, textarea { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 .fo-pc-eyebrow {
   font-size: 10px;
@@ -2389,10 +2392,12 @@ input, textarea { font: inherit; color: inherit; }
   font-style: italic;
   color: var(--text-faint);
 }
+.fo-pc-lede { font-size: 11px; font-style: italic; line-height: 1.5; color: var(--text-faint); margin: 0 0 var(--space-3); }
 .fo-pc-body { font-size: 12px; line-height: 1.6; color: var(--text-muted, var(--text)); }
 .fo-pc-empty { font-size: 12px; font-style: italic; line-height: 1.6; color: var(--text-faint); margin: 0; }
-.fo-pc-field { margin: 0 0 var(--space-2); }
+.fo-pc-field { margin: 0 0 var(--space-3); }
 .fo-pc-field:last-child { margin-bottom: 0; }
+.fo-pc-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: 3px; }
 .fo-pc-field-label {
   display: block;
   font-size: 9px;
@@ -2400,31 +2405,99 @@ input, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin-bottom: 2px;
 }
 .fo-pc-field-value { white-space: pre-wrap; }
 .fo-pc-list { margin: 2px 0 0; padding-left: 1.1em; }
 .fo-pc-list li { margin: 0 0 2px; }
-.fo-pc-actions { margin-top: var(--space-3); }
-.fo-pc-save-btn {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 45%, transparent);
-  border-radius: 999px;
-  padding: 4px var(--space-4);
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
-  color: var(--accent-color, var(--setup-accent));
+
+/* Editable field inputs */
+.fo-pc-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 2.2em;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline, rgba(255,255,255,0.14));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text);
   font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color var(--transition), border-color var(--transition), opacity var(--transition);
+  font-size: 12px;
+  line-height: 1.55;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.fo-pc-save-btn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 20%, transparent); }
-.fo-pc-save-btn:focus-visible {
+.fo-pc-input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, transparent);
 }
-.fo-pc-save-btn[disabled] { opacity: 0.6; cursor: default; }
+.fo-pc-field-hint { font-size: 9px; font-style: italic; color: var(--text-faint); margin: 3px 0 0; }
+
+/* Raw source — collapsed disclosure, never poured into editable fields */
+.fo-pc-raw { margin-top: var(--space-3); border-top: 1px dashed var(--hairline, rgba(255,255,255,0.14)); padding-top: var(--space-2); }
+.fo-pc-raw > summary { cursor: pointer; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.fo-pc-raw-body { white-space: pre-wrap; font-size: 11px; line-height: 1.55; color: var(--text-muted, var(--text)); margin-top: var(--space-2); max-height: 40vh; overflow-y: auto; }
+
+/* Inspire (per field) + status chips */
+.fo-pc-inspire-btn, .fo-pc-mini-btn {
+  appearance: none; border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
+  border-radius: 999px; padding: 2px 10px; background: transparent;
+  color: var(--accent-color, var(--setup-accent)); font-family: var(--font-body);
+  font-size: 10px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--transition), opacity var(--transition);
+}
+.fo-pc-inspire-btn:hover, .fo-pc-mini-btn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 14%, transparent); }
+.fo-pc-inspire-btn[disabled], .fo-pc-mini-btn[disabled] { opacity: 0.5; cursor: default; }
+.fo-pc-provenance { font-size: 9px; font-style: italic; color: var(--text-faint); }
+
+/* Inspire suggestion review area beside a field */
+.fo-pc-suggestion {
+  margin-top: 6px; padding: 8px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 7%, transparent);
+}
+.fo-pc-suggestion-text { white-space: pre-wrap; font-size: 12px; line-height: 1.55; color: var(--text); min-height: 1.2em; }
+.fo-pc-suggestion-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+
+/* Sticky action bar */
+.fo-pc-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px solid var(--hairline, rgba(255,255,255,0.14));
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+.fo-pc-status { font-size: 10px; font-style: italic; color: var(--text-faint); }
+.fo-pc-status.is-dirty { color: var(--accent-color, var(--setup-accent)); font-style: normal; }
+.fo-pc-bar-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.fo-pc-btn {
+  appearance: none; border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 45%, transparent);
+  border-radius: 999px; padding: 4px var(--space-3);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 10%, transparent);
+  color: var(--accent-color, var(--setup-accent)); font-family: var(--font-body);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: background-color var(--transition), opacity var(--transition);
+}
+.fo-pc-btn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, transparent); }
+.fo-pc-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, transparent); }
+.fo-pc-btn[disabled] { opacity: 0.55; cursor: default; }
+.fo-pc-btn-primary { background: var(--accent-color, var(--setup-accent)); color: var(--bg, #0d0d0d); }
+
+/* Compare-with-cOMpass + handoff review surfaces */
+.fo-pc-compare, .fo-pc-handoff { margin-top: var(--space-4); border-top: 1px solid var(--hairline, rgba(255,255,255,0.14)); padding-top: var(--space-3); }
+.fo-pc-compare-summary { font-size: 12px; font-weight: 600; color: var(--text); margin: 0 0 var(--space-2); }
+.fo-pc-compare-room { margin: 0 0 var(--space-2); }
+.fo-pc-compare-room-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.fo-pc-compare-line { font-size: 11px; line-height: 1.5; color: var(--text-muted, var(--text)); }
+.fo-pc-tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; padding: 0 5px; border-radius: 4px; margin-left: 4px; }
+.fo-pc-tag.is-edited  { color: #d9a441; background: rgba(217,164,65,0.14); }
+.fo-pc-tag.is-added   { color: #4fae7b; background: rgba(79,174,123,0.14); }
+.fo-pc-tag.is-removed { color: #c96a6a; background: rgba(201,106,106,0.14); }
+.fo-pc-tag.is-nexus   { color: var(--accent-color, var(--setup-accent)); background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 14%, transparent); }
+.fo-pc-handoff-row { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; line-height: 1.5; margin: 0 0 4px; }
+.fo-pc-handoff-row input { margin-top: 3px; }
 .fo-pc-note { font-size: 10px; font-style: italic; line-height: 1.5; color: var(--text-faint); margin: var(--space-2) 0 0; }
 
 /* ── Field Observations depth / mode bar ─────────────────────────────
@@ -10904,7 +10977,7 @@ body.hw-open { overflow: hidden; }
                Archive. -->
           <div class="fo-view-tabs" id="fo-view-tabs" role="tablist" aria-label="Field Observations workspace">
             <button type="button" class="fo-view-tab active" id="fo-view-tab-observations" data-fo-view="observations" role="tab" aria-selected="true" aria-controls="fo-view-observations" tabindex="0">Field Observations</button>
-            <button type="button" class="fo-view-tab" id="fo-view-tab-lde" data-fo-view="living-digital-expression" role="tab" aria-selected="false" aria-controls="fo-view-living-digital-expression" tabindex="-1">Living Digital Expression</button>
+            <button type="button" class="fo-view-tab" id="fo-view-tab-lde" data-fo-view="living-digital-expression" role="tab" aria-selected="false" aria-controls="fo-view-living-digital-expression" tabindex="-1">FieldPrint</button>
           </div>
           <button class="studio-info-btn" data-info="info-notepad-overlay" title="About Field Observations"><i>i</i></button>
         </div>
@@ -10915,32 +10988,40 @@ body.hw-open { overflow: hidden; }
             <button class="notepad-save-btn" id="btn-save-entry" title="Save observation (⌘↵)">Save observation <span aria-hidden="true">⌘↵</span></button>
           </div>
         </div>
-        <!-- Living Digital Expression — project view (tabpanel). Selected from
+        <!-- FieldPrint — the stUdio developmental stage (tabpanel). Selected from
              the header workspace tabs, it swaps into the same surface region as
              the ordinary Field Observations workspace below — one active surface
-             at a time, not a stacked card. Read-only surfacing of the currently
-             opened room's cOMpass content from the person's own state
-             (state.compassData.points[currentRoom]); provenance shown. The save
-             action pushes a structured, provenance-tagged record through the
-             EXISTING Field Observations store (studioCreateFieldObservation). It
-             deliberately does NOT write Fieldprint: Fieldprint exposes no safe
-             partial/blank-fill inbound contract (only a destructive full
-             hydrateFromModel that resets sections + hero framing), so this stages
-             the structured payload in the closest existing durable primitive
-             instead of overwriting fields. No new store, no overwrite, no
-             migration; the Archive is untouched. Hidden until its tab is chosen. -->
+             at a time. This is where the person edits their Level 2 working
+             document: every room is shown with the same structured, editable
+             fields (Heading, Summary, Introduction, Theme, Closing, Highlights,
+             Insights) drawn from state.compassData.points[room]. Edits write ONLY
+             the Level 2 draft (+ per-field provenance) — never the immutable
+             cOMpass baseline. Nexus Inspire (per field) and Evolve (per room)
+             offer AI drafts the person may Accept / Edit / Reject. Compare with
+             cOMpass shows baseline-vs-draft change. Send to FieldPrint Builder
+             hands off reviewed content non-destructively. Hidden until chosen. -->
         <div class="fo-view fo-view-lde" id="fo-view-living-digital-expression" role="tabpanel" aria-labelledby="fo-view-tab-lde" hidden>
           <section class="fo-project-context" id="fo-project-context" aria-live="polite">
             <div class="fo-pc-head">
-              <span class="fo-pc-eyebrow" id="fo-pc-eyebrow">Living Digital Expression</span>
+              <span class="fo-pc-eyebrow" id="fo-pc-eyebrow">FieldPrint</span>
               <span class="fo-pc-source" id="fo-pc-source"></span>
             </div>
+            <p class="fo-pc-lede" id="fo-pc-lede">Your Living Digital Expression — shape each room’s content here, then fine-tune it in the FieldPrint Builder.</p>
             <div class="fo-pc-body" id="fo-pc-body"></div>
-            <div class="fo-pc-actions" id="fo-pc-actions" hidden>
-              <button type="button" class="fo-pc-save-btn" id="fo-pc-save-btn">Save this context to Field Observations</button>
-              <p class="fo-pc-note">Saves a structured, sourced copy into your Field Observations — durable and available to Nexus. It does not auto-fill Fieldprint yet.</p>
-            </div>
+            <!-- Compare-with-cOMpass result surface (filled on demand). -->
+            <div class="fo-pc-compare" id="fo-pc-compare" hidden aria-live="polite"></div>
+            <!-- Builder handoff review surface (filled on demand). -->
+            <div class="fo-pc-handoff" id="fo-pc-handoff" hidden aria-live="polite"></div>
           </section>
+          <!-- Sticky action bar — always reachable regardless of content length. -->
+          <div class="fo-pc-bar" id="fo-pc-bar" hidden>
+            <span class="fo-pc-status" id="fo-pc-status" role="status" aria-live="polite"></span>
+            <div class="fo-pc-bar-actions">
+              <button type="button" class="fo-pc-btn" id="fo-pc-compare-btn">Compare with cOMpass</button>
+              <button type="button" class="fo-pc-btn" id="fo-pc-builder-btn">Send to FieldPrint Builder</button>
+              <button type="button" class="fo-pc-btn fo-pc-btn-primary" id="fo-pc-savejson-btn">Save stUdio JSON</button>
+            </div>
+          </div>
         </div>
         <!-- Field Observations view (tabpanel) — the ordinary depth mode bar +
              panels, wrapped so the whole workspace can swap out when a project
@@ -11880,7 +11961,17 @@ let state = {
   person: '',
   theme: 'A',
   birthData: null,
-  compassData: null,  // imported Compass JSON
+  compassData: null,  // Level 2 editable draft (evolved FieldPrint content)
+  // ── FieldPrint Level 2 lifecycle (additive; legacy states load as null) ──
+  //   compassBaseline  — immutable, deep-frozen snapshot of the original
+  //                      cOMpass import (Level 1). Never edited. Absent on
+  //                      legacy sessions → comparison reports "unavailable".
+  //   compassDraftMeta — per-field provenance: points[room][field] =
+  //                      { origin:'manual'|'nexus', updatedAt, nexusAssisted? }.
+  //   level2           — envelope metadata for the working document.
+  compassBaseline: null,
+  compassDraftMeta: { points: {} },
+  level2: null,       // { version, sourceIdentity, baselineCapturedAt }
   rooms: {
     work:  { entries: [], mirrorHistory: [] },
     lens:  { entries: [], mirrorHistory: [] },
@@ -12567,6 +12658,17 @@ function loadState() {
     if (s) {
       const parsed = JSON.parse(s);
       state = { ...state, ...parsed };
+      // Re-establish Level 2 invariants after rehydration: the baseline must be
+      // deep-frozen again (freezing does not survive JSON), and the provenance
+      // map must always be a well-formed { points:{} } object.
+      if (state.compassBaseline && typeof cuL2DeepFreeze === 'function') {
+        try { cuL2DeepFreeze(state.compassBaseline); } catch (_) {}
+      }
+      if (!state.compassDraftMeta || typeof state.compassDraftMeta !== 'object') {
+        state.compassDraftMeta = { points: {} };
+      } else if (!state.compassDraftMeta.points) {
+        state.compassDraftMeta.points = {};
+      }
       // Keep window.state in sync — see the explicit assignment at
       // the end of this script block; loadState() rebinds `state`
       // to a new object, so re-publish the reference.
@@ -14175,15 +14277,57 @@ function initImportModal() {
   });
 }
 
+// Establish the Level 2 working document from an imported payload.
+//   kind 'compass'  → fresh import: snapshot an immutable frozen baseline and a
+//                     separate editable draft (never aliased); empty provenance.
+//   kind 'level2'   → resume: restore the saved baseline/draft/provenance as-is.
+//   kind 'studio-v1'→ legacy: draft only, NO true baseline (comparison honestly
+//                     reports "unavailable" — never fabricates baseline=draft).
+// `compassDraft` is the evolved draft already extracted by the normalizer.
+function studioApplyLevel2Import(raw, compassDraft, kind) {
+  state.compassData = compassDraft;
+  const nowIso = new Date().toISOString();
+  if (kind === 'level2' && raw && raw.compassBaseline) {
+    state.compassBaseline = (typeof cuL2DeepFreeze === 'function' && typeof cuL2DeepClone === 'function')
+      ? cuL2DeepFreeze(cuL2DeepClone(raw.compassBaseline)) : raw.compassBaseline;
+    state.compassDraftMeta = (raw.compassDraftMeta && raw.compassDraftMeta.points)
+      ? raw.compassDraftMeta : { points: {} };
+    state.level2 = raw.level2 || {
+      version: 'studio-level2-v1',
+      sourceIdentity: { companion: (compassDraft && compassDraft.companion) || null, importedAt: null },
+      baselineCapturedAt: null,
+    };
+  } else if (kind === 'compass' && typeof cuInitLevel2FromCompass === 'function') {
+    const l2 = cuInitLevel2FromCompass(compassDraft);
+    state.compassData = l2.draft;
+    state.compassBaseline = l2.baseline;
+    state.compassDraftMeta = l2.meta;
+    state.level2 = {
+      version: 'studio-level2-v1',
+      sourceIdentity: { companion: (compassDraft && compassDraft.companion) || null, importedAt: nowIso },
+      baselineCapturedAt: nowIso,
+    };
+  } else {
+    // Legacy studio-v1 (or missing helpers): keep the draft, no baseline.
+    state.compassBaseline = null;
+    state.compassDraftMeta = { points: {} };
+    state.level2 = null;
+  }
+}
+
 function processCompassImport(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const raw = JSON.parse(e.target.result);
+      const kind = (typeof cuClassifyStudioImport === 'function') ? cuClassifyStudioImport(raw) : null;
       const norm = normalizeImportedStudioOrCompassJson(raw);
       if (!norm) throw new Error('Not a Compass session file');
       const compass = norm.compassData;
-      state.compassData = compass;
+      // Initialise / restore the Level 2 working document (baseline + draft +
+      // provenance). Fresh cOMpass → new frozen baseline + separate draft;
+      // Level 2 doc → resume; legacy studio-v1 → no true baseline (honest).
+      studioApplyLevel2Import(raw, compass, kind);
       // Prefer the wrapper's explicit birthData if present; otherwise
       // the Compass JSON itself is the master key for the foundation
       // (overrides any prior calculator state).
@@ -14262,16 +14406,24 @@ function processCompassImport(file) {
 function studioSaveJSON() {
   const name = (state.person || state.compassData?.companion || 'studio').toLowerCase().replace(/\s+/g,'-');
   const date = new Date().toISOString().slice(0,10);
-  const filename = name + '-studio-' + date + '.json';
+  // Distinct Level 2 filename — this is the stUdio working document, NOT the
+  // original cOMpass source file (which stays untouched on the person's device).
+  const filename = name + '-fieldprint-level2-' + date + '.json';
 
-  // Build export object
+  // Build the Level 2 export envelope. Additive over the legacy studio-v1
+  // shape: it carries the immutable original-import baseline, the evolved
+  // draft, and per-field provenance alongside everything a legacy consumer
+  // already reads (unknown keys are ignored by older code).
   const exportData = {
-    version: 'studio-v1',
+    version: 'studio-level2-v1',
     exported: new Date().toISOString(),
     person: state.person,
     theme: state.theme,
     birthData: state.birthData,
-    compassData: state.compassData,
+    compassData: state.compassData,          // evolved editable draft
+    compassBaseline: state.compassBaseline || null, // immutable Level 1 snapshot (null on legacy sessions)
+    compassDraftMeta: state.compassDraftMeta || { points: {} },
+    level2: state.level2 || null,
     rooms: {}
   };
 
@@ -14308,7 +14460,7 @@ function studioSaveJSON() {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
-  showToast('Studio session saved');
+  showToast('stUdio JSON saved — your original cOMpass file is untouched');
 }
 
 function studioLoadJSON(file) {
@@ -14331,7 +14483,13 @@ function studioLoadJSON(file) {
         document.documentElement.dataset.theme = data.theme;
       }
       if (data.birthData) state.birthData = data.birthData;
-      if (data.compassData) state.compassData = data.compassData;
+      // Level 2 lifecycle: a Level 2 document resumes work (restores baseline +
+      // provenance); a legacy studio-v1 restores the draft only with no true
+      // baseline (comparison reports "unavailable", never fabricated).
+      if (data.compassData) {
+        const kind = (typeof cuClassifyStudioImport === 'function') ? cuClassifyStudioImport(data) : 'studio-v1';
+        studioApplyLevel2Import(data, data.compassData, kind);
+      }
       if (data.rooms) {
         ['work','lens','field','call'].forEach(room => {
           if (data.rooms[room]) {
@@ -26165,6 +26323,16 @@ if (document.readyState === 'loading') {
     // palette roles, public-only images) via postMessage. Raw JSON / birth
     // data / Gene Keys / mechanics / private images never cross the seam.
     var phV5Bridged = false;
+    // Pending non-destructive content prefill from the FieldPrint editor tab.
+    // Held until the iframe reports ready, then posted once.
+    var phV5PendingPrefill = null;
+    var phV5PrefillAck = null;
+    // Explicit intent for the NEXT fieldprint-ready. A bare/passive ready (e.g.
+    // the iframe's own load-time handshake, or a stray reload) carries intent
+    // 'none' and MUST NOT mutate the Builder draft. Only a deliberate open sets
+    // 'model' (legacy: push the current Studio model) or 'prefill' (a reviewed,
+    // non-destructive content handoff). Merely having Studio loaded never posts.
+    var phV5OpenIntent = 'none';   // 'none' | 'model' | 'prefill'
 
     // Build the sanitized public model the iframe consumes. Reuses the existing
     // privacy firewall (phPublicHomeModel over buildWebsitePreview()).
@@ -26182,7 +26350,28 @@ if (document.readyState === 'loading') {
       var model = phV5BuildModel();
       if (!model) return;
       frame.contentWindow.postMessage(
-        { type: 'fieldprint-model', model: model }, window.location.origin);
+        { type: 'fieldprint-model', model: model, owner: phV5OwnerKey() },
+        window.location.origin);
+    }
+
+    // Stable on-device owner key for the CURRENT person/source. The Builder
+    // fingerprints a draft to the active identity so drafts never bleed across
+    // people; on a cold reload during a reviewed handoff no model is posted, so
+    // the Builder cannot re-derive that identity on its own. We therefore send
+    // the SAME key on both the model handshake and the prefill, letting the
+    // Builder save and later restore the correct draft. Empty identity → null,
+    // and the Builder falls back to its own computeOwner() (e.g. standalone).
+    function phV5OwnerKey() {
+      try {
+        var ident = (state.compassData && state.compassData.companion) ||
+                    state.person || '';
+        ident = String(ident).trim().toLowerCase();
+        if (!ident) return null;
+        if (typeof _studioCipherHashHex === 'function') {
+          return 'cu-owner-' + _studioCipherHashHex(ident, 16);
+        }
+        return 'cu-owner-' + ident;
+      } catch (_) { return null; }
     }
 
     // Single message listener: only accept from our own iframe + same origin.
@@ -26196,7 +26385,20 @@ if (document.readyState === 'loading') {
         var d = e.data;
         if (!d || typeof d !== 'object') return;
         if (d.type === 'fieldprint-ready') {
-          phV5PostModel();
+          // Act ONLY on the intent set by a deliberate open. The iframe posts
+          // fieldprint-ready on its own load (after restoring its on-device
+          // draft); if we posted the full model here unconditionally we'd run
+          // the destructive hydrateFromModel — resetting hero framing /
+          // roleOverrides and surfacing raw transcript via the
+          // buildWebsitePreview body fallback — and clobber that restored draft.
+          // A passive ready (intent 'none') therefore does nothing.
+          phV5ConsumeIntent();
+        } else if (d.type === 'fieldprint-prefilled') {
+          // Builder acknowledged a non-destructive content prefill.
+          if (typeof phV5PrefillAck === 'function') {
+            try { phV5PrefillAck(d); } catch (_) {}
+          }
+          phV5PrefillAck = null;
         } else if (d.type === 'fieldprint-import-json') {
           // Normalize the raw export through the SAME firewall the Workbench
           // uses, then repost the sanitized model. Raw text never round-trips.
@@ -26210,21 +26412,49 @@ if (document.readyState === 'loading') {
       });
     }
 
-    function openFieldprintV5() {
+    // Act on the intent recorded by the most recent deliberate open. Consumes
+    // (resets) the intent so a later passive/duplicate ready can't replay it.
+    function phV5ConsumeIntent() {
+      var intent = phV5OpenIntent;
+      phV5OpenIntent = 'none';
+      if (intent === 'prefill') {
+        // Non-destructive: post ONLY the reviewed fields; hero framing,
+        // roleOverrides, palette, images and unselected fields are preserved.
+        phV5FlushPrefill();
+      } else if (intent === 'model') {
+        // Deliberate legacy open: push the current sanitized Studio model.
+        phV5PostModel();
+      }
+      // intent 'none' → do nothing; the Builder keeps its own restored draft.
+    }
+
+    // Reveal the overlay and ensure the surface is live. Does NOT decide what to
+    // post — the caller sets phV5OpenIntent first; a fresh load defers to the
+    // fieldprint-ready handler, an already-live surface consumes intent inline.
+    function phV5RevealAndLoad() {
       var overlay = document.getElementById('fieldprint-v5-overlay');
       var frame = document.getElementById('fieldprint-v5-frame');
       if (!overlay || !frame) { openHomeWorkbench(); return; }
       phV5WireBridge();
-      // Load the surface fresh each open so it re-handshakes for a live model.
       if (frame.getAttribute('src') !== '/fieldprint') {
+        // Fresh load: the surface will post fieldprint-ready when it comes up,
+        // and phV5ConsumeIntent runs then.
         frame.setAttribute('src', '/fieldprint');
       } else {
-        // Already loaded — repost the current model.
-        phV5PostModel();
+        // Already live — no ready is coming, so act on the intent now.
+        phV5ConsumeIntent();
       }
       overlay.hidden = false;
       overlay.classList.add('is-open');
       document.body.classList.add('fieldprint-v5-open');
+    }
+
+    // Legacy/entrance open: deliberately means "open the Builder on the current
+    // Studio model". Sets 'model' intent, so this — and only this — pushes the
+    // full model. Passive readies during page load carry no such intent.
+    function openFieldprintV5() {
+      phV5OpenIntent = 'model';
+      phV5RevealAndLoad();
     }
 
     function closeFieldprintV5() {
@@ -26255,6 +26485,38 @@ if (document.readyState === 'loading') {
       } catch (_) { release(); return; }
       // Fallback in case the ack never arrives (e.g. the surface is mid-reload).
       setTimeout(release, 1200);
+    }
+    // Post any queued content prefill to the Builder iframe. Content-only and
+    // non-destructive: the Builder merges the named fields per section and
+    // leaves hero framing, roleOverrides, palette, cipher, images and any
+    // unselected fields untouched. Returns true if a message was posted.
+    function phV5FlushPrefill() {
+      if (!phV5PendingPrefill) return false;
+      var frame = document.getElementById('fieldprint-v5-frame');
+      if (!frame || !frame.contentWindow) return false;
+      var sections = phV5PendingPrefill;
+      phV5PendingPrefill = null;
+      try {
+        frame.contentWindow.postMessage(
+          { type: 'fieldprint-prefill', sections: sections, owner: phV5OwnerKey() },
+          window.location.origin);
+        return true;
+      } catch (_) { return false; }
+    }
+
+    // Called by the FieldPrint editor's "Send to FieldPrint Builder" handoff.
+    // Opens the Builder overlay and delivers the reviewed content prefill.
+    // `onAck` (optional) is invoked with the Builder's acknowledgement.
+    function phV5SendPrefill(sections, onAck) {
+      if (!sections) return;
+      phV5PendingPrefill = sections;
+      phV5PrefillAck = typeof onAck === 'function' ? onAck : null;
+      // Reviewed handoff: set 'prefill' intent so the ready handler (fresh load)
+      // or the inline path (already-live surface) posts ONLY the reviewed
+      // fields. The destructive full-model post is never taken here, so hero
+      // framing / roleOverrides are preserved and raw text can never leak in.
+      phV5OpenIntent = 'prefill';
+      phV5RevealAndLoad();
     }
     // <FIELDPRINT_V5_ADAPTER_END>
 
@@ -26503,6 +26765,7 @@ if (document.readyState === 'loading') {
       window.closeHomeWorkbench = closeHomeWorkbench;
       window.openFieldprintV5 = openFieldprintV5;
       window.closeFieldprintV5 = closeFieldprintV5;
+      window.phV5SendPrefill = phV5SendPrefill;
       window.phWorkbenchRefreshAll = phWorkbenchRefreshAll;
       window.phWorkbenchRefreshPreview = phWorkbenchRefreshPreview;
       window.phWorkbenchSaveActiveSection = phWorkbenchSaveActiveSection;
@@ -29762,6 +30025,222 @@ if (document.readyState === 'loading') {
 })();
 </script>
 <script>
+// ── FieldPrint Level 2 — pure model layer ───────────────────────────────────
+// Small, DOM-free, dependency-free helpers shared by the FieldPrint editor,
+// the Compare-with-cOMpass view, and the Builder handoff. Kept as top-level
+// function declarations (no closures over app state) so they are unit-testable
+// by extraction (see test_fieldprint_level2.js) and reusable everywhere.
+//
+// Lifecycle model:
+//   Level 1  — the imported cOMpass JSON. Read-only foundation, never edited.
+//   Level 2  — the stUdio working document: an immutable deep-frozen copy of the
+//              Level 1 source (compassBaseline) PLUS a separate editable draft
+//              (compassData) PLUS per-field provenance (compassDraftMeta).
+// The baseline and the draft are always distinct object graphs (never aliased),
+// so editing the draft can never mutate the baseline the comparison reads from.
+
+// Canonical, ordered set of the human-authored FieldPrint fields. Every room is
+// presented with these same seven fields in this stable order. `key` is the
+// cOMpass point property; `kind` drives text-vs-list handling.
+function cuFieldprintFields() {
+  return [
+    { key: 'web_heading', label: 'Heading',      kind: 'text' },
+    { key: 'summary',     label: 'Summary',      kind: 'text' },
+    { key: 'web_intro',   label: 'Introduction', kind: 'text' },
+    { key: 'theme',       label: 'Theme',        kind: 'text' },
+    { key: 'web_closing', label: 'Closing',      kind: 'text' },
+    { key: 'highlights',  label: 'Highlights',   kind: 'list' },
+    { key: 'insights',    label: 'Insights',     kind: 'list' },
+  ];
+}
+
+function cuL2DeepClone(obj) {
+  if (obj == null || typeof obj !== 'object') return obj;
+  try { if (typeof structuredClone === 'function') return structuredClone(obj); } catch (_) {}
+  try { return JSON.parse(JSON.stringify(obj)); } catch (_) { return obj; }
+}
+
+// Recursively freeze so no code path can mutate the Level 1 baseline in place.
+function cuL2DeepFreeze(obj) {
+  if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
+    Object.freeze(obj);
+    Object.keys(obj).forEach(function (k) { cuL2DeepFreeze(obj[k]); });
+  }
+  return obj;
+}
+
+function cuFpStr(v) {
+  if (typeof v === 'string') return v.trim();
+  if (v == null) return '';
+  return String(v).trim();
+}
+
+// Highlights/insights entries may be plain strings or objects carrying the text
+// under text/label/title (mirrors normHighlights elsewhere); read both shapes.
+function cuFpList(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map(function (h) { return cuFpStr(typeof h === 'string' ? h : (h && (h.text || h.label || h.title))); })
+    .filter(Boolean);
+}
+
+// The one canonical reader of a cOMpass point → structured, editor-ready shape.
+// `raw` is surfaced SEPARATELY as `rawSource` (never poured into summary/intro),
+// so the editor can show it as "source material, not yet structured".
+function cuNormalizeFieldprintPoint(point) {
+  var p = point || {};
+  return {
+    web_heading: cuFpStr(p.web_heading),
+    summary:     cuFpStr(p.summary),
+    web_intro:   cuFpStr(p.web_intro),
+    theme:       cuFpStr(p.theme),
+    web_closing: cuFpStr(p.web_closing),
+    highlights:  cuFpList(p.highlights),
+    insights:    cuFpList(p.insights),
+    rawSource:   cuFpStr(p.raw),
+  };
+}
+
+function cuFieldprintHasStructured(norm) {
+  if (!norm) return false;
+  return !!(norm.web_heading || norm.summary || norm.web_intro || norm.theme ||
+            norm.web_closing || (norm.highlights && norm.highlights.length) ||
+            (norm.insights && norm.insights.length));
+}
+
+// Discriminate an imported JSON payload:
+//   'level2'    — a stUdio Level 2 document (carries an immutable baseline).
+//   'studio-v1' — a legacy stUdio export (compassData draft, NO baseline).
+//   'compass'   — a raw cOMpass session (points, no wrapper).
+//   null        — unrecognised.
+function cuClassifyStudioImport(data) {
+  if (!data || typeof data !== 'object') return null;
+  var v = (typeof data.version === 'string') ? data.version : '';
+  if (v.indexOf('studio-level2') === 0 ||
+      (data.compassBaseline && typeof data.compassBaseline === 'object')) return 'level2';
+  if (v.indexOf('studio') === 0 ||
+      (data.compassData && typeof data.compassData === 'object' && data.compassData.points)) return 'studio-v1';
+  if (data.points) return 'compass';
+  return null;
+}
+
+// Build the Level 2 trio from a FRESH cOMpass import. Two independent clones
+// guarantee the baseline and draft never share references.
+function cuInitLevel2FromCompass(compass) {
+  return {
+    draft: cuL2DeepClone(compass),
+    baseline: cuL2DeepFreeze(cuL2DeepClone(compass)),
+    meta: { points: {} },
+  };
+}
+
+// Word-level diff via LCS length → words added / removed. Inputs are clamped so
+// a pathological field can never cost more than a bounded amount of work.
+function cuWordDiff(aText, bText) {
+  var aw = String(aText || '').split(/\s+/).filter(Boolean).slice(0, 4000);
+  var bw = String(bText || '').split(/\s+/).filter(Boolean).slice(0, 4000);
+  var m = aw.length, n = bw.length;
+  if (!m) return { added: n, removed: 0 };
+  if (!n) return { added: 0, removed: m };
+  var prev = new Array(n + 1).fill(0);
+  var cur = new Array(n + 1).fill(0);
+  for (var i = 1; i <= m; i++) {
+    for (var j = 1; j <= n; j++) {
+      cur[j] = (aw[i - 1] === bw[j - 1]) ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+    }
+    var t = prev; prev = cur; cur = t;
+    cur[0] = 0;
+  }
+  var lcs = prev[n];
+  return { added: n - lcs, removed: m - lcs };
+}
+
+function cuCompareTextField(base, draft) {
+  var b = cuFpStr(base), d = cuFpStr(draft);
+  if (b === d) return { status: 'unchanged', wordsAdded: 0, wordsRemoved: 0 };
+  if (!b && d) return { status: 'added', wordsAdded: d.split(/\s+/).filter(Boolean).length, wordsRemoved: 0 };
+  if (b && !d) return { status: 'removed', wordsAdded: 0, wordsRemoved: b.split(/\s+/).filter(Boolean).length };
+  var wd = cuWordDiff(b, d);
+  return { status: 'edited', wordsAdded: wd.added, wordsRemoved: wd.removed };
+}
+
+function cuCompareListField(baseArr, draftArr) {
+  var b = cuFpList(baseArr), d = cuFpList(draftArr);
+  var same = b.length === d.length && b.every(function (x, i) { return x === d[i]; });
+  if (same) return { status: 'unchanged', itemsAdded: 0, itemsRemoved: 0, wordsAdded: 0, wordsRemoved: 0 };
+  var bset = {}; b.forEach(function (x) { bset[x] = true; });
+  var dset = {}; d.forEach(function (x) { dset[x] = true; });
+  var itemsAdded = d.filter(function (x) { return !bset[x]; }).length;
+  var itemsRemoved = b.filter(function (x) { return !dset[x]; }).length;
+  var status = (!b.length && d.length) ? 'added' : (b.length && !d.length) ? 'removed' : 'edited';
+  return { status: status, itemsAdded: itemsAdded, itemsRemoved: itemsRemoved, wordsAdded: 0, wordsRemoved: 0 };
+}
+
+function cuComparePoint(basePoint, draftPoint, metaPoint, fieldDefs) {
+  var defs = fieldDefs || cuFieldprintFields();
+  var bn = cuNormalizeFieldprintPoint(basePoint);
+  var dn = cuNormalizeFieldprintPoint(draftPoint);
+  var fields = [], changed = 0, wordsAdded = 0, wordsRemoved = 0, nexusAssisted = 0;
+  defs.forEach(function (f) {
+    var cmp = (f.kind === 'list') ? cuCompareListField(bn[f.key], dn[f.key])
+                                  : cuCompareTextField(bn[f.key], dn[f.key]);
+    var origin = (metaPoint && metaPoint[f.key] && metaPoint[f.key].origin) || null;
+    if (cmp.status !== 'unchanged') { changed++; if (origin === 'nexus') nexusAssisted++; }
+    wordsAdded += cmp.wordsAdded || 0;
+    wordsRemoved += cmp.wordsRemoved || 0;
+    fields.push({
+      key: f.key, label: f.label, kind: f.kind, status: cmp.status,
+      wordsAdded: cmp.wordsAdded || 0, wordsRemoved: cmp.wordsRemoved || 0,
+      itemsAdded: cmp.itemsAdded || 0, itemsRemoved: cmp.itemsRemoved || 0,
+      origin: origin,
+    });
+  });
+  return {
+    fields: fields, fieldsChanged: changed, fieldsTotal: defs.length,
+    wordsAdded: wordsAdded, wordsRemoved: wordsRemoved, nexusAssisted: nexusAssisted,
+  };
+}
+
+// Overall baseline-vs-draft comparison. Returns { available:false } when there
+// is no true Level 1 baseline (legacy sessions) — the caller shows an honest
+// "comparison unavailable" rather than fabricating baseline === current (0%).
+function cuCompareCompass(baseline, draft, rooms, meta, roomMeta, fieldDefs) {
+  if (!baseline || !baseline.points) return { available: false };
+  var defs = fieldDefs || cuFieldprintFields();
+  var roomList = rooms || ['work', 'lens', 'field', 'call'];
+  var out = { available: true, rooms: [], fieldsChanged: 0, fieldsTotal: 0,
+              wordsAdded: 0, wordsRemoved: 0, nexusAssisted: 0 };
+  roomList.forEach(function (room) {
+    var bp = baseline.points[room] || null;
+    var dp = (draft && draft.points && draft.points[room]) || null;
+    var mp = (meta && meta.points && meta.points[room]) || null;
+    var r = cuComparePoint(bp, dp, mp, defs);
+    var title = (roomMeta && roomMeta[room] && roomMeta[room].title) || room;
+    out.rooms.push({
+      room: room, title: title, fields: r.fields,
+      fieldsChanged: r.fieldsChanged, fieldsTotal: r.fieldsTotal,
+      wordsAdded: r.wordsAdded, wordsRemoved: r.wordsRemoved, nexusAssisted: r.nexusAssisted,
+    });
+    out.fieldsChanged += r.fieldsChanged; out.fieldsTotal += r.fieldsTotal;
+    out.wordsAdded += r.wordsAdded; out.wordsRemoved += r.wordsRemoved;
+    out.nexusAssisted += r.nexusAssisted;
+  });
+  return out;
+}
+
+try {
+  if (typeof window !== 'undefined') {
+    window.cuFieldprintFields = cuFieldprintFields;
+    window.cuNormalizeFieldprintPoint = cuNormalizeFieldprintPoint;
+    window.cuClassifyStudioImport = cuClassifyStudioImport;
+    window.cuInitLevel2FromCompass = cuInitLevel2FromCompass;
+    window.cuCompareCompass = cuCompareCompass;
+    window.cuL2DeepClone = cuL2DeepClone;
+    window.cuL2DeepFreeze = cuL2DeepFreeze;
+  }
+} catch (_) {}
+</script>
+<script>
 // ── Field Observations workspace selector ───────────────────────────────────
 // A compact segmented control in the notepad header that swaps the main surface
 // between the ordinary Field Observations depth workspace and selectable active
@@ -29779,7 +30258,7 @@ if (document.readyState === 'loading') {
   // be a stable, attribute-safe slug). The Archive is deliberately excluded and
   // can never be a project — any archive-like id is filtered out defensively.
   const FO_PROJECTS = [
-    { id: 'living-digital-expression', label: 'Living Digital Expression' },
+    { id: 'living-digital-expression', label: 'FieldPrint' },
   ];
   const FO_VIEW_KEY = 'fo-view';
   const BASE_VIEW = 'observations'; // the ordinary Field Observations workspace
@@ -29864,102 +30343,63 @@ if (document.readyState === 'loading') {
     selectView(tabs[next].dataset.foView, true);
   });
 
-  // ── Living Digital Expression — project context ───────────────────────────
-  // Read-only surfacing of the currently opened room's cOMpass content, drawn
-  // from the person's own state (state.compassData.points[currentRoom]). The
-  // save action reuses the EXISTING durable Field Observations store; it never
-  // writes Fieldprint (no safe partial contract exists), never overwrites, and
-  // never touches the Archive. Only shown while the active project is Living
-  // Digital Expression.
+  // ── FieldPrint — stUdio developmental editor ──────────────────────────────
+  // The currently opened room's cOMpass content, shown as the SAME structured,
+  // editable fields for every room (Heading, Summary, Introduction, Theme,
+  // Closing, Highlights, Insights). Edits write ONLY the Level 2 draft
+  // (state.compassData.points[room]) plus per-field provenance
+  // (state.compassDraftMeta) — never the immutable baseline. Nexus Inspire and
+  // Evolve offer AI drafts (Accept/Edit/Reject). Compare with cOMpass shows the
+  // baseline-vs-draft change. Send to FieldPrint Builder hands off reviewed
+  // content non-destructively. Only active while the FieldPrint tab is chosen.
   const ROOMS = ['work', 'lens', 'field', 'call'];
 
-  // Pure view-model: given the active project, the open room, the person's
-  // compass data, and the room metadata table, decide what the context card
-  // should show. No DOM, no globals — kept pure so the branching is verifiable.
+  // Pure view-model: decide what the FieldPrint editor should show for the open
+  // room. No DOM, no globals beyond the shared pure normalizer/field registry —
+  // kept pure so the branching + field set are verifiable. Every valid room
+  // resolves to the SAME seven editable fields (empty allowed), so presentation
+  // is consistent across rooms; `raw` is surfaced separately as rawSource, never
+  // poured into an editable field.
   function buildProjectContextView(projectId, defaultId, room, compassData, roomMeta) {
-    // The context card belongs to Living Digital Expression only.
     if (projectId !== defaultId || defaultId !== 'living-digital-expression') {
       return { visible: false };
     }
     const meta = (roomMeta && room && roomMeta[room]) ? roomMeta[room] : null;
     const roomTitle = meta ? meta.title : '';
-    const eyebrow = roomTitle ? ('Living Digital Expression · ' + roomTitle) : 'Living Digital Expression';
+    const eyebrow = roomTitle ? ('FieldPrint · ' + roomTitle) : 'FieldPrint';
 
     if (!room || ROOMS.indexOf(room) === -1) {
-      return { visible: true, mode: 'no-room', eyebrow: 'Living Digital Expression',
-        source: '', canSave: false,
-        empty: 'Open a room — The Work, The Lens, The Field, or The Call — to bring its cOMpass context into this project.' };
+      return { visible: true, mode: 'no-room', eyebrow: 'FieldPrint', source: '', canEdit: false,
+        empty: 'Open a room — The Work, The Lens, The Field, or The Call — to shape its FieldPrint content.' };
     }
-    const point = (compassData && compassData.points && compassData.points[room]) || null;
     if (!compassData || !compassData.points) {
-      return { visible: true, mode: 'no-compass', eyebrow: eyebrow, source: '', canSave: false,
-        empty: 'No cOMpass data imported yet. Import your Compass session in Studio Setup and it will surface here.' };
+      return { visible: true, mode: 'no-compass', eyebrow: eyebrow, source: '', canEdit: false,
+        empty: 'No cOMpass data imported yet. Import your cOMpass session in Studio Setup and it will surface here.' };
     }
-    if (!point) {
-      return { visible: true, mode: 'no-point', eyebrow: eyebrow, source: 'from your cOMpass', canSave: false,
-        empty: 'Your cOMpass has no content for ' + (roomTitle || 'this room') + ' yet.' };
-    }
+    const point = compassData.points[room] || null;
 
     // Provenance line. gk_num/gk_line are public Gene Key coordinates already
     // used elsewhere in Studio; the gkLabel names the room's dimension.
-    const gkNum = (point.gk_num !== undefined && point.gk_num !== null && point.gk_num !== '') ? String(point.gk_num) : '';
-    const gkLine = (point.gk_line !== undefined && point.gk_line !== null && point.gk_line !== '') ? String(point.gk_line) : '';
+    const gkNum = (point && point.gk_num !== undefined && point.gk_num !== null && point.gk_num !== '') ? String(point.gk_num) : '';
+    const gkLine = (point && point.gk_line !== undefined && point.gk_line !== null && point.gk_line !== '') ? String(point.gk_line) : '';
     const gkCoord = gkNum ? (gkLine ? (gkNum + '.' + gkLine) : gkNum) : '';
     const gkLabel = meta && meta.gkLabel ? meta.gkLabel : '';
     let source = 'from your cOMpass';
-    if (gkLabel || gkCoord) {
-      source += ' · ' + [gkLabel, gkCoord].filter(Boolean).join(' ');
-    }
+    if (gkLabel || gkCoord) source += ' · ' + [gkLabel, gkCoord].filter(Boolean).join(' ');
 
-    // Only surface fields that are actually present (defensive, order stable).
-    // Field sources mirror the canonical cOMpass content contract used by
-    // phCompassContentSeed/dimSeed elsewhere in this file (web_heading, then
-    // web_intro|summary|raw for the body, web_closing, and object-or-string
-    // highlights/insights) so every room resolves the same way this app already
-    // reads it — not a narrower subset that silently drops readable content.
-    const fields = [];
-    const str = (v) => (typeof v === 'string' ? v.trim() : '');
-    // Highlights/insights entries may be plain strings or objects carrying the
-    // text under text/label/title (see normHighlights); read both shapes.
-    const listOf = (arr) => Array.isArray(arr)
-      ? arr.map((h) => str(typeof h === 'string' ? h : (h && (h.text || h.label || h.title)))).filter(Boolean)
-      : [];
-    if (str(point.web_heading)) fields.push({ label: 'Heading', value: str(point.web_heading) });
-    const summaryVal = str(point.summary);
-    const introVal = str(point.web_intro);
-    if (summaryVal) fields.push({ label: 'Summary', value: summaryVal });
-    if (introVal)   fields.push({ label: 'Intro', value: introVal });
-    // Some rooms (e.g. Life's Work) carry their body only in `raw`; surface it
-    // as the body when no curated summary/intro exists, matching dimSeed's
-    // firstStr(web_intro, summary, raw) precedence rather than showing nothing.
-    if (!summaryVal && !introVal && str(point.raw)) {
-      fields.push({ label: 'Summary', value: str(point.raw) });
-    }
-    if (str(point.theme))       fields.push({ label: 'Theme', value: str(point.theme) });
-    if (str(point.web_closing)) fields.push({ label: 'Closing', value: str(point.web_closing) });
-    const highlights = listOf(point.highlights);
-    if (highlights.length) fields.push({ label: 'Highlights', items: highlights });
-    const insights = listOf(point.insights);
-    if (insights.length) fields.push({ label: 'Insights', items: insights });
+    // Draw the seven editable fields from the shared normalizer (draft point).
+    const norm = cuNormalizeFieldprintPoint(point);
+    const defs = cuFieldprintFields();
+    const fields = defs.map((f) => (f.kind === 'list')
+      ? { key: f.key, label: f.label, kind: 'list', items: norm[f.key] }
+      : { key: f.key, label: f.label, kind: 'text', value: norm[f.key] });
 
-    if (!fields.length) {
-      return { visible: true, mode: 'no-point', eyebrow: eyebrow, source: source, canSave: false,
-        empty: 'Your cOMpass has no readable content for ' + (roomTitle || 'this room') + ' yet.' };
-    }
-
-    // Structured, provenance-tagged payload for the durable save.
-    const lines = [eyebrow + ' (from your cOMpass)'];
-    if (source) lines.push(source);
-    lines.push('');
-    fields.forEach((f) => {
-      if (f.items) lines.push(f.label + ':\n- ' + f.items.join('\n- '));
-      else lines.push(f.label + ': ' + f.value);
-    });
     return {
-      visible: true, mode: 'content', eyebrow: eyebrow, source: source, canSave: true,
+      visible: true, mode: 'editor', eyebrow: eyebrow, source: source, canEdit: true,
+      room: room, roomTitle: roomTitle,
       fields: fields,
-      payloadText: lines.join('\n'),
-      sourceLabel: 'cOMpass · ' + (roomTitle || 'Room'),
+      rawSource: norm.rawSource,
+      hasStructured: cuFieldprintHasStructured(norm),
     };
   }
 
@@ -29967,103 +30407,480 @@ if (document.readyState === 'loading') {
   const ctxEyebrow = document.getElementById('fo-pc-eyebrow');
   const ctxSource = document.getElementById('fo-pc-source');
   const ctxBody = document.getElementById('fo-pc-body');
-  const ctxActions = document.getElementById('fo-pc-actions');
-  const ctxSaveBtn = document.getElementById('fo-pc-save-btn');
-  let ctxView = null; // last rendered view-model (source of truth for save)
+  const ctxCompare = document.getElementById('fo-pc-compare');
+  const ctxHandoff = document.getElementById('fo-pc-handoff');
+  const ctxBar = document.getElementById('fo-pc-bar');
+  const ctxStatus = document.getElementById('fo-pc-status');
+  const btnCompare = document.getElementById('fo-pc-compare-btn');
+  const btnBuilder = document.getElementById('fo-pc-builder-btn');
+  const btnSaveJson = document.getElementById('fo-pc-savejson-btn');
+  let ctxView = null;
+
+  // FieldPrint field key → /inspire-layer2 `field` param. Only text fields have
+  // a mapped generator; list fields (Highlights/Insights) have no Inspire yet.
+  const INSPIRE_FIELD = { web_heading: 'heading', summary: 'summary', web_intro: 'intro', web_closing: 'closing', theme: 'theme' };
+
+  function setStatus(text, dirty) {
+    if (!ctxStatus) return;
+    ctxStatus.textContent = text || '';
+    ctxStatus.classList.toggle('is-dirty', !!dirty);
+  }
+
+  let saveTimer = null;
+  function scheduleSave() {
+    setStatus('Editing…', true);
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (typeof saveState === 'function') saveState();
+      setStatus('Saved to this browser', false);
+    }, 600);
+  }
+
+  // Write a single field into the Level 2 DRAFT only (never the baseline) and
+  // tag its provenance. origin 'manual' | 'nexus'; nexusAssisted marks a manual
+  // edit that began from a Nexus suggestion.
+  function writeDraftField(room, key, kind, rawValue, origin, nexusAssisted) {
+    const st = window.state;
+    if (!st) return;
+    if (!st.compassData) st.compassData = { points: {} };
+    if (!st.compassData.points) st.compassData.points = {};
+    if (!st.compassData.points[room]) st.compassData.points[room] = {};
+    const pt = st.compassData.points[room];
+    if (kind === 'list') {
+      pt[key] = String(rawValue || '').split('\n').map((s) => s.trim()).filter(Boolean);
+    } else {
+      pt[key] = String(rawValue || '');
+    }
+    if (!st.compassDraftMeta || typeof st.compassDraftMeta !== 'object') st.compassDraftMeta = { points: {} };
+    if (!st.compassDraftMeta.points) st.compassDraftMeta.points = {};
+    if (!st.compassDraftMeta.points[room]) st.compassDraftMeta.points[room] = {};
+    const m = { origin: origin === 'nexus' ? 'nexus' : 'manual', updatedAt: new Date().toISOString() };
+    if (nexusAssisted) m.nexusAssisted = true;
+    st.compassDraftMeta.points[room][key] = m;
+  }
+
+  function provenanceLabel(room, key) {
+    const st = window.state;
+    const m = st && st.compassDraftMeta && st.compassDraftMeta.points
+      && st.compassDraftMeta.points[room] && st.compassDraftMeta.points[room][key];
+    if (!m) return '';
+    if (m.origin === 'nexus') return 'Nexus-assisted';
+    if (m.nexusAssisted) return 'edited from Nexus';
+    return 'your edit';
+  }
+
+  function clearSurfaces() {
+    if (ctxCompare) { ctxCompare.hidden = true; ctxCompare.textContent = ''; }
+    if (ctxHandoff) { ctxHandoff.hidden = true; ctxHandoff.textContent = ''; }
+  }
 
   function renderProjectContext() {
     if (!ctxEl) return;
-    // The LDE panel's visibility is owned by the header tab; this only fills its
-    // content. The project id is fixed — this card is the Living Digital
-    // Expression workspace.
     const room = (typeof currentRoom !== 'undefined') ? currentRoom : null;
     const compass = (window.state && window.state.compassData) ? window.state.compassData : null;
     const roomMeta = (typeof ROOM_META !== 'undefined') ? ROOM_META : null;
     const view = buildProjectContextView('living-digital-expression', 'living-digital-expression', room, compass, roomMeta);
     ctxView = view;
+    clearSurfaces();
 
     if (!view.visible) return;
-    if (ctxEyebrow) ctxEyebrow.textContent = view.eyebrow || 'Living Digital Expression';
+    if (ctxEyebrow) ctxEyebrow.textContent = view.eyebrow || 'FieldPrint';
     if (ctxSource) ctxSource.textContent = view.source || '';
+    if (ctxBar) ctxBar.hidden = !view.canEdit;
 
-    if (ctxBody) {
-      ctxBody.textContent = '';
-      if (view.mode !== 'content') {
-        const p = document.createElement('p');
-        p.className = 'fo-pc-empty';
-        p.textContent = view.empty || '';
-        ctxBody.appendChild(p);
-      } else {
-        // Build with textContent only — cOMpass content is user data and must
-        // never be injected as HTML.
-        view.fields.forEach((f) => {
-          const wrap = document.createElement('div');
-          wrap.className = 'fo-pc-field';
-          const label = document.createElement('span');
-          label.className = 'fo-pc-field-label';
-          label.textContent = f.label;
-          wrap.appendChild(label);
-          if (f.items) {
-            const ul = document.createElement('ul');
-            ul.className = 'fo-pc-list';
-            f.items.forEach((it) => {
-              const li = document.createElement('li');
-              li.textContent = it;
-              ul.appendChild(li);
-            });
-            wrap.appendChild(ul);
-          } else {
-            const val = document.createElement('div');
-            val.className = 'fo-pc-field-value';
-            val.textContent = f.value;
-            wrap.appendChild(val);
-          }
-          ctxBody.appendChild(wrap);
-        });
-      }
+    if (!ctxBody) return;
+    ctxBody.textContent = '';
+
+    if (view.mode !== 'editor') {
+      const p = document.createElement('p');
+      p.className = 'fo-pc-empty';
+      p.textContent = view.empty || '';
+      ctxBody.appendChild(p);
+      return;
     }
-    if (ctxActions) ctxActions.hidden = !view.canSave;
-    if (ctxSaveBtn) {
-      ctxSaveBtn.disabled = false;
-      ctxSaveBtn.textContent = 'Save this context to Field Observations';
+
+    setStatus(view.hasStructured ? '' : 'No structured content yet — write freely below.', false);
+
+    // Optional room-level Evolve (runs Inspire on each text field in turn).
+    const roomBar = document.createElement('div');
+    roomBar.className = 'fo-pc-field-head';
+    const roomHint = document.createElement('span');
+    roomHint.className = 'fo-pc-field-hint';
+    roomHint.textContent = 'Edits save to your stUdio working document — your cOMpass stays untouched.';
+    roomBar.appendChild(roomHint);
+    const evolveBtn = document.createElement('button');
+    evolveBtn.type = 'button';
+    evolveBtn.className = 'fo-pc-mini-btn';
+    evolveBtn.textContent = 'Evolve this room ✦';
+    evolveBtn.addEventListener('click', () => evolveRoom(view.room));
+    roomBar.appendChild(evolveBtn);
+    ctxBody.appendChild(roomBar);
+
+    view.fields.forEach((f) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'fo-pc-field';
+
+      const head = document.createElement('div');
+      head.className = 'fo-pc-field-head';
+      const label = document.createElement('span');
+      label.className = 'fo-pc-field-label';
+      label.textContent = f.label;
+      head.appendChild(label);
+
+      const right = document.createElement('span');
+      right.style.display = 'flex';
+      right.style.gap = '6px';
+      right.style.alignItems = 'baseline';
+      const prov = document.createElement('span');
+      prov.className = 'fo-pc-provenance';
+      prov.textContent = provenanceLabel(view.room, f.key);
+      right.appendChild(prov);
+      if (INSPIRE_FIELD[f.key]) {
+        const insBtn = document.createElement('button');
+        insBtn.type = 'button';
+        insBtn.className = 'fo-pc-inspire-btn';
+        insBtn.textContent = 'Inspire ✦';
+        insBtn.addEventListener('click', () => inspireField(view.room, f, wrap, insBtn));
+        right.appendChild(insBtn);
+      }
+      head.appendChild(right);
+      wrap.appendChild(head);
+
+      const ta = document.createElement('textarea');
+      ta.className = 'fo-pc-input';
+      ta.rows = (f.kind === 'list') ? 3 : (f.key === 'summary' || f.key === 'web_intro' ? 4 : 2);
+      ta.dataset.fieldKey = f.key;
+      ta.value = (f.kind === 'list') ? (f.items || []).join('\n') : (f.value || '');
+      ta.addEventListener('input', () => {
+        writeDraftField(view.room, f.key, f.kind, ta.value, 'manual', false);
+        prov.textContent = provenanceLabel(view.room, f.key);
+        scheduleSave();
+      });
+      wrap.appendChild(ta);
+
+      if (f.kind === 'list') {
+        const hint = document.createElement('p');
+        hint.className = 'fo-pc-field-hint';
+        hint.textContent = 'One per line.';
+        wrap.appendChild(hint);
+      }
+      ctxBody.appendChild(wrap);
+    });
+
+    // Raw source — collapsed, never poured into an editable field.
+    if (view.rawSource) {
+      const det = document.createElement('details');
+      det.className = 'fo-pc-raw';
+      const sum = document.createElement('summary');
+      sum.textContent = 'Source material — not yet structured';
+      det.appendChild(sum);
+      const body = document.createElement('div');
+      body.className = 'fo-pc-raw-body';
+      body.textContent = view.rawSource;
+      det.appendChild(body);
+      ctxBody.appendChild(det);
     }
   }
 
-  if (ctxSaveBtn) {
-    ctxSaveBtn.addEventListener('click', async () => {
-      const view = ctxView;
-      if (!view || !view.canSave || !view.payloadText) return;
-      if (typeof studioCreateFieldObservation !== 'function') {
-        if (typeof showToast === 'function') showToast('Could not save right now.');
-        return;
+  // ── Nexus Inspire — stream a suggestion, then Accept / Edit / Reject ───────
+  function inspireStream(body, onChunk) {
+    const base = (typeof API_BASE === 'string') ? API_BASE : '';
+    return fetch(base + '/inspire-layer2', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then((res) => {
+      if (!res.ok || !res.body) throw new Error('inspire failed');
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      let full = '';
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) return full;
+          buf += dec.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.indexOf('\n\n')) !== -1) {
+            const line = buf.slice(0, idx).trim();
+            buf = buf.slice(idx + 2);
+            if (line.indexOf('data:') !== 0) continue;
+            let payload = null;
+            try { payload = JSON.parse(line.slice(5).trim()); } catch (_) { payload = null; }
+            if (!payload) continue;
+            if (payload.error) throw new Error(payload.error);
+            if (payload.chunk) { full += payload.chunk; onChunk(full); }
+          }
+          return pump();
+        });
       }
-      ctxSaveBtn.disabled = true;
-      ctxSaveBtn.textContent = 'Saving…';
-      try {
-        await studioCreateFieldObservation(view.payloadText, view.sourceLabel);
-        ctxSaveBtn.textContent = 'Saved to Field Observations';
-        if (typeof showToast === 'function') {
-          showToast('Saved to Field Observations — find it under Remembered.');
-        }
-      } catch (_) {
-        ctxSaveBtn.disabled = false;
-        ctxSaveBtn.textContent = 'Save this context to Field Observations';
-        if (typeof showToast === 'function') showToast('Could not save right now.');
-      }
+      return pump();
     });
   }
 
-  // Expose so the room-entry path can refresh the card when the open room
-  // changes. No-op unless the Living Digital Expression view is the active
-  // surface, so it never does work for the ordinary Field Observations view.
+  function inspireBody(room, fieldKey) {
+    const st = window.state || {};
+    // Use the ORIGINAL cOMpass source (baseline) for grounding, plus the current
+    // draft value, so the suggestion evolves the person's own material.
+    const basePt = (st.compassBaseline && st.compassBaseline.points && st.compassBaseline.points[room]) || {};
+    const draftPt = (st.compassData && st.compassData.points && st.compassData.points[room]) || {};
+    const src = [basePt.raw, basePt.summary, basePt.web_intro].filter(Boolean).join('\n\n').slice(0, 2000);
+    const current = (typeof draftPt[fieldKey] === 'string') ? draftPt[fieldKey] : '';
+    const notes = [src, current ? ('Current draft:\n' + current) : ''].filter(Boolean).join('\n\n');
+    return {
+      point: room,
+      field: INSPIRE_FIELD[fieldKey] || 'summary',
+      companion: st.person || '',
+      session_notes: notes,
+      qa_answers: Array.isArray(basePt.qa_answers) ? basePt.qa_answers : [],
+      gk_num: basePt.gk_num != null ? String(basePt.gk_num) : '',
+      gk_line: basePt.gk_line != null ? String(basePt.gk_line) : '',
+      gk_shadow: basePt.gk_shadow || '', gk_gift: basePt.gk_gift || '', gk_siddhi: basePt.gk_siddhi || '',
+    };
+  }
+
+  function inspireField(room, field, wrap, btn) {
+    if (!wrap || !INSPIRE_FIELD[field.key]) return Promise.resolve();
+    // One suggestion review at a time per field.
+    const existing = wrap.querySelector('.fo-pc-suggestion');
+    if (existing) existing.remove();
+    if (btn) { btn.disabled = true; btn.textContent = 'Inspiring…'; }
+
+    const box = document.createElement('div');
+    box.className = 'fo-pc-suggestion';
+    const txt = document.createElement('div');
+    txt.className = 'fo-pc-suggestion-text';
+    txt.textContent = 'Listening…';
+    box.appendChild(txt);
+    wrap.appendChild(box);
+
+    const finish = () => { if (btn) { btn.disabled = false; btn.textContent = 'Inspire ✦'; } };
+
+    return inspireStream(inspireBody(room, field.key), (t) => { txt.textContent = t; })
+      .then((full) => {
+        finish();
+        const suggestion = (full || '').trim();
+        if (!suggestion) { txt.textContent = 'No suggestion came through. Try again.'; return; }
+        txt.textContent = suggestion;
+        const actions = document.createElement('div');
+        actions.className = 'fo-pc-suggestion-actions';
+        const ta = wrap.querySelector('textarea');
+        const prov = wrap.querySelector('.fo-pc-provenance');
+
+        const accept = document.createElement('button');
+        accept.type = 'button'; accept.className = 'fo-pc-mini-btn'; accept.textContent = 'Accept';
+        accept.addEventListener('click', () => {
+          if (ta) ta.value = suggestion;
+          writeDraftField(room, field.key, field.kind, suggestion, 'nexus', false);
+          if (prov) prov.textContent = provenanceLabel(room, field.key);
+          scheduleSave();
+          box.remove();
+        });
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'fo-pc-mini-btn'; edit.textContent = 'Edit';
+        edit.addEventListener('click', () => {
+          if (ta) { ta.value = suggestion; ta.focus(); }
+          // Seed the draft as a Nexus-assisted MANUAL edit; further typing keeps it manual.
+          writeDraftField(room, field.key, field.kind, suggestion, 'manual', true);
+          if (prov) prov.textContent = provenanceLabel(room, field.key);
+          scheduleSave();
+          box.remove();
+        });
+        const reject = document.createElement('button');
+        reject.type = 'button'; reject.className = 'fo-pc-mini-btn'; reject.textContent = 'Reject';
+        reject.addEventListener('click', () => box.remove());
+
+        actions.appendChild(accept); actions.appendChild(edit); actions.appendChild(reject);
+        box.appendChild(actions);
+      })
+      .catch(() => { finish(); txt.textContent = 'Nexus could not respond right now.'; });
+  }
+
+  // Room-level Evolve: run Inspire on each mapped text field in sequence.
+  function evolveRoom(room) {
+    const wraps = Array.from(ctxBody.querySelectorAll('.fo-pc-field'));
+    const jobs = [];
+    wraps.forEach((wrap) => {
+      const ta = wrap.querySelector('textarea');
+      if (!ta) return;
+      const key = ta.dataset.fieldKey;
+      if (!INSPIRE_FIELD[key]) return;
+      const btn = wrap.querySelector('.fo-pc-inspire-btn');
+      jobs.push(() => inspireField(room, { key: key, kind: 'text' }, wrap, btn));
+    });
+    return jobs.reduce((p, job) => p.then(job), Promise.resolve());
+  }
+
+  // ── Compare with cOMpass ───────────────────────────────────────────────────
+  function renderCompare() {
+    if (!ctxCompare) return;
+    if (ctxHandoff) { ctxHandoff.hidden = true; ctxHandoff.textContent = ''; }
+    ctxCompare.textContent = '';
+    ctxCompare.hidden = false;
+    const st = window.state || {};
+    const result = cuCompareCompass(st.compassBaseline, st.compassData, ROOMS, st.compassDraftMeta,
+      (typeof ROOM_META !== 'undefined') ? ROOM_META : null);
+    if (!result.available) {
+      const p = document.createElement('p');
+      p.className = 'fo-pc-empty';
+      p.textContent = 'Comparison unavailable — this session has no original cOMpass baseline captured. It’s available for sessions started from a fresh cOMpass import.';
+      ctxCompare.appendChild(p);
+      return;
+    }
+    const summary = document.createElement('p');
+    summary.className = 'fo-pc-compare-summary';
+    summary.textContent = result.fieldsChanged + ' of ' + result.fieldsTotal + ' fields changed · +' +
+      result.wordsAdded + '/−' + result.wordsRemoved + ' words · ' + result.nexusAssisted + ' Nexus-assisted';
+    ctxCompare.appendChild(summary);
+
+    result.rooms.forEach((r) => {
+      if (!r.fieldsChanged) return;
+      const rd = document.createElement('div');
+      rd.className = 'fo-pc-compare-room';
+      const rt = document.createElement('div');
+      rt.className = 'fo-pc-compare-room-title';
+      rt.textContent = r.title + ' — ' + r.fieldsChanged + ' of ' + r.fieldsTotal + ' changed';
+      rd.appendChild(rt);
+      r.fields.forEach((f) => {
+        if (f.status === 'unchanged') return;
+        const line = document.createElement('div');
+        line.className = 'fo-pc-compare-line';
+        line.textContent = f.label + ' ';
+        const tag = document.createElement('span');
+        tag.className = 'fo-pc-tag is-' + f.status;
+        tag.textContent = f.status;
+        line.appendChild(tag);
+        if (f.kind === 'list' && (f.itemsAdded || f.itemsRemoved)) {
+          line.appendChild(document.createTextNode(' +' + f.itemsAdded + '/−' + f.itemsRemoved + ' items'));
+        } else if (f.wordsAdded || f.wordsRemoved) {
+          line.appendChild(document.createTextNode(' +' + f.wordsAdded + '/−' + f.wordsRemoved + ' words'));
+        }
+        if (f.origin === 'nexus') {
+          const nt = document.createElement('span');
+          nt.className = 'fo-pc-tag is-nexus';
+          nt.textContent = 'nexus';
+          line.appendChild(nt);
+        }
+        rd.appendChild(line);
+      });
+      ctxCompare.appendChild(rd);
+    });
+  }
+
+  // ── Send to FieldPrint Builder — review, then non-destructive prefill ──────
+  // Map FieldPrint fields → Builder section content. Theme has no Builder slot
+  // and is intentionally omitted from the handoff.
+  function buildHandoffSections() {
+    const st = window.state || {};
+    const cd = st.compassData || {};
+    const secKeyByRoom = { work: 'make', lens: 'perceive', field: 'alive', call: 'here' };
+    const rows = [];
+    ROOMS.forEach((room) => {
+      const norm = cuNormalizeFieldprintPoint((cd.points && cd.points[room]) || {});
+      const title = (typeof ROOM_META !== 'undefined' && ROOM_META[room]) ? ROOM_META[room].title : room;
+      const arts = norm.highlights.map((h) => ({ tag: 'Signal', title: h, note: '' }))
+        .concat(norm.insights.map((x) => ({ tag: 'Insight', title: x, note: '' })));
+      const fields = [
+        { key: 'title', label: 'Heading → Title', value: norm.web_heading },
+        { key: 'body', label: 'Introduction → Body', value: norm.web_intro },
+        { key: 'narrative', label: 'Summary → Narrative', value: norm.summary },
+        { key: 'prompt', label: 'Closing → Prompt', value: norm.web_closing },
+        { key: 'artifacts', label: 'Highlights + Insights → Artifacts', value: arts, isList: true },
+      ].filter((f) => (f.isList ? f.value.length : f.value));
+      if (fields.length) rows.push({ room: room, secKey: secKeyByRoom[room], title: title, fields: fields });
+    });
+    return rows;
+  }
+
+  function renderHandoffReview() {
+    if (!ctxHandoff) return;
+    if (ctxCompare) { ctxCompare.hidden = true; ctxCompare.textContent = ''; }
+    ctxHandoff.textContent = '';
+    ctxHandoff.hidden = false;
+    const rows = buildHandoffSections();
+    if (!rows.length) {
+      const p = document.createElement('p');
+      p.className = 'fo-pc-empty';
+      p.textContent = 'Nothing to send yet — add some content first.';
+      ctxHandoff.appendChild(p);
+      return;
+    }
+    const intro = document.createElement('p');
+    intro.className = 'fo-pc-compare-summary';
+    intro.textContent = 'Review what to send to the FieldPrint Builder. Only checked content is applied; hero framing, colours, images and anything you didn’t select stay as they are in the Builder.';
+    ctxHandoff.appendChild(intro);
+
+    rows.forEach((r) => {
+      const rt = document.createElement('div');
+      rt.className = 'fo-pc-compare-room-title';
+      rt.textContent = r.title;
+      ctxHandoff.appendChild(rt);
+      r.fields.forEach((f) => {
+        const row = document.createElement('label');
+        row.className = 'fo-pc-handoff-row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.checked = true;
+        cb.dataset.room = r.room; cb.dataset.secKey = r.secKey; cb.dataset.fieldKey = f.key;
+        row.appendChild(cb);
+        const span = document.createElement('span');
+        const preview = f.isList ? (f.value.map((a) => a.title).join(', ')) : f.value;
+        span.textContent = f.label + ' — ' + String(preview).slice(0, 90) + (String(preview).length > 90 ? '…' : '');
+        row.appendChild(span);
+        ctxHandoff.appendChild(row);
+      });
+    });
+    const note = document.createElement('p');
+    note.className = 'fo-pc-note';
+    note.textContent = 'Theme has no matching Builder field and is not sent.';
+    ctxHandoff.appendChild(note);
+
+    const confirm = document.createElement('button');
+    confirm.type = 'button'; confirm.className = 'fo-pc-btn fo-pc-btn-primary';
+    confirm.textContent = 'Send selected to Builder';
+    confirm.addEventListener('click', () => {
+      const sections = collectHandoffSelection(rows);
+      if (!sections.length) { if (typeof showToast === 'function') showToast('Select at least one field to send.'); return; }
+      if (typeof window.phV5SendPrefill === 'function') {
+        window.phV5SendPrefill(sections, function (ack) {
+          if (typeof showToast === 'function') {
+            const n = ack && typeof ack.applied === 'number' ? ack.applied : 0;
+            showToast(n ? ('FieldPrint Builder updated ' + n + ' field' + (n === 1 ? '' : 's') + ' — hero framing and images untouched.')
+                        : 'FieldPrint Builder received your content.');
+          }
+        });
+        if (typeof showToast === 'function') showToast('Sending selected content to the FieldPrint Builder…');
+        ctxHandoff.hidden = true; ctxHandoff.textContent = '';
+      } else if (typeof showToast === 'function') {
+        showToast('Builder is not available right now.');
+      }
+    });
+    ctxHandoff.appendChild(confirm);
+  }
+
+  function collectHandoffSelection(rows) {
+    const bySec = {};
+    ctxHandoff.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      if (!cb.checked) return;
+      const secKey = cb.dataset.secKey; const room = cb.dataset.room; const fieldKey = cb.dataset.fieldKey;
+      const r = rows.find((x) => x.room === room);
+      const f = r && r.fields.find((x) => x.key === fieldKey);
+      if (!f) return;
+      if (!bySec[secKey]) bySec[secKey] = { key: secKey };
+      bySec[secKey][fieldKey] = f.value;
+    });
+    return Object.keys(bySec).map((k) => bySec[k]);
+  }
+
+  if (btnCompare) btnCompare.addEventListener('click', renderCompare);
+  if (btnBuilder) btnBuilder.addEventListener('click', renderHandoffReview);
+  if (btnSaveJson) btnSaveJson.addEventListener('click', () => {
+    if (typeof studioSaveJSON === 'function') studioSaveJSON();
+  });
+
+  // Expose so the room-entry path can refresh the editor when the open room
+  // changes. No-op unless the FieldPrint view is the active surface.
   window.studioRenderProjectContext = function () {
     const active = surface ? surface.getAttribute('data-fo-view') : BASE_VIEW;
     if (active === 'living-digital-expression') renderProjectContext();
   };
 
-  // Initial application, now that the context elements and state are
-  // initialised. applyView() sets the active tab, swaps the tabpanels, and (if
-  // the LDE view is active) paints the context via renderProjectContext().
   applyView(stored);
 })();
 </script>

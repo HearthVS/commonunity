@@ -5089,7 +5089,7 @@ Respond with precision and care. Ask the next question that genuinely matters. O
 # ── Layer 2 inspire endpoint ─────────────────────────────────────────────
 class InspireLayer2Request(BaseModel):
     point: str          # "work" | "lens" | "field" | "call"
-    field: str          # "theme" | "insight" | "summary"
+    field: str          # theme | insight | summary | heading | intro | closing
     companion: str = ""
     session_notes: str = ""
     qa_answers: list = []   # list of {question, answer} dicts
@@ -5109,7 +5109,14 @@ For INSIGHT: Write one insight block (2–3 sentences) — a specific observatio
 
 For SUMMARY: Write 2–3 sentences for public sharing — clear, resonant, professional. Something they'd be proud to have on their website or profile.
 
+For HEADING: Write a short, evocative title (3–7 words) for this compass room. No trailing punctuation, no quotation marks.
+
+For INTRODUCTION: Write 1–2 welcoming sentences that open this room for a reader arriving at it.
+
+For CLOSING: Write 1–2 sentences that leave the reader with a resonant final thought for this room.
+
 Draw directly on the Gene Key profile and any answers provided. Make it feel specific to this person.
+If prior draft content or source material is provided, evolve and refine it rather than starting over.
 Return plain text only. No markdown, no labels, no preamble."""
 
 @app.post("/inspire-layer2")
@@ -5139,7 +5146,10 @@ async def inspire_layer2(request: InspireLayer2Request):
     field_instructions = {
         "theme": "Write the Core Theme: one clear sentence capturing the essential thread.",
         "insight": "Write one Insight Block: 2–3 sentences of a specific, concrete observation.",
-        "summary": "Write the Public Summary: 2–3 sentences suitable for a website or profile."
+        "summary": "Write the Public Summary: 2–3 sentences suitable for a website or profile.",
+        "heading": "Write the Heading: a short, evocative title (3–7 words) for this room. No trailing punctuation.",
+        "intro": "Write the Introduction: 1–2 welcoming sentences that open this room for a reader.",
+        "closing": "Write the Closing: 1–2 sentences that leave the reader with a resonant final thought for this room.",
     }
 
     user_msg = f"""Compass point: {point_label}
