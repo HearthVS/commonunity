@@ -1564,6 +1564,31 @@
           <span id="nexus-model-status" class="hint" style="margin:0;"></span>
         </section>
 
+        <!-- Nexus FieldPrint prompt (read-only) -->
+        <section class="panel card" style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <h2 style="margin:0">Nexus FieldPrint prompt</h2>
+            <span class="count-badge" id="nexus-prompt-version">—</span>
+          </div>
+          <p class="hint" style="margin:4px 0 14px">
+            The live constitutional prompt that shapes every FieldPrint Inspire
+            suggestion, plus the audience and evidence contracts it accepts.
+            Read-only: the prompt is a versioned source constant, so changes ship
+            through code review. Live editing / version rollout is deferred (see
+            rationale below) to avoid an insecure runtime prompt-edit surface.
+          </p>
+          <div class="infra-card" style="margin-bottom:12px;">
+            <div class="infra-details">
+              <div><span class="infra-label">Version</span><span id="nexus-prompt-version-detail">—</span></div>
+              <div><span class="infra-label">Editable</span><span id="nexus-prompt-editable">—</span></div>
+              <div><span class="infra-label">Audience contract</span><span id="nexus-prompt-audience">—</span></div>
+              <div><span class="infra-label">Evidence contract</span><span id="nexus-prompt-evidence">—</span></div>
+            </div>
+          </div>
+          <pre id="nexus-prompt-text" style="white-space:pre-wrap;background:#111;border:1px solid #333;border-radius:8px;padding:12px;max-height:340px;overflow:auto;font-size:0.8rem;line-height:1.4;color:#ddd;margin:0 0 8px;">Loading…</pre>
+          <p class="hint" id="nexus-prompt-deferred" style="margin:0;"></p>
+        </section>
+
         <!-- Post-beta operational task list -->
         <section class="panel card" style="margin-bottom:18px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -3268,6 +3293,24 @@
       catch (e) { if ($('nexus-model-active')) $('nexus-model-active').textContent = 'unavailable'; }
     }
 
+    function renderNexusPrompt(state) {
+      if (!state) return;
+      const ver = state.version || '—';
+      if ($('nexus-prompt-version')) $('nexus-prompt-version').textContent = ver;
+      if ($('nexus-prompt-version-detail')) $('nexus-prompt-version-detail').textContent = ver;
+      if ($('nexus-prompt-editable')) $('nexus-prompt-editable').textContent = state.editable ? 'yes' : 'no (read-only)';
+      if ($('nexus-prompt-audience')) $('nexus-prompt-audience').textContent = (state.audience_contract || []).join(', ') || '—';
+      if ($('nexus-prompt-evidence')) $('nexus-prompt-evidence').textContent = (state.evidence_contract || []).join(', ') || '—';
+      // textContent — never innerHTML — so prompt text can never inject markup.
+      if ($('nexus-prompt-text')) $('nexus-prompt-text').textContent = state.system_prompt || '(prompt unavailable)';
+      if ($('nexus-prompt-deferred')) $('nexus-prompt-deferred').textContent = state.editing_deferred || '';
+    }
+
+    async function loadNexusPrompt() {
+      try { renderNexusPrompt(await api('/api/admin/nexus-prompt')); }
+      catch (e) { if ($('nexus-prompt-text')) $('nexus-prompt-text').textContent = 'unavailable'; }
+    }
+
     async function loadAvailableModels(force) {
       const sel = $('nexus-model-select');
       const status = $('nexus-model-status');
@@ -3341,6 +3384,7 @@
       loadInfraHealth();
       loadNexusEffort();
       loadNexusModel();
+      loadNexusPrompt();
       loadAvailableModels(false);
       loadPostBetaTasks();
     }
