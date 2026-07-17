@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote, urlsplit
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 from anthropic import Anthropic
@@ -1134,6 +1134,11 @@ import pathlib
 _ROOT = pathlib.Path(__file__).parent
 _BETA_COOKIE = "commonunity_beta_access"
 _INVITE_COOKIE = "commonunity_invite_token"
+# Pre-admission credential for a reusable campaign link. It carries only the
+# shared campaign token (never a personal identity) and is deliberately distinct
+# from _INVITE_COOKIE: admission through a campaign mints a fresh per-person
+# _INVITE_COOKIE, so no admission cookie is ever shared between participants.
+_CAMPAIGN_COOKIE = "commonunity_campaign_token"
 _ADMIN_COOKIE = "commonunity_admin_access"
 _BETA_CODE_ENV = "COMMONUNITY_BETA_CODE"
 _BETA_TOKENS_ENV = "COMMONUNITY_MAGIC_LINK_TOKENS"
@@ -1530,6 +1535,20 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
     _inv_cols = {r[1] for r in conn.execute("PRAGMA table_info(invites)").fetchall()}
     if "beta_admitted_at" not in _inv_cols:
         conn.execute("ALTER TABLE invites ADD COLUMN beta_admitted_at TEXT")
+    # Reusable beta campaign links. `kind` distinguishes the three invite shapes
+    # that now share this table: the historical one-person 'personal' invite
+    # (the default, so every legacy row keeps its exact behavior), a 'campaign'
+    # template (a reusable link an operator posts to a group), and a
+    # 'participant' — the independent per-person admission minted when someone
+    # enrolls through a campaign link. `campaign_id` points a participant row
+    # back to the campaign template it enrolled through (NULL otherwise), giving
+    # the admin per-participant attribution. Additive + backward-compatible:
+    # CREATE TABLE IF NOT EXISTS won't add columns to an existing table, so
+    # backfill idempotently.
+    if "kind" not in _inv_cols:
+        conn.execute("ALTER TABLE invites ADD COLUMN kind TEXT NOT NULL DEFAULT 'personal'")
+    if "campaign_id" not in _inv_cols:
+        conn.execute("ALTER TABLE invites ADD COLUMN campaign_id INTEGER")
     # ── Field Observations table ──────────────────────────────────────────
     # Member-scoped capture layer for lived text material. Scoped exactly like
     # golden_thread: the pseudonymous cipher_id is the primary member key, with
@@ -2491,6 +2510,25 @@ def _invite_token_from_cookie(request: Request) -> str:
     return _read_signed_cookie(request, _INVITE_COOKIE, "invite")
 
 
+def _set_campaign_cookie(response: RedirectResponse | JSONResponse, request: Request, token: str) -> None:
+    value = _signed_cookie_value(token, "campaign")
+    if not value:
+        return
+    response.set_cookie(
+        _CAMPAIGN_COOKIE,
+        value,
+        max_age=60 * 60 * 24 * 90,
+        httponly=True,
+        secure=(request.url.scheme == "https"),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _campaign_token_from_cookie(request: Request) -> str:
+    return _read_signed_cookie(request, _CAMPAIGN_COOKIE, "campaign")
+
+
 def _record_event(
     event_type: str,
     *,
@@ -2575,6 +2613,18 @@ def _beta_magic_link(request: Request, token: str) -> str:
     # cookies, and redirects to the clean /beta URL. Query-param handoff mirrors
     # the existing /studio?invite=<token> pattern.
     return f"{_public_base_url(request)}/beta?invite={quote(token, safe='')}"
+
+
+def _campaign_magic_link(request: Request, token: str) -> str:
+    # Reusable beta campaign link. Unlike /beta?invite=<token> (one person, one
+    # admission), this uses ?campaign=<token> so serve_beta knows to treat the
+    # opener as a prospective enrollee: it validates the campaign token
+    # server-side, sets the pre-admission campaign cookie, and drops the visitor
+    # at the clean /beta threshold. Every visitor then enters their own name +
+    # email and receives an independent participant admission. The link is not a
+    # one-time secret — anyone holding it can enroll until the campaign is
+    # revoked or expires.
+    return f"{_public_base_url(request)}/beta?campaign={quote(token, safe='')}"
 
 
 def _invite_studio_link(request: Request, token: str) -> str:
@@ -2844,6 +2894,32 @@ def _lookup_active_invite(token: str | None) -> dict | None:
         return None
 
 
+def _lookup_active_campaign(token: str | None) -> dict | None:
+    """An active campaign template addressed by its token. A campaign is just an
+    invites row with kind='campaign'; reusing _lookup_active_invite means it
+    inherits the same status + expiry checks (so revoking or expiring the
+    campaign kills the shared link)."""
+    invite = _lookup_active_invite(token)
+    if invite and invite.get("kind") == "campaign":
+        return invite
+    return None
+
+
+def _lookup_active_invite_by_id(invite_id: int | None) -> dict | None:
+    """Fetch an invite row by id regardless of status (used for campaign
+    attribution, where a participant should still show its campaign label even
+    after the campaign is revoked)."""
+    if not invite_id:
+        return None
+    try:
+        with _admin_db() as conn:
+            row = conn.execute("SELECT * FROM invites WHERE id = ? LIMIT 1", (invite_id,)).fetchone()
+        return _row_to_dict(row)
+    except Exception as exc:
+        print(f"admin invite id lookup failed: {exc}")
+        return None
+
+
 def _touch_invite(token: str, request: Request, event_type: str, app_key: str = "") -> dict | None:
     invite = _lookup_active_invite(token)
     if not invite:
@@ -3066,13 +3142,60 @@ def _current_beta_invite(request: Request) -> dict | None:
     return _lookup_active_invite(token)
 
 
+def _current_campaign(request: Request) -> dict | None:
+    """The active campaign backing the current pre-admission /beta session,
+    resolved from the signed campaign cookie. Present only for a prospective
+    enrollee who opened a campaign link but has not yet crossed the threshold;
+    it never confers admission by itself."""
+    token = _campaign_token_from_cookie(request)
+    if not token:
+        return None
+    return _lookup_active_campaign(token)
+
+
 @app.get("/beta")
 async def serve_beta(request: Request, next: str = "/compass"):
-    # Magic-link handoff: /beta?invite=<token>. Validate the token, set the
-    # signed beta + invite cookies, record the open, then redirect to the clean
-    # /beta URL so the token never lingers in history or the address bar. This
-    # mirrors _serve_private_file's ?invite= handling.
-    raw = request.query_params.get("invite")
+    raw_invite = request.query_params.get("invite")
+    raw_campaign = request.query_params.get("campaign")
+
+    # A campaign token must never be adopted as a personal identity, so if one
+    # arrives on the personal ?invite= param, reroute it through the campaign
+    # handoff below (which only ever sets the shared, pre-admission campaign
+    # cookie — not the personal invite cookie).
+    campaign_token = (raw_campaign or "").strip()
+    if not campaign_token and raw_invite:
+        maybe = _lookup_active_invite(raw_invite.strip())
+        if maybe and maybe.get("kind") == "campaign":
+            campaign_token = raw_invite.strip()
+            raw_invite = None
+
+    # Reusable campaign handoff: /beta?campaign=<token>. Validate server-side,
+    # set the beta + campaign cookies (never the personal invite cookie), record
+    # the open, then redirect to the clean /beta threshold. Each opener then
+    # enters their own name + email and receives an independent admission.
+    if campaign_token:
+        campaign = _lookup_active_campaign(campaign_token)
+        if campaign:
+            response = RedirectResponse(url="/beta", status_code=303)
+            _set_beta_cookie(response, request)
+            _set_campaign_cookie(response, request, campaign_token)
+            _record_event(
+                "campaign_opened",
+                token=campaign_token,
+                invite_id=campaign["id"],
+                route="/beta",
+                source="beta",
+                user_agent=request.headers.get("user-agent", "")[:320],
+            )
+            return response
+        # Unknown/revoked/expired campaign token: never auto-admit; fall through
+        # to the shared-code gate exactly like an unknown personal token.
+
+    # Personal magic-link handoff: /beta?invite=<token>. Validate the token, set
+    # the signed beta + invite cookies, record the open, then redirect to the
+    # clean /beta URL so the token never lingers in history or the address bar.
+    # This mirrors _serve_private_file's ?invite= handling.
+    raw = raw_invite
     if raw:
         clean = raw.strip()
         db_invite = _lookup_active_invite(clean)
@@ -3094,12 +3217,14 @@ async def serve_beta(request: Request, next: str = "/compass"):
                 _record_milestone(clean, "link_opened")
             return response
 
-    # A participant carrying a valid invite (cookie set by the handoff above, or
-    # a still-valid env token) gets the CommonUnity beta surface — the threshold
-    # form first, then the private hub once admitted. beta.js decides which via
-    # GET /api/beta/session, so both live behind the same protected route.
+    # A participant carrying a valid invite (personal or campaign-minted, cookie
+    # set by a handoff above or a still-valid env token) — or a prospective
+    # enrollee carrying the pre-admission campaign cookie — gets the CommonUnity
+    # beta surface: the threshold form first, then the private hub once admitted.
+    # beta.js decides which via GET /api/beta/session, so both live behind the
+    # same protected route.
     token = _invite_token_from_cookie(request)
-    if _valid_invite_token(token) and _beta_dir.exists():
+    if (_valid_invite_token(token) or _current_campaign(request)) and _beta_dir.exists():
         page = _beta_dir / "beta.html"
         if page.exists():
             return FileResponse(page, media_type="text/html; charset=utf-8", headers={
@@ -3130,11 +3255,14 @@ async def serve_beta_asset(filename: str):
 @app.get("/api/beta/session")
 async def beta_session(request: Request):
     """Admission state for the current /beta participant, resolved server-side
-    from the signed invite cookie. Never trusts the client. Returns whether the
-    caller is invited (valid token) and whether they have crossed the threshold
-    (admitted), plus the name to greet them with."""
+    from the signed cookies. Never trusts the client. `invited` is true for a
+    valid personal/participant invite token OR a valid pre-admission campaign
+    cookie (so a campaign enrollee sees the threshold, not the locked screen).
+    `admitted` is strictly the caller's own admission — the campaign cookie
+    alone never counts as admitted, so subsequent visitors are never auto-let-in
+    and no admission state is shared between participants."""
     token = _invite_token_from_cookie(request)
-    invited = _valid_invite_token(token)
+    invited = _valid_invite_token(token) or (_current_campaign(request) is not None)
     invite = _current_beta_invite(request)
     admitted = bool(invite and (invite.get("beta_admitted_at") or "").strip())
     name = ""
@@ -3145,48 +3273,102 @@ async def beta_session(request: Request):
 
 @app.post("/api/beta/admit")
 async def beta_admit(request: Request, payload: InviteCreateRequest):
-    """Cross the CommonUnity beta threshold: capture the participant's own name
-    and email against their invite and mark them admitted. Requires a valid
-    invite cookie (set by the magic-link handoff) — this is the server-side
-    validation, not a client check. Minimal data only: name, email, admission
-    timestamp on the existing invite row."""
-    token = _invite_token_from_cookie(request)
-    if not _valid_invite_token(token):
-        raise HTTPException(status_code=403, detail="a valid invitation is required")
-    invite = _current_beta_invite(request)
-    if not invite:
-        # Env-token sessions have no per-person row to admit against.
-        raise HTTPException(status_code=403, detail="invitation not found")
+    """Cross the CommonUnity beta threshold: capture the visitor's own name and
+    email and mark them admitted. Two paths, both server-validated (never a
+    client check):
+
+      • Personal invite (or already-admitted campaign participant): the caller
+        carries a signed invite cookie resolving to their own invites row. We
+        capture name/email onto that row idempotently — refresh/re-submit keeps
+        the first admission timestamp and never forks a second record.
+
+      • Campaign enrollee: the caller carries only the shared, pre-admission
+        campaign cookie. We mint a BRAND-NEW 'participant' invites row (its own
+        high-entropy token, tied back to the campaign via campaign_id) and hand
+        the browser its OWN signed invite cookie. The campaign template is never
+        mutated into a participant identity, and each visitor gets an
+        independent admission — so one shared link enrolls many people without
+        sharing identity, admission state, or session between them.
+
+    Minimal data only: name, email, admission timestamp."""
     name = (payload.name or "").strip()[:160]
     email = (payload.email or "").strip()[:220]
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if "@" not in email or "." not in email.split("@")[-1] or len(email) < 6:
         raise HTTPException(status_code=400, detail="a valid email is required")
+
+    token = _invite_token_from_cookie(request)
+    invite = _current_beta_invite(request)
     now = _now_iso()
-    with _admin_db() as conn:
-        conn.execute(
-            """
-            UPDATE invites
-            SET name = ?, email = ?,
-                beta_admitted_at = COALESCE(beta_admitted_at, ?),
-                first_opened_at = COALESCE(first_opened_at, ?),
-                last_opened_at = ?
-            WHERE id = ?
-            """,
-            (name, email, now, now, now, invite["id"]),
-        )
-        # Contact identity is resolved from the invites table behind admin auth;
-        # the shared events feed carries only the linkage, never name/email.
-        conn.execute(
-            """
-            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
-            VALUES (?, 'beta_admitted', ?, ?, '/beta', 'beta', ?, '')
-            """,
-            (now, invite["id"], invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
-        )
-    _record_milestone(invite.get("token", ""), "beta_admitted")
-    return {"admitted": True, "name": name}
+    ua = request.headers.get("user-agent", "")[:320]
+
+    # Path 1 — the caller already owns a personal identity (a personal invite, or
+    # a campaign participant returning to re-submit). Update their own row. A
+    # campaign template is never a personal identity, so it can never be captured
+    # here even if its token somehow reached the invite cookie.
+    if _valid_invite_token(token) and invite and invite.get("kind") != "campaign":
+        with _admin_db() as conn:
+            conn.execute(
+                """
+                UPDATE invites
+                SET name = ?, email = ?,
+                    beta_admitted_at = COALESCE(beta_admitted_at, ?),
+                    first_opened_at = COALESCE(first_opened_at, ?),
+                    last_opened_at = ?
+                WHERE id = ?
+                """,
+                (name, email, now, now, now, invite["id"]),
+            )
+            # Contact identity is resolved from the invites table behind admin
+            # auth; the shared events feed carries only the linkage, never
+            # name/email.
+            conn.execute(
+                """
+                INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+                VALUES (?, 'beta_admitted', ?, ?, '/beta', 'beta', ?, '')
+                """,
+                (now, invite["id"], invite.get("token", ""), ua),
+            )
+        _record_milestone(invite.get("token", ""), "beta_admitted")
+        return {"admitted": True, "name": name}
+
+    # Path 2 — a campaign enrollee. Mint an independent participant record and a
+    # fresh per-person invite cookie. No existing row is overwritten.
+    campaign = _current_campaign(request)
+    if campaign:
+        participant_token = secrets.token_urlsafe(24)
+        with _admin_db() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO invites
+                    (token, name, email, notes, cohort, tag, status, created_at,
+                     kind, campaign_id, beta_admitted_at, first_opened_at, last_opened_at)
+                VALUES (?, ?, ?, '', ?, '', 'active', ?, 'participant', ?, ?, ?, ?)
+                """,
+                (participant_token, name, email, (campaign.get("cohort") or ""),
+                 now, campaign["id"], now, now, now),
+            )
+            participant_id = cur.lastrowid
+            # The event links participant → campaign via invite_id/token; no
+            # contact identity is written into the shared feed.
+            conn.execute(
+                """
+                INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+                VALUES (?, 'beta_admitted', ?, ?, '/beta', 'beta', ?, ?)
+                """,
+                (now, participant_id, participant_token, ua, f"campaign:{campaign['id']}"),
+            )
+        _record_milestone(participant_token, "beta_admitted")
+        response = JSONResponse({"admitted": True, "name": name})
+        # Give this browser its OWN admission identity. From here on the caller
+        # resolves as a personal participant (Path 1), so refresh/re-submit is
+        # idempotent and never mints a duplicate.
+        _set_invite_cookie(response, request, participant_token)
+        return response
+
+    # Neither a personal invite nor a campaign credential: refuse server-side.
+    raise HTTPException(status_code=403, detail="a valid invitation is required")
 
 
 @app.get("/api/beta/library")
@@ -3626,6 +3808,21 @@ async def admin_list_invites(request: Request):
             """
         ).fetchall()
     invites = [_invite_admin_row(row) for row in rows]
+    # Campaign attribution: map each campaign template id -> its label so a
+    # participant row (kind='participant', campaign_id set) can show which
+    # reusable link it enrolled through. Campaigns are in the same list at beta
+    # scale; fall back to a direct lookup for anything beyond the page limit.
+    campaign_labels = {
+        d["id"]: (d.get("name") or "")
+        for d in (dict(r) for r in rows)
+        if d.get("kind") == "campaign"
+    }
+    for invite in invites:
+        cid = invite.get("campaign_id")
+        if cid and cid not in campaign_labels:
+            fetched = _lookup_active_invite_by_id(cid)
+            campaign_labels[cid] = (fetched.get("name") or "") if fetched else ""
+        invite["campaign_label"] = campaign_labels.get(cid, "") if cid else ""
     # Attach milestone data to each invite (privacy-safe: timestamps only)
     tokens = [inv.get("token", "") or inv.get("token_preview", "") for inv in invites]
     # Use full tokens from raw rows for milestone lookup
@@ -4205,6 +4402,47 @@ async def admin_create_invite(request: Request, payload: InviteCreateRequest):
     }
 
 
+@app.post("/api/admin/campaigns")
+async def admin_create_campaign(request: Request, payload: InviteCreateRequest):
+    """Create a REUSABLE beta campaign link (e.g. to post to a community
+    WhatsApp group). Unlike a personal invite (one link, one person), a campaign
+    is a template: anyone opening its link enters their own name + email and
+    receives an independent admission. The campaign carries a human-readable
+    label (payload.name) so the operator can tell campaigns apart from personal
+    invites, and reuses the invites table (kind='campaign') so revoke/expiry
+    work through the existing invite mechanisms. Admin-only."""
+    _require_admin(request)
+    token = secrets.token_urlsafe(24)
+    now = _now_iso()
+    label = (payload.name or "").strip()[:160]
+    notes = (payload.notes or "").strip()[:1200]
+    cohort = (payload.cohort or "").strip()[:120]
+    expires_at = (payload.expires_at or "").strip()[:80]
+    if not label:
+        raise HTTPException(status_code=400, detail="a campaign name is required")
+    with _admin_db() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO invites (token, name, email, notes, cohort, tag, status, created_at, expires_at, kind)
+            VALUES (?, ?, '', ?, ?, '', 'active', ?, ?, 'campaign')
+            """,
+            (token, label, notes, cohort, now, expires_at),
+        )
+        campaign_id = cur.lastrowid
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'campaign_created', ?, ?, '/admin', 'admin', ?, '')
+            """,
+            (now, campaign_id, token, request.headers.get("user-agent", "")[:320]),
+        )
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (campaign_id,)).fetchone()
+    return {
+        "campaign": _invite_admin_row(row),
+        "campaign_link": _campaign_magic_link(request, token),
+    }
+
+
 @app.post("/api/admin/invites/{invite_id}/revoke")
 async def admin_revoke_invite(invite_id: int, request: Request):
     _require_admin(request)
@@ -4250,10 +4488,15 @@ async def admin_invite_link(invite_id: int, request: Request):
     expires = (invite.get("expires_at") or "").strip()
     if active and expires and expires < _now_iso():
         active = False
+    kind = invite.get("kind") or "personal"
     return {
+        "kind": kind,
         "magic_link": _invite_magic_link(request, token),
         "beta_link": _beta_magic_link(request, token),
         "studio_link": _invite_studio_link(request, token),
+        # Only meaningful for kind='campaign'; the admin UI copies this for
+        # campaign rows so the operator hands out the reusable ?campaign= link.
+        "campaign_link": _campaign_magic_link(request, token),
         "status": invite.get("status") or "",
         "active": active,
     }

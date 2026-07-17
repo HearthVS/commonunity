@@ -1073,6 +1073,30 @@
         </section>
 
         <section class="panel card" style="margin-top:18px;">
+          <h2>Reusable campaign link</h2>
+          <p class="hint">One shared link for a whole group — e.g. posted to a community WhatsApp. Anyone who opens it enters their <em>own</em> name + email and gets an independent admission and session. Not one-time: anyone with the link can enroll until you revoke it. For a single trusted person, use a personal invitation above instead.</p>
+          <form id="campaign-form" class="fields">
+            <div class="split">
+              <div>
+                <label for="campaign-name">Campaign name</label>
+                <input id="campaign-name" required placeholder="e.g. Autumn WhatsApp group">
+              </div>
+              <div>
+                <label for="campaign-cohort">Cohort optional</label>
+                <input id="campaign-cohort" placeholder="beta-whatsapp">
+              </div>
+            </div>
+            <div>
+              <label for="campaign-notes">Notes optional</label>
+              <textarea id="campaign-notes" placeholder="Where this link is being shared, context, follow-up…"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Create reusable campaign link</button>
+          </form>
+          <div class="message" id="campaign-message"></div>
+          <div class="message hidden" id="campaign-manual-copy"></div>
+        </section>
+
+        <section class="panel card" style="margin-top:18px;">
           <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
             <div>
               <h2>Invitations</h2>
@@ -2164,8 +2188,21 @@
         const label = kind === 'expired' ? 'expired' : escapeHtml(inv.status);
         return `<span class="status ${cls}">${label}</span>`;
       };
+      // Distinguish the three invite shapes so the operator can tell a personal
+      // doorway from a reusable campaign link from a person who enrolled through
+      // one. Personal is the unmarked default (keeps the historical look).
+      const kindBadge = (inv) => {
+        if (inv.kind === 'campaign') {
+          return ' <span class="status" style="background:rgba(155,184,212,.18);color:#9bb8d4" title="Reusable link — many people can enroll through it">Campaign</span>';
+        }
+        if (inv.kind === 'participant') {
+          const via = inv.campaign_label ? ` via ${escapeHtml(inv.campaign_label)}` : '';
+          return ` <span class="status" style="background:rgba(168,216,168,.16);color:#a8d8a8" title="Enrolled through a campaign link">Campaign participant${via}</span>`;
+        }
+        return '';
+      };
       const commonCells = (inv, kind) => `
-          <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong><div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
+          <td><strong>${escapeHtml(inv.name || 'Unnamed')}</strong>${kindBadge(inv)}<div class="muted">${escapeHtml(inv.email || inv.cohort || '')}</div></td>
           <td>${statusPill(inv, kind)}</td>
           <td>${date(inv.created_at)}</td>
           <td>${date(inv.first_opened_at)}</td>
@@ -2182,8 +2219,8 @@
           ${commonCells(inv, 'active')}
           <td>
             <div class="actions" style="margin:0">
-              ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">Copy link</button>` : ''}
-              ${inv.token_present ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
+              ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">${inv.kind === 'campaign' ? 'Copy campaign link' : 'Copy link'}</button>` : ''}
+              ${inv.token_present && inv.kind !== 'campaign' ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
               ${inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
               <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
               <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
@@ -2819,21 +2856,26 @@
         event.target.textContent = 'Fetching…';
         try {
           const res = await api(`/api/admin/invites/${copyLinkId}/link`);
+          // Campaign rows hand out the reusable ?campaign= link; personal rows
+          // keep the historical /invite magic link.
+          const isCampaign = res.kind === 'campaign';
+          const link = isCampaign ? res.campaign_link : res.magic_link;
+          const label = isCampaign ? 'Reusable campaign link' : 'Magic link';
           if (!res.active) {
             event.target.textContent = 'Link inactive';
-            $('invite-message').textContent = 'This invite is revoked or expired; its link no longer works.';
+            $('invite-message').textContent = 'This link is revoked or expired; it no longer works.';
             setTimeout(() => { event.target.textContent = original; }, 1600);
-          } else if (await copyTextToClipboard(res.magic_link)) {
+          } else if (await copyTextToClipboard(link)) {
             $('manual-copy').classList.add('hidden');
             event.target.textContent = 'Copied';
-            $('invite-message').textContent = 'Magic link copied to clipboard.';
+            $('invite-message').textContent = `${label} copied to clipboard.`;
             setTimeout(() => { event.target.textContent = original; }, 1200);
           } else {
             // Clipboard blocked (e.g. non-secure context): hand the admin the
             // link in a selectable field instead of falsely claiming success.
             event.target.textContent = original;
             $('invite-message').textContent = 'Clipboard unavailable — copy the link shown below manually.';
-            showManualCopy('Magic link', res.magic_link);
+            showManualCopy(label, link);
           }
         } catch (err) {
           event.target.textContent = original;
@@ -2952,6 +2994,47 @@
         await loadDashboard();
       } catch (err) {
         $('invite-message').textContent = err.message;
+      }
+    });
+
+    $('campaign-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      $('campaign-message').textContent = 'Creating reusable campaign link…';
+      try {
+        const created = await api('/api/admin/campaigns', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: $('campaign-name').value,
+            cohort: $('campaign-cohort').value,
+            notes: $('campaign-notes').value,
+          })
+        });
+        const link = created.campaign_link || '';
+        const copied = link ? await copyTextToClipboard(link) : false;
+        $('campaign-form').reset();
+        $('campaign-message').textContent = `Reusable campaign link created${copied ? ' and copied' : ''}: ${link}`;
+        const box = $('campaign-manual-copy');
+        if (link && !copied && box) {
+          box.innerHTML = '';
+          const heading = document.createElement('div');
+          heading.className = 'muted';
+          heading.textContent = 'Copy could not reach the clipboard automatically. Select and copy this reusable link:';
+          const field = document.createElement('textarea');
+          field.readOnly = true;
+          field.value = link;
+          field.rows = 2;
+          field.style.width = '100%';
+          box.appendChild(heading);
+          box.appendChild(field);
+          box.classList.remove('hidden');
+          field.focus();
+          field.select();
+        } else if (box) {
+          box.classList.add('hidden');
+        }
+        await loadDashboard();
+      } catch (err) {
+        $('campaign-message').textContent = err.message;
       }
     });
 

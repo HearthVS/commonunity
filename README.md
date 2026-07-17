@@ -181,15 +181,58 @@ auth system, storage, or parallel routing:
 | `COMMONUNITY_MAGIC_LINK_TOKENS` | optional | CSV of static tokens accepted as valid invitations without a DB row (view-only; cannot self-admit). |
 | `COMMONUNITY_INVITE_BASE_URL` | optional | Overrides the base used when building the `beta_link` in admin/email. |
 
-**Operator flow:** open `/admin`, create an invite (name required), copy the
-returned `beta_link`, and send it. The participant opens it, enters their name +
-email, and lands in the hub. Admission records (name, email, timestamp) are
-visible in the admin invites tab.
+**Operator flow (personal invite):** open `/admin`, create an invite (name
+required), copy the returned `beta_link`, and send it. The participant opens it,
+enters their name + email, and lands in the hub. Admission records (name, email,
+timestamp) are visible in the admin invites tab.
 
-Tests: `python -m pytest tests/test_beta_hub.py -v` (link shape, invalid/missing
-link → gate, valid handoff, session state, name/email validation + capture,
-admission gating, refresh/direct hub access, member-gated library, asset
-allowlist).
+### Reusable campaign links (for groups)
+
+A personal invite is one link for one person. When you want to open the beta to a
+whole group at once — for example by posting a single link into a community
+**WhatsApp** group — use a **reusable campaign link** instead. It is built on the
+same `invites` table (no new system): a campaign is just an invite row with
+`kind='campaign'`, and each person who enrolls through it becomes an independent
+`kind='participant'` row tied back to the campaign.
+
+- **Create it:** in `/admin`, use **"Reusable campaign link"** (a campaign *name*
+  is required — e.g. "Autumn WhatsApp group"). This calls
+  `POST /api/admin/campaigns` and returns `campaign_link`
+  (`https://commonunity.io/beta?campaign=<token>`). The token is high-entropy and
+  validated server-side; only an authenticated admin can create one.
+- **Share it:** post the one link to the group (WhatsApp, etc.). It is **not** a
+  one-time secret — *anyone who has the link can enroll until you revoke it.*
+- **What each visitor gets:** opening the link validates the campaign token
+  server-side, sets a signed, pre-admission **campaign cookie** (never a shared
+  admission cookie), and drops them at the normal `/beta` threshold. Each person
+  enters *their own* name + email and receives an **independent admission** — a
+  distinct participant record and their own signed session cookie. Opening the
+  link never auto-admits anyone, never shares identity or session between people,
+  and never mutates the campaign template into a participant identity.
+- **Duplicate emails:** each enrollment is an independent record. If two people
+  (or the same person from two browsers) enroll with the same email, you get two
+  separate participant records — the system never silently overwrites an existing
+  participant. (A participant returning in the *same* browser re-uses their own
+  record; refresh/re-submit is idempotent.)
+- **See who enrolled:** the admin invites tab tags each row — *Campaign* for the
+  template, *Campaign participant · via &lt;campaign name&gt;* for each enrollee —
+  and shows each participant's own name / email / timestamp.
+- **Revoke it:** revoke the campaign row like any invite (Revoke in the invites
+  tab / `POST /api/admin/invites/{id}/revoke`). New visitors can no longer enroll
+  (the link falls through to the shared-code gate), while people who already
+  enrolled keep their own admission.
+
+**When to use which:** personal `beta_link` for a single named, case-by-case
+invitation; reusable `campaign_link` for a group you want to self-enroll from one
+shared link.
+
+Tests: `python -m pytest tests/test_beta_hub.py -v` (personal: link shape,
+invalid/missing link → gate, valid handoff, session state, name/email validation
++ capture, admission gating, refresh/direct hub access, member-gated library,
+asset allowlist; campaign: admin-only creation, threshold handoff, multiple
+independent participants + independent cookies/sessions, no overwrite, duplicate
+email, campaign attribution, invalid/revoked link, no auto-admit of later
+visitors, idempotent re-submit, `?invite=`-with-campaign-token reroute).
 
 ## Nexus model & response depth
 
