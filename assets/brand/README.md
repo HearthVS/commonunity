@@ -55,6 +55,8 @@ those tests together.
 | `primary-logo.svg` | **Legacy / special-purpose.** Same lockup but with a baked-in dark background `<rect>`. Do **not** use on live UI/product surfaces — use the transparent variant. | `/assets/brand/primary-logo.svg` |
 | `primary-logo-light.svg` | **Legacy / special-purpose.** Lockup variant with a light background plate baked in; same restriction as `primary-logo.svg`. | `/assets/brand/primary-logo-light.svg` |
 | `mark.svg` | Compact OM mark (favicon-size lockup of OM letters + crescent + bindu) | `/assets/brand/mark.svg` |
+| `compass-mark-transparent.svg` | **Canonical small cOMpass mark for UI use.** Faceted OM-field diamond, transparent (no background plate) — the plate-free variant of the root `favicon.svg`. Use beside the `cOMpass` name on product surfaces. | `/assets/brand/compass-mark-transparent.svg` |
+| `studio-mark-transparent.svg` | **Canonical small stUdio mark for UI use.** U-vessel holding the glow, transparent (no background plate) — the plate-free variant of the root `favicon-studio.svg`. Use beside the `stUdio` name on product surfaces. | `/assets/brand/studio-mark-transparent.svg` |
 | `mono-mark.svg` | Single-color version of the mark, used as Safari `mask-icon` | `/assets/brand/mono-mark.svg` |
 | `favicon.svg` | Brand favicon (SVG) | `/assets/brand/favicon.svg` |
 

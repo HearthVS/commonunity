@@ -1781,6 +1781,16 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE shared_files ADD COLUMN kind TEXT NOT NULL DEFAULT 'file'")
     if "target_url" not in _sf_cols:
         conn.execute("ALTER TABLE shared_files ADD COLUMN target_url TEXT NOT NULL DEFAULT ''")
+    # show_in_beta_library gates whether a Library entry surfaces in the private
+    # beta hub's Library section (GET /api/beta/library). It is a separate,
+    # additive control from is_active (which governs the public /share alias):
+    # an item can be publicly shareable yet deliberately withheld from the beta
+    # hub, or vice-versa. DEFAULT 0 means existing rows and every new upload/link
+    # start hidden from the beta hub — the operator must opt each item in — so
+    # nothing is exposed to beta participants by accident. Backfilled idempotently
+    # because CREATE TABLE IF NOT EXISTS never adds a column to an existing table.
+    if "show_in_beta_library" not in _sf_cols:
+        conn.execute("ALTER TABLE shared_files ADD COLUMN show_in_beta_library INTEGER NOT NULL DEFAULT 0")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
     conn.execute(
@@ -1939,6 +1949,7 @@ def _shared_public_url(request: Request, slug: str) -> str:
 def _shared_row_to_dict(row: sqlite3.Row, request: Request) -> dict:
     d = {key: row[key] for key in row.keys()}
     d["is_active"] = bool(d.get("is_active"))
+    d["show_in_beta_library"] = bool(d.get("show_in_beta_library"))
     d["kind"] = d.get("kind") or "file"
     d["public_url"] = _shared_public_url(request, d["slug"])
     d.pop("stored_filename", None)  # internal-only; never expose the on-disk name
@@ -3373,10 +3384,13 @@ async def beta_admit(request: Request, payload: InviteCreateRequest):
 
 @app.get("/api/beta/library")
 async def beta_library(request: Request):
-    """Active shared Library entries for the hub's Library / Sharings section.
-    Member-gated (admitted beta participant). Reuses the admin Library store
-    (shared_files) read-only; each entry is surfaced as its public /share/<slug>
-    alias, exactly the link an admin would copy. Never lists inactive items."""
+    """Active shared Library entries the operator has explicitly published to the
+    beta hub's Library / Sharings section. Member-gated (admitted beta
+    participant). Reuses the admin Library store (shared_files) read-only; each
+    entry is surfaced as its public /share/<slug> alias, exactly the link an
+    admin would copy. Only lists items that are BOTH active and opted in via
+    show_in_beta_library — an admin must choose each one, so no shared file is
+    exposed to beta participants by default."""
     invite = _current_beta_invite(request)
     if not (invite and (invite.get("beta_admitted_at") or "").strip()):
         raise HTTPException(status_code=403, detail="admission required")
@@ -3385,7 +3399,7 @@ async def beta_library(request: Request):
             """
             SELECT slug, title, original_filename, ext, kind, size_bytes, created_at
             FROM shared_files
-            WHERE is_active = 1
+            WHERE is_active = 1 AND show_in_beta_library = 1
             ORDER BY created_at DESC, slug
             LIMIT 200
             """
@@ -3513,6 +3527,10 @@ async def admin_logout(request: Request):
 
 class SharedFileStateRequest(BaseModel):
     active: bool = True
+
+
+class SharedFileBetaVisibilityRequest(BaseModel):
+    show: bool = False
 
 
 class SharedLinkRequest(BaseModel):
@@ -3648,6 +3666,28 @@ async def admin_set_shared_file_state(request: Request, file_id: str, payload: S
             (1 if payload.active else 0, file_id),
         )
         row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+    return {"file": _shared_row_to_dict(row, request)}
+
+
+@app.post("/api/admin/shared-files/{file_id}/beta-visibility")
+async def admin_set_shared_file_beta_visibility(
+    request: Request, file_id: str, payload: SharedFileBetaVisibilityRequest
+):
+    """Opt a Library item in/out of the private beta hub's Library section.
+    Independent of is_active (the public /share alias): this flag only governs
+    whether GET /api/beta/library surfaces the item to admitted participants."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="File not found.")
+        conn.execute(
+            "UPDATE shared_files SET show_in_beta_library = ? WHERE id = ?",
+            (1 if payload.show else 0, file_id),
+        )
+        row = conn.execute("SELECT * FROM shared_files WHERE id = ?", (file_id,)).fetchone()
+    _record_event("shared_file_beta_visibility", route="/admin", source="admin",
+                  detail="show" if payload.show else "hide")
     return {"file": _shared_row_to_dict(row, request)}
 
 
@@ -5042,6 +5082,8 @@ _BRAND_ALLOWED = {
     "mark.svg":                     "image/svg+xml",
     "mono-mark.svg":                "image/svg+xml",
     "favicon.svg":                  "image/svg+xml",
+    "compass-mark-transparent.svg": "image/svg+xml",
+    "studio-mark-transparent.svg":  "image/svg+xml",
     "compass-email-mark.png":       "image/png",
 }
 if _brand_dir.exists():

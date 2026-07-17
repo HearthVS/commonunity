@@ -1395,7 +1395,7 @@
           <div style="display:flex;justify-content:space-between;gap:16px;align-items:start;flex-wrap:wrap;">
             <div>
               <h2>Library items</h2>
-              <p class="hint">Every uploaded file and saved link, its public alias, and controls.</p>
+              <p class="hint">Every uploaded file and saved link, its public alias, and controls. Items are hidden from the private beta hub by default — use <strong>Show in beta</strong> to publish an item into the beta Library section.</p>
             </div>
             <div class="actions" style="margin:0">
               <button class="btn-secondary" onclick="loadLibrary()" data-testid="library-reload">Reload</button>
@@ -1404,7 +1404,7 @@
           <div class="table-wrap" style="margin-top:14px;">
             <table data-testid="library-table">
               <thead>
-                <tr><th>Title</th><th>Kind</th><th>Type / destination</th><th>Status</th><th>Views</th><th>Share alias</th><th>Actions</th></tr>
+                <tr><th>Title</th><th>Kind</th><th>Type / destination</th><th>Status</th><th>Beta hub</th><th>Views</th><th>Share alias</th><th>Actions</th></tr>
               </thead>
               <tbody id="lib-tbody"></tbody>
             </table>
@@ -1922,7 +1922,7 @@
 
     async function loadLibrary() {
       const tbody = $('lib-tbody');
-      if (tbody && !state.library.length) tbody.innerHTML = '<tr><td colspan="7" class="muted">Loading…</td></tr>';
+      if (tbody && !state.library.length) tbody.innerHTML = '<tr><td colspan="8" class="muted">Loading…</td></tr>';
       try {
         const data = await api('/api/admin/shared-files');
         state.library = data.files || [];
@@ -1963,17 +1963,22 @@
           ? `<span class="muted" title="${escapeHtml(f.target_url || '')}" data-testid="library-dest-${f.id}">↪ ${escapeHtml(f.target_host || 'link')}</span>`
           : `${escapeHtml((f.ext || '').toUpperCase())} · ${fmtBytes(f.size_bytes)}`;
         const toggleLabel = active ? 'Deactivate' : 'Activate';
+        const inBeta = f.show_in_beta_library;
+        const betaPill = `<span class="status ${inBeta ? '' : 'revoked'}" data-testid="library-beta-status-${f.id}">${inBeta ? 'shown' : 'hidden'}</span>`;
+        const betaLabel = inBeta ? 'Hide from beta' : 'Show in beta';
         return `<tr data-testid="library-row-${f.id}">
           <td><strong>${escapeHtml(f.title || f.original_filename || f.slug)}</strong><div class="muted">${subtitle}</div></td>
           <td>${kindPill}</td>
           <td>${typeCell}</td>
           <td>${statusPill}</td>
+          <td>${betaPill}</td>
           <td data-testid="library-views-${f.id}">${f.view_count || 0}</td>
           <td>${alias}</td>
           <td style="white-space:nowrap">
             <button class="btn-secondary btn-sm" data-lib-copy="${f.id}" data-testid="library-copy-${f.id}">Copy</button>
             <button class="btn-secondary btn-sm" data-lib-open="${f.id}" data-testid="library-open-${f.id}">Open</button>
             <button class="btn-secondary btn-sm" data-lib-toggle="${f.id}" data-lib-active="${active ? '0' : '1'}" data-testid="library-toggle-${f.id}">${toggleLabel}</button>
+            <button class="btn-secondary btn-sm" data-lib-beta="${f.id}" data-lib-beta-show="${inBeta ? '0' : '1'}" data-testid="library-beta-toggle-${f.id}">${betaLabel}</button>
             <button class="btn-secondary btn-sm" data-lib-delete="${f.id}" data-testid="library-delete-${f.id}">Delete</button>
           </td>
         </tr>`;
@@ -2073,6 +2078,7 @@
       const copyId = t.dataset?.libCopy;
       const openId = t.dataset?.libOpen;
       const toggleId = t.dataset?.libToggle;
+      const betaId = t.dataset?.libBeta;
       const deleteId = t.dataset?.libDelete;
       if (copyId) {
         const f = state.library.find(x => x.id === copyId);
@@ -2089,6 +2095,13 @@
         t.disabled = true;
         try {
           await api(`/api/admin/shared-files/${toggleId}/state`, { method: 'POST', body: JSON.stringify({ active: makeActive }) });
+          await loadLibrary();
+        } catch (err) { alert(err.message || 'Update failed'); t.disabled = false; }
+      } else if (betaId) {
+        const show = t.dataset.libBetaShow === '1';
+        t.disabled = true;
+        try {
+          await api(`/api/admin/shared-files/${betaId}/beta-visibility`, { method: 'POST', body: JSON.stringify({ show }) });
           await loadLibrary();
         } catch (err) { alert(err.message || 'Update failed'); t.disabled = false; }
       } else if (deleteId) {

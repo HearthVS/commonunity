@@ -60,6 +60,10 @@ class AuthTests(unittest.TestCase):
             401,
         )
         self.assertEqual(anon.delete("/api/admin/shared-files/none").status_code, 401)
+        self.assertEqual(
+            anon.post("/api/admin/shared-files/none/beta-visibility", json={"show": True}).status_code,
+            401,
+        )
 
 
 class UploadAndServeTests(unittest.TestCase):
@@ -196,6 +200,55 @@ class UploadAndServeTests(unittest.TestCase):
 
     def test_unknown_slug_404(self):
         self.assertEqual(self.c.get("/share/does-not-exist").status_code, 404)
+
+
+class BetaVisibilityTests(unittest.TestCase):
+    """The 'Show in beta library' operator control (show_in_beta_library).
+
+    It is a separate, additive flag from is_active: it only governs whether an
+    item surfaces in the private beta hub's Library section. It must default to
+    hidden and must not affect ordinary /share access."""
+
+    def setUp(self):
+        self.c = _auth_client()
+
+    def test_new_items_default_hidden_from_beta(self):
+        up = _upload(self.c, "b.html", b"<h1>x</h1>", "text/html", slug="beta-default")
+        self.assertEqual(up.status_code, 200)
+        self.assertFalse(up.json()["file"]["show_in_beta_library"])
+        # A saved link entry defaults hidden too.
+        link = self.c.post("/api/admin/shared-links",
+                           json={"title": "L", "target_url": "https://commonunity.io/x/"})
+        self.assertFalse(link.json()["file"]["show_in_beta_library"])
+
+    def test_toggle_updates_flag_without_touching_public_access(self):
+        up = _upload(self.c, "shareable.html", b"<h1>hi</h1>", "text/html", slug="shareable")
+        fid = up.json()["file"]["id"]
+        # Public /share alias works regardless of beta visibility.
+        self.assertEqual(self.c.get("/share/shareable").status_code, 200)
+
+        shown = self.c.post(f"/api/admin/shared-files/{fid}/beta-visibility", json={"show": True})
+        self.assertEqual(shown.status_code, 200)
+        self.assertTrue(shown.json()["file"]["show_in_beta_library"])
+        # is_active untouched, public URL still serves the same bytes.
+        self.assertTrue(shown.json()["file"]["is_active"])
+        self.assertEqual(self.c.get("/share/shareable").status_code, 200)
+
+        hidden = self.c.post(f"/api/admin/shared-files/{fid}/beta-visibility", json={"show": False})
+        self.assertFalse(hidden.json()["file"]["show_in_beta_library"])
+        self.assertEqual(self.c.get("/share/shareable").status_code, 200)
+
+    def test_beta_visibility_unknown_id_404(self):
+        r = self.c.post("/api/admin/shared-files/does-not-exist/beta-visibility", json={"show": True})
+        self.assertEqual(r.status_code, 404)
+
+    def test_listing_exposes_beta_flag(self):
+        up = _upload(self.c, "listed.txt", b"v", "text/plain", slug="listed")
+        fid = up.json()["file"]["id"]
+        self.c.post(f"/api/admin/shared-files/{fid}/beta-visibility", json={"show": True})
+        data = self.c.get("/api/admin/shared-files").json()
+        item = next(f for f in data["files"] if f["id"] == fid)
+        self.assertTrue(item["show_in_beta_library"])
 
 
 class LinkEntryTests(unittest.TestCase):

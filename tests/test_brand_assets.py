@@ -47,6 +47,8 @@ def test_transparent_wordmark_is_served_with_svg_media_type():
     ("mark.svg", "image/svg+xml"),
     ("mono-mark.svg", "image/svg+xml"),
     ("favicon.svg", "image/svg+xml"),
+    ("compass-mark-transparent.svg", "image/svg+xml"),
+    ("studio-mark-transparent.svg", "image/svg+xml"),
     ("compass-email-mark.png", "image/png"),
 ])
 def test_all_allowlisted_brand_assets_serve(filename, media):
@@ -55,6 +57,20 @@ def test_all_allowlisted_brand_assets_serve(filename, media):
     assert res.headers["content-type"].startswith(media), (
         f"{filename}: {res.headers['content-type']}"
     )
+
+
+@pytest.mark.parametrize("filename", [
+    "compass-mark-transparent.svg",
+    "studio-mark-transparent.svg",
+])
+def test_product_marks_are_plate_free(filename):
+    """The small cOMpass/stUdio marks used beside their names on the beta hub are
+    transparent variants: no baked-in background <rect> plate (brand rule)."""
+    res = _client.get(f"/assets/brand/{filename}")
+    assert res.status_code == 200, res.text
+    assert res.text.lstrip().startswith("<svg")
+    assert "<rect" not in res.text
+    assert "#0b1120" not in res.text  # the favicon plate colour must not survive
 
 
 def test_unlisted_brand_path_is_not_served():
