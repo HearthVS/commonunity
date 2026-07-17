@@ -1434,10 +1434,12 @@
                   <input type="radio" name="msg-mode" value="announce" checked data-testid="messaging-mode-announce" style="margin-top:3px;">
                   <span><strong>General announcement to Beta</strong><br><span class="muted" style="font-size:12px;">A persistent in-app note shown in every admitted participant's Announcements feed. Not emailed.</span></span>
                 </label>
-                <label class="msg-mode" style="font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;">
-                  <input type="radio" name="msg-mode" value="person" data-testid="messaging-mode-person" style="margin-top:3px;">
-                  <span><strong>In-app message to a person</strong><br><span class="muted" style="font-size:12px;">A private in-app note visible only to one admitted participant, in their own "For you" block. Not emailed, never shown to anyone else.</span></span>
-                </label>
+                <!-- DORMANT: "In-app message to a person" is temporarily hidden.
+                     The participant-facing personal "For you" area is not rendered
+                     in the current beta, so per-person in-app notes would be
+                     invisible. The backend endpoint (/api/admin/messaging/person)
+                     and its data support are intentionally preserved for later
+                     reactivation — only this UI destination is removed for now. -->
                 <label class="msg-mode" style="font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;">
                   <input type="radio" name="msg-mode" value="email" data-testid="messaging-mode-email" style="margin-top:3px;">
                   <span><strong>Email all beta participants</strong><br><span class="muted" style="font-size:12px;">An outbound email to the distinct addresses of admitted participants. Sent individually — no one sees another's address.</span></span>
@@ -1445,11 +1447,9 @@
               </div>
             </div>
 
-            <div id="msg-person-field" class="hidden">
-              <label for="msg-person">Recipient</label>
-              <select id="msg-person" data-testid="messaging-person-select"></select>
-              <p class="hint" id="msg-person-empty" style="display:none;">No admitted beta participants yet — no one to message in-app.</p>
-            </div>
+            <!-- DORMANT: recipient picker for the hidden per-person destination.
+                 Kept out of the DOM while that destination is hidden; restore
+                 alongside the "In-app message to a person" option to reactivate. -->
 
             <div>
               <label for="msg-subject">Subject <span class="muted" style="text-transform:none;letter-spacing:0;">optional</span></label>
@@ -3085,12 +3085,16 @@
     });
 
     // ── Messaging Center ──
-    // A standalone surface, separate from Invitations. Three destinations, each
-    // addressed server-side from admitted-participant invite records only:
+    // A standalone surface, separate from Invitations. Two operationally visible
+    // destinations, each addressed server-side from admitted-participant invite
+    // records only:
     //   announce → persistent in-app note to every admitted participant
-    //   person   → private in-app note to one admitted participant
     //   email    → outbound email to distinct admitted addresses (fail-closed)
-    const msgState = { audience: null, participants: [] };
+    // DORMANT: the per-person in-app destination ("person") is intentionally
+    // hidden from this UI while the participant-facing "For you" area is not
+    // rendered. Its endpoint (/api/admin/messaging/person) and the participants
+    // roster endpoint remain available server-side for later reactivation.
+    const msgState = { audience: null };
 
     function msgMode() {
       return document.querySelector('input[name="msg-mode"]:checked')?.value || 'announce';
@@ -3105,39 +3109,12 @@
         $('msg-audience').textContent = err.message;
         return;
       }
-      try {
-        const p = await api('/api/admin/messaging/participants');
-        msgState.participants = p.participants || [];
-      } catch (_) {
-        msgState.participants = [];
-      }
-      renderMessagingPeople();
       updateMessagingMode();
-    }
-
-    function renderMessagingPeople() {
-      const sel = $('msg-person');
-      const empty = $('msg-person-empty');
-      if (!sel) return;
-      if (!msgState.participants.length) {
-        sel.innerHTML = '';
-        sel.style.display = 'none';
-        empty.style.display = 'block';
-        return;
-      }
-      sel.style.display = '';
-      empty.style.display = 'none';
-      sel.innerHTML = msgState.participants.map(p => {
-        const who = [p.name || '(no name)', p.email].filter(Boolean).join(' · ');
-        const tag = p.kind === 'participant' ? (p.campaign ? ` [${p.campaign}]` : ' [campaign]') : '';
-        return `<option value="${p.id}">${escapeHtml(who + tag)}</option>`;
-      }).join('');
     }
 
     function updateMessagingMode() {
       const mode = msgMode();
       const a = msgState.audience || { total: 0, with_email: 0, distinct_emails: 0, smtp_configured: false };
-      $('msg-person-field').classList.toggle('hidden', mode !== 'person');
       const notice = $('msg-email-notice');
       const sendBtn = $('msg-send');
       notice.classList.add('hidden');
@@ -3145,10 +3122,6 @@
       if (mode === 'announce') {
         sendBtn.textContent = 'Publish announcement';
         $('msg-audience').textContent = `${a.total} admitted beta participant${a.total === 1 ? '' : 's'} will see this in their Announcements feed.`;
-      } else if (mode === 'person') {
-        sendBtn.textContent = 'Post to person';
-        $('msg-audience').textContent = `Posts privately to one participant's "For you" block. ${a.total} admitted participant${a.total === 1 ? '' : 's'} available.`;
-        if (!msgState.participants.length) sendBtn.disabled = true;
       } else if (mode === 'email') {
         sendBtn.textContent = 'Email participants…';
         $('msg-audience').textContent = `${a.distinct_emails} distinct email address${a.distinct_emails === 1 ? '' : 'es'} across ${a.total} admitted participant${a.total === 1 ? '' : 's'} (deduplicated).`;
@@ -3206,15 +3179,6 @@
           `Shown in-app to ${a.total} admitted participant${a.total === 1 ? '' : 's'}.`,
           subject, body,
           () => sendMessaging('/api/admin/messaging/announce', { subject, body }));
-      } else if (mode === 'person') {
-        const sel = $('msg-person');
-        const inviteId = sel && sel.value ? Number(sel.value) : 0;
-        if (!inviteId) { $('msg-result').textContent = 'Choose a recipient participant.'; return; }
-        const who = sel.options[sel.selectedIndex]?.textContent || 'this participant';
-        openMsgConfirm('Post private in-app message',
-          `Visible only to ${who}. No one else can see it.`,
-          subject, body,
-          () => sendMessaging('/api/admin/messaging/person', { invite_id: inviteId, subject, body }));
       } else if (mode === 'email') {
         openMsgConfirm('Send email to beta participants',
           `An email will be sent to ${a.distinct_emails} distinct address${a.distinct_emails === 1 ? '' : 'es'}, individually (no one sees another's address).`,
@@ -3233,10 +3197,8 @@
         const result = await api(url, { method: 'POST', body: JSON.stringify(payload) });
         if (result.destination === 'email') {
           $('msg-result').textContent = `Emailed ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}. Sent: ${result.email_sent}${result.email_failed ? ` · failed: ${result.email_failed}` : ''}${result.email_pending ? ` · pending: ${result.email_pending}` : ''}.`;
-        } else if (result.destination === 'announce') {
-          $('msg-result').textContent = `Announcement posted in-app to ${result.recipients} participant${result.recipients === 1 ? '' : 's'}.`;
         } else {
-          $('msg-result').textContent = 'Private in-app message posted to the participant.';
+          $('msg-result').textContent = `Announcement posted in-app to ${result.recipients} participant${result.recipients === 1 ? '' : 's'}.`;
         }
         $('msg-subject').value = '';
         $('msg-body').value = '';
