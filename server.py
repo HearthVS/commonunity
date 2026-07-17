@@ -5028,9 +5028,34 @@ async def serve_favicon_studio():
     return {"error": "Not found"}
 
 # CommonUnity brand assets (mark, mono-mark, primary-logo, brand favicon).
+# Served through an explicit allowlist handler — like /threshold, /compass/arrival
+# and /beta — rather than a bare StaticFiles mount. A mount served most files but
+# newly added assets did not resolve on the production deployment (e.g.
+# /assets/brand/primary-logo-transparent.svg returned 404 while its siblings were
+# 200); an explicit handler makes every brand file resolve deterministically to
+# the correct media type. Add new brand files to _BRAND_ALLOWED to publish them.
 _brand_dir = pathlib.Path(__file__).parent / "assets" / "brand"
+_BRAND_ALLOWED = {
+    "primary-logo.svg":             "image/svg+xml",
+    "primary-logo-light.svg":       "image/svg+xml",
+    "primary-logo-transparent.svg": "image/svg+xml",
+    "mark.svg":                     "image/svg+xml",
+    "mono-mark.svg":                "image/svg+xml",
+    "favicon.svg":                  "image/svg+xml",
+    "compass-email-mark.png":       "image/png",
+}
 if _brand_dir.exists():
-    app.mount("/assets/brand", StaticFiles(directory=_brand_dir), name="brand")
+    @app.get("/assets/brand/{filename}")
+    async def serve_brand_asset(filename: str):
+        media_type = _BRAND_ALLOWED.get(filename)
+        if media_type is None:
+            raise HTTPException(status_code=404, detail="not found")
+        f = _brand_dir / filename
+        if not f.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(f, media_type=media_type, headers={
+            "Cache-Control": "public, max-age=3600"
+        })
 
 
 # cOMpass onboarding threshold — bolt-on module. Static files served from
