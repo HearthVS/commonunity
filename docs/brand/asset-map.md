@@ -10,6 +10,18 @@ deployment behavior.
 
 ---
 
+## Brand rule (non-negotiable)
+
+The CommonUnity logo must always appear as **transparent artwork resting
+directly on the surrounding field** — never inside a background plate, badge,
+card, colored container, border, shadow, or rounded frame. The canonical
+UI/product asset is **`primary-logo-transparent.svg`**; the plate-bearing
+`primary-logo.svg` / `primary-logo-light.svg` are legacy/special-purpose and
+must not be used on live surfaces. The full MUST/MUST NOT statement lives in
+`assets/brand/README.md` and is enforced by `tests/test_brand_logo_rule.py`.
+
+---
+
 ## Quick answer
 
 - **Brand logos / marks / favicons** → source of truth is `assets/brand/`.
@@ -31,8 +43,11 @@ deployment behavior.
 ## Folder inventory
 
 ### `assets/brand/` — **source of truth for brand**
-- `primary-logo.svg` — full COMMONUNITY lockup, OM in gold, dark BG
-- `primary-logo-light.svg` — light-background variant
+- `primary-logo-transparent.svg` — **canonical wordmark for UI/product**;
+  gold-OM lockup with no background plate (rests on the field)
+- `primary-logo.svg` — legacy/special-purpose; same lockup with a baked-in
+  dark background plate — do not use on live surfaces
+- `primary-logo-light.svg` — legacy/special-purpose light-background variant
 - `mark.svg` — compact OM mark
 - `mono-mark.svg` — single-color mark; used as Safari `mask-icon`
 - `favicon.svg` — brand favicon (SVG)
