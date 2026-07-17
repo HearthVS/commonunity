@@ -10,8 +10,9 @@
  *   1. A universal OM-field palette (gold / indigo / pearl) pinned onto the
  *      cipher variables threshold.css reads — NOT the per-person cOMpass
  *      palette logic. Every beta participant sees the same shared field.
- *   2. The CommonUnity OM wordmark (repo asset /assets/brand/primary-logo.svg)
- *      in place of the cOMpass diamond mark.
+ *   2. The CommonUnity OM wordmark (repo asset
+ *      /assets/brand/primary-logo-transparent.svg) in place of the cOMpass
+ *      diamond mark, resting directly on the field with no background plate.
  *   3. The private hub — a calm "shared room" of stacked panels, not a
  *      dashboard.
  */
@@ -33,19 +34,14 @@
    Repo asset, not an invented logo. Sits where the cOMpass diamond sits in
    the threshold, so the surface reads as the same product family while
    clearly being CommonUnity-level. */
-/* The repo wordmark asset (primary-logo.svg) embeds its own dark lockup plate.
-   Rather than fight it, we present it as a deliberate, softly-bordered brand
-   plate that settles into the field. */
+/* The transparent wordmark asset (primary-logo-transparent.svg) carries no
+   background plate, so it rests directly on the OM field — no badge, border, or
+   shadow container. */
 .beta-wordmark {
   display: block;
   width: min(300px, 72vw);
   height: auto;
-  margin: 0 auto 0.6rem;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(213, 160, 74, 0.16);
-  box-shadow: 0 18px 48px rgba(3, 6, 12, 0.5),
-              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  margin: 0 auto 0.9rem;
 }
 .beta-wordmark img { display: block; width: 100%; height: auto; }
 

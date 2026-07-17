@@ -16,6 +16,7 @@ The garage stays open — parts visible, named clearly, and documented.
 |---|---|---|
 | `primary-logo.svg` | Full COMMONUNITY lockup with OM in gold + crescent + bindu, on dark background | `/assets/brand/primary-logo.svg` |
 | `primary-logo-light.svg` | Lockup variant for light backgrounds | `/assets/brand/primary-logo-light.svg` |
+| `primary-logo-transparent.svg` | Same gold-OM lockup as `primary-logo.svg` but with no background plate, for placing directly on an atmospheric field | `/assets/brand/primary-logo-transparent.svg` |
 | `mark.svg` | Compact OM mark (favicon-size lockup of OM letters + crescent + bindu) | `/assets/brand/mark.svg` |
 | `mono-mark.svg` | Single-color version of the mark, used as Safari `mask-icon` | `/assets/brand/mono-mark.svg` |
 | `favicon.svg` | Brand favicon (SVG) | `/assets/brand/favicon.svg` |
