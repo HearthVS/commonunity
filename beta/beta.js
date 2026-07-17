@@ -23,7 +23,7 @@
   var root = document.getElementById('threshold-root');
   if (!root) return;
 
-  var WORDMARK = '/assets/brand/primary-logo.svg';
+  var WORDMARK = '/assets/brand/primary-logo-transparent.svg';
   var MARK = '/assets/brand/mark.svg';
 
   // ---- tiny DOM helper (same shape as threshold.js el()) ------------------
@@ -123,7 +123,7 @@
     card.appendChild(el('div', { class: 'threshold-actions' }, cta));
 
     card.appendChild(el('p', { class: 'beta-context' },
-      'You are joining the first beta group. This is a calm, quiet room — no notifications, nothing extracted. We hold only your name and email so we can welcome you and share what opens next.'
+      'You are joining the first beta group. We hold only your name and email so we can welcome you and share what opens next.'
     ));
 
     // Enter-to-submit from either field.
