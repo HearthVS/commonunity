@@ -1,0 +1,219 @@
+/* beta/beta.css
+ *
+ * CommonUnity private beta — threshold + hub.
+ *
+ * This module deliberately reuses threshold/threshold.css for the OM-field
+ * atmosphere (deep blue-black emanation, slow drift, film grain), the
+ * held-space card system, the input/button language, and the fade-in
+ * choreography. Everything below is the thin CommonUnity-level layer:
+ *
+ *   1. A universal OM-field palette (gold / indigo / pearl) pinned onto the
+ *      cipher variables threshold.css reads — NOT the per-person cOMpass
+ *      palette logic. Every beta participant sees the same shared field.
+ *   2. The CommonUnity OM wordmark (repo asset /assets/brand/primary-logo.svg)
+ *      in place of the cOMpass diamond mark.
+ *   3. The private hub — a calm "shared room" of stacked panels, not a
+ *      dashboard.
+ */
+
+:root {
+  /* Universal OM-field — the shared atmosphere, identical for everyone.
+     Gold + indigo drawn from the CommonUnity brand tokens already used across
+     the marketing pages and email marks. */
+  --cipher-primary: #4f5f8f;   /* indigo depth */
+  --cipher-secondary: #6f9a84; /* living sage */
+  --cipher-accent: #d4a04a;    /* OM gold */
+}
+
+/* The beta field breathes at a steady, welcoming stage — no per-step
+   escalation, because this is one shared room, not a journey of ascent. */
+.beta-root { --om-gold: #d4a04a; }
+
+/* ── CommonUnity wordmark ────────────────────────────────────────────────
+   Repo asset, not an invented logo. Sits where the cOMpass diamond sits in
+   the threshold, so the surface reads as the same product family while
+   clearly being CommonUnity-level. */
+/* The repo wordmark asset (primary-logo.svg) embeds its own dark lockup plate.
+   Rather than fight it, we present it as a deliberate, softly-bordered brand
+   plate that settles into the field. */
+.beta-wordmark {
+  display: block;
+  width: min(300px, 72vw);
+  height: auto;
+  margin: 0 auto 0.6rem;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(213, 160, 74, 0.16);
+  box-shadow: 0 18px 48px rgba(3, 6, 12, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.beta-wordmark img { display: block; width: 100%; height: auto; }
+
+.beta-eyebrow {
+  margin: 0 0 1.1rem;
+  text-align: center;
+  color: var(--om-gold-soft, #e8c184);
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.beta-mark {
+  display: block;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 1.4rem;
+  opacity: 0.94;
+}
+.beta-mark img { display: block; width: 100%; height: auto; border-radius: 14px; }
+
+/* ── Threshold form tweaks (calm two-field entry) ───────────────────────── */
+.beta-root .threshold-card.is-threshold {
+  max-width: 560px;
+  text-align: center;
+}
+.beta-root .threshold-card.is-threshold .threshold-field { text-align: left; }
+.beta-context {
+  margin: 1.4rem auto 0;
+  max-width: 440px;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid rgba(213, 160, 74, 0.2);
+  border-radius: 14px;
+  background: rgba(213, 160, 74, 0.06);
+  color: var(--threshold-text-muted, #aab3c4);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+/* ── Private hub — a shared room, not a dashboard ────────────────────────── */
+.beta-hub {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.4rem clamp(3rem, 8vw, 5rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.4rem, 3.5vw, 2.2rem);
+}
+
+.beta-hub-header { text-align: center; margin-bottom: 0.4rem; }
+.beta-hub-greeting {
+  margin: 0.6rem 0 0.4rem;
+  font-size: clamp(1.9rem, 5vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--threshold-text, #f1f5f9);
+}
+.beta-hub-subline {
+  margin: 0 auto;
+  max-width: 520px;
+  color: var(--threshold-text-muted, #aab3c4);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+/* Each section is a softly-held panel that feathers into the field. */
+.beta-panel {
+  border: 1px solid var(--chamber-border, rgba(148, 163, 184, 0.1));
+  border-radius: 22px;
+  background: var(--chamber-surface, rgba(17, 24, 45, 0.55));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03),
+              0 24px 60px rgba(3, 6, 12, 0.4);
+  padding: clamp(1.4rem, 3.5vw, 2rem);
+}
+.beta-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--om-gold, #d4a04a);
+}
+.beta-panel-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(213, 160, 74, 0.28), transparent);
+}
+.beta-panel p {
+  margin: 0 0 0.85rem;
+  color: var(--threshold-text-muted, #c3ccdb);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+.beta-panel p:last-child { margin-bottom: 0; }
+
+/* Path — the shared materials / rooms as calm rows. */
+.beta-path-list, .beta-library-list, .beta-announce-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.beta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--threshold-border, rgba(148, 163, 184, 0.14));
+  border-radius: 14px;
+  background: rgba(11, 17, 32, 0.4);
+  color: var(--threshold-text, #f1f5f9);
+  text-decoration: none;
+  transition: border-color 220ms ease, background 220ms ease, transform 220ms ease;
+}
+a.beta-row:hover, a.beta-row:focus-visible {
+  border-color: rgba(213, 160, 74, 0.42);
+  background: rgba(213, 160, 74, 0.07);
+  transform: translateY(-1px);
+  outline: none;
+}
+.beta-row-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.beta-row-title { font-size: 1.02rem; font-weight: 500; }
+.beta-row-note { font-size: 0.85rem; color: var(--threshold-text-faint, #7d879c); }
+.beta-row-tag {
+  flex: none;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--om-gold, #d4a04a);
+  opacity: 0.85;
+}
+
+.beta-announce-item {
+  padding: 0.9rem 1.05rem;
+  border-left: 2px solid rgba(213, 160, 74, 0.4);
+  border-radius: 8px;
+  background: rgba(11, 17, 32, 0.35);
+}
+.beta-announce-subject { margin: 0 0 0.35rem; font-weight: 500; color: var(--threshold-text, #f1f5f9); }
+.beta-announce-body { margin: 0; color: var(--threshold-text-muted, #aab3c4); font-size: 0.95rem; line-height: 1.65; white-space: pre-wrap; }
+.beta-announce-date { display: block; margin-top: 0.5rem; font-size: 0.72rem; color: var(--threshold-text-faint, #7d879c); }
+
+.beta-empty {
+  color: var(--threshold-text-faint, #7d879c);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.beta-hub-footer {
+  text-align: center;
+  color: var(--threshold-text-faint, #6b7591);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* The gate/invalid state — a calm invite-only message, not an error page. */
+.beta-root .threshold-card.is-locked { max-width: 480px; text-align: center; }
+
+@media (max-width: 540px) {
+  .beta-row { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+  .beta-row-tag { align-self: flex-start; }
+}

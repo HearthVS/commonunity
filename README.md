@@ -137,6 +137,60 @@ lifecycle, link creation + alias redirect, generated slugs, file/link slug
 collision, invalid scheme/credential/malformed URL rejection, link lifecycle,
 and health/admin regressions).
 
+## Private beta hub (`/beta`)
+
+A CommonUnity-level (not cOMpass) private beta space entered through a protected
+magic link. A participant opens their link, crosses a calm OM-field threshold
+(name + email), and is admitted into a quiet shared hub — Welcome, Path,
+Announcements, and Library / Sharings — all behind the same `/beta` route.
+
+It is built entirely on the **existing** invite/beta infrastructure — no new
+auth system, storage, or parallel routing:
+
+- **Magic link:** `https://commonunity.io/beta?invite=<token>`. Handled by
+  `serve_beta`, which validates the token, sets the signed `commonunity_beta_access`
+  + `commonunity_invite_token` cookies, records the open, and redirects to a
+  clean `/beta`. Mirrors the existing `/studio?invite=<token>` handoff. Operators
+  get this link from the admin panel: it is returned as `beta_link` by
+  `POST /api/admin/invites` and `GET /api/admin/invites/{id}/link`, alongside the
+  existing cOMpass `magic_link`.
+- **Threshold vs hub:** the same `/beta` route serves the CommonUnity beta
+  surface (`beta/beta.html`, which reuses `threshold/threshold.css`). `beta.js`
+  asks `GET /api/beta/session` — resolved **server-side** from the signed invite
+  cookie — and shows the name/email threshold until the participant is admitted,
+  then the hub. A caller with no valid invitation falls through to the historical
+  shared-code gate, so the hub never bypasses a threshold.
+- **Admission / data capture:** `POST /api/beta/admit` requires a valid invite
+  cookie (server-side check, never client-only), captures the participant's own
+  name + email onto their existing `invites` row, and stamps `beta_admitted_at`.
+  Minimal data only. A `beta_admitted` event is recorded with the invite linkage
+  but **no** contact identity in the shared feed (same privacy model as the rest
+  of the invite lifecycle).
+- **Hub sections:** *Announcements* reuse the participant `GET /api/messages`
+  feed (scoped to the invite cookie); *Library / Sharings* reuse the admin
+  Library store read-only via `GET /api/beta/library` (admission-gated, lists
+  active `shared_files` as their public `/share/<slug>` aliases); *Path* links
+  into the CommonUnity apps the beta cookie already unlocks.
+
+**Config (env vars)** — all pre-existing, nothing new:
+
+| Var | Required | Purpose |
+| --- | --- | --- |
+| `ADMIN_COOKIE_SECRET` (or `ADMIN_ACCESS_CODE`) | yes | Signs the invite/beta cookies (`_sign_value`). Without it, cookies cannot be issued. |
+| `COMMONUNITY_ADMIN_DB_PATH` | prod | SQLite path for the `invites` store (magic-link tokens + admission records). Point at the Railway persistent volume. |
+| `COMMONUNITY_MAGIC_LINK_TOKENS` | optional | CSV of static tokens accepted as valid invitations without a DB row (view-only; cannot self-admit). |
+| `COMMONUNITY_INVITE_BASE_URL` | optional | Overrides the base used when building the `beta_link` in admin/email. |
+
+**Operator flow:** open `/admin`, create an invite (name required), copy the
+returned `beta_link`, and send it. The participant opens it, enters their name +
+email, and lands in the hub. Admission records (name, email, timestamp) are
+visible in the admin invites tab.
+
+Tests: `python -m pytest tests/test_beta_hub.py -v` (link shape, invalid/missing
+link → gate, valid handoff, session state, name/email validation + capture,
+admission gating, refresh/direct hub access, member-gated library, asset
+allowlist).
+
 ## Nexus model & response depth
 
 All Nexus / Studio / generation endpoints share a single active model resolved

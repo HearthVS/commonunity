@@ -1522,6 +1522,14 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE golden_thread ADD COLUMN cipher_id TEXT NOT NULL DEFAULT ''")
     if "unity_point" not in _gt_cols:
         conn.execute("ALTER TABLE golden_thread ADD COLUMN unity_point TEXT NOT NULL DEFAULT ''")
+    # CommonUnity private beta hub admission. An admitted participant is one who
+    # crossed the /beta threshold (entered name + email behind a valid magic
+    # link). Existing DBs predate this column and CREATE TABLE IF NOT EXISTS
+    # won't add it, so backfill idempotently. NULL means "invited but not yet
+    # admitted"; a timestamp means "admitted to the beta hub".
+    _inv_cols = {r[1] for r in conn.execute("PRAGMA table_info(invites)").fetchall()}
+    if "beta_admitted_at" not in _inv_cols:
+        conn.execute("ALTER TABLE invites ADD COLUMN beta_admitted_at TEXT")
     # ── Field Observations table ──────────────────────────────────────────
     # Member-scoped capture layer for lived text material. Scoped exactly like
     # golden_thread: the pseudonymous cipher_id is the primary member key, with
@@ -2558,6 +2566,17 @@ def _invite_magic_link(request: Request, token: str) -> str:
     return f"{_public_base_url(request)}/invite/{quote(token, safe='')}"
 
 
+def _beta_magic_link(request: Request, token: str) -> str:
+    # CommonUnity private beta hub entry link. Unlike /invite/<token> (which
+    # hands off to the cOMpass onboarding /threshold), this routes the recipient
+    # to the CommonUnity-level beta threshold at /beta, where they enter name +
+    # email and are admitted into the private beta hub. /beta?invite=<token> is
+    # handled by serve_beta: it validates the token, sets the beta + invite
+    # cookies, and redirects to the clean /beta URL. Query-param handoff mirrors
+    # the existing /studio?invite=<token> pattern.
+    return f"{_public_base_url(request)}/beta?invite={quote(token, safe='')}"
+
+
 def _invite_studio_link(request: Request, token: str) -> str:
     # Direct Studio entry link. Unlike the /invite/<token> magic link (which
     # hands off to /threshold for Compass onboarding), this drops the recipient
@@ -3028,9 +3047,178 @@ async def beta_status(request: Request):
     }
 
 
+_beta_dir = pathlib.Path(__file__).parent / "beta"
+_BETA_ALLOWED = {
+    "beta.css": "text/css; charset=utf-8",
+    "beta.js":  "application/javascript; charset=utf-8",
+}
+
+
+def _current_beta_invite(request: Request) -> dict | None:
+    """The active invite backing the current /beta session, resolved from the
+    signed invite cookie. Env-token (COMMONUNITY_MAGIC_LINK_TOKENS) sessions
+    have no DB row, so they return None here but still pass _valid_invite_token
+    at the gate — they can view the hub but carry no per-person admission
+    record. Admission (name/email capture) requires a real invite row."""
+    token = _invite_token_from_cookie(request)
+    if not token:
+        return None
+    return _lookup_active_invite(token)
+
+
 @app.get("/beta")
-async def serve_beta_gate(next: str = "/compass"):
+async def serve_beta(request: Request, next: str = "/compass"):
+    # Magic-link handoff: /beta?invite=<token>. Validate the token, set the
+    # signed beta + invite cookies, record the open, then redirect to the clean
+    # /beta URL so the token never lingers in history or the address bar. This
+    # mirrors _serve_private_file's ?invite= handling.
+    raw = request.query_params.get("invite")
+    if raw:
+        clean = raw.strip()
+        db_invite = _lookup_active_invite(clean)
+        if db_invite or _valid_invite_token(clean):
+            response = RedirectResponse(url="/beta", status_code=303)
+            _set_beta_cookie(response, request)
+            _set_invite_cookie(response, request, clean)
+            if db_invite:
+                _touch_invite(clean, request, "invite_opened", "beta")
+                _record_milestone(clean, "link_opened")
+            else:
+                _record_event(
+                    "env_invite_opened",
+                    token=clean,
+                    route="/beta",
+                    source="beta",
+                    user_agent=request.headers.get("user-agent", "")[:320],
+                )
+                _record_milestone(clean, "link_opened")
+            return response
+
+    # A participant carrying a valid invite (cookie set by the handoff above, or
+    # a still-valid env token) gets the CommonUnity beta surface — the threshold
+    # form first, then the private hub once admitted. beta.js decides which via
+    # GET /api/beta/session, so both live behind the same protected route.
+    token = _invite_token_from_cookie(request)
+    if _valid_invite_token(token) and _beta_dir.exists():
+        page = _beta_dir / "beta.html"
+        if page.exists():
+            return FileResponse(page, media_type="text/html; charset=utf-8", headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            })
+
+    # No participant credential: fall through to the existing shared-code gate.
+    # This preserves the historical /beta behaviour (the code-unlock gate that
+    # honours ?next= and ?error=1) for everyone who arrives without a magic
+    # link, so the beta hub is strictly additive and never bypasses a threshold.
     return _beta_gate("compass", next)
+
+
+@app.get("/beta/{filename}")
+async def serve_beta_asset(filename: str):
+    if filename not in _BETA_ALLOWED:
+        raise HTTPException(status_code=404, detail="not found")
+    f = _beta_dir / filename
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(f, media_type=_BETA_ALLOWED[filename], headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+    })
+
+
+@app.get("/api/beta/session")
+async def beta_session(request: Request):
+    """Admission state for the current /beta participant, resolved server-side
+    from the signed invite cookie. Never trusts the client. Returns whether the
+    caller is invited (valid token) and whether they have crossed the threshold
+    (admitted), plus the name to greet them with."""
+    token = _invite_token_from_cookie(request)
+    invited = _valid_invite_token(token)
+    invite = _current_beta_invite(request)
+    admitted = bool(invite and (invite.get("beta_admitted_at") or "").strip())
+    name = ""
+    if admitted:
+        name = (invite.get("name") or "").strip()
+    return {"invited": invited, "admitted": admitted, "name": name}
+
+
+@app.post("/api/beta/admit")
+async def beta_admit(request: Request, payload: InviteCreateRequest):
+    """Cross the CommonUnity beta threshold: capture the participant's own name
+    and email against their invite and mark them admitted. Requires a valid
+    invite cookie (set by the magic-link handoff) — this is the server-side
+    validation, not a client check. Minimal data only: name, email, admission
+    timestamp on the existing invite row."""
+    token = _invite_token_from_cookie(request)
+    if not _valid_invite_token(token):
+        raise HTTPException(status_code=403, detail="a valid invitation is required")
+    invite = _current_beta_invite(request)
+    if not invite:
+        # Env-token sessions have no per-person row to admit against.
+        raise HTTPException(status_code=403, detail="invitation not found")
+    name = (payload.name or "").strip()[:160]
+    email = (payload.email or "").strip()[:220]
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    if "@" not in email or "." not in email.split("@")[-1] or len(email) < 6:
+        raise HTTPException(status_code=400, detail="a valid email is required")
+    now = _now_iso()
+    with _admin_db() as conn:
+        conn.execute(
+            """
+            UPDATE invites
+            SET name = ?, email = ?,
+                beta_admitted_at = COALESCE(beta_admitted_at, ?),
+                first_opened_at = COALESCE(first_opened_at, ?),
+                last_opened_at = ?
+            WHERE id = ?
+            """,
+            (name, email, now, now, now, invite["id"]),
+        )
+        # Contact identity is resolved from the invites table behind admin auth;
+        # the shared events feed carries only the linkage, never name/email.
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'beta_admitted', ?, ?, '/beta', 'beta', ?, '')
+            """,
+            (now, invite["id"], invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
+        )
+    _record_milestone(invite.get("token", ""), "beta_admitted")
+    return {"admitted": True, "name": name}
+
+
+@app.get("/api/beta/library")
+async def beta_library(request: Request):
+    """Active shared Library entries for the hub's Library / Sharings section.
+    Member-gated (admitted beta participant). Reuses the admin Library store
+    (shared_files) read-only; each entry is surfaced as its public /share/<slug>
+    alias, exactly the link an admin would copy. Never lists inactive items."""
+    invite = _current_beta_invite(request)
+    if not (invite and (invite.get("beta_admitted_at") or "").strip()):
+        raise HTTPException(status_code=403, detail="admission required")
+    with _admin_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT slug, title, original_filename, ext, kind, size_bytes, created_at
+            FROM shared_files
+            WHERE is_active = 1
+            ORDER BY created_at DESC, slug
+            LIMIT 200
+            """
+        ).fetchall()
+    items = []
+    for r in rows:
+        d = _row_to_dict(r)
+        title = (d.get("title") or "").strip() or (d.get("original_filename") or "").strip() or d.get("slug")
+        items.append({
+            "title": title,
+            "url": f"/share/{d.get('slug')}",
+            "kind": d.get("kind") or "file",
+            "ext": (d.get("ext") or "").strip(),
+        })
+    return {"items": items}
 
 
 @app.get("/invite/{token}")
@@ -4010,7 +4198,11 @@ async def admin_create_invite(request: Request, payload: InviteCreateRequest):
     # plus the freshly-minted magic link, built server-side, so the admin can
     # copy it at creation time without the panel having to reconstruct it from
     # a raw token field.
-    return {"invite": _invite_admin_row(row), "magic_link": _invite_magic_link(request, token)}
+    return {
+        "invite": _invite_admin_row(row),
+        "magic_link": _invite_magic_link(request, token),
+        "beta_link": _beta_magic_link(request, token),
+    }
 
 
 @app.post("/api/admin/invites/{invite_id}/revoke")
@@ -4060,6 +4252,7 @@ async def admin_invite_link(invite_id: int, request: Request):
         active = False
     return {
         "magic_link": _invite_magic_link(request, token),
+        "beta_link": _beta_magic_link(request, token),
         "studio_link": _invite_studio_link(request, token),
         "status": invite.get("status") or "",
         "active": active,
