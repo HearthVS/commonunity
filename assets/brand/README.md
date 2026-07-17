@@ -10,13 +10,50 @@ The garage stays open — parts visible, named clearly, and documented.
 
 ---
 
+## The CommonUnity brand rule (MUST / MUST NOT)
+
+This is a **permanent CommonUnity brand requirement**. It is not per-page
+styling; it governs every first-party product/site surface, now and in future
+work, and applies automatically without needing to be restated.
+
+> **MUST:** The CommonUnity logo (the COMMONUNITY OM wordmark lockup) must
+> always appear as **transparent artwork resting directly on the surrounding
+> field** — the atmospheric background of whatever surface it sits on shows
+> through it.
+>
+> **MUST NOT:** The logo must **never** be placed inside, or rendered with, a
+> background plate, badge, card, colored container, border, drop shadow,
+> rounded frame, or any other enclosing/boxed treatment — whether baked into
+> the SVG (a background `<rect>`) or added in CSS (`background`,
+> `border`, `box-shadow`, `border-radius`, or a wrapping "plate" element).
+
+**The canonical asset for all UI/product use is
+[`primary-logo-transparent.svg`](primary-logo-transparent.svg)** — it carries
+no background plate. Use it (or the transparent inline lockup with the same
+geometry) anywhere the wordmark appears on a product or marketing surface.
+
+`primary-logo.svg` and `primary-logo-light.svg` bake a solid background `<rect>`
+into the artwork. They are **legacy / special-purpose only** (e.g. generating a
+standalone raster where a known solid backdrop is required). **Do not** use them
+on live UI/product surfaces — doing so reintroduces the boxed "navy badge" look
+that this rule forbids (see PRs #184 / #185). Reach for the transparent variant
+instead.
+
+This rule is enforced by regression tests in `tests/test_brand_logo_rule.py`
+(the transparent asset must stay plate-free, the framed variants must not leak
+onto first-party surfaces, and first-party wordmark CSS must not recreate a
+frame). If you are intentionally changing brand policy, update this section and
+those tests together.
+
+---
+
 ## Files in this folder
 
 | File | What it is | Where it's served |
 |---|---|---|
-| `primary-logo.svg` | Full COMMONUNITY lockup with OM in gold + crescent + bindu, on dark background | `/assets/brand/primary-logo.svg` |
-| `primary-logo-light.svg` | Lockup variant for light backgrounds | `/assets/brand/primary-logo-light.svg` |
-| `primary-logo-transparent.svg` | Same gold-OM lockup as `primary-logo.svg` but with no background plate, for placing directly on an atmospheric field | `/assets/brand/primary-logo-transparent.svg` |
+| `primary-logo-transparent.svg` | **Canonical wordmark for all UI/product use.** Gold-OM COMMONUNITY lockup with **no background plate**, for placing directly on the surrounding field. | `/assets/brand/primary-logo-transparent.svg` |
+| `primary-logo.svg` | **Legacy / special-purpose.** Same lockup but with a baked-in dark background `<rect>`. Do **not** use on live UI/product surfaces — use the transparent variant. | `/assets/brand/primary-logo.svg` |
+| `primary-logo-light.svg` | **Legacy / special-purpose.** Lockup variant with a light background plate baked in; same restriction as `primary-logo.svg`. | `/assets/brand/primary-logo-light.svg` |
 | `mark.svg` | Compact OM mark (favicon-size lockup of OM letters + crescent + bindu) | `/assets/brand/mark.svg` |
 | `mono-mark.svg` | Single-color version of the mark, used as Safari `mask-icon` | `/assets/brand/mono-mark.svg` |
 | `favicon.svg` | Brand favicon (SVG) | `/assets/brand/favicon.svg` |
