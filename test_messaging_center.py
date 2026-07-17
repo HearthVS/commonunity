@@ -355,5 +355,43 @@ class SeparationTests(unittest.TestCase):
         self.assertIn('data-testid="tab-messaging"', html)
 
 
+class PersonDestinationHiddenTests(unittest.TestCase):
+    """The per-person in-app destination is temporarily HIDDEN from the admin
+    Messaging Center UI (its participant-facing "For you" area is not rendered in
+    this beta), while its backend endpoint and data support are PRESERVED."""
+
+    def _admin_html(self) -> str:
+        with open(os.path.join(os.path.dirname(__file__), "admin.html"), encoding="utf-8") as f:
+            return f.read()
+
+    def test_person_mode_removed_from_admin_ui(self):
+        html = self._admin_html()
+        # The radio option and recipient picker are gone from the UI.
+        self.assertNotIn('data-testid="messaging-mode-person"', html)
+        self.assertNotIn('value="person"', html)
+        self.assertNotIn('id="msg-person"', html)
+        # The two operationally visible destinations remain.
+        self.assertIn('data-testid="messaging-mode-announce"', html)
+        self.assertIn('data-testid="messaging-mode-email"', html)
+        # It is documented as dormant, not simply deleted.
+        self.assertIn("DORMANT", html)
+
+    def test_person_endpoint_backend_still_preserved(self):
+        # Backend compatibility: the endpoint still works for a valid recipient,
+        # so the destination can be reactivated later with no server change.
+        admin = _admin()
+        inv = _create_invite(admin, "Dorm", "dorm@example.com")
+        client = _admit_personal(inv["magic_link"], "Dorm", "dorm@example.com")
+        parts = admin.get("/api/admin/messaging/participants").json()["participants"]
+        pid = next(p for p in parts if p["email"] == "dorm@example.com")["id"]
+        r = admin.post("/api/admin/messaging/person",
+                       json={"invite_id": pid, "subject": "Kept", "body": "Still routable."})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["destination"], "person")
+        # It is stored as an individual message, still returned by the API.
+        msgs = client.get("/api/messages").json()["messages"]
+        self.assertTrue(any(m["subject"] == "Kept" and m["kind"] == "individual" for m in msgs))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

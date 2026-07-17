@@ -61,6 +61,26 @@
     } catch (_) {}
   }
 
+  // A restrained, sensed luminosity: interactive elements carrying `.beta-glow`
+  // track the pointer with a very soft radial highlight (CSS reads --gx/--gy).
+  // Calm, not neon or gamified: no global cursor, no motion loop, disabled for
+  // touch (no fine pointer) and for prefers-reduced-motion. Locked cards never
+  // receive it, so the affordance only appears where something is actionable.
+  function attachFieldGlow(scope) {
+    try {
+      var fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+      var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!fine || reduced) return;
+      scope.addEventListener('pointermove', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('.beta-glow') : null;
+        if (!t) return;
+        var rect = t.getBoundingClientRect();
+        t.style.setProperty('--gx', ((e.clientX - rect.left) / rect.width * 100) + '%');
+        t.style.setProperty('--gy', ((e.clientY - rect.top) / rect.height * 100) + '%');
+      }, { passive: true });
+    } catch (_) {}
+  }
+
   function wordmark() {
     var wrap = el('span', { class: 'beta-wordmark', role: 'img', 'aria-label': 'CommonUnity' });
     var img = document.createElement('img');
@@ -211,14 +231,11 @@
     ));
     hub.appendChild(welcome);
 
-    // Personal "For you" panel (async). Private messages addressed to this one
-    // participant. Rendered only when something is waiting, so the hub stays calm
-    // and never looks like a busy inbox. Visually distinct but restrained.
-    var personal = el('div', { class: 'beta-panel beta-panel-personal', id: 'beta-personal', style: 'display:none;' });
-    personal.appendChild(el('h2', { class: 'beta-panel-title' }, 'For you'));
-    var personalBody = el('div', { id: 'beta-personal-body' });
-    personal.appendChild(personalBody);
-    hub.appendChild(personal);
+    // NOTE: The participant-facing personal "For you" area is intentionally NOT
+    // rendered in this beta. Individual messages remain stored server-side and
+    // are still returned by /api/messages (see loadMessages, which filters them
+    // out of the shared feed) — the panel is dormant, not deleted, and can be
+    // reactivated later without any backend/data change.
 
     // Announcements panel (async). Announcements and the Library are held higher
     // than the product entrances, which are still locked at this stage.
@@ -229,12 +246,15 @@
     announce.appendChild(announceBody);
     hub.appendChild(announce);
 
-    // Library / Sharings panel (async).
+    // Library / Sharings panel (async). The curated beta Library leads; a calm,
+    // optional invitation to follow the wider conversation on Substack sits
+    // beneath it, complementing (never replacing) the shared materials.
     var library = el('div', { class: 'beta-panel' });
     library.appendChild(el('h2', { class: 'beta-panel-title' }, 'Library & Sharings'));
     var libBody = el('div', { id: 'beta-library' });
     libBody.appendChild(el('p', { class: 'beta-empty' }, 'Loading…'));
     library.appendChild(libBody);
+    library.appendChild(substackInvite());
     hub.appendChild(library);
 
     // Path panel — the CommonUnity spaces this beta will open into. They are
@@ -260,9 +280,32 @@
 
     root.appendChild(hub);
     playEnter();
+    attachFieldGlow(hub);
 
-    loadMessages(announceBody, personal, personalBody);
+    loadMessages(announceBody);
     loadLibrary(libBody);
+  }
+
+  // A restrained, optional invitation to follow the wider CommonUnity
+  // conversation on Substack. It complements the curated beta Library and is
+  // never required for participation. Opens externally in a new tab, safely,
+  // with an accessible external-link affordance. A plain text link — no Substack
+  // logo, per the transparent-asset brand rule.
+  var SUBSTACK_URL = 'https://substack.com/@commonunityio';
+  function substackInvite() {
+    var wrap = el('div', { class: 'beta-substack' });
+    wrap.appendChild(el('p', { class: 'beta-substack-lead' }, 'Follow the wider conversation.'));
+    var a = el('a', {
+      class: 'beta-substack-link beta-glow',
+      href: SUBSTACK_URL,
+      target: '_blank',
+      rel: 'noopener noreferrer'
+    });
+    a.appendChild(el('span', {}, 'Subscribe to CommonUnity on Substack'));
+    a.appendChild(el('span', { class: 'beta-ext-glyph', 'aria-hidden': 'true' }, '↗'));
+    a.appendChild(el('span', { class: 'beta-visually-hidden' }, '(opens in a new tab)'));
+    wrap.appendChild(a);
+    return wrap;
   }
 
   // A locked product entrance. Deliberately NOT an <a>: it carries no href,
@@ -306,31 +349,17 @@
   }
 
   // Fetch this participant's in-app messages (server-scoped to their own invite)
-  // and split them by kind: general announcements (broadcast) fill the shared
-  // Announcements feed; individual messages surface in the private "For you"
-  // panel, which stays hidden unless something is waiting. Newest first is the
-  // server's order; both feeds keep it.
-  function loadMessages(announceContainer, personalPanel, personalContainer) {
+  // and render only the shared Announcements feed. Individual ("For you")
+  // messages are deliberately filtered out and NOT shown in this beta — the
+  // personal area is dormant. They remain stored and are still returned by the
+  // API, so the panel can be reactivated later with no backend change. Newest
+  // first is the server's order; the feed keeps it.
+  function loadMessages(announceContainer) {
     fetch('/api/messages', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : { messages: [] }; })
       .then(function (data) {
         var msgs = (data && data.messages) || [];
-        var personal = [];
-        var announcements = [];
-        msgs.forEach(function (m) {
-          if (m.kind === 'individual') personal.push(m);
-          else announcements.push(m);
-        });
-
-        personalContainer.innerHTML = '';
-        if (personal.length) {
-          var pList = el('div', { class: 'beta-announce-list' });
-          personal.forEach(function (m) { pList.appendChild(messageItem(m)); });
-          personalContainer.appendChild(pList);
-          personalPanel.style.display = '';
-        } else {
-          personalPanel.style.display = 'none';
-        }
+        var announcements = msgs.filter(function (m) { return m.kind !== 'individual'; });
 
         announceContainer.innerHTML = '';
         if (!announcements.length) {
@@ -359,7 +388,7 @@
         }
         var list = el('ul', { class: 'beta-library-list' });
         items.forEach(function (it) {
-          var a = el('a', { class: 'beta-row', href: it.url, target: '_blank', rel: 'noopener' });
+          var a = el('a', { class: 'beta-row beta-glow', href: it.url, target: '_blank', rel: 'noopener' });
           a.appendChild(el('div', { class: 'beta-row-main' },
             el('span', { class: 'beta-row-title' }, it.title)
           ));

@@ -94,13 +94,15 @@
   gap: clamp(1.4rem, 3.5vw, 2.2rem);
 }
 
-.beta-hub-header { text-align: center; margin-bottom: 0.4rem; }
+.beta-hub-header { text-align: center; margin-bottom: 0.6rem; }
+.beta-hub-header .beta-wordmark { width: min(240px, 62vw); margin-bottom: 1.2rem; }
 .beta-hub-greeting {
-  margin: 0.6rem 0 0.4rem;
+  margin: 0.6rem 0 0.5rem;
   font-size: clamp(1.9rem, 5vw, 2.7rem);
   font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--threshold-text, #f1f5f9);
+  overflow-wrap: anywhere;
 }
 .beta-hub-subline {
   margin: 0 auto;
@@ -143,9 +145,9 @@
 }
 .beta-panel p:last-child { margin-bottom: 0; }
 
-/* Personal "For you" panel — a private message addressed to this one
-   participant. Visually distinct from Announcements (a soft gold edge) but
-   deliberately restrained, so the hub never reads as a busy inbox. */
+/* Personal "For you" panel — DORMANT. The participant-facing personal area is
+   temporarily not rendered in this beta (see beta.js). These styles are kept,
+   not deleted, so the panel can be reactivated later without restyling. */
 .beta-panel-personal {
   border-color: rgba(213, 160, 74, 0.28);
   background: var(--chamber-surface, rgba(28, 24, 14, 0.5));
@@ -162,6 +164,7 @@
   gap: 0.7rem;
 }
 .beta-row {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -172,13 +175,43 @@
   background: rgba(11, 17, 32, 0.4);
   color: var(--threshold-text, #f1f5f9);
   text-decoration: none;
-  transition: border-color 220ms ease, background 220ms ease, transform 220ms ease;
+  transition: border-color 220ms ease, background 220ms ease,
+              transform 220ms ease, box-shadow 220ms ease;
 }
 a.beta-row:hover, a.beta-row:focus-visible {
   border-color: rgba(213, 160, 74, 0.42);
   background: rgba(213, 160, 74, 0.07);
   transform: translateY(-1px);
+  box-shadow: 0 0 26px rgba(213, 160, 74, 0.1);
   outline: none;
+}
+
+/* ── Restrained luminous interaction ─────────────────────────────────────────
+   Interactive elements carrying .beta-glow gain a very soft radial highlight
+   that follows the pointer (--gx/--gy set in beta.js), plus a clear keyboard
+   focus ring. Calm and sensed, never neon. It only decorates actionable
+   affordances — locked cards deliberately do not carry .beta-glow. */
+.beta-glow { --gx: 50%; --gy: 50%; }
+.beta-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  background: radial-gradient(180px circle at var(--gx) var(--gy),
+              rgba(213, 160, 74, 0.16), transparent 70%);
+}
+.beta-glow:hover::before { opacity: 1; }
+.beta-glow:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(213, 160, 74, 0.5),
+              0 0 26px rgba(213, 160, 74, 0.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .beta-row, .beta-glow::before { transition: none; }
+  a.beta-row:hover, a.beta-row:focus-visible { transform: none; }
 }
 .beta-row-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .beta-row-title { font-size: 1.02rem; font-weight: 500; }
@@ -240,6 +273,55 @@ a.beta-row:hover, a.beta-row:focus-visible {
   color: var(--threshold-text-faint, #7d879c);
   font-size: 0.95rem;
   font-style: italic;
+  line-height: 1.6;
+}
+
+/* ── Substack invitation — optional, complements the curated Library ──────────
+   A calm text link (no Substack logo, per the transparent-asset brand rule)
+   set off from the Library by a faint gold rule. Never framed as required. */
+.beta-substack {
+  margin-top: 1.3rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(213, 160, 74, 0.16);
+}
+.beta-substack-lead {
+  margin: 0 0 0.5rem;
+  color: var(--threshold-text-faint, #7d879c);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+.beta-substack-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid rgba(213, 160, 74, 0.28);
+  border-radius: 12px;
+  background: rgba(213, 160, 74, 0.05);
+  color: var(--om-gold-soft, #e8c184);
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+.beta-substack-link:hover {
+  border-color: rgba(213, 160, 74, 0.5);
+  background: rgba(213, 160, 74, 0.09);
+  box-shadow: 0 0 24px rgba(213, 160, 74, 0.1);
+}
+.beta-ext-glyph { font-size: 0.85rem; line-height: 1; opacity: 0.85; }
+
+/* Screen-reader-only text (external-link affordance), no visual footprint. */
+.beta-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .beta-hub-footer {
