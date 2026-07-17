@@ -232,8 +232,8 @@ a.beta-row:hover, a.beta-row:focus-visible {
   border-radius: 8px;
   background: rgba(11, 17, 32, 0.35);
 }
-.beta-announce-subject { margin: 0 0 0.35rem; font-weight: 500; color: var(--threshold-text, #f1f5f9); }
-.beta-announce-body { margin: 0; color: var(--threshold-text-muted, #aab3c4); font-size: 0.95rem; line-height: 1.65; white-space: pre-wrap; }
+.beta-announce-subject { margin: 0 0 0.35rem; font-weight: 500; color: var(--threshold-text, #f1f5f9); overflow-wrap: anywhere; }
+.beta-announce-body { margin: 0; color: var(--threshold-text-muted, #aab3c4); font-size: 0.95rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .beta-announce-date { display: block; margin-top: 0.5rem; font-size: 0.72rem; color: var(--threshold-text-faint, #7d879c); }
 
 .beta-empty {
