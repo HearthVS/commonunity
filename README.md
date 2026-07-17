@@ -166,8 +166,12 @@ auth system, storage, or parallel routing:
   Minimal data only. A `beta_admitted` event is recorded with the invite linkage
   but **no** contact identity in the shared feed (same privacy model as the rest
   of the invite lifecycle).
-- **Hub sections:** *Announcements* reuse the participant `GET /api/messages`
-  feed (scoped to the invite cookie); *Library / Sharings* reuse the admin
+- **Hub sections:** *Announcements* and the personal *"For you"* block both draw
+  from the participant `GET /api/messages` feed (scoped to the invite cookie),
+  split by kind — general announcements (`broadcast`) fill Announcements, private
+  messages (`individual`) surface in the restrained "For you" panel, shown only
+  when a personal message is waiting so the hub stays calm; *Library / Sharings*
+  reuse the admin
   Library store read-only via `GET /api/beta/library` (admission-gated, lists
   active `shared_files` as their public `/share/<slug>` aliases); *Path* links
   into the CommonUnity apps the beta cookie already unlocks.
@@ -233,6 +237,78 @@ asset allowlist; campaign: admin-only creation, threshold handoff, multiple
 independent participants + independent cookies/sessions, no overwrite, duplicate
 email, campaign attribution, invalid/revoked link, no auto-admit of later
 visitors, idempotent re-submit, `?invite=`-with-campaign-token reroute).
+
+## Admin Messaging Center
+
+A standalone admin tab (`/admin` → **Messaging**), deliberately **separate from
+Invitations**: invitations open the door, the Messaging Center talks to the
+people already inside the beta. It never addresses raw invite records at large —
+only **admitted beta participants** (an `invites` row with `beta_admitted_at`
+set, `status='active'`, excluding campaign templates). Personal invitees and
+campaign enrollees both qualify once they cross the `/beta` threshold.
+
+Pick one of three explicit destinations, write, preview in a confirmation
+dialog, and publish:
+
+- **General announcement to Beta** — `POST /api/admin/messaging/announce`. Posts
+  one persistent **in-app** message (`message_kind='broadcast'`) to every
+  admitted participant. It surfaces in each participant's **Announcements** feed
+  in the beta hub. Not emailed.
+- **In-app message to a person** — `POST /api/admin/messaging/person`
+  (`{invite_id, subject, body}`). Posts a private **in-app** message
+  (`message_kind='individual'`) to one admitted participant. The recipient must
+  be an active, admitted, non-template invite; it is delivered only to that
+  invite and surfaces solely in that participant's **"For you"** block — it is
+  never returned to another participant, campaign peer, or bare `/beta` visitor.
+- **Email all beta participants** — `POST /api/admin/messaging/email`. Sends an
+  outbound email to the **distinct** (normalized, deduplicated) addresses of
+  admitted participants, **one send per recipient** so no recipient ever sees
+  another's address. Only counts are returned — never addresses.
+
+Supporting reads: `GET /api/admin/messaging/recipients` (audience preview:
+admitted total, reachable-by-email, distinct-email count, and whether SMTP is
+configured — no addresses) and `GET /api/admin/messaging/participants` (the
+admitted-participant list backing the person selector). All Messaging endpoints
+require admin authentication.
+
+**Privacy behavior:** every destination is addressed server-side from
+admin-authored invite records; no participant-private content is ever read or
+joined. The beta hub `GET /api/messages` feed is scoped to the caller's signed
+invite cookie, so a token can only ever see its own deliveries. No recipient
+addresses appear in any shared admin feed or client response; audit is recorded
+as `messaging_announcement_posted` / `messaging_person_posted` /
+`messaging_email_sent` events with invite linkage only.
+
+**Outbound email status & configuration.** Email is the only destination that
+leaves the app, and it is **fail-closed**: if SMTP is not configured the email
+destination is **disabled in the UI** and `POST /api/admin/messaging/email`
+returns `503` and sends nothing — never a deceptive "sent". Announcements and
+in-app person messages work with **no** email configuration. To enable outbound
+email set all four (reusing the existing invite-email SMTP settings; nothing new,
+no hardcoded credentials or sender):
+
+| Var | Required for email | Purpose |
+| --- | --- | --- |
+| `SMTP_HOST` | yes | SMTP server host. |
+| `SMTP_USER` | yes | SMTP username. |
+| `SMTP_PASSWORD` | yes | SMTP password / app token. |
+| `SMTP_FROM` | yes | Envelope/From sender address. |
+| `SMTP_PORT` | optional | Defaults to `587`. |
+| `SMTP_USE_TLS` | optional | STARTTLS on unless set to `0/false/no/off`. |
+
+Until these are set, **outbound email is not operational**; announcements and
+personal in-app messages are fully operational immediately.
+
+**Legacy compatibility:** the previous "Message all" broadcast composer has been
+removed from the Invitations tab. Its endpoint (`POST /api/admin/broadcast`)
+remains for backward compatibility, and any messages it delivered still appear in
+participants' hub feeds, so no historical records are orphaned.
+
+Tests: `python -m unittest test_messaging_center -v` (auth gating; admitted-only
+audiences; email dedupe; announcement visible to all admitted but not anonymous;
+person-message isolation across independent personal/campaign sessions;
+fail-closed email + individual sends + no address leakage; legacy broadcast
+compatibility; and the admin separation of messaging from invitations).
 
 ## Nexus model & response depth
 

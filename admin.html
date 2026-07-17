@@ -1015,6 +1015,7 @@
         <button class="tab-btn" data-tab="feedback">Feedback <span class="tab-badge hidden" id="feedback-badge">0</span></button>
         <button class="tab-btn" data-tab="golden-thread">Golden Thread</button>
         <button class="tab-btn" data-tab="library" data-testid="tab-library">Library</button>
+        <button class="tab-btn" data-tab="messaging" data-testid="tab-messaging">Messaging</button>
         <button class="tab-btn" data-tab="token-usage">Token Usage</button>
         <button class="tab-btn" data-tab="system">System</button>
         <button class="tab-btn" data-tab="infrastructure">Infrastructure</button>
@@ -1103,7 +1104,6 @@
               <p class="hint">Copy links, see movement, and revoke access when needed.</p>
             </div>
             <div class="actions" style="margin:0">
-              <button class="btn" id="message-all">Message all</button>
               <button class="btn" id="refresh">Refresh</button>
             </div>
           </div>
@@ -1413,6 +1413,80 @@
         </section>
       </div><!-- /tab-pane library -->
 
+      <!-- ═══ Tab: Messaging Center ═══ -->
+      <div class="tab-pane" data-pane="messaging">
+        <div class="section-intro">
+          <div>
+            <h2>Messaging Center</h2>
+            <p>Speak to the people already inside the beta. This is separate from Invitations: invitations open the door, messaging talks to those who have walked through it. Choose a destination, write, preview, and publish.</p>
+          </div>
+        </div>
+
+        <section class="panel card" data-testid="messaging-card">
+          <h2>Compose a message</h2>
+          <p class="hint" id="msg-audience" data-testid="messaging-audience">Loading audience…</p>
+
+          <div class="fields" style="margin-top:6px;">
+            <div>
+              <label>Destination</label>
+              <div class="msg-modes" role="radiogroup" aria-label="Message destination" style="display:flex;flex-direction:column;gap:8px;">
+                <label class="msg-mode" style="font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;">
+                  <input type="radio" name="msg-mode" value="announce" checked data-testid="messaging-mode-announce" style="margin-top:3px;">
+                  <span><strong>General announcement to Beta</strong><br><span class="muted" style="font-size:12px;">A persistent in-app note shown in every admitted participant's Announcements feed. Not emailed.</span></span>
+                </label>
+                <label class="msg-mode" style="font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;">
+                  <input type="radio" name="msg-mode" value="person" data-testid="messaging-mode-person" style="margin-top:3px;">
+                  <span><strong>In-app message to a person</strong><br><span class="muted" style="font-size:12px;">A private in-app note visible only to one admitted participant, in their own "For you" block. Not emailed, never shown to anyone else.</span></span>
+                </label>
+                <label class="msg-mode" style="font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;">
+                  <input type="radio" name="msg-mode" value="email" data-testid="messaging-mode-email" style="margin-top:3px;">
+                  <span><strong>Email all beta participants</strong><br><span class="muted" style="font-size:12px;">An outbound email to the distinct addresses of admitted participants. Sent individually — no one sees another's address.</span></span>
+                </label>
+              </div>
+            </div>
+
+            <div id="msg-person-field" class="hidden">
+              <label for="msg-person">Recipient</label>
+              <select id="msg-person" data-testid="messaging-person-select"></select>
+              <p class="hint" id="msg-person-empty" style="display:none;">No admitted beta participants yet — no one to message in-app.</p>
+            </div>
+
+            <div>
+              <label for="msg-subject">Subject <span class="muted" style="text-transform:none;letter-spacing:0;">optional</span></label>
+              <input id="msg-subject" data-testid="messaging-subject" placeholder="A note from CommonUnity">
+            </div>
+            <div>
+              <label for="msg-body">Message</label>
+              <textarea id="msg-body" required data-testid="messaging-body" placeholder="Write a calm, respectful message…"></textarea>
+            </div>
+
+            <div id="msg-email-notice" class="message hidden" data-testid="messaging-email-notice"></div>
+
+            <div class="actions" style="margin-top:4px;">
+              <button type="button" class="btn btn-primary" id="msg-send" data-testid="messaging-send">Publish</button>
+            </div>
+            <div class="message" id="msg-result" data-testid="messaging-result"></div>
+          </div>
+        </section>
+      </div><!-- /tab-pane messaging -->
+
+      <!-- Messaging confirmation dialog -->
+      <div id="msg-confirm" style="display:none;" class="modal-backdrop">
+        <div class="modal-box">
+          <button class="modal-close" id="msg-confirm-close" type="button">×</button>
+          <h2 style="margin-top:0;" id="msg-confirm-title">Confirm</h2>
+          <p class="hint" id="msg-confirm-audience" data-testid="messaging-confirm-audience"></p>
+          <div class="event" style="margin-top:8px;">
+            <strong id="msg-confirm-subject"></strong>
+            <div class="muted" id="msg-confirm-body" style="white-space:pre-wrap;margin-top:6px;"></div>
+          </div>
+          <div class="actions" style="margin-top:16px;">
+            <button type="button" class="btn btn-primary" id="msg-confirm-go" data-testid="messaging-confirm-go">Confirm &amp; send</button>
+            <button type="button" class="btn" id="msg-confirm-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ Tab: Token Usage ═══ -->
       <div class="tab-pane" data-pane="token-usage">
         <section class="panel card">
@@ -1719,38 +1793,6 @@
     </div>
   </div>
 
-  <!-- cOMmunication composer modal -->
-  <div id="comm-modal" style="display:none;" class="modal-backdrop">
-    <div class="modal-box">
-      <button class="modal-close" id="comm-close">×</button>
-      <h2 id="comm-title" style="margin-top:0;">cOMmunication</h2>
-      <p class="hint" id="comm-recipient" style="margin-top:-6px;"></p>
-      <form id="comm-form" class="fields">
-        <div>
-          <label for="comm-subject">Subject</label>
-          <input id="comm-subject" placeholder="A note from CommonUnity">
-        </div>
-        <div>
-          <label for="comm-body">Message</label>
-          <textarea id="comm-body" required placeholder="Write a calm, respectful message…"></textarea>
-        </div>
-        <div>
-          <label>Delivery</label>
-          <div class="actions" style="margin:0;gap:16px;">
-            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="both" checked> Both</label>
-            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="in_app"> In-app</label>
-            <label style="font-weight:400;text-transform:none;letter-spacing:0;"><input type="radio" name="comm-channel" value="email"> Email</label>
-          </div>
-        </div>
-        <div class="actions" style="margin-top:4px;">
-          <button type="submit" class="btn" id="comm-send">Send message</button>
-        </div>
-        <div class="message" id="comm-message"></div>
-      </form>
-      <div id="comm-history" style="margin-top:18px;"></div>
-    </div>
-  </div>
-
   <script>
     const $ = (id) => document.getElementById(id);
     const state = {
@@ -1891,6 +1933,7 @@
       if (name === 'feedback') loadFeedback();
       if (name === 'golden-thread') loadGoldenThreadAdmin();
       if (name === 'library') loadLibrary();
+      if (name === 'messaging') loadMessaging();
       if (name === 'token-usage') loadTokenStats();
     }
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -2235,7 +2278,6 @@
               ${inv.token_present ? `<button class="btn" data-copy-link="${inv.id}" title="Token ${escapeHtml(inv.token_masked || '')}">${inv.kind === 'campaign' ? 'Copy campaign link' : 'Copy link'}</button>` : ''}
               ${inv.token_present && inv.kind !== 'campaign' ? `<button class="btn" data-studio-link="${inv.id}" title="Direct Studio entry link — recipient opens it in a browser (not pasted into the beta gate)">Studio link</button>` : ''}
               ${inv.email ? `<button class="btn" data-send="${inv.id}">Send email</button>` : ''}
-              <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
               <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
             </div>
           </td>
@@ -2244,15 +2286,15 @@
 
       // Expired rows: the old link is dead, so NO copy/Studio-link/Send (a resend
       // would only mail another expired link — there is no renewal endpoint).
-      // Follow-up (Message) and Revoke stay, since the invite is still open and
-      // may need a nudge or intentional close.
+      // Revoke stays, since the invite is still open and may need intentional
+      // close. Communicating with participants lives in the Messaging tab, not
+      // here — invitations and messaging are deliberately separate.
       $('expired-invite-rows').innerHTML = expiredInvites.map(inv => `
         <tr style="opacity:.82">
           ${commonCells(inv, 'expired')}
           <td>
             <div class="actions" style="margin:0">
               <span class="muted" title="The invite link has expired; generate a new invite if the person still needs access.">Link expired</span>
-              <button class="btn" data-message="${inv.id}" data-message-name="${escapeHtml(inv.name || '')}" data-message-email="${escapeHtml(inv.email || '')}">Message</button>
               <button class="btn btn-danger" data-revoke="${inv.id}">Revoke</button>
             </div>
           </td>
@@ -2852,15 +2894,6 @@
       const deleteFeedbackId = event.target?.dataset?.deleteFeedback;
       const ackOrientationId = event.target?.dataset?.ackOrientation;
       const inviteFromName = event.target?.dataset?.inviteFromName;
-      const messageId = event.target?.dataset?.message;
-
-      if (messageId) {
-        openComposer('individual', {
-          inviteId: messageId,
-          name: event.target?.dataset?.messageName || '',
-          email: event.target?.dataset?.messageEmail || '',
-        });
-      }
 
       if (copyLinkId) {
         // The raw token is never in the list payload (masked for privacy); ask
@@ -3051,98 +3084,170 @@
       }
     });
 
-    // ── cOMmunication composer ──
-    const commState = { mode: null, inviteId: null };
+    // ── Messaging Center ──
+    // A standalone surface, separate from Invitations. Three destinations, each
+    // addressed server-side from admitted-participant invite records only:
+    //   announce → persistent in-app note to every admitted participant
+    //   person   → private in-app note to one admitted participant
+    //   email    → outbound email to distinct admitted addresses (fail-closed)
+    const msgState = { audience: null, participants: [] };
 
-    function closeComposer() {
-      $('comm-modal').style.display = 'none';
+    function msgMode() {
+      return document.querySelector('input[name="msg-mode"]:checked')?.value || 'announce';
     }
 
-    async function openComposer(mode, opts = {}) {
-      commState.mode = mode;
-      commState.inviteId = opts.inviteId || null;
-      $('comm-form').reset();
-      $('comm-message').textContent = '';
-      $('comm-history').innerHTML = '';
-      const both = document.querySelector('input[name="comm-channel"][value="both"]');
-      if (both) both.checked = true;
-      if (mode === 'broadcast') {
-        $('comm-title').textContent = 'Message all';
-        $('comm-recipient').textContent = 'Loading recipient count…';
-        $('comm-modal').style.display = 'grid';
-        try {
-          const r = await api('/api/admin/broadcast/recipients');
-          $('comm-recipient').textContent = `${r.total} active invite recipient${r.total === 1 ? '' : 's'} · ${r.with_email} with an email address on file.`;
-        } catch (err) {
-          $('comm-recipient').textContent = err.message;
+    async function loadMessaging() {
+      $('msg-result').textContent = '';
+      $('msg-audience').textContent = 'Loading audience…';
+      try {
+        msgState.audience = await api('/api/admin/messaging/recipients');
+      } catch (err) {
+        $('msg-audience').textContent = err.message;
+        return;
+      }
+      try {
+        const p = await api('/api/admin/messaging/participants');
+        msgState.participants = p.participants || [];
+      } catch (_) {
+        msgState.participants = [];
+      }
+      renderMessagingPeople();
+      updateMessagingMode();
+    }
+
+    function renderMessagingPeople() {
+      const sel = $('msg-person');
+      const empty = $('msg-person-empty');
+      if (!sel) return;
+      if (!msgState.participants.length) {
+        sel.innerHTML = '';
+        sel.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+      sel.style.display = '';
+      empty.style.display = 'none';
+      sel.innerHTML = msgState.participants.map(p => {
+        const who = [p.name || '(no name)', p.email].filter(Boolean).join(' · ');
+        const tag = p.kind === 'participant' ? (p.campaign ? ` [${p.campaign}]` : ' [campaign]') : '';
+        return `<option value="${p.id}">${escapeHtml(who + tag)}</option>`;
+      }).join('');
+    }
+
+    function updateMessagingMode() {
+      const mode = msgMode();
+      const a = msgState.audience || { total: 0, with_email: 0, distinct_emails: 0, smtp_configured: false };
+      $('msg-person-field').classList.toggle('hidden', mode !== 'person');
+      const notice = $('msg-email-notice');
+      const sendBtn = $('msg-send');
+      notice.classList.add('hidden');
+      sendBtn.disabled = false;
+      if (mode === 'announce') {
+        sendBtn.textContent = 'Publish announcement';
+        $('msg-audience').textContent = `${a.total} admitted beta participant${a.total === 1 ? '' : 's'} will see this in their Announcements feed.`;
+      } else if (mode === 'person') {
+        sendBtn.textContent = 'Post to person';
+        $('msg-audience').textContent = `Posts privately to one participant's "For you" block. ${a.total} admitted participant${a.total === 1 ? '' : 's'} available.`;
+        if (!msgState.participants.length) sendBtn.disabled = true;
+      } else if (mode === 'email') {
+        sendBtn.textContent = 'Email participants…';
+        $('msg-audience').textContent = `${a.distinct_emails} distinct email address${a.distinct_emails === 1 ? '' : 'es'} across ${a.total} admitted participant${a.total === 1 ? '' : 's'} (deduplicated).`;
+        if (!a.smtp_configured) {
+          notice.className = 'message';
+          notice.textContent = 'Outbound email is NOT configured (SMTP_HOST / SMTP_USER / SMTP_PASSWORD / SMTP_FROM). Sending is disabled until these are set — nothing will be sent.';
+          notice.classList.remove('hidden');
+          sendBtn.disabled = true;
+        } else if (!a.distinct_emails) {
+          notice.className = 'message';
+          notice.textContent = 'No admitted participants have an email address on file.';
+          notice.classList.remove('hidden');
+          sendBtn.disabled = true;
         }
-      } else {
-        $('comm-title').textContent = 'Message';
-        const who = [opts.name, opts.email].filter(Boolean).join(' · ') || 'this invite';
-        $('comm-recipient').textContent = `To ${who} (from invite record).`;
-        $('comm-modal').style.display = 'grid';
-        try {
-          const r = await api(`/api/admin/invites/${opts.inviteId}/messages`);
-          renderCommHistory(r.messages || []);
-        } catch (_) {}
       }
     }
 
-    function renderCommHistory(messages) {
-      if (!messages.length) { $('comm-history').innerHTML = ''; return; }
-      const seen = new Set();
-      const rows = messages.filter(m => {
-        if (seen.has(m.message_id)) return false;
-        seen.add(m.message_id); return true;
-      }).map(m => `
-        <div class="event">
-          <strong>${escapeHtml(m.subject || '(no subject)')}</strong>
-          <small>${date(m.created_at)} · ${escapeHtml(m.kind)}</small>
-          <div class="muted" style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(m.body || '')}</div>
-        </div>`).join('');
-      $('comm-history').innerHTML = `<p class="hint">Previous messages</p>${rows}`;
+    document.querySelectorAll('input[name="msg-mode"]').forEach(r =>
+      r.addEventListener('change', () => { $('msg-result').textContent = ''; updateMessagingMode(); })
+    );
+
+    // Confirmation gate — always confirm before publishing/sending, showing the
+    // full draft and the exact audience. This prevents an accidental send when
+    // switching modes and satisfies the explicit email confirmation requirement.
+    let pendingSend = null;
+    function openMsgConfirm(title, audienceLine, subject, body, action) {
+      $('msg-confirm-title').textContent = title;
+      $('msg-confirm-audience').textContent = audienceLine;
+      $('msg-confirm-subject').textContent = subject || '(no subject)';
+      $('msg-confirm-body').textContent = body;
+      pendingSend = action;
+      $('msg-confirm').style.display = 'grid';
     }
+    function closeMsgConfirm() { $('msg-confirm').style.display = 'none'; pendingSend = null; }
+    $('msg-confirm-close').addEventListener('click', closeMsgConfirm);
+    $('msg-confirm-cancel').addEventListener('click', closeMsgConfirm);
+    $('msg-confirm').addEventListener('click', (e) => { if (e.target === $('msg-confirm')) closeMsgConfirm(); });
+    $('msg-confirm-go').addEventListener('click', async () => {
+      if (!pendingSend) return;
+      const go = pendingSend;
+      pendingSend = null;
+      $('msg-confirm').style.display = 'none';
+      await go();
+    });
 
-    $('message-all').addEventListener('click', () => openComposer('broadcast'));
-    $('comm-close').addEventListener('click', closeComposer);
-    $('comm-modal').addEventListener('click', (e) => { if (e.target === $('comm-modal')) closeComposer(); });
+    $('msg-send').addEventListener('click', () => {
+      const mode = msgMode();
+      const subject = $('msg-subject').value.trim();
+      const body = $('msg-body').value.trim();
+      $('msg-result').textContent = '';
+      if (!body) { $('msg-result').textContent = 'A message body is required.'; return; }
+      const a = msgState.audience || {};
+      if (mode === 'announce') {
+        openMsgConfirm('Publish announcement to Beta',
+          `Shown in-app to ${a.total} admitted participant${a.total === 1 ? '' : 's'}.`,
+          subject, body,
+          () => sendMessaging('/api/admin/messaging/announce', { subject, body }));
+      } else if (mode === 'person') {
+        const sel = $('msg-person');
+        const inviteId = sel && sel.value ? Number(sel.value) : 0;
+        if (!inviteId) { $('msg-result').textContent = 'Choose a recipient participant.'; return; }
+        const who = sel.options[sel.selectedIndex]?.textContent || 'this participant';
+        openMsgConfirm('Post private in-app message',
+          `Visible only to ${who}. No one else can see it.`,
+          subject, body,
+          () => sendMessaging('/api/admin/messaging/person', { invite_id: inviteId, subject, body }));
+      } else if (mode === 'email') {
+        openMsgConfirm('Send email to beta participants',
+          `An email will be sent to ${a.distinct_emails} distinct address${a.distinct_emails === 1 ? '' : 'es'}, individually (no one sees another's address).`,
+          subject, body,
+          () => sendMessaging('/api/admin/messaging/email', { subject, body }));
+      }
+    });
 
-    $('comm-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const channel = document.querySelector('input[name="comm-channel"]:checked')?.value || 'both';
-      const payload = {
-        subject: $('comm-subject').value,
-        body: $('comm-body').value,
-        channel,
-      };
-      const sendBtn = $('comm-send');
-      sendBtn.disabled = true;
+    async function sendMessaging(url, payload) {
+      const sendBtn = $('msg-send');
       const original = sendBtn.textContent;
-      sendBtn.textContent = 'Sending…';
-      $('comm-message').textContent = '';
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Working…';
+      $('msg-result').textContent = '';
       try {
-        let result;
-        if (commState.mode === 'broadcast') {
-          result = await api('/api/admin/broadcast', { method: 'POST', body: JSON.stringify(payload) });
-          $('comm-message').textContent = `Sent to ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}. In-app: ${result.in_app} · email sent: ${result.email_sent}${result.email_pending ? ` · email pending: ${result.email_pending}` : ''}${result.email_failed ? ` · email failed: ${result.email_failed}` : ''}.`;
+        const result = await api(url, { method: 'POST', body: JSON.stringify(payload) });
+        if (result.destination === 'email') {
+          $('msg-result').textContent = `Emailed ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}. Sent: ${result.email_sent}${result.email_failed ? ` · failed: ${result.email_failed}` : ''}${result.email_pending ? ` · pending: ${result.email_pending}` : ''}.`;
+        } else if (result.destination === 'announce') {
+          $('msg-result').textContent = `Announcement posted in-app to ${result.recipients} participant${result.recipients === 1 ? '' : 's'}.`;
         } else {
-          result = await api(`/api/admin/invites/${commState.inviteId}/message`, { method: 'POST', body: JSON.stringify(payload) });
-          $('comm-message').textContent = `Message sent. In-app: ${result.in_app} · email sent: ${result.email_sent}${result.email_pending ? ` · email pending (SMTP not configured): ${result.email_pending}` : ''}${result.email_failed ? ` · email failed: ${result.email_failed}` : ''}.`;
-          try {
-            const r = await api(`/api/admin/invites/${commState.inviteId}/messages`);
-            renderCommHistory(r.messages || []);
-          } catch (_) {}
+          $('msg-result').textContent = 'Private in-app message posted to the participant.';
         }
-        $('comm-subject').value = '';
-        $('comm-body').value = '';
-        await loadDashboard();
+        $('msg-subject').value = '';
+        $('msg-body').value = '';
       } catch (err) {
-        $('comm-message').textContent = err.message;
+        $('msg-result').textContent = err.message;
       } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = original;
+        updateMessagingMode();
       }
-    });
+    }
 
     $('brand-form').addEventListener('submit', async (event) => {
       event.preventDefault();

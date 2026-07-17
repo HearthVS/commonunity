@@ -143,6 +143,15 @@
 }
 .beta-panel p:last-child { margin-bottom: 0; }
 
+/* Personal "For you" panel — a private message addressed to this one
+   participant. Visually distinct from Announcements (a soft gold edge) but
+   deliberately restrained, so the hub never reads as a busy inbox. */
+.beta-panel-personal {
+  border-color: rgba(213, 160, 74, 0.28);
+  background: var(--chamber-surface, rgba(28, 24, 14, 0.5));
+}
+.beta-panel-personal .beta-panel-title { color: var(--om-gold, #e0b063); }
+
 /* Path — the shared materials / rooms as calm rows. */
 .beta-path-list, .beta-library-list, .beta-announce-list {
   list-style: none;
