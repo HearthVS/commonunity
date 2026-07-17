@@ -5233,16 +5233,27 @@ async def admin_messaging_email(request: Request, payload: MessagingEmailRequest
 async def participant_messages(request: Request):
     """In-app messages visible to the current invite/token context.
 
-    Returns individual + broadcast messages delivered in-app to this invite only.
-    Targeting is by the signed invite cookie → invites.id; a token can never see
-    another invite's deliveries. No private participant content is read."""
+    Two kinds are returned, resolved server-side from the signed invite cookie:
+
+      • Individual "For you" messages — strictly recipient-scoped. Sourced from
+        this invite's own in_app deliveries, so a token can never see another
+        invite's personal messages.
+      • General beta announcements — a persistent, shared beta feed. Resolved by
+        audience membership (the caller is an admitted beta participant), NOT by a
+        per-recipient delivery row, so a participant admitted AFTER an
+        announcement was posted still sees it. Legacy in-app broadcasts surface
+        here too (any broadcast that was posted with an in_app delivery); an
+        email-only legacy broadcast is not retro-surfaced in-app.
+
+    Unauthenticated or not-yet-admitted sessions never receive announcements."""
     token = _invite_token_from_cookie(request)
     invite = _lookup_active_invite(token)
     if not invite:
         return {"messages": [], "unread": 0, "context": "none"}
     invite_id = invite.get("id")
+    admitted = bool((invite.get("beta_admitted_at") or "").strip())
     with _admin_db() as conn:
-        rows = conn.execute(
+        delivered = conn.execute(
             """
             SELECT d.id AS delivery_id, m.id AS message_id, m.message_kind AS message_kind,
                    m.subject AS subject, m.body AS body, m.created_at AS created_at,
@@ -5257,7 +5268,42 @@ async def participant_messages(request: Request):
             """,
             (invite_id,),
         ).fetchall()
-    messages = [_communication_message_row(r) for r in rows]
+        announcements = []
+        if admitted:
+            announcements = conn.execute(
+                """
+                SELECT NULL AS delivery_id, m.id AS message_id, m.message_kind AS message_kind,
+                       m.subject AS subject, m.body AS body, m.created_at AS created_at,
+                       NULL AS read_at
+                FROM communication_messages m
+                JOIN communication_threads t ON t.id = m.thread_id
+                WHERE m.message_kind = 'broadcast'
+                  AND t.thread_type IN ('admin_announcement', 'admin_broadcast')
+                  AND EXISTS (
+                      SELECT 1 FROM communication_deliveries dd
+                      WHERE dd.message_id = m.id AND dd.channel = 'in_app'
+                  )
+                ORDER BY m.created_at DESC, m.id DESC
+                LIMIT 200
+                """,
+            ).fetchall()
+    # Merge: this invite's own deliveries win (they carry delivery_id + read_at so
+    # read-state and mark-read keep working), audience-resolved announcements fill
+    # in the rest. Dedupe by message, newest-first, bounded.
+    by_message: dict[int, dict] = {}
+    for r in delivered:
+        d = _communication_message_row(r)
+        if d:
+            by_message[d["message_id"]] = d
+    for r in announcements:
+        d = _communication_message_row(r)
+        if d and d["message_id"] not in by_message:
+            by_message[d["message_id"]] = d
+    messages = sorted(
+        by_message.values(),
+        key=lambda m: (m.get("created_at") or "", m.get("message_id") or 0),
+        reverse=True,
+    )[:200]
     unread = sum(1 for m in messages if not m["read"])
     return {"messages": messages, "unread": unread, "context": "invite"}
 

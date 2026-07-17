@@ -164,6 +164,72 @@ class AnnounceTests(unittest.TestCase):
         )
 
 
+class AnnouncementPersistenceTests(unittest.TestCase):
+    """A general beta announcement is a persistent shared feed: visible to every
+    admitted participant, including one admitted AFTER it was posted (audience
+    membership, not a delivery row created at post time)."""
+
+    def test_late_joiner_sees_announcement_posted_before_admission(self):
+        admin = _admin()
+        # One participant admitted BEFORE the announcement.
+        early_inv = _create_invite(admin, "Early", "early@example.com")
+        early = _admit_personal(early_inv["magic_link"], "Early", "early@example.com")
+
+        r = admin.post("/api/admin/messaging/announce",
+                       json={"subject": "Shared word", "body": "Held for the whole beta."})
+        self.assertEqual(r.status_code, 200, r.text)
+
+        # A DIFFERENT participant admitted AFTER the announcement was posted.
+        late_inv = _create_invite(admin, "Late", "late@example.com")
+        late = _admit_personal(late_inv["magic_link"], "Late", "late@example.com")
+
+        # Both the early and the late participant see the announcement.
+        early_subjects = {m["subject"] for m in early.get("/api/messages").json()["messages"]}
+        late_subjects = {m["subject"] for m in late.get("/api/messages").json()["messages"]}
+        self.assertIn("Shared word", early_subjects)
+        self.assertIn("Shared word", late_subjects)
+        # The late joiner sees it as a shared broadcast, not a personal message.
+        late_msgs = late.get("/api/messages").json()["messages"]
+        self.assertTrue(any(m["subject"] == "Shared word" and m["kind"] == "broadcast" for m in late_msgs))
+
+    def test_announcement_not_visible_to_unauthenticated_or_unadmitted(self):
+        admin = _admin()
+        seed = _create_invite(admin, "Seed", "seed@example.com")
+        _admit_personal(seed["magic_link"], "Seed", "seed@example.com")
+        admin.post("/api/admin/messaging/announce",
+                   json={"subject": "Members only", "body": "Not for the public."})
+
+        # Unauthenticated: no invite cookie → nothing.
+        anon = TestClient(server.app)
+        self.assertEqual(anon.get("/api/messages").json()["messages"], [])
+
+        # Invited but NOT yet admitted (cookie set by opening the link, but the
+        # threshold was never crossed) → still no announcements.
+        pending_inv = _create_invite(admin, "Pending", "pending@example.com")
+        pending = TestClient(server.app)
+        pending.get(_path_of(pending_inv["magic_link"]), follow_redirects=True)
+        pending_msgs = pending.get("/api/messages").json()["messages"]
+        self.assertFalse(any(m["subject"] == "Members only" for m in pending_msgs))
+
+    def test_individual_message_stays_isolated_from_late_joiners(self):
+        admin = _admin()
+        target_inv = _create_invite(admin, "Target", "target@example.com")
+        target = _admit_personal(target_inv["magic_link"], "Target", "target@example.com")
+
+        parts = admin.get("/api/admin/messaging/participants").json()["participants"]
+        tid = next(p for p in parts if p["email"] == "target@example.com")["id"]
+        admin.post("/api/admin/messaging/person",
+                   json={"invite_id": tid, "subject": "Private line", "body": "Only for Target."})
+
+        # A participant admitted AFTER the personal message must never see it,
+        # even though announcements are now audience-resolved.
+        other_inv = _create_invite(admin, "Other", "other@example.com")
+        other = _admit_personal(other_inv["magic_link"], "Other", "other@example.com")
+
+        self.assertTrue(any(m["subject"] == "Private line" for m in target.get("/api/messages").json()["messages"]))
+        self.assertFalse(any(m["subject"] == "Private line" for m in other.get("/api/messages").json()["messages"]))
+
+
 class PersonTests(unittest.TestCase):
     def test_person_message_isolated_across_sessions(self):
         admin = _admin()
