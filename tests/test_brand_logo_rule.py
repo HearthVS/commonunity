@@ -117,5 +117,30 @@ def test_brand_readme_documents_the_rule():
         )
 
 
+# ── The locked cOMpass/stUdio product marks obey the same rule ───────────────
+
+def test_beta_hub_product_marks_use_transparent_variants_only():
+    """The locked cOMpass/stUdio entrances carry small product marks beside their
+    names. Those must be the transparent (plate-free) variants — never the root
+    favicons, which bake in a background <rect> plate."""
+    js = _read(BETA_JS)
+    assert "compass-mark-transparent.svg" in js
+    assert "studio-mark-transparent.svg" in js
+    # No plate-bearing favicon on this first-party product surface.
+    assert "favicon-studio.svg" not in js
+    assert not re.search(r"['\"]/favicon\.svg", js)
+
+
+def test_beta_hub_logo_css_has_no_frame():
+    """The mark container beside the product name must not recreate a plate/frame
+    in CSS: no border, box-shadow, border-radius, or background."""
+    body = _css_rule_body(_read(BETA_CSS), ".beta-row-logo")
+    forbidden = ("border", "box-shadow", "border-radius", "background")
+    hits = [prop for prop in forbidden if re.search(rf"\b{prop}\b\s*:", body)]
+    assert not hits, (
+        f".beta-row-logo must not frame the mark, but declares {hits}."
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

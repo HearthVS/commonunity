@@ -181,6 +181,73 @@ def test_library_is_admission_gated():
     assert "items" in lib.json()
 
 
+def _create_shared_link(admin: TestClient, title: str, target: str = "https://commonunity.io/decks/x/") -> str:
+    """Create a Library 'link' entry (no bytes needed) and return its id."""
+    res = admin.post("/api/admin/shared-links", json={"title": title, "target_url": target})
+    assert res.status_code == 200, res.text
+    return res.json()["file"]["id"]
+
+
+def test_library_hides_items_until_explicitly_shown():
+    """A Library item is NOT surfaced in the beta hub by default; it appears only
+    after the operator opts it in via show_in_beta_library. Nothing is exposed to
+    beta participants automatically."""
+    admin = _admin_client()
+    file_id = _create_shared_link(admin, "Beta One-Pager")
+
+    # It is created hidden from the beta hub.
+    listing = admin.get("/api/admin/shared-files").json()["files"]
+    row = next(f for f in listing if f["id"] == file_id)
+    assert row["is_active"] is True
+    assert row["show_in_beta_library"] is False
+
+    _, token, _ = _create_invite(admin, "Reader")
+    p = _participant(token)
+    p.post("/api/beta/admit", json={"name": "Reader", "email": "reader@example.com"})
+
+    # Default: the admitted participant does not see the item.
+    titles = [i["title"] for i in p.get("/api/beta/library").json()["items"]]
+    assert "Beta One-Pager" not in titles
+
+    # Operator opts it in.
+    res = admin.post(f"/api/admin/shared-files/{file_id}/beta-visibility", json={"show": True})
+    assert res.status_code == 200, res.text
+    assert res.json()["file"]["show_in_beta_library"] is True
+
+    # Now it appears in the hub.
+    titles = [i["title"] for i in p.get("/api/beta/library").json()["items"]]
+    assert "Beta One-Pager" in titles
+
+    # And can be withdrawn again.
+    admin.post(f"/api/admin/shared-files/{file_id}/beta-visibility", json={"show": False})
+    titles = [i["title"] for i in p.get("/api/beta/library").json()["items"]]
+    assert "Beta One-Pager" not in titles
+
+
+def test_library_beta_visibility_requires_admin():
+    """The beta-visibility toggle is an admin-only control, never public."""
+    admin = _admin_client()
+    file_id = _create_shared_link(admin, "Gated Item")
+    anon = TestClient(server.app)
+    res = anon.post(f"/api/admin/shared-files/{file_id}/beta-visibility", json={"show": True})
+    assert res.status_code == 401
+
+
+def test_library_inactive_item_never_shows_even_if_opted_in():
+    """is_active still governs surfacing: an item withdrawn from the public alias
+    must not appear in the beta hub even if it was opted into the beta library."""
+    admin = _admin_client()
+    file_id = _create_shared_link(admin, "Shown But Inactive")
+    admin.post(f"/api/admin/shared-files/{file_id}/beta-visibility", json={"show": True})
+    admin.post(f"/api/admin/shared-files/{file_id}/state", json={"active": False})
+
+    _, token, _ = _create_invite(admin, "Reader2")
+    p = _participant(token)
+    p.post("/api/beta/admit", json={"name": "Reader2", "email": "reader2@example.com"})
+    titles = [i["title"] for i in p.get("/api/beta/library").json()["items"]]
+    assert "Shown But Inactive" not in titles
+
+
 def test_beta_assets_served_and_allowlisted():
     c = TestClient(server.app)
     assert c.get("/beta/beta.js").status_code == 200

@@ -25,6 +25,10 @@
 
   var WORDMARK = '/assets/brand/primary-logo-transparent.svg';
   var MARK = '/assets/brand/mark.svg';
+  // Canonical small product marks (transparent, no background plate — the
+  // plate-free variants of the root favicons). Reused, never redrawn.
+  var COMPASS_MARK = '/assets/brand/compass-mark-transparent.svg';
+  var STUDIO_MARK = '/assets/brand/studio-mark-transparent.svg';
 
   // ---- tiny DOM helper (same shape as threshold.js el()) ------------------
   function el(tag, opts) {
@@ -207,19 +211,8 @@
     ));
     hub.appendChild(welcome);
 
-    // Path panel — the shared spaces this beta opens.
-    var path = el('div', { class: 'beta-panel' });
-    path.appendChild(el('h2', { class: 'beta-panel-title' }, 'Path'));
-    path.appendChild(el('p', {},
-      'The path opens into the CommonUnity spaces. Enter when you are ready — your beta access carries through.'
-    ));
-    var pathList = el('ul', { class: 'beta-path-list' });
-    pathList.appendChild(pathRow('cOMpass', 'Begin your orientation — name, coordinates, and true north.', '/compass', 'Enter'));
-    pathList.appendChild(pathRow('Studio', 'A quiet workshop for your living profile and fields.', '/studio', 'Enter'));
-    path.appendChild(pathList);
-    hub.appendChild(path);
-
-    // Announcements panel (async).
+    // Announcements panel (async). Announcements and the Library are held higher
+    // than the product entrances, which are still locked at this stage.
     var announce = el('div', { class: 'beta-panel' });
     announce.appendChild(el('h2', { class: 'beta-panel-title' }, 'Announcements'));
     var announceBody = el('div', { id: 'beta-announce' });
@@ -235,6 +228,23 @@
     library.appendChild(libBody);
     hub.appendChild(library);
 
+    // Path panel — the CommonUnity spaces this beta will open into. They are
+    // LOCKED at this stage: each product keeps its own separate magic-link /
+    // threshold gate, so these are not navigational links and carry no bypass
+    // URL or token. They sit last so announcements and the library lead.
+    var path = el('div', { class: 'beta-panel' });
+    path.appendChild(el('h2', { class: 'beta-panel-title' }, 'The path ahead'));
+    path.appendChild(el('p', {},
+      'The path opens into the CommonUnity spaces. They are being prepared and are locked for now — each opens through its own private invitation when it is ready.'
+    ));
+    var pathList = el('ul', { class: 'beta-path-list' });
+    pathList.appendChild(lockedEntrance('cOMpass', COMPASS_MARK,
+      'Your orientation — name, coordinates, and true north.'));
+    pathList.appendChild(lockedEntrance('stUdio', STUDIO_MARK,
+      'A quiet workshop for your living profile and fields.'));
+    path.appendChild(pathList);
+    hub.appendChild(path);
+
     hub.appendChild(el('p', { class: 'beta-hub-footer' },
       'CommonUnity private beta · a shared field, held with care.'
     ));
@@ -246,15 +256,35 @@
     loadLibrary(libBody);
   }
 
-  function pathRow(title, note, href, tag) {
-    var a = el('a', { class: 'beta-row', href: href });
+  // A locked product entrance. Deliberately NOT an <a>: it carries no href,
+  // token, or bypass URL, so it can never let a participant skip the product's
+  // own magic-link / threshold gate. The lock is communicated in text ("Locked")
+  // and semantically (aria-disabled), never by colour alone.
+  function lockedEntrance(title, markSrc, note) {
+    var row = el('li', { class: 'beta-row beta-row-locked', 'aria-disabled': 'true' });
+
+    var logo = el('span', { class: 'beta-row-logo', 'aria-hidden': 'true' });
+    if (markSrc) {
+      var img = document.createElement('img');
+      img.src = markSrc;
+      img.alt = '';
+      logo.appendChild(img);
+    }
+
     var main = el('div', { class: 'beta-row-main' },
       el('span', { class: 'beta-row-title' }, title),
       el('span', { class: 'beta-row-note' }, note)
     );
-    a.appendChild(main);
-    a.appendChild(el('span', { class: 'beta-row-tag' }, tag || ''));
-    return a;
+
+    var head = el('div', { class: 'beta-row-head' }, logo, main);
+    row.appendChild(head);
+
+    var tag = el('span', { class: 'beta-row-tag beta-row-lock' });
+    tag.appendChild(el('span', { class: 'beta-lock-glyph', 'aria-hidden': 'true' }, '\u{1F512}'));
+    tag.appendChild(el('span', { class: 'beta-lock-label' }, 'Locked'));
+    row.appendChild(tag);
+
+    return row;
   }
 
   function loadAnnouncements(container) {
