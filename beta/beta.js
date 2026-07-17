@@ -211,6 +211,15 @@
     ));
     hub.appendChild(welcome);
 
+    // Personal "For you" panel (async). Private messages addressed to this one
+    // participant. Rendered only when something is waiting, so the hub stays calm
+    // and never looks like a busy inbox. Visually distinct but restrained.
+    var personal = el('div', { class: 'beta-panel beta-panel-personal', id: 'beta-personal', style: 'display:none;' });
+    personal.appendChild(el('h2', { class: 'beta-panel-title' }, 'For you'));
+    var personalBody = el('div', { id: 'beta-personal-body' });
+    personal.appendChild(personalBody);
+    hub.appendChild(personal);
+
     // Announcements panel (async). Announcements and the Library are held higher
     // than the product entrances, which are still locked at this stage.
     var announce = el('div', { class: 'beta-panel' });
@@ -252,7 +261,7 @@
     root.appendChild(hub);
     playEnter();
 
-    loadAnnouncements(announceBody);
+    loadMessages(announceBody, personal, personalBody);
     loadLibrary(libBody);
   }
 
@@ -287,29 +296,54 @@
     return row;
   }
 
-  function loadAnnouncements(container) {
+  // Render one message item (subject / body / date) into a list container.
+  function messageItem(m) {
+    var item = el('div', { class: 'beta-announce-item' });
+    if (m.subject) item.appendChild(el('p', { class: 'beta-announce-subject' }, m.subject));
+    if (m.body) item.appendChild(el('p', { class: 'beta-announce-body' }, m.body));
+    if (m.created_at) item.appendChild(el('span', { class: 'beta-announce-date' }, formatDate(m.created_at)));
+    return item;
+  }
+
+  // Fetch this participant's in-app messages (server-scoped to their own invite)
+  // and split them by kind: general announcements (broadcast) fill the shared
+  // Announcements feed; individual messages surface in the private "For you"
+  // panel, which stays hidden unless something is waiting. Newest first is the
+  // server's order; both feeds keep it.
+  function loadMessages(announceContainer, personalPanel, personalContainer) {
     fetch('/api/messages', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : { messages: [] }; })
       .then(function (data) {
-        container.innerHTML = '';
         var msgs = (data && data.messages) || [];
-        if (!msgs.length) {
-          container.appendChild(el('p', { class: 'beta-empty' }, 'No announcements yet. This is where word from CommonUnity will arrive.'));
+        var personal = [];
+        var announcements = [];
+        msgs.forEach(function (m) {
+          if (m.kind === 'individual') personal.push(m);
+          else announcements.push(m);
+        });
+
+        personalContainer.innerHTML = '';
+        if (personal.length) {
+          var pList = el('div', { class: 'beta-announce-list' });
+          personal.forEach(function (m) { pList.appendChild(messageItem(m)); });
+          personalContainer.appendChild(pList);
+          personalPanel.style.display = '';
+        } else {
+          personalPanel.style.display = 'none';
+        }
+
+        announceContainer.innerHTML = '';
+        if (!announcements.length) {
+          announceContainer.appendChild(el('p', { class: 'beta-empty' }, 'No announcements yet. This is where word from CommonUnity will arrive.'));
           return;
         }
         var list = el('div', { class: 'beta-announce-list' });
-        msgs.forEach(function (m) {
-          var item = el('div', { class: 'beta-announce-item' });
-          if (m.subject) item.appendChild(el('p', { class: 'beta-announce-subject' }, m.subject));
-          if (m.body) item.appendChild(el('p', { class: 'beta-announce-body' }, m.body));
-          if (m.created_at) item.appendChild(el('span', { class: 'beta-announce-date' }, formatDate(m.created_at)));
-          list.appendChild(item);
-        });
-        container.appendChild(list);
+        announcements.forEach(function (m) { list.appendChild(messageItem(m)); });
+        announceContainer.appendChild(list);
       })
       .catch(function () {
-        container.innerHTML = '';
-        container.appendChild(el('p', { class: 'beta-empty' }, 'Announcements are unavailable just now.'));
+        announceContainer.innerHTML = '';
+        announceContainer.appendChild(el('p', { class: 'beta-empty' }, 'Announcements are unavailable just now.'));
       });
   }
 

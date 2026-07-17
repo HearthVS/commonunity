@@ -143,6 +143,15 @@
 }
 .beta-panel p:last-child { margin-bottom: 0; }
 
+/* Personal "For you" panel — a private message addressed to this one
+   participant. Visually distinct from Announcements (a soft gold edge) but
+   deliberately restrained, so the hub never reads as a busy inbox. */
+.beta-panel-personal {
+  border-color: rgba(213, 160, 74, 0.28);
+  background: var(--chamber-surface, rgba(28, 24, 14, 0.5));
+}
+.beta-panel-personal .beta-panel-title { color: var(--om-gold, #e0b063); }
+
 /* Path — the shared materials / rooms as calm rows. */
 .beta-path-list, .beta-library-list, .beta-announce-list {
   list-style: none;
@@ -223,8 +232,8 @@ a.beta-row:hover, a.beta-row:focus-visible {
   border-radius: 8px;
   background: rgba(11, 17, 32, 0.35);
 }
-.beta-announce-subject { margin: 0 0 0.35rem; font-weight: 500; color: var(--threshold-text, #f1f5f9); }
-.beta-announce-body { margin: 0; color: var(--threshold-text-muted, #aab3c4); font-size: 0.95rem; line-height: 1.65; white-space: pre-wrap; }
+.beta-announce-subject { margin: 0 0 0.35rem; font-weight: 500; color: var(--threshold-text, #f1f5f9); overflow-wrap: anywhere; }
+.beta-announce-body { margin: 0; color: var(--threshold-text-muted, #aab3c4); font-size: 0.95rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .beta-announce-date { display: block; margin-top: 0.5rem; font-size: 0.72rem; color: var(--threshold-text-faint, #7d879c); }
 
 .beta-empty {

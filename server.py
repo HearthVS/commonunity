@@ -214,6 +214,19 @@ class AdminBroadcastRequest(BaseModel):
     body: str = ""
     channel: str = "both"  # "email" | "in_app" | "both"
 
+class MessagingAnnounceRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+
+class MessagingPersonRequest(BaseModel):
+    invite_id: int = 0
+    subject: str = ""
+    body: str = ""
+
+class MessagingEmailRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+
 class BrandVersionRequest(BaseModel):
     name: str = ""
     logo_palette: dict = {}
@@ -2861,6 +2874,45 @@ def _active_invites_for_broadcast(conn: sqlite3.Connection) -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
+def _admitted_beta_recipients(conn: sqlite3.Connection) -> list[dict]:
+    """Active, admitted beta participants — the distinct audience the Messaging
+    Center addresses. An admitted participant is a personal invite or a campaign
+    enrollee (kind='participant') that crossed the /beta threshold, so
+    beta_admitted_at is set. Excludes campaign templates (kind='campaign', which
+    are shared links, never a person), revoked/expired/inactive rows, and any
+    never-admitted invite. Invite records only — never participant-private data,
+    and an explicit column projection rather than SELECT *."""
+    now = _now_iso()
+    rows = conn.execute(
+        """
+        SELECT id, token, name, email, kind, campaign_id, beta_admitted_at
+        FROM invites
+        WHERE status = 'active'
+          AND kind != 'campaign'
+          AND beta_admitted_at IS NOT NULL AND beta_admitted_at != ''
+          AND (expires_at IS NULL OR expires_at = '' OR expires_at > ?)
+        ORDER BY beta_admitted_at DESC, id DESC
+        """,
+        (now,),
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def _dedupe_email_recipients(recipients: list[dict]) -> list[dict]:
+    """Distinct recipients keyed by normalized (trimmed, lowercased) email.
+    Records without an email are dropped; first occurrence wins so one person who
+    admitted under two invites is emailed once."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for r in recipients:
+        email = (r.get("email") or "").strip().lower()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        out.append(r)
+    return out
+
+
 def _communication_message_row(row: sqlite3.Row | None) -> dict | None:
     """Participant-facing message projection. Carries only the message artifact
     (subject/body/kind/date) and this recipient's delivery state — no sender
@@ -4975,21 +5027,233 @@ async def admin_broadcast(request: Request, payload: AdminBroadcastRequest):
     return {"ok": True, "channel": channel, "recipients": len(recipients), **result}
 
 
+# ── Messaging Center (admin) ───────────────────────────────────────────────
+# A standalone admin surface, separate from Invitations: creating access
+# (invitations) and communicating with admitted participants are deliberately
+# not conflated. Every destination is addressed solely from admin-authored
+# invite records — never participant-private content, and never the campaign
+# template (a shared link, not a person). Three explicit destinations:
+#   • announce — a persistent in-app announcement to every admitted beta
+#     participant; surfaces in the beta hub Announcements feed.
+#   • person   — a private in-app message to one admitted participant; surfaces
+#     only in that participant's own "For you" block, never to anyone else.
+#   • email    — an outbound email to the distinct addresses of admitted
+#     participants. Fail-closed when SMTP is unconfigured (no deceptive "sent");
+#     one send per recipient so no address is exposed to another recipient.
+@app.get("/api/admin/messaging/participants")
+async def admin_messaging_participants(request: Request):
+    """Admitted beta participants for the in-app person selector. Invite records
+    only: id, name, email, kind, admission date, and a campaign label when the
+    participant enrolled through a shared link."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        recipients = _admitted_beta_recipients(conn)
+        camp_ids = {r.get("campaign_id") for r in recipients if r.get("campaign_id")}
+        camp_names: dict[int, str] = {}
+        if camp_ids:
+            placeholders = ",".join("?" * len(camp_ids))
+            for row in conn.execute(
+                f"SELECT id, name FROM invites WHERE id IN ({placeholders})",
+                tuple(camp_ids),
+            ).fetchall():
+                camp_names[row["id"]] = row["name"] or ""
+    participants = [
+        {
+            "id": r["id"],
+            "name": r.get("name") or "",
+            "email": r.get("email") or "",
+            "kind": r.get("kind") or "personal",
+            "admitted_at": r.get("beta_admitted_at") or "",
+            "campaign": camp_names.get(r.get("campaign_id"), "") if r.get("campaign_id") else "",
+        }
+        for r in recipients
+    ]
+    return {"participants": participants}
+
+
+@app.get("/api/admin/messaging/recipients")
+async def admin_messaging_recipients(request: Request):
+    """Audience preview for the Messaging Center — computed before publishing.
+    Returns the admitted-participant count, how many are reachable by email, the
+    distinct (deduplicated) email count, and whether outbound email is
+    configured. No addresses are returned."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        recipients = _admitted_beta_recipients(conn)
+    with_email = sum(1 for r in recipients if (r.get("email") or "").strip())
+    distinct_emails = len(_dedupe_email_recipients(recipients))
+    return {
+        "total": len(recipients),
+        "with_email": with_email,
+        "distinct_emails": distinct_emails,
+        "smtp_configured": _smtp_configured(),
+    }
+
+
+@app.post("/api/admin/messaging/announce")
+async def admin_messaging_announce(request: Request, payload: MessagingAnnounceRequest):
+    """Post a general announcement to Beta: one persistent in-app message
+    delivered to every admitted beta participant. Surfaces in the beta hub
+    Announcements feed (message_kind='broadcast'). In-app only — announcements
+    are not emailed."""
+    _require_admin(request)
+    subject = (payload.subject or "").strip()[:300]
+    body = (payload.body or "").strip()[:8000]
+    if not body:
+        raise HTTPException(status_code=400, detail="announcement body is required")
+    with _admin_db() as conn:
+        recipients = _admitted_beta_recipients(conn)
+        if not recipients:
+            raise HTTPException(status_code=400, detail="no admitted beta participants yet")
+        result = _create_message_with_deliveries(
+            conn,
+            thread_type="admin_announcement",
+            message_kind="broadcast",
+            scope_type="cohort",
+            scope_id=None,
+            subject=subject,
+            body=body,
+            channel="in_app",
+            recipients=recipients,
+            request=request,
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'messaging_announcement_posted', NULL, '', '/admin', 'admin', ?, ?)
+            """,
+            (_now_iso(), request.headers.get("user-agent", "")[:320], f"recipients:{len(recipients)}"),
+        )
+    return {"ok": True, "destination": "announce", "recipients": len(recipients), **result}
+
+
+@app.post("/api/admin/messaging/person")
+async def admin_messaging_person(request: Request, payload: MessagingPersonRequest):
+    """Post a private in-app message to one admitted beta participant. The
+    recipient must be an active, admitted, non-template invite; the message is
+    delivered only to that invite (message_kind='individual') and can never be
+    returned to another participant. In-app only."""
+    _require_admin(request)
+    subject = (payload.subject or "").strip()[:300]
+    body = (payload.body or "").strip()[:8000]
+    if not body:
+        raise HTTPException(status_code=400, detail="message body is required")
+    if not payload.invite_id:
+        raise HTTPException(status_code=400, detail="a recipient participant is required")
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT id, token, name, email, status, kind, beta_admitted_at FROM invites WHERE id = ?",
+            (payload.invite_id,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="participant not found")
+        invite = _row_to_dict(row)
+        admitted = bool((invite.get("beta_admitted_at") or "").strip())
+        if invite.get("status") != "active" or invite.get("kind") == "campaign" or not admitted:
+            raise HTTPException(status_code=400, detail="recipient is not an admitted beta participant")
+        result = _create_message_with_deliveries(
+            conn,
+            thread_type="admin_individual",
+            message_kind="individual",
+            scope_type="invite",
+            scope_id=invite["id"],
+            subject=subject,
+            body=body,
+            channel="in_app",
+            recipients=[invite],
+            request=request,
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'messaging_person_posted', ?, ?, '/admin', 'admin', ?, '')
+            """,
+            (_now_iso(), invite["id"], invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
+        )
+    return {"ok": True, "destination": "person", **result}
+
+
+@app.post("/api/admin/messaging/email")
+async def admin_messaging_email(request: Request, payload: MessagingEmailRequest):
+    """Email all admitted beta participants at their distinct addresses.
+
+    Fail-closed: if SMTP is not configured we refuse with a clear 503 and send
+    nothing, rather than showing a deceptive success. Addresses are deduplicated
+    (normalized) and each recipient is sent an individual message, so no
+    recipient ever sees another's address. Only counts are returned — never
+    addresses."""
+    _require_admin(request)
+    subject = (payload.subject or "").strip()[:300]
+    body = (payload.body or "").strip()[:8000]
+    if not body:
+        raise HTTPException(status_code=400, detail="email body is required")
+    if not _smtp_configured():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Outbound email is not configured. Set SMTP_HOST, SMTP_USER, "
+                "SMTP_PASSWORD and SMTP_FROM to enable sending. No email was sent."
+            ),
+        )
+    with _admin_db() as conn:
+        recipients = _dedupe_email_recipients(_admitted_beta_recipients(conn))
+        if not recipients:
+            raise HTTPException(status_code=400, detail="no admitted beta participants with an email address")
+        result = _create_message_with_deliveries(
+            conn,
+            thread_type="admin_email_broadcast",
+            message_kind="email_broadcast",
+            scope_type="cohort",
+            scope_id=None,
+            subject=subject,
+            body=body,
+            channel="email",
+            recipients=recipients,
+            request=request,
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'messaging_email_sent', NULL, '', '/admin', 'admin', ?, ?)
+            """,
+            (_now_iso(), request.headers.get("user-agent", "")[:320], f"recipients:{len(recipients)}"),
+        )
+    return {
+        "ok": True,
+        "destination": "email",
+        "recipients": len(recipients),
+        "email_sent": result["email_sent"],
+        "email_pending": result["email_pending"],
+        "email_failed": result["email_failed"],
+    }
+
+
 # ── cOMmunication: participant surface ─────────────────────────────────────
 @app.get("/api/messages")
 async def participant_messages(request: Request):
     """In-app messages visible to the current invite/token context.
 
-    Returns individual + broadcast messages delivered in-app to this invite only.
-    Targeting is by the signed invite cookie → invites.id; a token can never see
-    another invite's deliveries. No private participant content is read."""
+    Two kinds are returned, resolved server-side from the signed invite cookie:
+
+      • Individual "For you" messages — strictly recipient-scoped. Sourced from
+        this invite's own in_app deliveries, so a token can never see another
+        invite's personal messages.
+      • General beta announcements — a persistent, shared beta feed. Resolved by
+        audience membership (the caller is an admitted beta participant), NOT by a
+        per-recipient delivery row, so a participant admitted AFTER an
+        announcement was posted still sees it. Legacy in-app broadcasts surface
+        here too (any broadcast that was posted with an in_app delivery); an
+        email-only legacy broadcast is not retro-surfaced in-app.
+
+    Unauthenticated or not-yet-admitted sessions never receive announcements."""
     token = _invite_token_from_cookie(request)
     invite = _lookup_active_invite(token)
     if not invite:
         return {"messages": [], "unread": 0, "context": "none"}
     invite_id = invite.get("id")
+    admitted = bool((invite.get("beta_admitted_at") or "").strip())
     with _admin_db() as conn:
-        rows = conn.execute(
+        delivered = conn.execute(
             """
             SELECT d.id AS delivery_id, m.id AS message_id, m.message_kind AS message_kind,
                    m.subject AS subject, m.body AS body, m.created_at AS created_at,
@@ -5004,7 +5268,42 @@ async def participant_messages(request: Request):
             """,
             (invite_id,),
         ).fetchall()
-    messages = [_communication_message_row(r) for r in rows]
+        announcements = []
+        if admitted:
+            announcements = conn.execute(
+                """
+                SELECT NULL AS delivery_id, m.id AS message_id, m.message_kind AS message_kind,
+                       m.subject AS subject, m.body AS body, m.created_at AS created_at,
+                       NULL AS read_at
+                FROM communication_messages m
+                JOIN communication_threads t ON t.id = m.thread_id
+                WHERE m.message_kind = 'broadcast'
+                  AND t.thread_type IN ('admin_announcement', 'admin_broadcast')
+                  AND EXISTS (
+                      SELECT 1 FROM communication_deliveries dd
+                      WHERE dd.message_id = m.id AND dd.channel = 'in_app'
+                  )
+                ORDER BY m.created_at DESC, m.id DESC
+                LIMIT 200
+                """,
+            ).fetchall()
+    # Merge: this invite's own deliveries win (they carry delivery_id + read_at so
+    # read-state and mark-read keep working), audience-resolved announcements fill
+    # in the rest. Dedupe by message, newest-first, bounded.
+    by_message: dict[int, dict] = {}
+    for r in delivered:
+        d = _communication_message_row(r)
+        if d:
+            by_message[d["message_id"]] = d
+    for r in announcements:
+        d = _communication_message_row(r)
+        if d and d["message_id"] not in by_message:
+            by_message[d["message_id"]] = d
+    messages = sorted(
+        by_message.values(),
+        key=lambda m: (m.get("created_at") or "", m.get("message_id") or 0),
+        reverse=True,
+    )[:200]
     unread = sum(1 for m in messages if not m["read"])
     return {"messages": messages, "unread": unread, "context": "invite"}
 
