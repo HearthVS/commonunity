@@ -339,11 +339,62 @@
     return row;
   }
 
+  // Peel common trailing punctuation off a matched URL so a sentence's period,
+  // comma, or a wrapping close-bracket is not swallowed into the link. A closing
+  // bracket is only peeled when unbalanced within the URL, so URLs that
+  // legitimately contain parentheses (e.g. Wikipedia) stay intact.
+  function splitTrailingPunct(url) {
+    var trailing = '';
+    while (url.length) {
+      var ch = url.charAt(url.length - 1);
+      if ('.,;:!?"\''.indexOf(ch) !== -1) { trailing = ch + trailing; url = url.slice(0, -1); continue; }
+      if (ch === ')' || ch === ']' || ch === '}') {
+        var open = ch === ')' ? '(' : ch === ']' ? '[' : '{';
+        var opens = url.split(open).length - 1;
+        var closes = url.split(ch).length - 1;
+        if (closes > opens) { trailing = ch + trailing; url = url.slice(0, -1); continue; }
+      }
+      break;
+    }
+    return [url, trailing];
+  }
+
+  // Safely linkify plain-text http/https URLs in an admin-authored announcement
+  // body, appending DOM text nodes and generated <a> elements into `parent`.
+  // No innerHTML and no HTML parsing of the body: text is added via
+  // createTextNode and only http/https URLs become links, so strings such as
+  // "javascript:alert(1)" remain inert plain text. Links open in a new tab with
+  // rel="noopener noreferrer" and carry a visible, focusable link style.
+  function linkifyInto(parent, text) {
+    var src = String(text == null ? '' : text);
+    var urlRe = /https?:\/\/[^\s<]+/gi;
+    var last = 0;
+    var m;
+    while ((m = urlRe.exec(src)) !== null) {
+      if (m.index > last) parent.appendChild(document.createTextNode(src.slice(last, m.index)));
+      var parts = splitTrailingPunct(m[0]);
+      var url = parts[0];
+      var trailing = parts[1];
+      if (url) {
+        parent.appendChild(el('a', {
+          class: 'beta-announce-link',
+          href: url,
+          target: '_blank',
+          rel: 'noopener noreferrer'
+        }, url));
+      }
+      if (trailing) parent.appendChild(document.createTextNode(trailing));
+      last = m.index + m[0].length;
+    }
+    if (last < src.length) parent.appendChild(document.createTextNode(src.slice(last)));
+    return parent;
+  }
+
   // Render one message item (subject / body / date) into a list container.
   function messageItem(m) {
     var item = el('div', { class: 'beta-announce-item' });
     if (m.subject) item.appendChild(el('p', { class: 'beta-announce-subject' }, m.subject));
-    if (m.body) item.appendChild(el('p', { class: 'beta-announce-body' }, m.body));
+    if (m.body) item.appendChild(linkifyInto(el('p', { class: 'beta-announce-body' }), m.body));
     if (m.created_at) item.appendChild(el('span', { class: 'beta-announce-date' }, formatDate(m.created_at)));
     return item;
   }

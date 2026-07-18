@@ -230,6 +230,137 @@ class AnnouncementPersistenceTests(unittest.TestCase):
         self.assertFalse(any(m["subject"] == "Private line" for m in other.get("/api/messages").json()["messages"]))
 
 
+class AnnouncementHistoryTests(unittest.TestCase):
+    """Admin announcement history + individual deletion. Scoped strictly to
+    general beta in-app announcements: never email-all records, personal
+    messages, invitations, or participant data."""
+
+    def _post_announcement(self, admin, subject, body):
+        r = admin.post("/api/admin/messaging/announce", json={"subject": subject, "body": body})
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_history_requires_admin(self):
+        anon = TestClient(server.app)
+        self.assertEqual(anon.get("/api/admin/messaging/announcements").status_code, 401)
+        self.assertEqual(anon.delete("/api/admin/messaging/announcements/1").status_code, 401)
+
+    def test_history_lists_announcements_newest_first(self):
+        admin = _admin()
+        inv = _create_invite(admin, "Ivy", "ivy@example.com")
+        _admit_personal(inv["magic_link"], "Ivy", "ivy@example.com")
+        self._post_announcement(admin, "First up", "One.")
+        self._post_announcement(admin, "Second up", "Two.")
+
+        items = admin.get("/api/admin/messaging/announcements").json()["announcements"]
+        subjects = [a["subject"] for a in items]
+        self.assertIn("First up", subjects)
+        self.assertIn("Second up", subjects)
+        # Newest first: "Second up" precedes "First up".
+        self.assertLess(subjects.index("Second up"), subjects.index("First up"))
+        # Each item carries enough context to identify it, no addresses.
+        top = items[0]
+        for key in ("message_id", "subject", "body", "created_at", "recipients"):
+            self.assertIn(key, top)
+        self.assertNotIn("ivy@example.com", admin.get("/api/admin/messaging/announcements").text)
+
+    def test_delete_removes_announcement_from_feed_for_all(self):
+        admin = _admin()
+        inv = _create_invite(admin, "Jem", "jem@example.com")
+        client = _admit_personal(inv["magic_link"], "Jem", "jem@example.com")
+        self._post_announcement(admin, "Ephemeral", "Here then gone.")
+
+        # Visible before deletion.
+        subjects = {m["subject"] for m in client.get("/api/messages").json()["messages"]}
+        self.assertIn("Ephemeral", subjects)
+
+        mid = next(a["message_id"] for a in
+                   admin.get("/api/admin/messaging/announcements").json()["announcements"]
+                   if a["subject"] == "Ephemeral")
+        r = admin.delete(f"/api/admin/messaging/announcements/{mid}")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(r.json()["ok"])
+
+        # Gone from the participant feed and from the admin history.
+        subjects_after = {m["subject"] for m in client.get("/api/messages").json()["messages"]}
+        self.assertNotIn("Ephemeral", subjects_after)
+        hist = {a["subject"] for a in admin.get("/api/admin/messaging/announcements").json()["announcements"]}
+        self.assertNotIn("Ephemeral", hist)
+
+    def test_deleted_announcement_hidden_from_late_joiner(self):
+        admin = _admin()
+        seed = _create_invite(admin, "Kai", "kai@example.com")
+        _admit_personal(seed["magic_link"], "Kai", "kai@example.com")
+        self._post_announcement(admin, "Vanish", "Not for latecomers.")
+        mid = next(a["message_id"] for a in
+                   admin.get("/api/admin/messaging/announcements").json()["announcements"]
+                   if a["subject"] == "Vanish")
+        self.assertEqual(admin.delete(f"/api/admin/messaging/announcements/{mid}").status_code, 200)
+
+        # Someone admitted AFTER the deletion must never see it.
+        late_inv = _create_invite(admin, "Lee", "lee@example.com")
+        late = _admit_personal(late_inv["magic_link"], "Lee", "lee@example.com")
+        late_subjects = {m["subject"] for m in late.get("/api/messages").json()["messages"]}
+        self.assertNotIn("Vanish", late_subjects)
+
+    def test_delete_rejects_nonexistent(self):
+        admin = _admin()
+        self.assertEqual(admin.delete("/api/admin/messaging/announcements/999999").status_code, 404)
+
+    def test_delete_rejects_personal_message(self):
+        admin = _admin()
+        inv = _create_invite(admin, "Mo", "mo@example.com")
+        _admit_personal(inv["magic_link"], "Mo", "mo@example.com")
+        pid = next(p for p in admin.get("/api/admin/messaging/participants").json()["participants"]
+                   if p["email"] == "mo@example.com")["id"]
+        r = admin.post("/api/admin/messaging/person",
+                       json={"invite_id": pid, "subject": "Private", "body": "Only Mo."})
+        self.assertEqual(r.status_code, 200, r.text)
+        personal_mid = r.json()["message_id"]
+        # A personal message is not a general announcement — deletion is refused
+        # and it is never listed in the history.
+        self.assertEqual(admin.delete(f"/api/admin/messaging/announcements/{personal_mid}").status_code, 404)
+        hist_ids = {a["message_id"] for a in
+                    admin.get("/api/admin/messaging/announcements").json()["announcements"]}
+        self.assertNotIn(personal_mid, hist_ids)
+
+    def test_delete_rejects_email_all_record(self):
+        admin = _admin()
+        inv = _create_invite(admin, "Nia", "nia@example.com")
+        _admit_personal(inv["magic_link"], "Nia", "nia@example.com")
+        # Post an announcement, then an email. Message ids are globally
+        # monotonic, so the email's message id is the announcement's + 1.
+        self._post_announcement(admin, "Kept announce", "Stays.")
+        ann_mid = next(a["message_id"] for a in
+                       admin.get("/api/admin/messaging/announcements").json()["announcements"]
+                       if a["subject"] == "Kept announce")
+        with mock.patch.object(server, "_smtp_configured", return_value=True), \
+             mock.patch.object(server, "_send_communication_email", return_value=("sent", "")):
+            r = admin.post("/api/admin/messaging/email",
+                           json={"subject": "Mail", "body": "Emailed only."})
+        self.assertEqual(r.status_code, 200, r.text)
+        email_mid = ann_mid + 1
+        # The email-all record is never listed among announcements...
+        hist = admin.get("/api/admin/messaging/announcements").json()["announcements"]
+        self.assertNotIn("Mail", {a["subject"] for a in hist})
+        self.assertNotIn(email_mid, {a["message_id"] for a in hist})
+        # ...and can never be deleted through the announcements endpoint.
+        self.assertEqual(admin.delete(f"/api/admin/messaging/announcements/{email_mid}").status_code, 404)
+
+    def test_confirmation_and_history_wired_in_admin_ui(self):
+        with open(os.path.join(os.path.dirname(__file__), "admin.html"), encoding="utf-8") as f:
+            html = f.read()
+        # History surface + per-item delete with a confirmation dialog.
+        self.assertIn('data-testid="announcement-history-card"', html)
+        self.assertIn('data-testid="announcement-list"', html)
+        # Per-item delete buttons are created dynamically and tagged in JS.
+        self.assertIn("'announcement-delete'", html)
+        self.assertIn('id="ann-confirm"', html)
+        self.assertIn('data-testid="announcement-confirm-go"', html)
+        self.assertIn("/api/admin/messaging/announcements", html)
+        # Deletion goes through the DELETE verb.
+        self.assertIn("method: 'DELETE'", html)
+
+
 class PersonTests(unittest.TestCase):
     def test_person_message_isolated_across_sessions(self):
         admin = _admin()
