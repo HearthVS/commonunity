@@ -12209,9 +12209,6 @@ function autoGrowCompassNexusInput(el) {
 .cu-msg-subject { color: rgba(248,242,232,0.92); font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .cu-msg-new-dot { width: 7px; height: 7px; border-radius: 999px; background: radial-gradient(circle, #f5e7bd, #d5ad64); flex: none; }
 .cu-msg-body { color: rgba(248,242,232,0.74); font-size: 0.88rem; line-height: 1.6; margin: 5px 0 0; white-space: pre-wrap; }
-.cu-msg-link { color: #d5ad64; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; word-break: break-word; }
-.cu-msg-link:hover { color: #f5e7bd; }
-.cu-msg-link:focus-visible { outline: 2px solid #f5e7bd; outline-offset: 2px; border-radius: 2px; }
 .cu-msg-meta { color: rgba(248,242,232,0.4); font-size: 0.72rem; margin-top: 6px; letter-spacing: 0.04em; }
 .cu-msg-kind { color: rgba(213,173,100,0.7); }
 </style>
@@ -12230,48 +12227,6 @@ function autoGrowCompassNexusInput(el) {
   function escapeHtml(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
-  // Peel common trailing punctuation off a matched URL so a sentence's period,
-  // comma, or a wrapping close-paren isn't swallowed into the link. A closing
-  // bracket is only peeled when it is unbalanced within the URL itself, so URLs
-  // that legitimately contain parentheses (e.g. Wikipedia) stay intact.
-  function splitTrailingPunct(url) {
-    let trailing = '';
-    while (url.length) {
-      const ch = url[url.length - 1];
-      if ('.,;:!?"\''.indexOf(ch) !== -1) { trailing = ch + trailing; url = url.slice(0, -1); continue; }
-      if (ch === ')' || ch === ']' || ch === '}') {
-        const open = ch === ')' ? '(' : ch === ']' ? '[' : '{';
-        const opens = (url.match(new RegExp('\\' + open, 'g')) || []).length;
-        const closes = (url.match(new RegExp('\\' + ch, 'g')) || []).length;
-        if (closes > opens) { trailing = ch + trailing; url = url.slice(0, -1); continue; }
-      }
-      break;
-    }
-    return [url, trailing];
-  }
-  // Safely linkify plain-text http/https URLs in admin-authored announcement
-  // bodies. All output is HTML-escaped (both link text and the href attribute);
-  // only http/https ever matches, so strings like "javascript:alert(1)" remain
-  // inert escaped text. No raw admin HTML is ever rendered.
-  function linkifyMessageBody(text) {
-    const src = String(text ?? '');
-    const urlRe = /https?:\/\/[^\s<]+/gi;
-    let out = '';
-    let last = 0;
-    let m;
-    while ((m = urlRe.exec(src)) !== null) {
-      out += escapeHtml(src.slice(last, m.index));
-      const [url, trailing] = splitTrailingPunct(m[0]);
-      if (url) {
-        const safe = escapeHtml(url);
-        out += `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="cu-msg-link">${safe}</a>`;
-      }
-      out += escapeHtml(trailing);
-      last = m.index + m[0].length;
-    }
-    out += escapeHtml(src.slice(last));
-    return out;
-  }
   function fmtDate(v) { try { return v ? new Date(v).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : ''; } catch { return ''; } }
 
   let messages = [];
@@ -12288,7 +12243,7 @@ function autoGrowCompassNexusInput(el) {
     msgList.innerHTML = messages.map(m => `
       <div class="cu-msg-item ${m.read ? '' : 'cu-msg-new'}">
         <div class="cu-msg-subject">${m.read ? '' : '<span class="cu-msg-new-dot"></span>'}${escapeHtml(m.subject || '(no subject)')}</div>
-        <div class="cu-msg-body">${linkifyMessageBody(m.body || '')}</div>
+        <div class="cu-msg-body">${escapeHtml(m.body || '')}</div>
         <div class="cu-msg-meta">${fmtDate(m.created_at)}${m.kind === 'broadcast' ? ' · <span class="cu-msg-kind">to the cohort</span>' : ''}</div>
       </div>`).join('');
   }
