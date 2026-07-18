@@ -1804,6 +1804,16 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
     # because CREATE TABLE IF NOT EXISTS never adds a column to an existing table.
     if "show_in_beta_library" not in _sf_cols:
         conn.execute("ALTER TABLE shared_files ADD COLUMN show_in_beta_library INTEGER NOT NULL DEFAULT 0")
+    # Additive soft-delete for communication_messages. Admins can remove a
+    # general beta announcement from the shared feed without destroying the
+    # underlying thread/delivery audit trail (and without any risk of touching
+    # email-all records, personal messages, invitations, or participant data —
+    # deletion is validated to a general in-app announcement before it is set).
+    # DEFAULT '' means every legacy message stays live; CREATE TABLE IF NOT
+    # EXISTS never adds a column to an existing table, so backfill idempotently.
+    _cm_cols = {r[1] for r in conn.execute("PRAGMA table_info(communication_messages)").fetchall()}
+    if "deleted_at" not in _cm_cols:
+        conn.execute("ALTER TABLE communication_messages ADD COLUMN deleted_at TEXT NOT NULL DEFAULT ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_comm_del_message ON communication_deliveries(message_id)")
     conn.execute(
@@ -5127,6 +5137,99 @@ async def admin_messaging_announce(request: Request, payload: MessagingAnnounceR
     return {"ok": True, "destination": "announce", "recipients": len(recipients), **result}
 
 
+# A "general beta in-app announcement" is precisely what the participant hub feed
+# surfaces: a broadcast message on an announcement/broadcast thread that has at
+# least one in_app delivery. We additionally require that it carries NO email
+# delivery, so an email-all campaign (which also lives on an admin_broadcast
+# thread) can never be listed or deleted here — this scoping is what keeps
+# deletion off email-all records, personal messages, invitations, and
+# participant data. Individual "person" messages are excluded by message_kind.
+_ANNOUNCEMENT_SCOPE_SQL = """
+    m.message_kind = 'broadcast'
+    AND m.deleted_at = ''
+    AND t.thread_type IN ('admin_announcement', 'admin_broadcast')
+    AND EXISTS (
+        SELECT 1 FROM communication_deliveries d
+        WHERE d.message_id = m.id AND d.channel = 'in_app'
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM communication_deliveries d
+        WHERE d.message_id = m.id AND d.channel = 'email'
+    )
+"""
+
+
+@app.get("/api/admin/messaging/announcements")
+async def admin_messaging_announcements(request: Request):
+    """Announcement history: general beta in-app announcements only, newest
+    first. Scoped identically to the participant Announcements feed so the admin
+    sees exactly what participants see and can identify legacy announcements.
+    Never lists email-all records, personal messages, invitations, or
+    participant data. No recipient identities/addresses are returned."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT m.id AS message_id, m.subject AS subject, m.body AS body,
+                   m.created_at AS created_at, t.thread_type AS thread_type,
+                   (SELECT COUNT(*) FROM communication_deliveries d
+                    WHERE d.message_id = m.id AND d.channel = 'in_app') AS recipients
+            FROM communication_messages m
+            JOIN communication_threads t ON t.id = m.thread_id
+            WHERE {_ANNOUNCEMENT_SCOPE_SQL}
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT 200
+            """,
+        ).fetchall()
+    announcements = [
+        {
+            "message_id": r["message_id"],
+            "subject": r["subject"] or "",
+            "body": r["body"] or "",
+            "created_at": r["created_at"] or "",
+            "recipients": r["recipients"] or 0,
+            "legacy": (r["thread_type"] != "admin_announcement"),
+        }
+        for r in rows
+    ]
+    return {"announcements": announcements}
+
+
+@app.delete("/api/admin/messaging/announcements/{message_id}")
+async def admin_delete_announcement(message_id: int, request: Request):
+    """Soft-delete one general beta announcement so it disappears from the shared
+    feed for all current and future admitted participants. The target is
+    validated to be a general beta in-app announcement (see _ANNOUNCEMENT_SCOPE_SQL)
+    before anything changes — email-all records, personal messages, invitations,
+    and participant data can never be reached. Soft-delete preserves the
+    thread/delivery audit trail; an audit event records the removal."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute(
+            f"""
+            SELECT m.id AS message_id
+            FROM communication_messages m
+            JOIN communication_threads t ON t.id = m.thread_id
+            WHERE m.id = ? AND {_ANNOUNCEMENT_SCOPE_SQL}
+            """,
+            (message_id,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="general beta announcement not found")
+        conn.execute(
+            "UPDATE communication_messages SET deleted_at = ? WHERE id = ?",
+            (_now_iso(), message_id),
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'messaging_announcement_deleted', NULL, '', '/admin', 'admin', ?, ?)
+            """,
+            (_now_iso(), request.headers.get("user-agent", "")[:320], f"message:{message_id}"),
+        )
+    return {"ok": True, "message_id": message_id}
+
+
 @app.post("/api/admin/messaging/person")
 async def admin_messaging_person(request: Request, payload: MessagingPersonRequest):
     """Post a private in-app message to one admitted beta participant. The
@@ -5263,6 +5366,7 @@ async def participant_messages(request: Request):
             WHERE d.channel = 'in_app'
               AND d.recipient_type = 'invite'
               AND d.recipient_id = ?
+              AND m.deleted_at = ''
             ORDER BY m.created_at DESC, m.id DESC
             LIMIT 200
             """,
@@ -5278,6 +5382,7 @@ async def participant_messages(request: Request):
                 FROM communication_messages m
                 JOIN communication_threads t ON t.id = m.thread_id
                 WHERE m.message_kind = 'broadcast'
+                  AND m.deleted_at = ''
                   AND t.thread_type IN ('admin_announcement', 'admin_broadcast')
                   AND EXISTS (
                       SELECT 1 FROM communication_deliveries dd

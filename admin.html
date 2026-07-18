@@ -1468,7 +1468,42 @@
             <div class="message" id="msg-result" data-testid="messaging-result"></div>
           </div>
         </section>
+
+        <!-- Announcement history — general Beta announcements only, newest first.
+             Scoped identically to the participant feed; email-all records,
+             personal messages and invitations never appear here. -->
+        <section class="panel card" data-testid="announcement-history-card" style="margin-top:18px;">
+          <div class="section-intro" style="margin:0;">
+            <div>
+              <h2>Announcement history</h2>
+              <p class="hint">General Beta announcements shown in every admitted participant's feed. Deleting one removes it from the feed for everyone. This does not touch emails, personal messages, or invitations.</p>
+            </div>
+            <div class="actions" style="margin:0;">
+              <button class="btn-secondary" id="ann-reload" data-testid="announcement-reload">Reload</button>
+            </div>
+          </div>
+          <div id="ann-list" data-testid="announcement-list" style="margin-top:14px;display:flex;flex-direction:column;gap:10px;"></div>
+          <div id="ann-empty" class="hidden" data-testid="announcement-empty" style="padding:16px 4px;color:var(--text-faint);">No general Beta announcements yet.</div>
+        </section>
       </div><!-- /tab-pane messaging -->
+
+      <!-- Announcement delete confirmation dialog -->
+      <div id="ann-confirm" style="display:none;" class="modal-backdrop">
+        <div class="modal-box">
+          <button class="modal-close" id="ann-confirm-close" type="button">×</button>
+          <h2 style="margin-top:0;">Delete announcement</h2>
+          <p class="hint">This permanently removes the announcement from every participant's feed. This cannot be undone.</p>
+          <div class="event" style="margin-top:8px;">
+            <strong id="ann-confirm-subject"></strong>
+            <div class="muted" id="ann-confirm-body" style="white-space:pre-wrap;margin-top:6px;"></div>
+            <div class="muted" id="ann-confirm-meta" style="margin-top:6px;font-size:12px;"></div>
+          </div>
+          <div class="actions" style="margin-top:16px;">
+            <button type="button" class="btn btn-primary" id="ann-confirm-go" data-testid="announcement-confirm-go">Delete announcement</button>
+            <button type="button" class="btn" id="ann-confirm-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Messaging confirmation dialog -->
       <div id="msg-confirm" style="display:none;" class="modal-backdrop">
@@ -3110,6 +3145,7 @@
         return;
       }
       updateMessagingMode();
+      loadAnnouncementHistory();
     }
 
     function updateMessagingMode() {
@@ -3208,8 +3244,96 @@
         sendBtn.disabled = false;
         sendBtn.textContent = original;
         updateMessagingMode();
+        loadAnnouncementHistory();
       }
     }
+
+    // ── Announcement history (delete) ──
+    function fmtMsgDate(v) {
+      try { return v ? new Date(v).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : ''; }
+      catch (_) { return v || ''; }
+    }
+    function annPreview(body) {
+      const t = String(body || '').replace(/\s+/g, ' ').trim();
+      return t.length > 160 ? t.slice(0, 157) + '…' : t;
+    }
+
+    async function loadAnnouncementHistory() {
+      const list = $('ann-list');
+      const empty = $('ann-empty');
+      list.innerHTML = '';
+      empty.classList.add('hidden');
+      let data;
+      try {
+        data = await api('/api/admin/messaging/announcements');
+      } catch (err) {
+        list.innerHTML = `<div class="message">${err.message}</div>`;
+        return;
+      }
+      const items = data.announcements || [];
+      if (!items.length) { empty.classList.remove('hidden'); return; }
+      items.forEach(a => {
+        const card = document.createElement('div');
+        card.className = 'event';
+        card.dataset.testid = 'announcement-item';
+        card.style.cssText = 'display:flex;justify-content:space-between;gap:12px;align-items:flex-start;';
+        const left = document.createElement('div');
+        left.style.minWidth = '0';
+        const subj = document.createElement('strong');
+        subj.textContent = a.subject || '(no subject)';
+        const preview = document.createElement('div');
+        preview.className = 'muted';
+        preview.style.cssText = 'margin-top:4px;font-size:13px;';
+        preview.textContent = annPreview(a.body);
+        const meta = document.createElement('div');
+        meta.className = 'muted';
+        meta.style.cssText = 'margin-top:6px;font-size:12px;';
+        meta.textContent = `${fmtMsgDate(a.created_at)} · ${a.recipients} recipient${a.recipients === 1 ? '' : 's'}${a.legacy ? ' · legacy' : ''}`;
+        left.appendChild(subj);
+        left.appendChild(preview);
+        left.appendChild(meta);
+        const del = document.createElement('button');
+        del.className = 'btn-secondary';
+        del.dataset.testid = 'announcement-delete';
+        del.textContent = 'Delete';
+        del.style.flex = 'none';
+        del.addEventListener('click', () => openAnnConfirm(a));
+        card.appendChild(left);
+        card.appendChild(del);
+        list.appendChild(card);
+      });
+    }
+
+    let pendingAnnDelete = null;
+    function openAnnConfirm(a) {
+      pendingAnnDelete = a;
+      $('ann-confirm-subject').textContent = a.subject || '(no subject)';
+      $('ann-confirm-body').textContent = a.body || '';
+      $('ann-confirm-meta').textContent = `Posted ${fmtMsgDate(a.created_at)} · ${a.recipients} recipient${a.recipients === 1 ? '' : 's'}`;
+      $('ann-confirm').style.display = 'grid';
+    }
+    function closeAnnConfirm() { $('ann-confirm').style.display = 'none'; pendingAnnDelete = null; }
+    $('ann-confirm-close').addEventListener('click', closeAnnConfirm);
+    $('ann-confirm-cancel').addEventListener('click', closeAnnConfirm);
+    $('ann-confirm').addEventListener('click', (e) => { if (e.target === $('ann-confirm')) closeAnnConfirm(); });
+    $('ann-reload').addEventListener('click', loadAnnouncementHistory);
+    $('ann-confirm-go').addEventListener('click', async () => {
+      if (!pendingAnnDelete) return;
+      const target = pendingAnnDelete;
+      pendingAnnDelete = null;
+      $('ann-confirm').style.display = 'none';
+      const btn = $('ann-confirm-go');
+      btn.disabled = true;
+      try {
+        await api(`/api/admin/messaging/announcements/${target.message_id}`, { method: 'DELETE' });
+        $('msg-result').textContent = 'Announcement deleted — removed from every participant’s feed.';
+      } catch (err) {
+        $('msg-result').textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        loadAnnouncementHistory();
+      }
+    });
 
     $('brand-form').addEventListener('submit', async (event) => {
       event.preventDefault();
