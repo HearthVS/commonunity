@@ -2008,6 +2008,10 @@ input, textarea { font: inherit; color: inherit; }
   text-transform: uppercase;
   color: var(--text-faint);
 }
+/* Gene Keys Path collapse — same affordance/animation as the Archive drawer,
+   scoped to the context card so the two disclosures stay independent. */
+.room-context-card.is-collapsed .archive-drawer-chevron { transform: rotate(-90deg); }
+.room-context-card.is-collapsed .room-sgs { display: none; }
 
 /* ── Archive drawer — its own collapsible container ──────────────
    Distinct framed card beneath the legend. The header stays put; the
@@ -10825,8 +10829,13 @@ body.hw-open { overflow: hidden; }
            when the Archive drawer below is collapsed or scrolled. -->
       <div class="room-context-card" id="room-context-card">
         <div class="room-context-card-head">
-          <span class="room-context-card-title">Gene Keys</span>
-          <button class="studio-info-btn" data-info="info-archive-overlay" title="About this room"><i>i</i></button>
+          <button type="button" class="archive-drawer-toggle" id="genekeys-path-toggle" aria-expanded="true" aria-controls="room-sgs" title="Collapse or expand the Gene Keys Path">
+            <span class="archive-drawer-chevron" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+            <span class="archive-drawer-title">Gene Keys Path</span>
+          </button>
+          <button class="studio-info-btn" data-info="info-genekeys-path-overlay" title="About the Gene Keys Path" aria-label="About the Gene Keys Path"><i>i</i></button>
         </div>
         <div class="room-sgs" id="room-sgs">
           <span style="font-size:var(--text-xs);color:var(--text-faint);font-style:italic;text-align:center;width:100%;">Enter Gene Key to see frequencies</span>
@@ -13288,6 +13297,13 @@ function applyRoomAtmosphere(roomKey) {
   const setTok = (el) => {
     if (!el) return;
     el.style.setProperty('--bg', surfaces.bg);
+    // Scope the broad background gradient too. The workspace shell columns
+    // (.room-archive / .room-workbench) paint background-image:var(--bg-gradient)
+    // and the header/body read it — without this override they kept the fixed
+    // navy theme gradient, so the page's dominant field never responded to the
+    // room hue or the depth slider. Pointing it at the room atmosphere makes the
+    // centre Field Observations backing and left rail share the room's field.
+    el.style.setProperty('--bg-gradient', surfaces.atmosGradient);
     el.style.setProperty('--card', surfaces.panel);
     el.style.setProperty('--card-alt', surfaces.panelRaised);
     el.style.setProperty('--input-bg', surfaces.input);
@@ -16455,6 +16471,25 @@ function initArchiveCollapse() {
   toggle.addEventListener('click', () => apply(!drawer.classList.contains('is-collapsed')));
 }
 
+// Collapse/expand the Gene Keys Path legend. Independent of the Archive drawer
+// (own class target + own storage key) but uses the identical toggle/chevron
+// affordance and aria wiring so the two disclosures behave the same.
+function initGeneKeysPathCollapse() {
+  const card = document.getElementById('room-context-card');
+  const toggle = document.getElementById('genekeys-path-toggle');
+  if (!card || !toggle) return;
+  const KEY = 'studioGeneKeysPathCollapsed';
+  const apply = (collapsed) => {
+    card.classList.toggle('is-collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (_) {}
+  };
+  let start = false;
+  try { start = localStorage.getItem(KEY) === '1'; } catch (_) {}
+  apply(start);
+  toggle.addEventListener('click', () => apply(!card.classList.contains('is-collapsed')));
+}
+
 // Group count badges — keep the collapsed drawer scannable and show how
 // much sits inside each group without expanding it. Called by the render
 // functions whenever their underlying data changes.
@@ -16575,6 +16610,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof studioLoadWorked === 'function') studioLoadWorked();
   if (typeof studioUpdateFoModeCounts === 'function') studioUpdateFoModeCounts();
   initArchiveCollapse();
+  initGeneKeysPathCollapse();
   initPortalTooltips();
   initInfoPopups();
   initStudioJSON();
@@ -18217,6 +18253,23 @@ window.saveState = saveState;
       <p>The Compass-sealed pattern your Cipher, mantra, and field signature are drawn from. Distinct from Living Profile — this is the source code.</p>
       <p>OM Cipher is the <strong>objective</strong> layer (a deterministic source pattern derived from your sealed inputs). Living Profile, above, is the <strong>subjective</strong> layer — your lived qualia, framed for the people you meet.</p>
       <p>Open the section to view your Cipher, gematria source-pattern, Bhramari resonance, and the locked Cipher Foundation inputs. To correct source data, re-seal in Compass.</p>
+    </div>
+  </div>
+</div>
+
+<div class="studio-info-overlay" id="info-genekeys-path-overlay">
+  <div class="studio-info-popup">
+    <div class="studio-info-popup-header">
+      <span class="studio-info-popup-title">Gene Keys Path</span>
+      <button class="studio-info-popup-close" data-close="info-genekeys-path-overlay">✕</button>
+    </div>
+    <div class="studio-info-popup-body">
+      <p>This legend anchors the room to your current <strong>Gene Key</strong> and <strong>Line</strong> — the frequencies drawn from your sealed Compass pattern.</p>
+      <p>Each Gene Key moves through three frequencies, the path this rail traces:</p>
+      <p><strong>Shadow</strong> — the pattern under pressure; the reactive, contracted expression you are learning to meet.</p>
+      <p><strong>Gift</strong> — the same energy transformed; your natural creative contribution once the Shadow is embraced.</p>
+      <p><strong>Siddhi</strong> — the fullest, most refined flowering of the Key; its essence at its most transparent.</p>
+      <p>The Line refines <em>how</em> this path lives through you. These frequencies are your Gene Keys Path — distinct from the Archive below, which simply stores material.</p>
     </div>
   </div>
 </div>
