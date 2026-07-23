@@ -11795,6 +11795,10 @@ body.hw-open { overflow: hidden; }
      synchronously when the modal opens. Gated by window.CU_OM_CIPHER_ENABLED. -->
 <script src="/sdk/om_cipher.js"></script>
 <script src="/sdk/sacred-mode.js"></script>
+<!-- Studio palette — shared, deterministic mapping from the Colour mood
+     sliders to a constrained filter + palette accent (window.StudioPalette).
+     Keeps OM Cipher hues meaningful without flooding the UI into a dark wash. -->
+<script src="/studio-palette.js"></script>
 
 <script>
 
@@ -15192,6 +15196,11 @@ function cipherDefaultHue() {
   const palette = (contract.om_cipher && contract.om_cipher.palette) || {};
   const primary = palette.primary || palette.secondary || palette.seasonal_accent || '';
   if (!primary) return null;
+  // Shared, tested hue extraction (window.StudioPalette). Falls back to inline
+  // parsing if the module has not loaded, so the default never hard-fails.
+  if (window.StudioPalette && typeof window.StudioPalette.extractHue === 'function') {
+    return window.StudioPalette.extractHue(primary);
+  }
   const oklch = primary.match(/oklch\(\s*[\d.]+%?\s+[\d.]+%?\s+([\d.]+)/i);
   if (oklch) { const h = parseFloat(oklch[1]); if (Number.isFinite(h)) return ((h % 360) + 360) % 360; }
   const hsl = primary.match(/hsla?\(\s*([\d.]+)/i);
@@ -17048,21 +17057,33 @@ const MOOD_PRESETS_DATA = {
 };
 
 function applyMoodLighting(hue, glow, dark, warm, textVal) {
-  const hueVal  = parseFloat(hue  == null ? 220 : hue);
-  const glowVal = parseFloat(glow == null ? 50  : glow) / 100;
-  const darkVal = parseFloat(dark == null ? 50  : dark) / 100;
-  const warmVal = parseFloat(warm == null ? 0   : warm) / 100;
-  const hueShift   = hueVal - 220;
-  const brightness = 0.65 + (1 - darkVal) * 0.5;
-  const saturate   = 0.7  + glowVal * 0.8;
-  const sepia = warmVal * 0.55;
-  const warmHue = warmVal * 28;
-  document.body.style.filter = [
-    'brightness(' + brightness.toFixed(2) + ')',
-    'saturate(' + saturate.toFixed(2) + ')',
-    'hue-rotate(' + (hueShift + warmHue).toFixed(0) + 'deg)',
-    sepia > 0.01 ? 'sepia(' + sepia.toFixed(2) + ')' : ''
-  ].filter(Boolean).join(' ');
+  const mood = { hue: hue, glow: glow, dark: dark, warm: warm };
+  const SP = window.StudioPalette;
+  if (SP && typeof SP.moodFilter === 'function') {
+    // Bounded atmosphere: the surface can no longer be crushed to a near-black
+    // monochrome wash, and a single hue only gently tints the background.
+    document.body.style.filter = SP.moodFilter(mood).css;
+    // Palette identity lives in the accent (borders / glows / links / buttons),
+    // held at a controlled OKLCH lightness/chroma so it reads as an accent
+    // rather than flooding the whole interface — but only when the person has a
+    // completed OM Cipher palette, so the plain theme accent is left untouched
+    // for everyone else (backward compatible).
+    if (cipherDefaultHue() != null) {
+      document.documentElement.style.setProperty('--rose-color', SP.accentColor(mood).css);
+    }
+  } else {
+    // Fallback: legacy inline filter if the shared module failed to load.
+    const hueVal  = parseFloat(hue  == null ? 220 : hue);
+    const glowVal = parseFloat(glow == null ? 50  : glow) / 100;
+    const darkVal = parseFloat(dark == null ? 50  : dark) / 100;
+    const warmVal = parseFloat(warm == null ? 0   : warm) / 100;
+    document.body.style.filter = [
+      'brightness(' + (0.65 + (1 - darkVal) * 0.5).toFixed(2) + ')',
+      'saturate(' + (0.7 + glowVal * 0.8).toFixed(2) + ')',
+      'hue-rotate(' + ((hueVal - 220) + warmVal * 28).toFixed(0) + 'deg)',
+      warmVal * 0.55 > 0.01 ? 'sepia(' + (warmVal * 0.55).toFixed(2) + ')' : ''
+    ].filter(Boolean).join(' ');
+  }
 
   // Text brightness — controls --text CSS variable lightness
   if (textVal != null) {
