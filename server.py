@@ -7673,7 +7673,47 @@ _FO_MEDIA_TYPES: dict[str, str] = {
     # documents
     "application/pdf": "document",
 }
+
+# Extension → canonical content type fallback. Browsers routinely send an empty
+# or generic content type (application/octet-stream) for audio (.m4a, .wav) and
+# for files delivered via drag-and-drop, which would otherwise be rejected here
+# even though they are a supported type. When the reported content type is not
+# whitelisted we recover the canonical type from the extension. Note: .mp4 is
+# deliberately omitted — the container can be video, and we only accept audio.
+_FO_MEDIA_EXT_TYPES: dict[str, str] = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".oga": "audio/ogg",
+    ".weba": "audio/webm",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".pdf": "application/pdf",
+}
 _FO_MEDIA_MAX_BYTES = 25 * 1024 * 1024  # 25 MB per file
+
+
+def _fo_resolve_media_type(content_type: str, filename: str) -> tuple[str | None, str | None]:
+    """Resolve (canonical_content_type, media_kind) for an upload.
+
+    Prefer the browser-supplied content type when it is whitelisted; otherwise
+    fall back to the file extension, since browsers routinely send an empty or
+    generic type for audio and drag-and-dropped files. Returns (None, None) when
+    neither the type nor the extension is supported."""
+    ct = (content_type or "").split(";")[0].strip().lower()
+    kind = _FO_MEDIA_TYPES.get(ct)
+    if kind:
+        return ct, kind
+    ext = os.path.splitext(filename or "")[1].lower()
+    mapped = _FO_MEDIA_EXT_TYPES.get(ext)
+    if mapped:
+        return mapped, _FO_MEDIA_TYPES[mapped]
+    return None, None
 
 
 def _fo_media_dir() -> pathlib.Path:
@@ -7710,8 +7750,7 @@ async def upload_field_observation_media(
     if not _has_member_access(req):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    content_type = (file.content_type or "").split(";")[0].strip().lower()
-    media_kind = _FO_MEDIA_TYPES.get(content_type)
+    content_type, media_kind = _fo_resolve_media_type(file.content_type or "", file.filename or "")
     if not media_kind:
         raise HTTPException(
             status_code=400,
