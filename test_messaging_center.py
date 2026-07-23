@@ -360,6 +360,84 @@ class AnnouncementHistoryTests(unittest.TestCase):
         # Deletion goes through the DELETE verb.
         self.assertIn("method: 'DELETE'", html)
 
+    def test_delete_db_error_returns_safe_message_without_leaking_sql(self):
+        """A database-layer failure during deletion must never surface raw SQL,
+        placeholders, or driver internals to the operator. The admin UI renders
+        the response `detail` verbatim, so a leaked message like the reported
+        `"" = $1` would land straight in front of the operator. The endpoint
+        must instead return a safe, generic message while the real error is kept
+        server-side for diagnostics."""
+        import sqlite3
+
+        admin = _admin()
+        inv = _create_invite(admin, "Ora", "ora@example.com")
+        _admit_personal(inv["magic_link"], "Ora", "ora@example.com")
+        self._post_announcement(admin, "Boom", "Will fail to delete.")
+        mid = next(a["message_id"] for a in
+                   admin.get("/api/admin/messaging/announcements").json()["announcements"]
+                   if a["subject"] == "Boom")
+
+        # Simulate exactly the class of failure in the bug report: a low-level
+        # driver error whose text contains raw SQL fragments (an empty quoted
+        # identifier and a positional placeholder). It fires on the mutation so
+        # the scope-validation SELECT still succeeds first.
+        raw = 'unrecognized token: syntax error near ""  "" = $1'
+
+        real_admin_db = server._admin_db
+
+        class _FailingConn:
+            def __init__(self, conn):
+                self._conn = conn
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith(("UPDATE", "INSERT")):
+                    raise sqlite3.OperationalError(raw)
+                return self._conn.execute(sql, *args, **kwargs)
+
+            def __enter__(self):
+                self._conn.__enter__()
+                return self
+
+            def __exit__(self, *exc):
+                return self._conn.__exit__(*exc)
+
+        def _wrapped():
+            return _FailingConn(real_admin_db())
+
+        with mock.patch.object(server, "_admin_db", _wrapped):
+            r = admin.delete(f"/api/admin/messaging/announcements/{mid}")
+
+        self.assertEqual(r.status_code, 500, r.text)
+        detail = r.json().get("detail", "")
+        # The safe message is actionable...
+        self.assertIn("Could not delete the announcement", detail)
+        # ...and leaks none of the raw SQL/driver internals.
+        for leak in ("$1", '"" =', "syntax error", "unrecognized token",
+                     "OperationalError", "communication_messages", "UPDATE", "INSERT"):
+            self.assertNotIn(leak, detail)
+
+        # The failure was genuine: with the fault removed the row is still live
+        # and can be deleted normally (the error path did not silently succeed).
+        self.assertTrue(any(a["message_id"] == mid for a in
+                            admin.get("/api/admin/messaging/announcements").json()["announcements"]))
+        self.assertEqual(admin.delete(f"/api/admin/messaging/announcements/{mid}").status_code, 200)
+
+    def test_scope_rejections_are_not_swallowed_into_500(self):
+        """The safe error handling must not turn legitimate scope rejections
+        into 500s: a nonexistent id and a personal message must still be a clean
+        404, so callers can distinguish 'not a deletable announcement' from a
+        real server error."""
+        admin = _admin()
+        self.assertEqual(admin.delete("/api/admin/messaging/announcements/999999").status_code, 404)
+
+        inv = _create_invite(admin, "Pax", "pax@example.com")
+        _admit_personal(inv["magic_link"], "Pax", "pax@example.com")
+        pid = next(p for p in admin.get("/api/admin/messaging/participants").json()["participants"]
+                   if p["email"] == "pax@example.com")["id"]
+        personal_mid = admin.post("/api/admin/messaging/person",
+                                  json={"invite_id": pid, "subject": "P", "body": "Only Pax."}).json()["message_id"]
+        self.assertEqual(admin.delete(f"/api/admin/messaging/announcements/{personal_mid}").status_code, 404)
+
 
 class PersonTests(unittest.TestCase):
     def test_person_message_isolated_across_sessions(self):
