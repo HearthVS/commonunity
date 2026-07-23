@@ -13265,6 +13265,52 @@ function enterRoom(roomKey) {
   doEnterRoom(roomKey, meta);
 }
 
+// Round 4: derive per-room OKLCH surface roles (outer atmosphere / main
+// background / raised panel / input / border) from the semantic room hue and
+// the "depth" slider, then apply them as scoped tokens on the room screen so
+// each room reads as a distinct coloured ambient field around calm, readable
+// panels — not only a recoloured accent stroke. The depth slider re-maps onto
+// real surface lightness; text/panel contrast is held to a WCAG AA floor
+// inside StudioPalette.roomSurfaces. No-op (leaves the base theme untouched)
+// when the shared module or a room hue is unavailable.
+function applyRoomAtmosphere(roomKey) {
+  const SP = window.StudioPalette;
+  const meta = ROOM_META[roomKey];
+  if (!SP || typeof SP.roomSurfaces !== 'function' || !meta) return;
+  const roomScreen = document.getElementById('screen-room');
+  if (!roomScreen) return;
+  const resolved = getComputedStyle(document.documentElement).getPropertyValue(meta.color).trim();
+  const hue = SP.extractHue(resolved);
+  if (hue == null) return;
+  const dark = parseInt(document.getElementById('mood-dark')?.value ?? 50, 10);
+  const glow = parseInt(document.getElementById('mood-glow')?.value ?? 50, 10);
+  const surfaces = SP.roomSurfaces({ hue: hue, dark: dark, chroma: glow / 100 });
+  const setTok = (el) => {
+    if (!el) return;
+    el.style.setProperty('--bg', surfaces.bg);
+    el.style.setProperty('--card', surfaces.panel);
+    el.style.setProperty('--card-alt', surfaces.panelRaised);
+    el.style.setProperty('--input-bg', surfaces.input);
+    el.style.setProperty('--border', surfaces.border);
+    // Adaptive room text. muted + faint are always scoped to AA-solved values so
+    // secondary body text and labels stay readable on every room surface at any
+    // depth (the global slider-derived muted/faint are too dim on coloured
+    // surfaces). The primary --text is only overridden on the light band, where
+    // light slider text can no longer hold AA; on the dark band it is left to
+    // the person's Text-brightness slider.
+    el.style.setProperty('--text-muted', surfaces.textMuted);
+    el.style.setProperty('--text-faint', surfaces.textFaint);
+    if (surfaces.textIsDark) {
+      el.style.setProperty('--text', surfaces.text);
+    } else {
+      el.style.removeProperty('--text');
+    }
+  };
+  setTok(roomScreen);
+  setTok(document.querySelector('.room-body'));
+  roomScreen.style.backgroundImage = surfaces.atmosGradient;
+}
+
 function doEnterRoom(roomKey, meta) {
   // Stop torus — no point burning CPU while in a room
   if (window.torusPause) window.torusPause();
@@ -13296,6 +13342,9 @@ function doEnterRoom(roomKey, meta) {
   const roomTint        = cipherTintRaw || `var(${meta.color})`;
   roomScreen.style.setProperty('--room-tint', roomTint);
   document.querySelector('.room-body').style.setProperty('--room-tint', roomTint);
+
+  // Paint the room's distinct background atmosphere + panel surfaces.
+  applyRoomAtmosphere(roomKey);
 
   // Room switcher pills — set active
   document.querySelectorAll('.room-pill').forEach(pill => {
@@ -17117,6 +17166,7 @@ function applyVibeState(v) {
     if (el && v[key] != null) el.value = v[key];
   });
   applyMoodLighting(v.hue, v.glow, v.dark, v.warm, v.text);
+  if (typeof currentRoom !== 'undefined' && currentRoom) applyRoomAtmosphere(currentRoom);
   // Apply space slider independently
   const spaceEl = document.getElementById('mood-space');
   if (spaceEl && v.space != null) {
@@ -17140,6 +17190,7 @@ function initMoodLighting() {
         if (warmEl) warmEl.value = p.warm;
         if (darkEl) darkEl.value = p.dark;
         applyMoodLighting(p.glow, p.warm, p.dark);
+        if (typeof currentRoom !== 'undefined' && currentRoom) applyRoomAtmosphere(currentRoom);
       }
     });
   });
@@ -17151,6 +17202,9 @@ function initMoodLighting() {
     el.addEventListener('input', () => {
       const v = readVibeState();
       applyMoodLighting(v.hue, v.glow, v.dark, v.warm, v.text);
+      // Depth/glow re-map onto real per-room surface lightness + tint, so a
+      // slider change repaints the current room's atmosphere (not just filter).
+      if (typeof currentRoom !== 'undefined' && currentRoom) applyRoomAtmosphere(currentRoom);
       // Deactivate any active preset when user manually adjusts
       document.querySelectorAll('.vibe-preset-slot.active-preset')
         .forEach(s => s.classList.remove('active-preset'));
