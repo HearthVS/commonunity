@@ -204,6 +204,21 @@ class InviteCreateRequest(BaseModel):
     tag: str = ""
     expires_at: str = ""
 
+class CompanionInviteCreateRequest(BaseModel):
+    # Identity the magic link will bind server-side. companion_name is required;
+    # everything else is optional operational/relationship metadata.
+    companion_name: str = ""
+    companion_id: str = ""
+    guide_name: str = ""
+    guide_id: str = ""
+    circle: str = ""
+    scopes: str = ""
+    email: str = ""
+    notes: str = ""
+    cohort: str = ""
+    tag: str = ""
+    expires_at: str = ""
+
 class AdminMessageRequest(BaseModel):
     subject: str = ""
     body: str = ""
@@ -1562,6 +1577,38 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE invites ADD COLUMN kind TEXT NOT NULL DEFAULT 'personal'")
     if "campaign_id" not in _inv_cols:
         conn.execute("ALTER TABLE invites ADD COLUMN campaign_id INTEGER")
+    # ── Tranche 1: server-side magic-link identity binding ────────────────
+    # A `companion` invite (kind='companion') binds the magic link to an
+    # authoritative server-side identity: the guide who issued it, the
+    # companion it admits, the relationship circle, an explicit role, and a
+    # scope list. This is the smallest coherent extension of the existing
+    # invites table (no separate service) that lets every private surface
+    # resolve WHO the session belongs to from the server instead of trusting
+    # client-supplied JSON.
+    #
+    # token_hash holds SHA-256(secret) — the magic-link secret is NEVER
+    # persisted in plaintext for a companion invite. The `token` column instead
+    # carries a NON-SECRET public reference (kept because it is NOT NULL UNIQUE
+    # and is the join key used by events/milestones/cookie plumbing), so the
+    # existing session machinery keeps working unchanged while the admitting
+    # secret exists only as a hash at rest. revoked_at is an explicit
+    # revocation stamp layered on top of the existing status='revoked' flip.
+    # All additive with DEFAULT '' so every legacy row keeps its exact behavior
+    # and reports role='' (no bound identity → fails closed at /api/session).
+    for _col, _decl in (
+        ("token_hash", "TEXT NOT NULL DEFAULT ''"),
+        ("role", "TEXT NOT NULL DEFAULT ''"),
+        ("guide_id", "TEXT NOT NULL DEFAULT ''"),
+        ("guide_name", "TEXT NOT NULL DEFAULT ''"),
+        ("companion_id", "TEXT NOT NULL DEFAULT ''"),
+        ("companion_name", "TEXT NOT NULL DEFAULT ''"),
+        ("circle", "TEXT NOT NULL DEFAULT ''"),
+        ("scopes", "TEXT NOT NULL DEFAULT ''"),
+        ("revoked_at", "TEXT"),
+    ):
+        if _col not in _inv_cols:
+            conn.execute(f"ALTER TABLE invites ADD COLUMN {_col} {_decl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_invites_token_hash ON invites(token_hash)")
     # ── Field Observations table ──────────────────────────────────────────
     # Member-scoped capture layer for lived text material. Scoped exactly like
     # golden_thread: the pseudonymous cipher_id is the primary member key, with
@@ -2333,8 +2380,12 @@ def _invite_admin_row(row: sqlite3.Row | None) -> dict | None:
     if d is None:
         return None
     raw = d.pop("token", "") or ""
+    # token_hash is the at-rest identifier for a companion secret; keep it
+    # server-side only and never ship it to the admin surface.
+    hashed = d.pop("token_hash", "") or ""
     d["token_masked"] = _mask_token(raw)
     d["token_present"] = bool(raw.strip())
+    d["secret_bound"] = bool(str(hashed).strip())
     return d
 
 
@@ -2942,6 +2993,34 @@ def _communication_message_row(row: sqlite3.Row | None) -> dict | None:
     }
 
 
+_COMPANION_DEFAULT_SCOPES = ("compass", "studio", "fieldprint", "layer3", "nexus")
+
+
+def _hash_token(secret: str | None) -> str:
+    """Opaque, deterministic hash used as the at-rest identifier for a
+    companion magic-link secret. The plaintext secret is shown to the admin
+    once at creation and then only ever exists as this hash server-side."""
+    s = (secret or "").strip()
+    if not s:
+        return ""
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def _invite_is_live(invite: dict | None) -> bool:
+    """Shared active/expiry/revocation gate. An invite is only usable while it
+    is status='active', not explicitly revoked, and not past its expiry."""
+    if not invite:
+        return False
+    if (invite.get("status") or "").strip() != "active":
+        return False
+    if (invite.get("revoked_at") or "").strip():
+        return False
+    expires = (invite.get("expires_at") or "").strip()
+    if expires and expires < _now_iso():
+        return False
+    return True
+
+
 def _lookup_active_invite(token: str | None) -> dict | None:
     if not token:
         return None
@@ -2958,13 +3037,75 @@ def _lookup_active_invite(token: str | None) -> dict | None:
             invite = _row_to_dict(row)
             if not invite:
                 return None
-            expires = (invite.get("expires_at") or "").strip()
-            if expires and expires < _now_iso():
+            if not _invite_is_live(invite):
                 return None
             return invite
     except Exception as exc:
         print(f"admin invite lookup failed: {exc}")
         return None
+
+
+def _lookup_companion_invite_by_secret(secret: str | None) -> dict | None:
+    """Resolve a companion invite from the magic-link secret by hashing it and
+    matching token_hash. Fails closed on anything that is not a live companion
+    invite (unknown secret, revoked, expired, non-companion). The plaintext
+    secret is never compared against a stored plaintext — only its hash."""
+    digest = _hash_token(secret)
+    if not digest:
+        return None
+    try:
+        with _admin_db() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM invites
+                WHERE token_hash = ? AND kind = 'companion'
+                LIMIT 1
+                """,
+                (digest,),
+            ).fetchone()
+        invite = _row_to_dict(row)
+        if not invite or not _invite_is_live(invite):
+            return None
+        if (invite.get("role") or "").strip() != "companion":
+            return None
+        return invite
+    except Exception as exc:
+        print(f"companion invite lookup failed: {exc}")
+        return None
+
+
+def _invite_scope_list(invite: dict | None) -> list[str]:
+    raw = (invite or {}).get("scopes") or ""
+    scopes = [s.strip() for s in str(raw).replace("\n", ",").split(",") if s.strip()]
+    return scopes or list(_COMPANION_DEFAULT_SCOPES)
+
+
+def _session_identity(request: Request) -> dict | None:
+    """Authoritative identity for the current private session, resolved purely
+    from the signed HttpOnly invite cookie → invites row. Returns the bound
+    companion identity ONLY for a live companion invite. Everything else
+    (legacy personal invite, env token, no cookie, revoked/expired) returns
+    None so callers fail closed — there is deliberately no owner/Markus/demo
+    fallback here."""
+    invite = _current_beta_invite(request)
+    if not invite:
+        return None
+    if (invite.get("kind") or "").strip() != "companion":
+        return None
+    if (invite.get("role") or "").strip() != "companion":
+        return None
+    if not _invite_is_live(invite):
+        return None
+    return {
+        "authenticated": True,
+        "role": "companion",
+        "companion_id": (invite.get("companion_id") or "").strip(),
+        "companion_name": (invite.get("companion_name") or invite.get("name") or "").strip(),
+        "guide_id": (invite.get("guide_id") or "").strip(),
+        "guide_name": (invite.get("guide_name") or "").strip(),
+        "circle": (invite.get("circle") or "").strip(),
+        "scopes": _invite_scope_list(invite),
+    }
 
 
 def _lookup_active_campaign(token: str | None) -> dict | None:
@@ -3193,6 +3334,32 @@ async def beta_status(request: Request):
         "unlocked": _has_beta_access(request),
         "configured": bool(_beta_signature()),
         "admin_invites_configured": _admin_db_path().exists(),
+    }
+
+
+@app.get("/api/session/identity")
+async def session_identity(request: Request):
+    """Authoritative identity for the current private session.
+
+    Every private surface (cOMpass, stUdio, Fieldprint, Layer 3, Nexus) must
+    resolve WHO the session belongs to from here — never from imported JSON,
+    localStorage, a demo seed, or the account owner. When the session is not a
+    live companion invite this returns {authenticated:false, role:null}: the
+    caller MUST treat that as no bound identity (fail closed) rather than
+    substituting any owner/Markus default. PII lives only in this
+    session-gated, cookie-bound response — never in a URL claim."""
+    identity = _session_identity(request)
+    if identity:
+        return identity
+    return {
+        "authenticated": False,
+        "role": None,
+        "companion_id": "",
+        "companion_name": "",
+        "guide_id": "",
+        "guide_name": "",
+        "circle": "",
+        "scopes": [],
     }
 
 
@@ -3482,6 +3649,22 @@ async def beta_library(request: Request):
 @app.get("/invite/{token}")
 async def accept_invite(token: str, request: Request):
     clean_token = (token or "").strip()
+    # Companion magic link: the URL carries the one-time secret. We resolve it
+    # by hash (never a stored plaintext), then bind the session to the invite's
+    # NON-SECRET public reference (invite["token"]). The secret is never placed
+    # in the cookie or persisted — only its hash lives at rest. All downstream
+    # session plumbing (touch/milestones/_current_beta_invite) keeps keying on
+    # the public reference exactly as before.
+    companion = _lookup_companion_invite_by_secret(clean_token)
+    if companion:
+        public_ref = (companion.get("token") or "").strip()
+        response = RedirectResponse(url="/threshold", status_code=303)
+        _set_beta_cookie(response, request)
+        _set_invite_cookie(response, request, public_ref)
+        _touch_invite(public_ref, request, "invite_opened", "threshold")
+        _record_milestone(public_ref, "link_opened")
+        return response
+
     db_invite = _lookup_active_invite(clean_token)
     if not db_invite and not _valid_invite_token(clean_token):
         return _beta_gate("threshold", "/threshold")
@@ -4504,6 +4687,105 @@ async def admin_create_invite(request: Request, payload: InviteCreateRequest):
     }
 
 
+@app.post("/api/admin/invites/companion")
+async def admin_create_companion_invite(request: Request, payload: CompanionInviteCreateRequest):
+    """Mint a companion magic link whose session is bound server-side to an
+    authoritative identity (guide + companion + circle + role + scopes).
+
+    Security posture (Tranche 1):
+      * The admitting secret is generated, returned to the admin ONCE, and
+        stored only as SHA-256(secret) in token_hash. No plaintext secret is
+        persisted, so there is no re-reveal path — rotate via /reissue instead.
+      * The `token` column holds a NON-SECRET public reference so the existing
+        cookie/event/milestone plumbing keeps working unchanged.
+      * role is forced to 'companion' — the admin cannot mint an owner/guide
+        session through this endpoint."""
+    _require_admin(request)
+    companion_name = (payload.companion_name or "").strip()[:160]
+    if not companion_name:
+        raise HTTPException(status_code=400, detail="companion_name is required")
+    secret = secrets.token_urlsafe(32)
+    public_ref = "cmp_" + secrets.token_urlsafe(9)
+    token_hash = _hash_token(secret)
+    now = _now_iso()
+    companion_id = (payload.companion_id or "").strip()[:120]
+    guide_name = (payload.guide_name or "").strip()[:160]
+    guide_id = (payload.guide_id or "").strip()[:120]
+    circle = (payload.circle or "").strip()[:160]
+    email = (payload.email or "").strip()[:220]
+    notes = (payload.notes or "").strip()[:1200]
+    cohort = (payload.cohort or "").strip()[:120]
+    tag = (payload.tag or "").strip()[:120]
+    expires_at = (payload.expires_at or "").strip()[:80]
+    scopes = ",".join(_invite_scope_list({"scopes": payload.scopes}))
+    with _admin_db() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO invites
+                (token, token_hash, name, email, notes, cohort, tag, status,
+                 created_at, expires_at, kind, role,
+                 guide_id, guide_name, companion_id, companion_name, circle, scopes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'companion', 'companion',
+                    ?, ?, ?, ?, ?, ?)
+            """,
+            (public_ref, token_hash, companion_name, email, notes, cohort, tag,
+             now, expires_at, guide_id, guide_name, companion_id, companion_name,
+             circle, scopes),
+        )
+        invite_id = cur.lastrowid
+        # The secret never enters the events feed — only the non-secret public
+        # reference, matching the existing invite_created privacy contract.
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'companion_invite_created', ?, ?, '/admin', 'admin', ?, '')
+            """,
+            (now, invite_id, public_ref, request.headers.get("user-agent", "")[:320]),
+        )
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+    return {
+        "invite": _invite_admin_row(row),
+        "magic_link": _invite_magic_link(request, secret),
+        "reveal_once": True,
+    }
+
+
+@app.post("/api/admin/invites/{invite_id}/reissue")
+async def admin_reissue_companion_invite(invite_id: int, request: Request):
+    """Rotate a companion invite's secret. The old magic link stops working
+    immediately (its hash is overwritten); a fresh secret is returned once. The
+    bound identity/role/scopes are preserved. Non-companion invites are
+    rejected — legacy personal/campaign links carry no bound identity to
+    rotate, and are governed by the existing revoke/expiry path."""
+    _require_admin(request)
+    now = _now_iso()
+    with _admin_db() as conn:
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="invite not found")
+        invite = _row_to_dict(row)
+        if (invite.get("kind") or "") != "companion":
+            raise HTTPException(status_code=400, detail="reissue is only supported for companion invites")
+        secret = secrets.token_urlsafe(32)
+        conn.execute(
+            "UPDATE invites SET token_hash = ?, status = 'active', revoked_at = NULL WHERE id = ?",
+            (_hash_token(secret), invite_id),
+        )
+        conn.execute(
+            """
+            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+            VALUES (?, 'companion_invite_reissued', ?, ?, '/admin', 'admin', ?, '')
+            """,
+            (now, invite_id, invite.get("token", ""), request.headers.get("user-agent", "")[:320]),
+        )
+        row = conn.execute("SELECT * FROM invites WHERE id = ?", (invite_id,)).fetchone()
+    return {
+        "invite": _invite_admin_row(row),
+        "magic_link": _invite_magic_link(request, secret),
+        "reveal_once": True,
+    }
+
+
 @app.post("/api/admin/campaigns")
 async def admin_create_campaign(request: Request, payload: InviteCreateRequest):
     """Create a REUSABLE beta campaign link (e.g. to post to a community
@@ -4554,7 +4836,10 @@ async def admin_revoke_invite(invite_id: int, request: Request):
         if not row:
             raise HTTPException(status_code=404, detail="invite not found")
         invite = _row_to_dict(row)
-        conn.execute("UPDATE invites SET status = 'revoked' WHERE id = ?", (invite_id,))
+        conn.execute(
+            "UPDATE invites SET status = 'revoked', revoked_at = COALESCE(revoked_at, ?) WHERE id = ?",
+            (now, invite_id),
+        )
         # No contact name in `detail` (surfaced verbatim in the metrics feed);
         # the invite_id/token linkage is sufficient for admin to resolve it.
         conn.execute(
@@ -4591,6 +4876,20 @@ async def admin_invite_link(invite_id: int, request: Request):
     if active and expires and expires < _now_iso():
         active = False
     kind = invite.get("kind") or "personal"
+    if kind == "companion":
+        # A companion invite persists only SHA-256(secret); the plaintext secret
+        # is unrecoverable by design, so there is no working link to re-reveal
+        # here. The `token` column is a non-secret public reference and would
+        # build a dead link. Direct the admin to reissue for a fresh secret.
+        return {
+            "kind": kind,
+            "magic_link": "",
+            "reveal_once": True,
+            "reissue_required": True,
+            "status": invite.get("status") or "",
+            "active": active,
+            "detail": "Companion links are shown once at creation. Use reissue to mint a new secret.",
+        }
     return {
         "kind": kind,
         "magic_link": _invite_magic_link(request, token),

@@ -1761,10 +1761,11 @@ button { cursor: pointer; background: none; border: none; }
 /* ============================================================
    COMPANION MODE
    ============================================================ */
+/* Companion mode hides only the guide-only facilitator panel. Layer 3
+   ("generate website content") is companion-owned and stays available in
+   companion mode — it is generated exclusively from companion-owned data,
+   never from guide facilitation notes. */
 body.companion-mode .facilitator-panel { display: none !important; }
-body.companion-mode .layer-tab-btn[data-layer="website"] { display: none !important; }
-body.companion-mode #btn-generate-all { display: none !important; }
-body.companion-mode .more-dropdown-item#btn-generate-all { display: none !important; }
 
 .companion-mode-banner {
   display: none;
@@ -6114,8 +6115,98 @@ function tropicalSunSign(year, month, day) {
 // timezone offset, which the HD engine and CommonUnityAstro require
 // for type / strategy / authority / profile / cross / Rising / Lagna.
 // Conservative: never overwrites a non-empty profile value.
+// ============================================================
+// SERVER-SIDE SESSION IDENTITY (Tranche 1)
+// ============================================================
+// The authoritative answer to "whose session is this?" comes from the server
+// (GET /api/session/identity), resolved from the signed HttpOnly invite cookie
+// — never from imported JSON, localStorage, or a demo/owner default. When a
+// companion invite backs the session we lock the identity so an imported file
+// can bring companion-owned CONTENT but can never repaint WHO the session is.
+// When the server reports no bound identity we fail closed to the existing
+// companion-authoritative behavior (guide never seeds) — we do NOT fall back
+// to the account owner / Markus.
+var SESSION_IDENTITY = null;
+
+// Fields an imported session JSON is NEVER allowed to set. These carry role /
+// permission / identity-binding meaning that only the server session may
+// assert. Companion-owned content (points, profile birth data, free text) is
+// unaffected — only these escalation vectors are stripped + audited.
+var IMPORT_FORBIDDEN_TOP = ['role','companion_mode','companionMode','token','token_hash',
+  'scopes','scope','guide_id','companion_id','circle','session','permissions','authenticated'];
+var IMPORT_FORBIDDEN_PROFILE = ['role','companion_mode','token','token_hash','scopes','scope',
+  'guide_id','companion_id','circle','permissions'];
+
+function cuStripImportedIdentity(data) {
+  // Remove role/identity/permission escalation fields from an imported object
+  // in place, returning the list of rejected keys for audit. Content fields
+  // are left untouched.
+  var rejected = [];
+  if (!data || typeof data !== 'object') return rejected;
+  IMPORT_FORBIDDEN_TOP.forEach(function (k) {
+    if (Object.prototype.hasOwnProperty.call(data, k)) { rejected.push(k); delete data[k]; }
+  });
+  if (data.profile && typeof data.profile === 'object') {
+    IMPORT_FORBIDDEN_PROFILE.forEach(function (k) {
+      if (Object.prototype.hasOwnProperty.call(data.profile, k)) {
+        rejected.push('profile.' + k); delete data.profile[k];
+      }
+    });
+  }
+  return rejected;
+}
+
+function cuSessionIdentityBound() {
+  return !!(SESSION_IDENTITY && SESSION_IDENTITY.authenticated &&
+            SESSION_IDENTITY.role === 'companion' &&
+            (SESSION_IDENTITY.companion_name || '').trim());
+}
+
+function cuApplySessionIdentity() {
+  // Force the session's names/identity from the server whenever a companion
+  // invite is bound. Returns a promise so init() can await the lock before
+  // any import can run. Network/parse errors fail closed (no identity forced).
+  return fetch('/api/session/identity', { credentials: 'same-origin', cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (id) {
+      SESSION_IDENTITY = id || null;
+      if (!cuSessionIdentityBound()) return;
+      var name = SESSION_IDENTITY.companion_name.trim();
+      // Server identity is authoritative — overwrite, do not fill-blanks.
+      state.companion = name;
+      if ((SESSION_IDENTITY.guide_name || '').trim()) {
+        state.guide = SESSION_IDENTITY.guide_name.trim();
+      }
+      var compEl = document.getElementById('companion-name');
+      if (compEl) compEl.value = name;
+      var guideEl = document.getElementById('guide-name');
+      if (guideEl && (SESSION_IDENTITY.guide_name || '').trim()) {
+        guideEl.value = SESSION_IDENTITY.guide_name.trim();
+      }
+      // Reseed the profile identity from the now-authoritative companion name.
+      state.profile = state.profile || {};
+      state.profile.first_name = ''; state.profile.last_name = ''; state.profile.legal_name = '';
+      if (typeof syncSetupIntoProfile === 'function') syncSetupIntoProfile();
+      if (typeof updateNamesDisplay === 'function') updateNamesDisplay();
+      if (typeof saveToStorage === 'function') saveToStorage();
+    })
+    .catch(function () { SESSION_IDENTITY = null; /* fail closed */ });
+}
+
 function syncSetupIntoProfile() {
   state.profile = state.profile || {};
+
+  // Server-bound companion identity is authoritative: force the profile
+  // identity from the session's companion name and return, so nothing typed
+  // into the setup form or loaded from a file can repaint the bound identity.
+  if (cuSessionIdentityBound()) {
+    var boundName = SESSION_IDENTITY.companion_name.trim();
+    var boundParts = boundName.split(/\s+/).filter(Boolean);
+    state.profile.first_name = boundParts[0] || '';
+    state.profile.last_name  = boundParts.slice(1).join(' ');
+    state.profile.legal_name = boundName;
+    state.companion = boundName;
+  }
 
   // dob / tob / pob — make sure state mirrors the visible inputs
   // even if the user blurred a field without firing 'input'.
@@ -6125,28 +6216,36 @@ function syncSetupIntoProfile() {
     if (el && el.value)               state[id] = el.value;
   });
 
-  // Guide name → profile.first_name + profile.last_name + profile.legal_name.
-  // The setup screen collects a single "Your name" string; we split it
-  // into given_name (first token) and family_name (remaining tokens) so
-  // the identity engine receives canonical inputs and OM Cipher shows
-  // editable given/family fields. We only fill blanks: if the user
-  // already typed a different value into the OM Cipher modal, leave it.
-  var guideEl = document.getElementById('guide-name');
-  var guide   = guideEl ? (guideEl.value || '').trim() : '';
-  if (guide) {
-    var nameParts = guide.split(/\s+/).filter(Boolean);
-    var givenFromGuide  = nameParts[0] || '';
-    var familyFromGuide = nameParts.slice(1).join(' ');
-    if (givenFromGuide && !(state.profile.first_name || '').trim()) {
-      state.profile.first_name = givenFromGuide;
+  // Companion name → profile.first_name + profile.last_name + profile.legal_name.
+  // The OM Cipher subject (birth data, Gene Keys, cipher identity) is ALWAYS
+  // the companion, so the profile identity is seeded from the Companion Name
+  // field — never from the guide/facilitator. Seeding it from the guide caused
+  // guide identity (e.g. the account owner) to cross into the companion's
+  // cipher and exports. We fail closed: if no companion name is present, the
+  // profile identity is left blank rather than falling back to the guide/owner.
+  // We split the single name string into given_name (first token) and
+  // family_name (remaining tokens) and only fill blanks — an explicit value
+  // typed into the OM Cipher modal always wins.
+  var companionEl = document.getElementById('companion-name');
+  var companionName = companionEl ? (companionEl.value || '').trim() : '';
+  if (companionName && !cuSessionIdentityBound()) {
+    var nameParts = companionName.split(/\s+/).filter(Boolean);
+    var givenFromCompanion  = nameParts[0] || '';
+    var familyFromCompanion = nameParts.slice(1).join(' ');
+    if (givenFromCompanion && !(state.profile.first_name || '').trim()) {
+      state.profile.first_name = givenFromCompanion;
     }
-    if (familyFromGuide && !(state.profile.last_name || '').trim()) {
-      state.profile.last_name = familyFromGuide;
+    if (familyFromCompanion && !(state.profile.last_name || '').trim()) {
+      state.profile.last_name = familyFromCompanion;
     }
     if (!(state.profile.legal_name || '').trim()) {
-      state.profile.legal_name = guide;
+      state.profile.legal_name = companionName;
     }
   }
+  // Guide name is a separate relationship label; keep it for the session
+  // header, but it must never seed the companion's profile identity above.
+  var guideEl = document.getElementById('guide-name');
+  var guide   = guideEl ? (guideEl.value || '').trim() : '';
   state.guide = state.guide || guide;
 
   // POB → current_cities (array) + current_location (joined string).
@@ -6813,6 +6912,24 @@ function cuCompassPreamble(raw) {
 // never overwrites existing content, never mutates live state. This is why a
 // raw-only room (e.g. Work populated only by transcript mining) still ships a
 // canonical Summary under its own key instead of exporting raw-only.
+// Guide-only per-room fields live in the facilitator ("Guide Only 🔒") panel.
+// They are private facilitation notes and must never leave the guide's local
+// session — excluded from the exported companion JSON, the copy-to-Notion
+// markdown, and every AI / Nexus payload. The companion owns everything else.
+var GUIDE_ONLY_POINT_FIELDS = ['observations'];
+function cuStripGuideOnlyPoint(pt) {
+  if (!pt || typeof pt !== 'object') return pt;
+  var copy = Object.assign({}, pt);
+  GUIDE_ONLY_POINT_FIELDS.forEach(function (f) { delete copy[f]; });
+  return copy;
+}
+function cuStripGuideOnlyPoints(points) {
+  if (!points || typeof points !== 'object') return points;
+  var out = {};
+  Object.keys(points).forEach(function (k) { out[k] = cuStripGuideOnlyPoint(points[k]); });
+  return out;
+}
+
 function cuFinalizeCompassPoints(points) {
   if (!points || typeof points !== 'object') return points;
   var out = {};
@@ -7078,7 +7195,18 @@ function buildCompassExport(s) {
   // Finalize per-room canonical fields on the exported copy (not live state):
   // promote a clean pre-transcript preamble into an empty Summary so every room
   // — including a raw-only Work — ships a canonical structured field.
-  try { out.points = cuFinalizeCompassPoints(s.points); } catch (_) { /* keep verbatim points on any failure */ }
+  try { out.points = cuStripGuideOnlyPoints(cuFinalizeCompassPoints(s.points)); }
+  catch (_) {
+    // Never let a finalize error ship guide-only notes: strip inline so the
+    // fallback has no external dependency and always excludes observations.
+    var _pts = s.points || {}, _safe = {};
+    Object.keys(_pts).forEach(function (k) {
+      var _c = (_pts[k] && typeof _pts[k] === 'object') ? Object.assign({}, _pts[k]) : _pts[k];
+      if (_c && typeof _c === 'object') delete _c.observations;
+      _safe[k] = _c;
+    });
+    out.points = _safe;
+  }
 
   return out;
 }
@@ -7107,6 +7235,20 @@ function loadJSON(file) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      // Allowlist gate (Tranche 1): a session file may bring companion-owned
+      // CONTENT only. Strip any role / identity-binding / permission fields so
+      // a hand-edited JSON (e.g. role:"guide", companion_mode:false, an
+      // injected token/scope, or a guide_id/companion_id override) can never
+      // escalate the session. When a companion invite is bound server-side, the
+      // imported guide/companion NAMES are also ignored for identity — the
+      // server session is authoritative — while the file's content still loads.
+      const _rejected = cuStripImportedIdentity(data);
+      if (_rejected.length) {
+        console.warn('[cOMpass] import: ignored identity/role fields:', _rejected.join(', '));
+      }
+      if (cuSessionIdentityBound()) {
+        delete data.guide; delete data.companion;
+      }
       // Loading a session JSON adopts that person's identity wholesale.
       // Clear the derived identity-bearing fields first so a previous
       // occupant's calculated values (astrology / Vedic / Gene Key
@@ -7390,7 +7532,8 @@ function copyForNotion() {
       lines.push('');
     }
 
-    if (pt.observations) { lines.push('### Guide Notes *(private)*'); lines.push(pt.observations); lines.push(''); }
+    // Guide-only facilitation notes (pt.observations) are intentionally
+    // excluded from this export — they must never leave the guide's session.
   });
 
   lines.push('---');
@@ -7647,6 +7790,12 @@ function init() {
   if (state.guide || state.companion) {
     updateNamesDisplay();
   }
+
+  // Server-side session identity is authoritative. Resolve it from the invite
+  // cookie and, for a bound companion invite, lock the session to that
+  // identity — overriding any restored localStorage names. Fails closed (no
+  // owner/Markus fallback) when no companion invite backs the session.
+  if (typeof cuApplySessionIdentity === 'function') { cuApplySessionIdentity(); }
 
   // Companion mode
   initCompanionMode();
@@ -7908,7 +8057,7 @@ async function generateL3(point) {
     companion: compassSynthAddress(),
     guide:     '',
     point:     point,
-    [point]:   state.points[point]
+    [point]:   cuStripGuideOnlyPoint(state.points[point])
   };
 
   try {
@@ -9221,7 +9370,7 @@ async function runSearch(query) {
   const payload = {
     query,
     companion:    state.companion || '',
-    session:      state.points,
+    session:      cuStripGuideOnlyPoints(state.points),
     transcripts:  state.transcripts || []
   };
 
