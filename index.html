@@ -6115,8 +6115,98 @@ function tropicalSunSign(year, month, day) {
 // timezone offset, which the HD engine and CommonUnityAstro require
 // for type / strategy / authority / profile / cross / Rising / Lagna.
 // Conservative: never overwrites a non-empty profile value.
+// ============================================================
+// SERVER-SIDE SESSION IDENTITY (Tranche 1)
+// ============================================================
+// The authoritative answer to "whose session is this?" comes from the server
+// (GET /api/session/identity), resolved from the signed HttpOnly invite cookie
+// — never from imported JSON, localStorage, or a demo/owner default. When a
+// companion invite backs the session we lock the identity so an imported file
+// can bring companion-owned CONTENT but can never repaint WHO the session is.
+// When the server reports no bound identity we fail closed to the existing
+// companion-authoritative behavior (guide never seeds) — we do NOT fall back
+// to the account owner / Markus.
+var SESSION_IDENTITY = null;
+
+// Fields an imported session JSON is NEVER allowed to set. These carry role /
+// permission / identity-binding meaning that only the server session may
+// assert. Companion-owned content (points, profile birth data, free text) is
+// unaffected — only these escalation vectors are stripped + audited.
+var IMPORT_FORBIDDEN_TOP = ['role','companion_mode','companionMode','token','token_hash',
+  'scopes','scope','guide_id','companion_id','circle','session','permissions','authenticated'];
+var IMPORT_FORBIDDEN_PROFILE = ['role','companion_mode','token','token_hash','scopes','scope',
+  'guide_id','companion_id','circle','permissions'];
+
+function cuStripImportedIdentity(data) {
+  // Remove role/identity/permission escalation fields from an imported object
+  // in place, returning the list of rejected keys for audit. Content fields
+  // are left untouched.
+  var rejected = [];
+  if (!data || typeof data !== 'object') return rejected;
+  IMPORT_FORBIDDEN_TOP.forEach(function (k) {
+    if (Object.prototype.hasOwnProperty.call(data, k)) { rejected.push(k); delete data[k]; }
+  });
+  if (data.profile && typeof data.profile === 'object') {
+    IMPORT_FORBIDDEN_PROFILE.forEach(function (k) {
+      if (Object.prototype.hasOwnProperty.call(data.profile, k)) {
+        rejected.push('profile.' + k); delete data.profile[k];
+      }
+    });
+  }
+  return rejected;
+}
+
+function cuSessionIdentityBound() {
+  return !!(SESSION_IDENTITY && SESSION_IDENTITY.authenticated &&
+            SESSION_IDENTITY.role === 'companion' &&
+            (SESSION_IDENTITY.companion_name || '').trim());
+}
+
+function cuApplySessionIdentity() {
+  // Force the session's names/identity from the server whenever a companion
+  // invite is bound. Returns a promise so init() can await the lock before
+  // any import can run. Network/parse errors fail closed (no identity forced).
+  return fetch('/api/session/identity', { credentials: 'same-origin', cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (id) {
+      SESSION_IDENTITY = id || null;
+      if (!cuSessionIdentityBound()) return;
+      var name = SESSION_IDENTITY.companion_name.trim();
+      // Server identity is authoritative — overwrite, do not fill-blanks.
+      state.companion = name;
+      if ((SESSION_IDENTITY.guide_name || '').trim()) {
+        state.guide = SESSION_IDENTITY.guide_name.trim();
+      }
+      var compEl = document.getElementById('companion-name');
+      if (compEl) compEl.value = name;
+      var guideEl = document.getElementById('guide-name');
+      if (guideEl && (SESSION_IDENTITY.guide_name || '').trim()) {
+        guideEl.value = SESSION_IDENTITY.guide_name.trim();
+      }
+      // Reseed the profile identity from the now-authoritative companion name.
+      state.profile = state.profile || {};
+      state.profile.first_name = ''; state.profile.last_name = ''; state.profile.legal_name = '';
+      if (typeof syncSetupIntoProfile === 'function') syncSetupIntoProfile();
+      if (typeof updateNamesDisplay === 'function') updateNamesDisplay();
+      if (typeof saveToStorage === 'function') saveToStorage();
+    })
+    .catch(function () { SESSION_IDENTITY = null; /* fail closed */ });
+}
+
 function syncSetupIntoProfile() {
   state.profile = state.profile || {};
+
+  // Server-bound companion identity is authoritative: force the profile
+  // identity from the session's companion name and return, so nothing typed
+  // into the setup form or loaded from a file can repaint the bound identity.
+  if (cuSessionIdentityBound()) {
+    var boundName = SESSION_IDENTITY.companion_name.trim();
+    var boundParts = boundName.split(/\s+/).filter(Boolean);
+    state.profile.first_name = boundParts[0] || '';
+    state.profile.last_name  = boundParts.slice(1).join(' ');
+    state.profile.legal_name = boundName;
+    state.companion = boundName;
+  }
 
   // dob / tob / pob — make sure state mirrors the visible inputs
   // even if the user blurred a field without firing 'input'.
@@ -6138,7 +6228,7 @@ function syncSetupIntoProfile() {
   // typed into the OM Cipher modal always wins.
   var companionEl = document.getElementById('companion-name');
   var companionName = companionEl ? (companionEl.value || '').trim() : '';
-  if (companionName) {
+  if (companionName && !cuSessionIdentityBound()) {
     var nameParts = companionName.split(/\s+/).filter(Boolean);
     var givenFromCompanion  = nameParts[0] || '';
     var familyFromCompanion = nameParts.slice(1).join(' ');
@@ -7145,6 +7235,20 @@ function loadJSON(file) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      // Allowlist gate (Tranche 1): a session file may bring companion-owned
+      // CONTENT only. Strip any role / identity-binding / permission fields so
+      // a hand-edited JSON (e.g. role:"guide", companion_mode:false, an
+      // injected token/scope, or a guide_id/companion_id override) can never
+      // escalate the session. When a companion invite is bound server-side, the
+      // imported guide/companion NAMES are also ignored for identity — the
+      // server session is authoritative — while the file's content still loads.
+      const _rejected = cuStripImportedIdentity(data);
+      if (_rejected.length) {
+        console.warn('[cOMpass] import: ignored identity/role fields:', _rejected.join(', '));
+      }
+      if (cuSessionIdentityBound()) {
+        delete data.guide; delete data.companion;
+      }
       // Loading a session JSON adopts that person's identity wholesale.
       // Clear the derived identity-bearing fields first so a previous
       // occupant's calculated values (astrology / Vedic / Gene Key
@@ -7686,6 +7790,12 @@ function init() {
   if (state.guide || state.companion) {
     updateNamesDisplay();
   }
+
+  // Server-side session identity is authoritative. Resolve it from the invite
+  // cookie and, for a bound companion invite, lock the session to that
+  // identity — overriding any restored localStorage names. Fails closed (no
+  // owner/Markus fallback) when no companion invite backs the session.
+  if (typeof cuApplySessionIdentity === 'function') { cuApplySessionIdentity(); }
 
   // Companion mode
   initCompanionMode();
