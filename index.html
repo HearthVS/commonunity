@@ -1761,10 +1761,11 @@ button { cursor: pointer; background: none; border: none; }
 /* ============================================================
    COMPANION MODE
    ============================================================ */
+/* Companion mode hides only the guide-only facilitator panel. Layer 3
+   ("generate website content") is companion-owned and stays available in
+   companion mode — it is generated exclusively from companion-owned data,
+   never from guide facilitation notes. */
 body.companion-mode .facilitator-panel { display: none !important; }
-body.companion-mode .layer-tab-btn[data-layer="website"] { display: none !important; }
-body.companion-mode #btn-generate-all { display: none !important; }
-body.companion-mode .more-dropdown-item#btn-generate-all { display: none !important; }
 
 .companion-mode-banner {
   display: none;
@@ -6125,28 +6126,36 @@ function syncSetupIntoProfile() {
     if (el && el.value)               state[id] = el.value;
   });
 
-  // Guide name → profile.first_name + profile.last_name + profile.legal_name.
-  // The setup screen collects a single "Your name" string; we split it
-  // into given_name (first token) and family_name (remaining tokens) so
-  // the identity engine receives canonical inputs and OM Cipher shows
-  // editable given/family fields. We only fill blanks: if the user
-  // already typed a different value into the OM Cipher modal, leave it.
-  var guideEl = document.getElementById('guide-name');
-  var guide   = guideEl ? (guideEl.value || '').trim() : '';
-  if (guide) {
-    var nameParts = guide.split(/\s+/).filter(Boolean);
-    var givenFromGuide  = nameParts[0] || '';
-    var familyFromGuide = nameParts.slice(1).join(' ');
-    if (givenFromGuide && !(state.profile.first_name || '').trim()) {
-      state.profile.first_name = givenFromGuide;
+  // Companion name → profile.first_name + profile.last_name + profile.legal_name.
+  // The OM Cipher subject (birth data, Gene Keys, cipher identity) is ALWAYS
+  // the companion, so the profile identity is seeded from the Companion Name
+  // field — never from the guide/facilitator. Seeding it from the guide caused
+  // guide identity (e.g. the account owner) to cross into the companion's
+  // cipher and exports. We fail closed: if no companion name is present, the
+  // profile identity is left blank rather than falling back to the guide/owner.
+  // We split the single name string into given_name (first token) and
+  // family_name (remaining tokens) and only fill blanks — an explicit value
+  // typed into the OM Cipher modal always wins.
+  var companionEl = document.getElementById('companion-name');
+  var companionName = companionEl ? (companionEl.value || '').trim() : '';
+  if (companionName) {
+    var nameParts = companionName.split(/\s+/).filter(Boolean);
+    var givenFromCompanion  = nameParts[0] || '';
+    var familyFromCompanion = nameParts.slice(1).join(' ');
+    if (givenFromCompanion && !(state.profile.first_name || '').trim()) {
+      state.profile.first_name = givenFromCompanion;
     }
-    if (familyFromGuide && !(state.profile.last_name || '').trim()) {
-      state.profile.last_name = familyFromGuide;
+    if (familyFromCompanion && !(state.profile.last_name || '').trim()) {
+      state.profile.last_name = familyFromCompanion;
     }
     if (!(state.profile.legal_name || '').trim()) {
-      state.profile.legal_name = guide;
+      state.profile.legal_name = companionName;
     }
   }
+  // Guide name is a separate relationship label; keep it for the session
+  // header, but it must never seed the companion's profile identity above.
+  var guideEl = document.getElementById('guide-name');
+  var guide   = guideEl ? (guideEl.value || '').trim() : '';
   state.guide = state.guide || guide;
 
   // POB → current_cities (array) + current_location (joined string).
@@ -6813,6 +6822,24 @@ function cuCompassPreamble(raw) {
 // never overwrites existing content, never mutates live state. This is why a
 // raw-only room (e.g. Work populated only by transcript mining) still ships a
 // canonical Summary under its own key instead of exporting raw-only.
+// Guide-only per-room fields live in the facilitator ("Guide Only 🔒") panel.
+// They are private facilitation notes and must never leave the guide's local
+// session — excluded from the exported companion JSON, the copy-to-Notion
+// markdown, and every AI / Nexus payload. The companion owns everything else.
+var GUIDE_ONLY_POINT_FIELDS = ['observations'];
+function cuStripGuideOnlyPoint(pt) {
+  if (!pt || typeof pt !== 'object') return pt;
+  var copy = Object.assign({}, pt);
+  GUIDE_ONLY_POINT_FIELDS.forEach(function (f) { delete copy[f]; });
+  return copy;
+}
+function cuStripGuideOnlyPoints(points) {
+  if (!points || typeof points !== 'object') return points;
+  var out = {};
+  Object.keys(points).forEach(function (k) { out[k] = cuStripGuideOnlyPoint(points[k]); });
+  return out;
+}
+
 function cuFinalizeCompassPoints(points) {
   if (!points || typeof points !== 'object') return points;
   var out = {};
@@ -7078,7 +7105,18 @@ function buildCompassExport(s) {
   // Finalize per-room canonical fields on the exported copy (not live state):
   // promote a clean pre-transcript preamble into an empty Summary so every room
   // — including a raw-only Work — ships a canonical structured field.
-  try { out.points = cuFinalizeCompassPoints(s.points); } catch (_) { /* keep verbatim points on any failure */ }
+  try { out.points = cuStripGuideOnlyPoints(cuFinalizeCompassPoints(s.points)); }
+  catch (_) {
+    // Never let a finalize error ship guide-only notes: strip inline so the
+    // fallback has no external dependency and always excludes observations.
+    var _pts = s.points || {}, _safe = {};
+    Object.keys(_pts).forEach(function (k) {
+      var _c = (_pts[k] && typeof _pts[k] === 'object') ? Object.assign({}, _pts[k]) : _pts[k];
+      if (_c && typeof _c === 'object') delete _c.observations;
+      _safe[k] = _c;
+    });
+    out.points = _safe;
+  }
 
   return out;
 }
@@ -7390,7 +7428,8 @@ function copyForNotion() {
       lines.push('');
     }
 
-    if (pt.observations) { lines.push('### Guide Notes *(private)*'); lines.push(pt.observations); lines.push(''); }
+    // Guide-only facilitation notes (pt.observations) are intentionally
+    // excluded from this export — they must never leave the guide's session.
   });
 
   lines.push('---');
@@ -7908,7 +7947,7 @@ async function generateL3(point) {
     companion: compassSynthAddress(),
     guide:     '',
     point:     point,
-    [point]:   state.points[point]
+    [point]:   cuStripGuideOnlyPoint(state.points[point])
   };
 
   try {
@@ -9221,7 +9260,7 @@ async function runSearch(query) {
   const payload = {
     query,
     companion:    state.companion || '',
-    session:      state.points,
+    session:      cuStripGuideOnlyPoints(state.points),
     transcripts:  state.transcripts || []
   };
 
