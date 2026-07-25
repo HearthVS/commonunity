@@ -6172,6 +6172,9 @@ function cuApplySessionIdentity() {
       SESSION_IDENTITY = id || null;
       if (!cuSessionIdentityBound()) return;
       var name = SESSION_IDENTITY.companion_name.trim();
+      // Shared-browser safety: drop a different companion's residual local
+      // state before this session's identity and profile hydrate onto it.
+      cuPurgeForeignCompanionState(name);
       // Server identity is authoritative — overwrite, do not fill-blanks.
       state.companion = name;
       if ((SESSION_IDENTITY.guide_name || '').trim()) {
@@ -6189,8 +6192,138 @@ function cuApplySessionIdentity() {
       if (typeof syncSetupIntoProfile === 'function') syncSetupIntoProfile();
       if (typeof updateNamesDisplay === 'function') updateNamesDisplay();
       if (typeof saveToStorage === 'function') saveToStorage();
+      // init() does not await this fetch, so the threshold handoff has already
+      // run by now. Re-derive the room gates against the authoritative
+      // identity: after a purge this fills the new occupant's gates, and
+      // otherwise every write is blank-only and therefore a no-op.
+      cuHydrateGeneKeysFromContract();
     })
     .catch(function () { SESSION_IDENTITY = null; /* fail closed */ });
+}
+
+// Derived, identity-bearing profile fields. Same set the session-JSON import
+// path clears (see loadJSON) before adopting another person's session.
+var CU_DERIVED_IDENTITY_FIELDS = [
+  'astrology_sun','astrology_moon','astrology_rising',
+  'astrology_longitudes','astrology_precision',
+  'vedic_sun','vedic_moon','vedic_ascendant',
+  'gene_keys_life_work','gene_keys_evolution',
+  'gene_keys_radiance','gene_keys_purpose',
+  'birth_latitude','birth_longitude','birth_tz_offset_minutes',
+  'astrology','vedic','birth_coordinates','salts'];
+
+function cuNormalizeIdentityName(n) {
+  var s = String(n == null ? '' : n).trim().replace(/\s+/g, ' ');
+  // NFC so a name stored decomposed ("Çarmıklı") still compares equal to the
+  // composed form the server sends — otherwise the same person looks foreign.
+  try { s = s.normalize('NFC'); } catch (_) {}
+  return s.toLowerCase();
+}
+
+function cuLocalStateIdentity() {
+  // Who the local copy CLAIMS to belong to. Only ever used to detect a
+  // mismatch — never to assert identity, which is the server's job alone.
+  var p = (state && state.profile) || {};
+  return cuNormalizeIdentityName(state && state.companion) ||
+         cuNormalizeIdentityName(p.legal_name);
+}
+
+function cuPurgeForeignCompanionState(authoritativeName) {
+  // cOMpass keeps ONE global localStorage key, so on a shared or kiosk
+  // browser the next person would inherit the previous occupant's birth data
+  // and derived gates — and the blank-only hydration below would then
+  // silently recompute onto them. When the authoritative identity does not
+  // match the local copy, drop the previous occupant's identity, birth data
+  // and derived values first. Returns true when a purge happened.
+  var incoming = cuNormalizeIdentityName(authoritativeName);
+  if (!incoming) return false;                     // nothing to compare against
+  var local = cuLocalStateIdentity();
+  if (!local || local === incoming) return false;  // fresh browser, or same person
+  try {
+    if (state.profile && typeof state.profile === 'object') {
+      CU_DERIVED_IDENTITY_FIELDS.forEach(function (k) { delete state.profile[k]; });
+      state.profile.first_name = '';
+      state.profile.last_name  = '';
+      state.profile.legal_name = '';
+    }
+    state.companion = '';
+    state.dob = ''; state.tob = ''; state.pob = '';
+    ['companion-name','dob','tob','pob'].forEach(function (elId) {
+      var el = document.getElementById(elId);
+      if (el) el.value = '';
+    });
+    POINTS.forEach(function (p) {
+      var pt = state.points && state.points[p];
+      if (!pt) return;
+      // The previous occupant's authored room content is theirs. Leaving it
+      // would show one companion another's session notes — and carry them into
+      // the next export.
+      pt.raw = ''; pt.theme = ''; pt.summary = '';
+      pt.web_heading = ''; pt.web_intro = ''; pt.web_closing = '';
+      pt.observations = '';
+      pt.insights = []; pt.highlights = [];
+      pt.qa_answers = {}; pt.frequency = -1;
+      pt.gk_num = ''; pt.gk_line = '';
+    });
+    // Blank the already-painted inputs/textareas so nothing lingers on screen
+    // before the next render refreshes them from the now-empty state.
+    try {
+      document.querySelectorAll('[data-key]').forEach(function (el) {
+        var parts = String(el.dataset.key || '').split('.');
+        if (parts.length === 2 && state.points && state.points[parts[0]]) el.value = '';
+      });
+    } catch (_) {}
+    state.gk_profile = { cs: null, us: null, ce: null, ue: null };
+    state.hexagramsByPoint = {};
+    if (typeof saveToStorage === 'function') saveToStorage();
+  } catch (_) {}
+  return true;
+}
+
+function cuHydrateGeneKeysFromContract() {
+  // Derive the per-room Gene Key gates from the threshold contract's birth
+  // data. The room gates are the only source the companion-visible
+  // Shadow/Gift/Siddhi triads read, and nothing on the threshold → cOMpass
+  // boot path wrote them: the passive path only ever filled the profile
+  // strings and the OM Cipher modal, so a fresh invitee landed on cOMpass
+  // with empty triads until someone pressed "Reveal my profile".
+  //
+  // Blank-only throughout, so it is idempotent and a manual guide entry or an
+  // explicit recalc always wins. No "already done" flag — corrected birth
+  // details must stay recomputable.
+  try {
+    if (typeof state !== 'object' || !state) return;
+    var contract = null;
+    try {
+      contract = (window.ThresholdGate && typeof window.ThresholdGate.read === 'function')
+        ? window.ThresholdGate.read() : null;
+    } catch (_) {}
+    var id = (contract && contract.identity) || {};
+    // With a server-bound session, only that companion's own contract may
+    // seed birth data — a stale contract left by a previous occupant is
+    // ignored rather than trusted.
+    if (cuSessionIdentityBound() && id.full_name &&
+        cuNormalizeIdentityName(id.full_name) !==
+          cuNormalizeIdentityName(SESSION_IDENTITY.companion_name)) return;
+    if (id.birth_date && !state.dob) {
+      state.dob = id.birth_date;
+      var dobEl = document.getElementById('dob');
+      if (dobEl && !dobEl.value) dobEl.value = id.birth_date;
+    }
+    if (id.birth_time && !state.tob) {
+      state.tob = id.birth_time;
+      var tobEl = document.getElementById('tob');
+      if (tobEl && !tobEl.value) tobEl.value = id.birth_time;
+    }
+    if (id.birth_place && !state.pob) {
+      state.pob = id.birth_place;
+      var pobEl = document.getElementById('pob');
+      if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
+    }
+    if (typeof hydrateHexReaderGatesFromProfile === 'function') {
+      hydrateHexReaderGatesFromProfile();
+    }
+  } catch (_) { /* best-effort: never block the threshold handoff */ }
 }
 
 function syncSetupIntoProfile() {
@@ -6624,8 +6757,13 @@ function updateNamesDisplay() {
 }
 
 function openCompass() {
-  const guide     = document.getElementById('guide-name').value.trim();
-  const companion = document.getElementById('companion-name').value.trim();
+  // Null-guarded: this used to throw here when called from the threshold
+  // handoff, whose caller swallows the exception — silently skipping the rest
+  // of the hydration below.
+  const guideEl     = document.getElementById('guide-name');
+  const companionEl = document.getElementById('companion-name');
+  const guide     = guideEl ? guideEl.value.trim() : (state.guide || '');
+  const companion = companionEl ? companionEl.value.trim() : (state.companion || '');
 
   state.guide     = guide;
   state.companion = companion;
@@ -8818,6 +8956,19 @@ function initThresholdContract() {
   const contract = window.ThresholdGate.read();
   if (!contract || !contract.threshold || !contract.threshold.completed) return;
 
+  // 0. Shared-browser safety. If this contract belongs to someone other than
+  // the person the local state was last saved for, drop the previous
+  // occupant's identity/birth/derived data rather than hydrating on top of it.
+  // Detection only — when a server session is bound its identity is the one
+  // that counts, and it re-checks this again once the fetch resolves.
+  try {
+    cuPurgeForeignCompanionState(
+      cuSessionIdentityBound()
+        ? SESSION_IDENTITY.companion_name
+        : ((contract.identity && contract.identity.full_name) || '')
+    );
+  } catch (_) {}
+
   // 1. Hydrate identity into Compass state + setup form.
   //
   // The threshold's identity.full_name is the user's OWN name — the
@@ -8868,6 +9019,13 @@ function initThresholdContract() {
     const pobEl = document.getElementById('pob');
     if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
   }
+
+  // 1b. Derive the room Gene Key gates from the birth data just hydrated, so
+  // the main cOMpass page renders the Shadow/Gift/Siddhi triads without the
+  // companion having to open Settings and press "Reveal my profile". Runs
+  // before the openCompass() attempt below so it cannot be skipped by that
+  // function throwing mid-way.
+  cuHydrateGeneKeysFromContract();
 
   // 2. Apply inherited palette as CSS variables.
   //
@@ -10758,17 +10916,28 @@ function hydrateHexReaderGatesFromProfile() {
       const existing = String(state.points[p].gk_num || '').trim();
       if (existing) return;
       const formatted = String(profile[pointToProfileKey[p]] || '');
-      // "GK 14 · Bounteousness (Line 4)" → 14
+      // "GK 14 · Bounteousness (Line 4)" → gate 14, line 4
       const m = formatted.match(/GK\s*(\d{1,2})\b/i);
       if (!m) return;
       const n = parseInt(m[1], 10);
       if (!n || n < 1 || n > 64) return;
       state.points[p].gk_num = String(n);
+      // The Shadow/Gift/Siddhi triad renders "· Line N" from gk_line, so the
+      // line has to travel with the gate or the triad reads as incomplete.
+      const lineM = formatted.match(/Line\s*([1-6])\b/i);
+      const lineN = lineM ? parseInt(lineM[1], 10) : 0;
+      if (lineN && !String(state.points[p].gk_line || '').trim()) {
+        state.points[p].gk_line = String(lineN);
+      }
       // Mirror into the visible gk-num input so the guide panel
       // shows the auto-populated value (and so subsequent
       // refreshHexReader reads it back consistently).
       const numEl = document.getElementById(p + '-gk-num');
       if (numEl && !String(numEl.value || '').trim()) numEl.value = String(n);
+      const lineEl = document.getElementById(p + '-gk-line');
+      if (lineEl && !String(lineEl.value || '').trim() && state.points[p].gk_line) {
+        lineEl.value = String(state.points[p].gk_line);
+      }
       // Keep the Shadow/Gift/Siddhi triad consistent with the
       // newly-populated gate.
       try { if (typeof lookupGK === 'function') lookupGK(p); } catch (_) {}
