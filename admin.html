@@ -1697,29 +1697,60 @@
           <span id="nexus-model-status" class="hint" style="margin:0;"></span>
         </section>
 
-        <!-- Nexus FieldPrint prompt (read-only) -->
+        <!-- Nexus prompt archive (preview + explicit activation) -->
         <section class="panel card" style="margin-bottom:18px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <h2 style="margin:0">Nexus FieldPrint prompt</h2>
+            <h2 style="margin:0">Nexus prompt archive</h2>
             <span class="count-badge" id="nexus-prompt-version">—</span>
           </div>
           <p class="hint" style="margin:4px 0 14px">
-            The live constitutional prompt that shapes every FieldPrint Inspire
-            suggestion, plus the audience and evidence contracts it accepts.
-            Read-only: the prompt is a versioned source constant, so changes ship
-            through code review. Live editing / version rollout is deferred (see
-            rationale below) to avoid an insecure runtime prompt-edit surface.
+            Every historical Nexus system prompt across all four families
+            (cOMpass, stUdio, FieldPrint, Arrival). Browse and preview any
+            version, then — as a separate, explicit step — activate the one that
+            should be live. Selecting or previewing never changes live behaviour;
+            only <strong>Activate</strong> does. Prompt text itself is read-only:
+            new text ships through code review, not this panel.
           </p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:0.8rem;">
+              <span class="infra-label">Family</span>
+              <select id="nexus-prompt-family"></select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:0.8rem;">
+              <span class="infra-label">Version (timeline: oldest → newest)</span>
+              <select id="nexus-prompt-version-select" style="min-width:280px;"></select>
+            </label>
+          </div>
           <div class="infra-card" style="margin-bottom:12px;">
             <div class="infra-details">
-              <div><span class="infra-label">Version</span><span id="nexus-prompt-version-detail">—</span></div>
-              <div><span class="infra-label">Editable</span><span id="nexus-prompt-editable">—</span></div>
-              <div><span class="infra-label">Audience contract</span><span id="nexus-prompt-audience">—</span></div>
-              <div><span class="infra-label">Evidence contract</span><span id="nexus-prompt-evidence">—</span></div>
+              <div><span class="infra-label">Live now (active)</span><span id="nexus-prompt-active">—</span></div>
+              <div><span class="infra-label">Production default</span><span id="nexus-prompt-default">—</span></div>
+              <div><span class="infra-label">Selection source</span><span id="nexus-prompt-source">—</span></div>
+              <div><span class="infra-label">Viewing</span><span id="nexus-prompt-viewing">—</span></div>
+              <div><span class="infra-label">Status</span><span id="nexus-prompt-status-detail">—</span></div>
+              <div><span class="infra-label">Source commit</span><span id="nexus-prompt-commit">—</span></div>
+              <div><span class="infra-label">Created</span><span id="nexus-prompt-date">—</span></div>
             </div>
           </div>
-          <pre id="nexus-prompt-text" style="white-space:pre-wrap;background:#111;border:1px solid #333;border-radius:8px;padding:12px;max-height:340px;overflow:auto;font-size:0.8rem;line-height:1.4;color:#ddd;margin:0 0 8px;">Loading…</pre>
-          <p class="hint" id="nexus-prompt-deferred" style="margin:0;"></p>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:0.8rem;margin-bottom:4px;"><span class="infra-label">Summary</span> <span id="nexus-prompt-summary">—</span></div>
+            <div style="font-size:0.8rem;margin-bottom:4px;"><span class="infra-label">Changes</span> <span id="nexus-prompt-changes">—</span></div>
+            <div style="font-size:0.8rem;"><span class="infra-label">Rationale</span> <span id="nexus-prompt-rationale">—</span></div>
+          </div>
+          <!-- textContent — never innerHTML — so prompt text can never inject markup. -->
+          <pre id="nexus-prompt-text" style="white-space:pre-wrap;background:#111;border:1px solid #333;border-radius:8px;padding:12px;max-height:340px;overflow:auto;font-size:0.8rem;line-height:1.4;color:#ddd;margin:0 0 12px;">Loading…</pre>
+          <div class="infra-card" style="border-color:#5a3;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div style="font-size:0.8rem;max-width:60%;">
+                <strong>Activation</strong> — make the version you are viewing the
+                live prompt for its family. This is the only control here that
+                changes runtime behaviour, and it is audited.
+              </div>
+              <button class="btn" id="nexus-prompt-activate" disabled>Activate this version</button>
+            </div>
+            <p class="hint" id="nexus-prompt-status" style="margin:8px 0 0;"></p>
+          </div>
+          <p class="hint" id="nexus-prompt-deferred" style="margin:10px 0 0;"></p>
         </section>
 
         <!-- Post-beta operational task list -->
@@ -3580,23 +3611,135 @@
       catch (e) { if ($('nexus-model-active')) $('nexus-model-active').textContent = 'unavailable'; }
     }
 
-    function renderNexusPrompt(state) {
-      if (!state) return;
-      const ver = state.version || '—';
-      if ($('nexus-prompt-version')) $('nexus-prompt-version').textContent = ver;
-      if ($('nexus-prompt-version-detail')) $('nexus-prompt-version-detail').textContent = ver;
-      if ($('nexus-prompt-editable')) $('nexus-prompt-editable').textContent = state.editable ? 'yes' : 'no (read-only)';
-      if ($('nexus-prompt-audience')) $('nexus-prompt-audience').textContent = (state.audience_contract || []).join(', ') || '—';
-      if ($('nexus-prompt-evidence')) $('nexus-prompt-evidence').textContent = (state.evidence_contract || []).join(', ') || '—';
-      // textContent — never innerHTML — so prompt text can never inject markup.
-      if ($('nexus-prompt-text')) $('nexus-prompt-text').textContent = state.system_prompt || '(prompt unavailable)';
-      if ($('nexus-prompt-deferred')) $('nexus-prompt-deferred').textContent = state.editing_deferred || '';
+    // ── Nexus prompt archive ──────────────────────────────────────────────
+    // Preview is decoupled from activation: selecting a family/version only
+    // fetches read-only text + metadata. Live behaviour changes ONLY when the
+    // operator clicks Activate (a separate, confirmed, audited action).
+    let _promptFamilies = [];   // list state from GET /api/admin/nexus-prompts
+    let _promptDeferred = '';   // read-only rationale note
+
+    function _promptFamily(key) {
+      return _promptFamilies.find(f => f.family === key) || null;
+    }
+
+    function _populatePromptVersions(family) {
+      const fam = _promptFamily(family);
+      const sel = $('nexus-prompt-version-select');
+      if (!fam || !sel) return;
+      // Oldest → newest, newest first in the dropdown for quick access.
+      const opts = fam.versions.slice().reverse().map(v => {
+        const tags = [];
+        if (v.is_active) tags.push('live');
+        if (v.is_default) tags.push('default');
+        const suffix = tags.length ? ' [' + tags.join(', ') + ']' : '';
+        return '<option value="' + escapeHtml(v.id) + '">' + escapeHtml(v.title)
+          + ' — ' + escapeHtml(v.created) + suffix + '</option>';
+      }).join('');
+      sel.innerHTML = opts;
+      sel.value = fam.active_version;   // start on the live version
+    }
+
+    function _renderPromptHeader(family) {
+      const fam = _promptFamily(family);
+      if (!fam) return;
+      if ($('nexus-prompt-version')) $('nexus-prompt-version').textContent = fam.active_version;
+      if ($('nexus-prompt-active')) $('nexus-prompt-active').textContent = fam.active_version;
+      if ($('nexus-prompt-default')) $('nexus-prompt-default').textContent = fam.default_version;
+      if ($('nexus-prompt-source')) $('nexus-prompt-source').textContent =
+        fam.source + (fam.customised ? ' (differs from production default)' : '');
+    }
+
+    async function _renderPromptVersion(family, versionId) {
+      const pre = $('nexus-prompt-text');
+      const btn = $('nexus-prompt-activate');
+      try {
+        const v = await api('/api/admin/nexus-prompts/' + encodeURIComponent(family)
+          + '/' + encodeURIComponent(versionId));
+        if (pre) pre.textContent = v.text || '(prompt unavailable)';
+        if ($('nexus-prompt-viewing')) $('nexus-prompt-viewing').textContent =
+          v.id + (v.is_active ? ' (live now)' : '') + (v.is_default ? ' (default)' : '');
+        if ($('nexus-prompt-status-detail')) $('nexus-prompt-status-detail').textContent = v.status;
+        if ($('nexus-prompt-commit')) $('nexus-prompt-commit').textContent = v.commit || '—';
+        if ($('nexus-prompt-date')) $('nexus-prompt-date').textContent = v.created || '—';
+        if ($('nexus-prompt-summary')) $('nexus-prompt-summary').textContent = v.summary || '—';
+        if ($('nexus-prompt-changes')) $('nexus-prompt-changes').textContent = v.changes || '—';
+        if ($('nexus-prompt-rationale')) $('nexus-prompt-rationale').textContent =
+          (v.rationale || '—') + (v.rationale_inferred ? '  (inferred — not explicitly documented)' : '');
+        // Activation only makes sense when viewing a non-live version.
+        if (btn) {
+          btn.disabled = !!v.is_active;
+          btn.textContent = v.is_active ? 'Already live' : 'Activate this version';
+        }
+      } catch (e) {
+        if (pre) pre.textContent = 'unavailable';
+      }
     }
 
     async function loadNexusPrompt() {
-      try { renderNexusPrompt(await api('/api/admin/nexus-prompt')); }
-      catch (e) { if ($('nexus-prompt-text')) $('nexus-prompt-text').textContent = 'unavailable'; }
+      try {
+        const data = await api('/api/admin/nexus-prompts');
+        _promptFamilies = data.families || [];
+        const famSel = $('nexus-prompt-family');
+        if (famSel) {
+          famSel.innerHTML = _promptFamilies.map(f =>
+            '<option value="' + escapeHtml(f.family) + '">' + escapeHtml(f.label) + '</option>').join('');
+        }
+        // Surface the read-only note from the FieldPrint state endpoint.
+        const st = await optionalApi('/api/admin/nexus-prompt');
+        _promptDeferred = (st && st.editing_deferred) || '';
+        if ($('nexus-prompt-deferred')) $('nexus-prompt-deferred').textContent = _promptDeferred;
+        if (_promptFamilies.length) {
+          const first = _promptFamilies[0].family;
+          if (famSel) famSel.value = first;
+          _renderPromptHeader(first);
+          _populatePromptVersions(first);
+          await _renderPromptVersion(first, _promptFamily(first).active_version);
+        }
+      } catch (e) {
+        if ($('nexus-prompt-text')) $('nexus-prompt-text').textContent = 'unavailable';
+      }
     }
+
+    async function activateNexusPrompt() {
+      const status = $('nexus-prompt-status');
+      const family = $('nexus-prompt-family') && $('nexus-prompt-family').value;
+      const version = $('nexus-prompt-version-select') && $('nexus-prompt-version-select').value;
+      if (!family || !version) return;
+      const fam = _promptFamily(family);
+      const label = fam ? fam.label : family;
+      if (!confirm('Make "' + version + '" the LIVE prompt for ' + label
+        + '? This changes what Nexus sends on new requests.')) return;
+      if (status) status.textContent = 'Activating ' + version + '…';
+      try {
+        const d = await api('/api/admin/nexus-prompts/activate',
+          { method: 'POST', body: JSON.stringify({ family, version }) });
+        // Refresh list state so active/default indicators are correct everywhere.
+        await loadNexusPrompt();
+        const famSel = $('nexus-prompt-family');
+        if (famSel) famSel.value = family;
+        _renderPromptHeader(family);
+        _populatePromptVersions(family);
+        await _renderPromptVersion(family, version);
+        if (status) status.textContent = 'Activated ' + version
+          + ' — applies to new Nexus requests for ' + label + '.';
+      } catch (e) {
+        if (status) status.textContent = 'Not activated: ' + (e.message || 'error');
+      }
+    }
+
+    $('nexus-prompt-family') && $('nexus-prompt-family').addEventListener('change', async (e) => {
+      const family = e.target.value;
+      _renderPromptHeader(family);
+      _populatePromptVersions(family);
+      await _renderPromptVersion(family, _promptFamily(family).active_version);
+      const status = $('nexus-prompt-status');
+      if (status) status.textContent = '';
+    });
+    $('nexus-prompt-version-select') && $('nexus-prompt-version-select').addEventListener('change', async (e) => {
+      const family = $('nexus-prompt-family') && $('nexus-prompt-family').value;
+      await _renderPromptVersion(family, e.target.value);
+    });
+    $('nexus-prompt-activate') && $('nexus-prompt-activate').addEventListener('click', activateNexusPrompt);
 
     async function loadAvailableModels(force) {
       const sel = $('nexus-model-select');
