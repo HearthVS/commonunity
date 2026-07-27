@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from . import assembler, canonical, modes, provenance, runtime, store
+from . import assembler, canonical, modes, provenance, runtime, store, work
 
 router = APIRouter()
 
@@ -123,6 +123,18 @@ async def admin_studio_context_sources(request: Request):
     """Canonical corpus readiness — the operational check before activating."""
     runtime.require_admin(request)
     return canonical.verify_corpus()
+
+
+@router.get("/api/admin/studio-context-work")
+async def admin_studio_context_work(request: Request):
+    """Whether the grounded Work pipeline is live, and what it has been doing.
+
+    Deliberately content-free: it reports relevance outcomes, source ids and
+    counts so an operator can tell whether a response used personal context or
+    canonical sources, without ever showing what that context said.
+    """
+    runtime.require_admin(request)
+    return work.debug_state()
 
 
 # ── Member: orientation records ──────────────────────────────────────────────

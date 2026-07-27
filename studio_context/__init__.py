@@ -19,10 +19,24 @@ Layout:
   store.py       personal orientation records: schema, ownership, idempotency
   trace.py       privacy-safe assembly trace and redaction
   assembler.py   the authenticated assembler and Phase 2 extension seams
+  relevance.py   what The Work should retrieve, and why
+  prompts.py     shared sovereignty foundation + the Work action contract
+  work.py        the one room wired to grounded_v1
   api.py         FastAPI router (admin mode control + member primitives)
 """
 
-from . import assembler, canonical, modes, provenance, runtime, store, trace
+from . import (
+    assembler,
+    canonical,
+    modes,
+    prompts,
+    provenance,
+    relevance,
+    runtime,
+    store,
+    trace,
+    work,
+)
 from .runtime import configure, is_configured
 
 __all__ = [
@@ -31,8 +45,11 @@ __all__ = [
     "configure",
     "is_configured",
     "modes",
+    "prompts",
     "provenance",
+    "relevance",
     "runtime",
     "store",
     "trace",
+    "work",
 ]

@@ -1719,6 +1719,8 @@
               <div><span class="infra-label">Previous</span><span id="studio-context-mode-prev">—</span></div>
               <div><span class="infra-label">Failure policy</span><span id="studio-context-policy-active">—</span></div>
               <div><span class="infra-label">Canonical corpus</span><span id="studio-context-sources">—</span></div>
+              <div><span class="infra-label">Grounded rooms</span><span id="studio-context-work">—</span></div>
+              <div><span class="infra-label">Last Work response</span><span id="studio-context-work-last">—</span></div>
               <div><span class="infra-label">Last activation</span><span id="studio-context-activation">—</span></div>
             </div>
           </div>
@@ -3766,6 +3768,34 @@
           : `${d.present}/${d.expected} — ${(d.problems || [])[0] || 'unhealthy'}`;
       } catch (e) {
         sources.textContent = 'unavailable';
+      }
+      loadStudioContextWork();
+    }
+
+    // Grounded Work indication. Deliberately content-free: it says whether the
+    // pipeline is live and whether the last response drew on personal context
+    // or canonical sources — never what any of that material said.
+    async function loadStudioContextWork() {
+      const el = $('studio-context-work');
+      const last = $('studio-context-work-last');
+      if (!el && !last) return;
+      try {
+        const d = await api('/api/admin/studio-context-work');
+        const lines = d.line_corpus || {};
+        if (el) {
+          el.textContent = d.active
+            ? `work: grounded · ${(d.rooms_legacy || []).join(', ')}: legacy · lines ${lines.present || 0}/${lines.expected || 6}`
+            : `all rooms legacy (mode ${d.mode})`;
+        }
+        if (last) {
+          const r = (d.recent || [])[0];
+          last.textContent = r
+            ? `${r.status} · relevance ${(r.relevance || {}).outcome || '—'} · personal ${r.used_personal_context ? 'yes' : 'no'} · sources ${(r.canonical_source_ids || []).length} · ${r.at || ''}`
+            : 'none this process';
+        }
+      } catch (e) {
+        if (el) el.textContent = 'unavailable';
+        if (last) last.textContent = 'unavailable';
       }
     }
 
