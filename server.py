@@ -118,6 +118,14 @@ _NEXUS_EFFORT_SETTING_KEY = "nexus_effort"
 # the ceiling gives reasoning headroom without loosening the requested brevity.
 _NEXUS_SHORT_MAX_TOKENS = 1024
 
+# The stUdio conversation turn is the largest prompt Nexus is given (Gene Key
+# bands, activation line, Golden Thread, cross-room summary, project notes and
+# specialist context) and is asked for the longest answer, so it is the call
+# most likely to spend its whole budget on reasoning and stream no text at all.
+# It was left at 600 when the ceilings above were raised, i.e. below the short
+# endpoints it is supposed to exceed.
+_NEXUS_STUDIO_MAX_TOKENS = 1600
+
 
 def _normalize_effort(value: str | None) -> Optional[str]:
     """Return a valid effort level (low/medium/high) or None if unrecognised."""
@@ -2469,6 +2477,55 @@ async def _stream_with_retry(client, *, model, max_tokens, system, messages, max
         except Exception as e:
             yield ("error", str(e))
             return
+
+
+# Shown when a turn completes without producing any visible text — a reasoning
+# budget spent before the first token, or a stop reason that yields no content.
+_NEXUS_EMPTY_REPLY_TEXT = (
+    "Nexus finished that turn without producing any text. "
+    "Nothing was lost — ask again, or say it in fewer words."
+)
+_NEXUS_FAILED_REPLY_TEXT = (
+    "Nexus could not complete that turn. Please try again in a moment."
+)
+_NEXUS_RATE_LIMIT_TEXT = "Rate limit reached — please try again in a moment."
+
+
+async def _conversation_sse(*, model, max_tokens, system, messages, log_usage=None):
+    """SSE events for one Nexus conversation turn.
+
+    Guarantees the caller receives renderable text. The chat surfaces render
+    `chunk` only, so a turn that errors, is rate-limited, or spends its whole
+    budget on reasoning would otherwise arrive as an empty bubble with nothing
+    to read and nothing to act on. Any such turn ends with a `chunk` carrying
+    the reason; the `error` event still carries the detail for the console.
+    """
+    emitted = False
+    async for event, payload in _stream_with_retry(
+        client, model=model, max_tokens=max_tokens, system=system, messages=messages,
+    ):
+        if event == "chunk":
+            emitted = emitted or bool(payload)
+            yield f"data: {json.dumps({'chunk': payload})}\n\n"
+        elif event == "retry":
+            yield f"data: {json.dumps({'status': 'Rate limit — retrying…'})}\n\n"
+        elif event == "final":
+            if payload and log_usage:
+                try:
+                    log_usage(payload)
+                except Exception:
+                    pass
+            if not emitted:
+                yield f"data: {json.dumps({'chunk': _NEXUS_EMPTY_REPLY_TEXT})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        elif event in ("rate_limit", "error"):
+            if event == "rate_limit":
+                visible = detail = _NEXUS_RATE_LIMIT_TEXT
+            else:
+                visible, detail = _NEXUS_FAILED_REPLY_TEXT, str(payload)
+            if not emitted:
+                yield f"data: {json.dumps({'chunk': visible})}\n\n"
+            yield f"data: {json.dumps({'error': detail})}\n\n"
 
 
 def _brand_row_to_dict(row: sqlite3.Row | None) -> dict:
@@ -6120,38 +6177,25 @@ async def rose_room_opening(request: RoseRoomOpeningRequest):
 
 Offer a single opening question or observation (1-2 sentences) that invites genuine reflection. Draw from what you know of this person — their Gene Keys, their history, what is present in their material. Be specific. Do not explain the room. Do not be generic. If you notice a recurring theme or unresolved question from previous sessions, name it precisely."""
 
-    async def stream():
-        async for event, payload in _stream_with_retry(
-            client,
+    def _log(final):
+        log_tokens(
+            companion=request.companion or "",
+            endpoint="rose-room-opening",
+            room=request.room or "",
             model=_nexus_model(),
-            max_tokens=_NEXUS_SHORT_MAX_TOKENS,
-            system=ROSE_SYSTEM,
-            messages=[{"role": "user", "content": user_msg}],
-        ):
-            if event == "chunk":
-                yield f"data: {json.dumps({'chunk': payload})}\n\n"
-            elif event == "retry":
-                yield f"data: {json.dumps({'status': 'Rate limit — retrying…'})}\n\n"
-            elif event == "final":
-                if payload:
-                    try:
-                        log_tokens(
-                            companion=request.companion or "",
-                            endpoint="rose-room-opening",
-                            room=request.room or "",
-                            model=_nexus_model(),
-                            input_tokens=payload.usage.input_tokens,
-                            output_tokens=payload.usage.output_tokens,
-                        )
-                    except Exception:
-                        pass
-                yield f"data: {json.dumps({'done': True})}\n\n"
-            elif event == "rate_limit":
-                yield f"data: {json.dumps({'error': 'Rate limit reached — please try again in a moment.'})}\n\n"
-            elif event == "error":
-                yield f"data: {json.dumps({'error': payload})}\n\n"
+            input_tokens=final.usage.input_tokens,
+            output_tokens=final.usage.output_tokens,
+        )
 
-    return StreamingResponse(stream(), media_type="text/event-stream",
+    stream = _conversation_sse(
+        model=_nexus_model(),
+        max_tokens=_NEXUS_SHORT_MAX_TOKENS,
+        system=ROSE_SYSTEM,
+        messages=[{"role": "user", "content": user_msg}],
+        log_usage=_log,
+    )
+
+    return StreamingResponse(stream, media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
@@ -6268,46 +6312,48 @@ You hold everything this person has shared — in this room and across all rooms
 Respond with precision and care. Ask the next question that genuinely matters. Or reflect back what you notice — especially if you see a pattern across rooms or across time. Never give advice unless directly asked. Never summarise what they just said. Move the conversation forward from the long view, not just the immediate moment."""
 
     # Build messages from history
-    messages = []
+    messages: list[dict] = []
     history_limit = 12 if is_studio else 8  # studio gets more history for project continuity
+
+    def _add_turn(role: str, content: str) -> None:
+        """Append a turn, keeping the transcript valid for the Messages API:
+        no empty content block, no consecutive same-role turns, no leading
+        assistant turn. Blank turns are dropped rather than forwarded — a
+        single empty reply already saved in a member's browser would otherwise
+        be rejected on every later turn in that room, turning one silent
+        failure into a permanently broken conversation."""
+        content = (content or "").strip()
+        if not content or (not messages and role == "assistant"):
+            return
+        if messages and messages[-1]["role"] == role:
+            messages[-1]["content"] += "\n\n" + content
+        else:
+            messages.append({"role": role, "content": content})
+
     for msg in request.history[-history_limit:]:
-        role = "assistant" if msg.get("role") == "rose" else "user"
-        messages.append({"role": role, "content": msg.get("text", "")})
-    messages.append({"role": "user", "content": request.message})
+        _add_turn("assistant" if msg.get("role") == "rose" else "user", msg.get("text", ""))
+    _add_turn("user", request.message)
 
-    async def stream():
-        async for event, payload in _stream_with_retry(
-            client,
+    def _log(final):
+        log_tokens(
+            companion=request.companion or "",
+            endpoint="rose-mirror",
+            room=request.room or "",
             model=_nexus_model(),
-            max_tokens=600 if is_studio else _NEXUS_SHORT_MAX_TOKENS,
-            system=system,
-            messages=messages,
-        ):
-            if event == "chunk":
-                yield f"data: {json.dumps({'chunk': payload})}\n\n"
-            elif event == "retry":
-                yield f"data: {json.dumps({'status': 'Rate limit — retrying…'})}\n\n"
-            elif event == "final":
-                if payload:
-                    try:
-                        log_tokens(
-                            companion=request.companion or "",
-                            endpoint="rose-mirror",
-                            room=request.room or "",
-                            model=_nexus_model(),
-                            input_tokens=payload.usage.input_tokens,
-                            output_tokens=payload.usage.output_tokens,
-                            invite_token=getattr(request, "invite_token", "") or "",
-                        )
-                    except Exception:
-                        pass
-                yield f"data: {json.dumps({'done': True})}\n\n"
-            elif event == "rate_limit":
-                yield f"data: {json.dumps({'error': 'Rate limit reached — please try again in a moment.'})}\n\n"
-            elif event == "error":
-                yield f"data: {json.dumps({'error': payload})}\n\n"
+            input_tokens=final.usage.input_tokens,
+            output_tokens=final.usage.output_tokens,
+            invite_token=getattr(request, "invite_token", "") or "",
+        )
 
-    return StreamingResponse(stream(), media_type="text/event-stream",
+    stream = _conversation_sse(
+        model=_nexus_model(),
+        max_tokens=_NEXUS_STUDIO_MAX_TOKENS if is_studio else _NEXUS_SHORT_MAX_TOKENS,
+        system=system,
+        messages=messages,
+        log_usage=_log,
+    )
+
+    return StreamingResponse(stream, media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
