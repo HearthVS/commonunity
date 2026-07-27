@@ -1697,6 +1697,55 @@
           <span id="nexus-model-status" class="hint" style="margin:0;"></span>
         </section>
 
+        <!-- stUdio context mode -->
+        <section class="panel card" style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <h2 style="margin:0">stUdio context mode</h2>
+            <span class="count-badge" id="studio-context-mode-current">—</span>
+          </div>
+          <p class="hint" style="margin:4px 0 14px">
+            How stUdio assembles the context behind a generation.
+            <strong>legacy</strong> is the behaviour that shipped before the
+            grounded foundation and stays the production default.
+            <strong>grounded_v1</strong> assembles server-side from the member's
+            own accepted records plus the canonical Gene Key corpus. This is
+            independent of the Nexus model above — switching context mode never
+            changes the model or the reasoning effort.
+          </p>
+          <div class="infra-card" style="margin-bottom:12px;">
+            <div class="infra-details">
+              <div><span class="infra-label">Active</span><span id="studio-context-mode-active">—</span></div>
+              <div><span class="infra-label">Source</span><span id="studio-context-mode-source">—</span></div>
+              <div><span class="infra-label">Previous</span><span id="studio-context-mode-prev">—</span></div>
+              <div><span class="infra-label">Failure policy</span><span id="studio-context-policy-active">—</span></div>
+              <div><span class="infra-label">Canonical corpus</span><span id="studio-context-sources">—</span></div>
+              <div><span class="infra-label">Last activation</span><span id="studio-context-activation">—</span></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            <label for="studio-context-mode-select" style="font-size:0.85rem;color:#bbb;">Candidate</label>
+            <select id="studio-context-mode-select" class="btn" style="min-width:200px;">
+              <option value="legacy">legacy — current behaviour</option>
+              <option value="grounded_v1">grounded_v1 — server-side grounding</option>
+            </select>
+            <label style="font-size:0.85rem;color:#bbb;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="studio-context-mode-confirm" />
+              I confirm this change
+            </label>
+            <button class="btn" id="studio-context-mode-activate">Activate</button>
+            <button class="btn" id="studio-context-mode-rollback">Roll back to legacy</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+            <label for="studio-context-policy-select" style="font-size:0.85rem;color:#bbb;">If grounding is unavailable</label>
+            <select id="studio-context-policy-select" class="btn" style="min-width:230px;">
+              <option value="fail_closed">fail_closed — return grounding-unavailable</option>
+              <option value="fallback_legacy">fallback_legacy — audited legacy fallback</option>
+            </select>
+            <button class="btn" id="studio-context-policy-save">Save policy</button>
+          </div>
+          <span id="studio-context-status" class="hint" style="margin:0;"></span>
+        </section>
+
         <!-- Nexus FieldPrint prompt (read-only) -->
         <section class="panel card" style="margin-bottom:18px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -3667,10 +3716,119 @@
     $('nexus-model-activate') && $('nexus-model-activate').addEventListener('click', activateNexusModel);
     $('nexus-model-rollback') && $('nexus-model-rollback').addEventListener('click', rollbackNexusModel);
 
+    // ── stUdio context mode ───────────────────────────────────────────────
+    // Activation needs two deliberate acts: tick the confirm box, then press
+    // Activate. Rollback is one press, because the safe direction should not
+    // be gated behind extra clicks.
+
+    function renderStudioContextMode(state) {
+      if (!state) return;
+      const cur = $('studio-context-mode-current');
+      if (cur) cur.textContent = state.mode || '—';
+      const active = $('studio-context-mode-active');
+      if (active) active.textContent = state.mode || '—';
+      const source = $('studio-context-mode-source');
+      if (source) source.textContent = state.source || '—';
+      const prev = $('studio-context-mode-prev');
+      if (prev) prev.textContent = state.previous_mode || 'none';
+      const policy = $('studio-context-policy-active');
+      if (policy) policy.textContent = state.failure_policy || '—';
+      const sel = $('studio-context-mode-select');
+      if (sel && state.mode) sel.value = state.mode;
+      const psel = $('studio-context-policy-select');
+      if (psel && state.failure_policy) psel.value = state.failure_policy;
+      const rb = $('studio-context-mode-rollback');
+      if (rb) rb.disabled = !state.rollback_available;
+      const act = $('studio-context-activation');
+      const a = state.last_activation || {};
+      if (act) {
+        act.textContent = a.activated_at
+          ? `${a.previous_mode || '—'} → ${a.mode || '—'} at ${a.activated_at}`
+          : 'none recorded';
+      }
+      const confirm = $('studio-context-mode-confirm');
+      if (confirm) confirm.checked = false;
+    }
+
+    async function loadStudioContextMode() {
+      try {
+        renderStudioContextMode(await api('/api/admin/studio-context-mode'));
+      } catch (e) {
+        const cur = $('studio-context-mode-current');
+        if (cur) cur.textContent = 'unavailable';
+      }
+      const sources = $('studio-context-sources');
+      if (!sources) return;
+      try {
+        const d = await api('/api/admin/studio-context-sources');
+        sources.textContent = d.ok
+          ? `${d.present}/${d.expected} ok · ${d.source_version}`
+          : `${d.present}/${d.expected} — ${(d.problems || [])[0] || 'unhealthy'}`;
+      } catch (e) {
+        sources.textContent = 'unavailable';
+      }
+    }
+
+    async function activateStudioContextMode() {
+      const status = $('studio-context-status');
+      const sel = $('studio-context-mode-select');
+      const confirm = $('studio-context-mode-confirm');
+      if (!sel) return;
+      if (!confirm || !confirm.checked) {
+        if (status) status.textContent = 'Tick “I confirm this change” first.';
+        return;
+      }
+      if (status) status.textContent = 'Activating ' + sel.value + '…';
+      try {
+        const state = await api('/api/admin/studio-context-mode/activate', {
+          method: 'POST',
+          body: JSON.stringify({ mode: sel.value, confirm: true, reason: 'admin panel' }),
+        });
+        renderStudioContextMode(state);
+        if (status) status.textContent = 'Active: ' + state.mode + ' — applies to new stUdio requests. Model unchanged.';
+      } catch (e) {
+        if (status) status.textContent = 'Not activated: ' + (e.message || 'error');
+      }
+    }
+
+    async function rollbackStudioContextMode() {
+      const status = $('studio-context-status');
+      if (status) status.textContent = 'Rolling back to legacy…';
+      try {
+        const state = await api('/api/admin/studio-context-mode/rollback', { method: 'POST' });
+        renderStudioContextMode(state);
+        if (status) status.textContent = 'Rolled back to legacy — applies to new stUdio requests.';
+      } catch (e) {
+        if (status) status.textContent = 'Rollback failed: ' + (e.message || 'error');
+      }
+    }
+
+    async function saveStudioContextPolicy() {
+      const status = $('studio-context-status');
+      const sel = $('studio-context-policy-select');
+      if (!sel) return;
+      if (status) status.textContent = 'Saving policy…';
+      try {
+        const state = await api('/api/admin/studio-context-failure-policy', {
+          method: 'PUT',
+          body: JSON.stringify({ failure_policy: sel.value }),
+        });
+        renderStudioContextMode(state);
+        if (status) status.textContent = 'Policy saved: ' + state.failure_policy + '.';
+      } catch (e) {
+        if (status) status.textContent = 'Not saved: ' + (e.message || 'error');
+      }
+    }
+
+    $('studio-context-mode-activate') && $('studio-context-mode-activate').addEventListener('click', activateStudioContextMode);
+    $('studio-context-mode-rollback') && $('studio-context-mode-rollback').addEventListener('click', rollbackStudioContextMode);
+    $('studio-context-policy-save') && $('studio-context-policy-save').addEventListener('click', saveStudioContextPolicy);
+
     function loadInfrastructure() {
       loadInfraHealth();
       loadNexusEffort();
       loadNexusModel();
+      loadStudioContextMode();
       loadNexusPrompt();
       loadAvailableModels(false);
       loadPostBetaTasks();

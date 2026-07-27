@@ -28,6 +28,8 @@ from pydantic import BaseModel
 from typing import Optional
 from anthropic import Anthropic
 
+import studio_context
+
 app = FastAPI()
 
 app.add_middleware(
@@ -1886,6 +1888,12 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
           AND type IN ('invite_created', 'invite_email_sent', 'invite_revoked')
         """
     )
+
+    # stUdio context foundation: personal orientation records. Owned by the
+    # studio_context package so the trust layer's schema lives next to the
+    # code that enforces it. Same idempotent contract as everything above.
+    studio_context.store.init_schema(conn)
+
     conn.commit()
 
 
@@ -8740,3 +8748,38 @@ async def admin_token_stats(request: Request):
         "per_room": [dict(r) for r in per_room],
         "daily":    [dict(r) for r in daily],
     }
+
+
+# ── stUdio context foundation wiring ─────────────────────────────────────────
+# The context foundation lives in the `studio_context` package (see
+# docs/architecture/studio-context-modes.md). It never imports this module;
+# instead the host binds the capabilities it needs once, here. Production
+# behaviour is unchanged until an operator activates `grounded_v1` — the
+# default mode is `legacy` and no generation endpoint above consults the
+# package.
+#
+# The context mode is independent of the AI provider/model selection: it uses
+# its own app_settings keys and never reads or writes `nexus_model` /
+# `nexus_effort`.
+
+def _studio_context_require_member(request: Request) -> None:
+    """Member gate for the context routes, matching the Field Observations
+    contract (admin, beta cookie, or a valid invite token)."""
+    if not _has_member_access(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+
+studio_context.configure(
+    db=_admin_db,
+    get_setting=_get_setting,
+    set_setting=_set_setting,
+    now_iso=_now_iso,
+    record_event=_record_event,
+    require_admin=_require_admin,
+    require_member=_studio_context_require_member,
+    invite_token_from_cookie=_invite_token_from_cookie,
+)
+
+from studio_context import api as _studio_context_api  # noqa: E402  (after configure)
+
+app.include_router(_studio_context_api.router)
