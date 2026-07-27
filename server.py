@@ -6334,6 +6334,10 @@ class InspireLayer2Request(BaseModel):
     # here — only surfaced profile/document material. `documents` is a
     # forward-compatible list of {label, text, source} for future uploads.
     evidence: dict = {}     # work_background, education, documents[]
+    # Pseudonymous member key, used only by the grounded context pipeline to
+    # scope a caller to their OWN accepted records (the signed invite cookie is
+    # the fallback). Ignored entirely in legacy mode.
+    cipher_id: str = ""
 
 
 class ArrivalRequest(BaseModel):
@@ -6587,9 +6591,14 @@ def _nexus_fieldprint_prompt_state() -> dict:
 
 
 @app.post("/inspire-layer2")
-async def inspire_layer2(request: InspireLayer2Request):
+async def inspire_layer2(request: InspireLayer2Request, req: Request):
     """Generate a Layer 2 FieldPrint field draft from cOMpass orientation,
-    approved profile evidence, stUdio material, and global audience context."""
+    approved profile evidence, stUdio material, and global audience context.
+
+    The Work is the one room that can be assembled server-side instead: when the
+    stUdio context mode is `grounded_v1` and `point` is exactly `work`,
+    `studio_context.work` supplies the prompt. Every other room, and the whole
+    of `legacy` mode, run the code below unchanged."""
 
     point_names = {"work": "The Work (Life's Work)", "lens": "The Lens (Evolution)",
                    "field": "The Field (Radiance)", "call": "The Call (Purpose)"}
@@ -6628,19 +6637,41 @@ async def inspire_layer2(request: InspireLayer2Request):
         f"Task: {field_instructions.get(request.field, 'Write a synthesis.')}",
     ]
     user_msg = "\n\n".join(s for s in sections if s)
+    system_prompt = INSPIRE_L2_SYSTEM
+
+    # The Work pilot. `plan` is None for every other room and for legacy mode,
+    # leaving the prompt above exactly as it was. A plan carries one of:
+    # system+user (generate from grounded context), reply (a clarification to
+    # stream instead), error (audited grounding refusal), or legacy (audited
+    # fallback, which keeps the prompt above and only attaches metadata).
+    plan = studio_context.work.route_inspire_layer2(
+        req, request,
+        task=field_instructions.get(request.field, "Write a synthesis."),
+        voice=_INSPIRE_VOICE_LINE,
+        client_material=[evidence_block, audience_block],
+    ) or {}
+    grounding_meta = plan.get("meta") or {}
+    if plan.get("system"):
+        system_prompt, user_msg = plan["system"], plan["user"]
 
     async def stream():
         try:
-            with client.messages.stream(
-                model=_nexus_model(),
-                output_config=_nexus_output_config(),
-                max_tokens=_NEXUS_SHORT_MAX_TOKENS,
-                system=INSPIRE_L2_SYSTEM,
-                messages=[{"role": "user", "content": user_msg}]
-            ) as s:
-                for text in s.text_stream:
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            if plan.get("error"):
+                yield f"data: {json.dumps({'error': plan['error'], **grounding_meta})}\n\n"
+                return
+            if plan.get("reply"):
+                yield f"data: {json.dumps({'chunk': plan['reply']})}\n\n"
+            else:
+                with client.messages.stream(
+                    model=_nexus_model(),
+                    output_config=_nexus_output_config(),
+                    max_tokens=_NEXUS_SHORT_MAX_TOKENS,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_msg}]
+                ) as s:
+                    for text in s.text_stream:
+                        yield f"data: {json.dumps({'chunk': text})}\n\n"
+            yield f"data: {json.dumps({'done': True, **grounding_meta})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
