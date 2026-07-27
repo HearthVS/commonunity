@@ -10277,6 +10277,10 @@ body.hw-open { overflow: hidden; }
 }
 /* ── hOMe Workbench (HOME_WORKBENCH_CSS_END) ─────────────────────────── */
 </style>
+<!-- CommonUnity Nexus activity signal — the shared wordless "Nexus is
+     working" standard, identical here and in cOMpass. -->
+<link rel="stylesheet" href="/sdk/nexus-activity.css">
+<script src="/sdk/nexus-activity.js"></script>
 </head>
 <body>
 
@@ -11178,7 +11182,7 @@ body.hw-open { overflow: hidden; }
 
     <!-- Nexus (right panel) -->
     <div class="room-mirror" id="room-mirror">
-      <div class="rose-surface">
+      <div class="rose-surface nexus-activity-field" id="nexus-activity-field">
 
       <!-- Flat header bar — matches Archive and Notepad -->
       <div class="nexus-panel-header">
@@ -13592,6 +13596,12 @@ function renderMirrorHistory(roomKey) {
 
   // Clear all existing messages (but keep intro)
   conv.querySelectorAll('.mirror-message').forEach(m => m.remove());
+  // A rerender means the transcript this conversation belonged to is gone —
+  // a room switch, a reset, a repaired blank turn. Any activity signal still
+  // showing belongs to a request whose bubble no longer exists.
+  if (window.CommonUnityNexusActivity) {
+    window.CommonUnityNexusActivity.reset(document.getElementById('nexus-activity-field'));
+  }
 
   if (history.length === 0) {
     intro.style.display = '';
@@ -13915,6 +13925,18 @@ function studioNexusShowActionCard(preferred) {
   }
 }
 
+// Start the shared Nexus activity signal on the studio conversation panel.
+// Returns an inert stub if the shared module has not loaded, so a missing
+// script can never break sending.
+function studioNexusActivityBegin() {
+  const api = window.CommonUnityNexusActivity;
+  if (!api) return { firstToken() {}, done() {}, fail() {} };
+  return api.begin({
+    field: document.getElementById('nexus-activity-field'),
+    origin: document.getElementById('mirror-conversation')
+  });
+}
+
 async function sendMirrorMessage() {
   const input = document.getElementById('mirror-input');
   const sendBtn = document.getElementById('mirror-send-btn');
@@ -13936,6 +13958,10 @@ async function sendMirrorMessage() {
   autoGrowMirrorInput(input);
   appendMirrorMessage('user', msg);
   sendBtn.classList.add('loading');
+
+  // Wordless activity signal. Owns the panel outline and the mark at the
+  // response origin until the first token; see sdk/nexus-activity.js.
+  const activity = studioNexusActivityBegin();
 
   const meta = ROOM_META[currentRoom];
   const gkNum = state.compassData?.points?.[currentRoom]?.gk_num || '';
@@ -14024,10 +14050,10 @@ async function sendMirrorMessage() {
       if (!line.startsWith('data: ')) return;
       try {
         const d = JSON.parse(line.slice(6));
-        if (d.chunk) { text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
+        if (d.chunk) { activity.firstToken(); text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
         // A turn that failed upstream still has to say so. Only when nothing
         // has streamed, so a mid-stream error never overwrites the answer.
-        else if (d.error && !text) { bubble.textContent = String(d.error); conv.scrollTop = conv.scrollHeight; }
+        else if (d.error && !text) { activity.fail(); bubble.textContent = String(d.error); conv.scrollTop = conv.scrollHeight; }
       } catch(e) {}
     }
 
@@ -14037,6 +14063,7 @@ async function sendMirrorMessage() {
           buffer += decoder.decode();
           if (buffer) { handleLine(buffer); buffer = ''; }
           sendBtn.classList.remove('loading');
+          activity.done();
           if (!state.rooms[currentRoom].mirrorHistory) state.rooms[currentRoom].mirrorHistory = [];
           // Never store an empty turn: it is not a reply, and replaying it
           // would corrupt the transcript sent with the next message.
@@ -14065,10 +14092,17 @@ async function sendMirrorMessage() {
         buffer = lines.pop(); // keep the incomplete trailing line for the next read
         for (const line of lines) handleLine(line);
         read();
+      }).catch(() => {
+        // The connection dropped mid-stream. Whatever streamed stays; the
+        // signal must not.
+        activity.fail();
+        sendBtn.classList.remove('loading');
+        if (!text) bubble.textContent = 'Something interrupted the connection. Try again when you are ready.';
       });
     }
     read();
   } catch(e) {
+    activity.fail();
     appendMirrorMessage('rose', 'Something interrupted the connection. Try again when you are ready.');
     sendBtn.classList.remove('loading');
   }

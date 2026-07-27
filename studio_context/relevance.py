@@ -1,9 +1,9 @@
-"""Contextual relevance decision for The Work.
+"""Contextual relevance decision, shared by every grounded room.
 
 Retrieval is a cost, not a bonus. Pulling a Gene Key transcript into a request
 to tighten some product copy makes the answer longer, vaguer and more mystical
 than the member asked for, and it spends a person's contemplative material on
-a task that did not need it. So the default for The Work is *no source
+a task that did not need it. So the default in every room is *no source
 retrieval*: the member's own accepted orientation, and nothing else.
 
 This module is the single place that decides otherwise. It is deliberately
@@ -17,6 +17,14 @@ without a model, a database or a corpus.
     gene_key              + the Shadow/Gift/Siddhi spectrum of one owned key
     gene_key_and_line     + the Line passage for that key in this room
     clarification_required  ask, rather than guess
+
+The decision table itself is identical in all four rooms — the same signals,
+the same thresholds, the same precedence. What varies is narrow and additive:
+each room contributes a handful of extra phrases that mean "go to the source"
+or "this is recurring" *in that room's vocabulary* (see `ROOM_SIGNALS`), and
+each room has its own clarification wording. Nothing about a room can make
+retrieval easier to trigger than the shared rules allow; a room can only
+recognise its own way of saying the same thing.
 
 Two rules keep this honest:
 
@@ -73,7 +81,6 @@ _EXPLICIT_SOURCE_PATTERNS = (
     r"gift\s+frequency",
     r"(?:my|the)\s+shadow\s+(?:pattern|state|here|in\s+this)",
     r"programming\s+partner",
-    r"life'?s?\s+work\s+line",
 )
 
 # Recurrence and self-observed tension. These are the signals that a member is
@@ -101,8 +108,59 @@ _LINE_PATTERNS = (
     r"\bmy\s+line\b",
 )
 
-_EXPLICIT_RE = re.compile("|".join(_EXPLICIT_SOURCE_PATTERNS), re.IGNORECASE)
-_RECURRING_RE = re.compile("|".join(_RECURRING_PATTERNS), re.IGNORECASE)
+# Per-room additions to the two signal sets above. Narrow by design: each entry
+# is a phrase that means the same thing the shared patterns mean, said in the
+# vocabulary of that room. A room may recognise its own idiom; it may not lower
+# the bar. Ordinary drafting language stays out of every list — "explain",
+# "community" and "next step" are the substance of Lens, Field and Call
+# requests respectively, so they can never be retrieval triggers.
+ROOM_SIGNALS = {
+    "work": {
+        "explicit": (r"life'?s?\s+work\s+line",),
+        "recurring": (),
+    },
+    "lens": {
+        "explicit": (r"evolution\s+line", r"how\s+the\s+gene\s+keys?\s+(?:describe|frame|put)"),
+        "recurring": (
+            r"i\s+keep\s+(?:trying\s+to\s+)?(?:explain|articulate|say|write)",
+            r"never\s+comes\s+out\s+right",
+            r"can'?t\s+(?:ever\s+)?find\s+the\s+words",
+        ),
+    },
+    "field": {
+        "explicit": (r"radiance\s+line",),
+        "recurring": (
+            r"(?:the\s+)?same\s+dynamic",
+            r"keeps?\s+happening\s+(?:with|in|around)",
+            r"i\s+keep\s+ending\s+up\s+(?:in|with)",
+            r"burn(?:ing|t|ed)?\s+out\s+(?:again|every\s+time)",
+        ),
+    },
+    "call": {
+        "explicit": (r"purpose\s+line", r"incarnation\s+cross"),
+        "recurring": (
+            r"keeps?\s+(?:calling|pulling|drawing)\s+me",
+            r"keep\s+being\s+asked",
+            r"i\s+keep\s+circling",
+        ),
+    },
+}
+
+DEFAULT_ROOM = "work"
+
+
+def _compile(base: tuple[str, ...], extra: tuple[str, ...]):
+    return re.compile("|".join(base + tuple(extra)), re.IGNORECASE)
+
+
+_EXPLICIT_RE = {
+    room: _compile(_EXPLICIT_SOURCE_PATTERNS, signals["explicit"])
+    for room, signals in ROOM_SIGNALS.items()
+}
+_RECURRING_RE = {
+    room: _compile(_RECURRING_PATTERNS, signals["recurring"])
+    for room, signals in ROOM_SIGNALS.items()
+}
 _LINE_RE = re.compile("|".join(_LINE_PATTERNS), re.IGNORECASE)
 
 
@@ -139,12 +197,14 @@ class RelevanceDecision:
         }
 
 
-def signals_for(request_text: str) -> dict:
+def signals_for(request_text: str, room: str = DEFAULT_ROOM) -> dict:
     """The raw signal readings, exposed so a trace can explain a decision."""
     text = (request_text or "").strip()
+    key = room if room in ROOM_SIGNALS else DEFAULT_ROOM
     return {
-        "explicit_source_request": bool(_EXPLICIT_RE.search(text)),
-        "recurring_pattern": bool(_RECURRING_RE.search(text)),
+        "room": key,
+        "explicit_source_request": bool(_EXPLICIT_RE[key].search(text)),
+        "recurring_pattern": bool(_RECURRING_RE[key].search(text)),
         "line_reference": bool(_LINE_RE.search(text)),
         "substantive_request": len(text) >= MIN_REQUEST_CHARS,
     }
@@ -153,6 +213,7 @@ def signals_for(request_text: str) -> dict:
 def decide(
     request_text: str,
     *,
+    room: str = DEFAULT_ROOM,
     owned_gene_keys: tuple[int, ...] | list[int] = (),
     owned_line: int | None = None,
     has_accepted_essence: bool = False,
@@ -164,7 +225,8 @@ def decide(
     Gene Key request" safe to honour: the request selects *whether* to open
     the corpus, and the member's records select *what* is opened.
     """
-    signals = signals_for(request_text)
+    signals = signals_for(request_text, room)
+    clarify = CLARIFICATIONS.get(signals["room"], CLARIFICATIONS[DEFAULT_ROOM])
     keys = tuple(sorted({int(k) for k in owned_gene_keys if k}))
 
     if signals["explicit_source_request"]:
@@ -172,7 +234,7 @@ def decide(
             return RelevanceDecision(
                 CLARIFICATION_REQUIRED,
                 "explicit_source_request_without_owned_key",
-                clarification=_CLARIFY_NO_OWNED_KEY,
+                clarification=clarify["no_owned_key"],
                 signals=signals,
             )
         if owned_line is not None and (signals["line_reference"] or signals["recurring_pattern"]):
@@ -203,46 +265,116 @@ def decide(
             )
         return RelevanceDecision(
             CLARIFICATION_REQUIRED, "recurring_pattern_without_any_context",
-            clarification=_CLARIFY_PATTERN_NO_CONTEXT, signals=signals,
+            clarification=clarify["pattern_no_context"], signals=signals,
         )
 
     if not signals["substantive_request"] and not has_accepted_essence:
         return RelevanceDecision(
             CLARIFICATION_REQUIRED, "insufficient_request_and_no_accepted_context",
-            clarification=_CLARIFY_THIN_REQUEST, signals=signals,
+            clarification=clarify["thin_request"], signals=signals,
         )
 
     if has_accepted_essence:
-        return RelevanceDecision(PERSONAL_ONLY, "ordinary_work_request", signals=signals)
+        return RelevanceDecision(PERSONAL_ONLY, "ordinary_room_request", signals=signals)
 
     return RelevanceDecision(NONE, "no_accepted_orientation", signals=signals)
 
 
 # Clarifications are written as Nexus speaking to the member: short, concrete,
 # and naming what would unblock the request. They never guess at an answer and
-# never imply Nexus knows something about the person that it does not.
-_CLARIFY_NO_OWNED_KEY = (
-    "Before I bring Gene Keys material into this, I need to know which key you "
-    "mean — I only work from the keys you have accepted into your stUdio, and I "
-    "do not have one recorded for The Work yet. Add the key (and line, if you "
-    "know it) and I will draft from the actual source rather than from a "
-    "general impression."
-)
-
-_CLARIFY_PATTERN_NO_CONTEXT = (
-    "It sounds like you are pointing at something that keeps recurring, and I "
-    "would rather ask than assume. I do not yet have anything you have accepted "
-    "about your work to read it against. Tell me in a sentence or two what the "
-    "pattern shows up as in practice — or accept an essence for The Work — and "
-    "I will work from that."
-)
-
-_CLARIFY_THIN_REQUEST = (
-    "I do not have enough to work from yet. There is nothing accepted for The "
-    "Work in your stUdio, and this request does not say what you are making, "
-    "offering, or trying to move. Give me a line or two about it and I will "
-    "draft something concrete."
-)
+# never imply Nexus knows something about the person that it does not. Each
+# room names its own room and its own missing ingredient, because "give me a
+# line or two" is unhelpfully vague when the member cannot tell what kind of
+# line the room wants.
+CLARIFICATIONS = {
+    "work": {
+        "no_owned_key": (
+            "Before I bring Gene Keys material into this, I need to know which key "
+            "you mean — I only work from the keys you have accepted into your "
+            "stUdio, and I do not have one recorded for The Work yet. Add the key "
+            "(and line, if you know it) and I will draft from the actual source "
+            "rather than from a general impression."
+        ),
+        "pattern_no_context": (
+            "It sounds like you are pointing at something that keeps recurring, and "
+            "I would rather ask than assume. I do not yet have anything you have "
+            "accepted about your work to read it against. Tell me in a sentence or "
+            "two what the pattern shows up as in practice — or accept an essence "
+            "for The Work — and I will work from that."
+        ),
+        "thin_request": (
+            "I do not have enough to work from yet. There is nothing accepted for "
+            "The Work in your stUdio, and this request does not say what you are "
+            "making, offering, or trying to move. Give me a line or two about it "
+            "and I will draft something concrete."
+        ),
+    },
+    "lens": {
+        "no_owned_key": (
+            "I can only open Gene Keys material for keys you have accepted into "
+            "your stUdio, and I do not have one recorded for The Lens yet. Add the "
+            "key (and line, if you know it) and I will read from the source. "
+            "Otherwise, tell me what you are trying to put into words and I will "
+            "work from that instead."
+        ),
+        "pattern_no_context": (
+            "You are pointing at something that keeps coming back in how you see or "
+            "explain this, and I would rather ask than invent. I do not have "
+            "anything you have accepted for The Lens to read it against. Say in a "
+            "sentence or two what you keep trying to articulate, and I will start "
+            "from your words."
+        ),
+        "thin_request": (
+            "I do not have enough to work from yet. There is nothing accepted for "
+            "The Lens in your stUdio, and this request does not say what you are "
+            "trying to express or teach. Give me the rough version — even badly "
+            "phrased — and I will help you sharpen it."
+        ),
+    },
+    "field": {
+        "no_owned_key": (
+            "I only open Gene Keys material for keys you have accepted into your "
+            "stUdio, and I do not have one recorded for The Field yet. Add the key "
+            "(and line, if you know it), or tell me about the conditions and "
+            "support you are actually working with, and I will start there."
+        ),
+        "pattern_no_context": (
+            "It sounds like something keeps recurring in your conditions or "
+            "relationships. I do not have anything you have accepted for The Field "
+            "to read it against, and I will not guess at what anyone else involved "
+            "wants or intends. Describe what you have observed happening, and I "
+            "will work from that."
+        ),
+        "thin_request": (
+            "I do not have enough to work from yet. There is nothing accepted for "
+            "The Field in your stUdio, and this request does not say what "
+            "conditions, rhythms or support you are trying to change. A line or "
+            "two about your actual week would be enough."
+        ),
+    },
+    "call": {
+        "no_owned_key": (
+            "I only open Gene Keys material for keys you have accepted into your "
+            "stUdio, and I do not have one recorded for The Call yet. Add the key "
+            "(and line, if you know it), or tell me what is drawing you at the "
+            "moment, and I will work from that rather than from a general "
+            "impression."
+        ),
+        "pattern_no_context": (
+            "Something seems to keep pulling at you here, and I would rather ask "
+            "than tell you what it means. I do not have anything you have accepted "
+            "for The Call to read it against. Say what keeps showing up as an "
+            "invitation or a pull, and I will treat it as a direction to test "
+            "rather than a conclusion."
+        ),
+        "thin_request": (
+            "I do not have enough to work from yet. There is nothing accepted for "
+            "The Call in your stUdio, and this request does not say what direction, "
+            "invitation or commitment you are weighing. Tell me what is in front of "
+            "you and I will propose something you could actually try."
+        ),
+    },
+}
 
 
 __all__ = [
@@ -254,6 +386,9 @@ __all__ = [
     "OUTCOMES",
     "RETRIEVING_OUTCOMES",
     "EXTENSION_CORPORA",
+    "ROOM_SIGNALS",
+    "CLARIFICATIONS",
+    "DEFAULT_ROOM",
     "RelevanceDecision",
     "decide",
     "signals_for",

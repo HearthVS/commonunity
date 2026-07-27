@@ -6641,10 +6641,10 @@ async def inspire_layer2(request: InspireLayer2Request, req: Request):
     """Generate a Layer 2 FieldPrint field draft from cOMpass orientation,
     approved profile evidence, stUdio material, and global audience context.
 
-    The Work is the one room that can be assembled server-side instead: when the
-    stUdio context mode is `grounded_v1` and `point` is exactly `work`,
-    `studio_context.work` supplies the prompt. Every other room, and the whole
-    of `legacy` mode, run the code below unchanged."""
+    The four canonical rooms can be assembled server-side instead: when the
+    stUdio context mode is `grounded_v1` and `point` is exactly `work`, `lens`,
+    `field` or `call`, `studio_context.rooms` supplies the prompt. Any other
+    `point`, and the whole of `legacy` mode, run the code below unchanged."""
 
     point_names = {"work": "The Work (Life's Work)", "lens": "The Lens (Evolution)",
                    "field": "The Field (Radiance)", "call": "The Call (Purpose)"}
@@ -6685,12 +6685,12 @@ async def inspire_layer2(request: InspireLayer2Request, req: Request):
     user_msg = "\n\n".join(s for s in sections if s)
     system_prompt = INSPIRE_L2_SYSTEM
 
-    # The Work pilot. `plan` is None for every other room and for legacy mode,
-    # leaving the prompt above exactly as it was. A plan carries one of:
-    # system+user (generate from grounded context), reply (a clarification to
-    # stream instead), error (audited grounding refusal), or legacy (audited
-    # fallback, which keeps the prompt above and only attaches metadata).
-    plan = studio_context.work.route_inspire_layer2(
+    # `plan` is None for an unrecognised room and for legacy mode, leaving the
+    # prompt above exactly as it was. A plan carries one of: system+user
+    # (generate from grounded context), reply (a clarification to stream
+    # instead), error (audited grounding refusal), or legacy (audited fallback,
+    # which keeps the prompt above and only attaches metadata).
+    plan = studio_context.rooms.route_inspire_layer2(
         req, request,
         task=field_instructions.get(request.field, "Write a synthesis."),
         voice=_INSPIRE_VOICE_LINE,

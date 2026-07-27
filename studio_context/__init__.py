@@ -6,7 +6,8 @@ what production does. Two modes exist:
   legacy      — the behaviour that shipped before this package. Production
                 default. No code path in this package runs for it.
   grounded_v1 — versioned server-side assembly from authenticated member-owned
-                records plus the canonical Gene Key corpus.
+                records plus the canonical Gene Key corpus, for all four
+                canonical rooms: work, lens, field, call.
 
 See docs/architecture/studio-context-modes.md for the data model, trust
 boundaries, activation and rollback procedure.
@@ -19,9 +20,9 @@ Layout:
   store.py       personal orientation records: schema, ownership, idempotency
   trace.py       privacy-safe assembly trace and redaction
   assembler.py   the authenticated assembler and Phase 2 extension seams
-  relevance.py   what The Work should retrieve, and why
-  prompts.py     shared sovereignty foundation + the Work action contract
-  work.py        the one room wired to grounded_v1
+  relevance.py   what a room should retrieve, and why
+  prompts.py     shared sovereignty foundation + the four room action contracts
+  rooms.py       the room engine: work, lens, field and call under grounded_v1
   api.py         FastAPI router (admin mode control + member primitives)
 """
 
@@ -32,10 +33,10 @@ from . import (
     prompts,
     provenance,
     relevance,
+    rooms,
     runtime,
     store,
     trace,
-    work,
 )
 from .runtime import configure, is_configured
 
@@ -48,8 +49,8 @@ __all__ = [
     "prompts",
     "provenance",
     "relevance",
+    "rooms",
     "runtime",
     "store",
     "trace",
-    "work",
 ]

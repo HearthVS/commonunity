@@ -3518,29 +3518,6 @@ body.companion-mode .companion-mode-banner { display: block; }
 }
 .compass-nexus-send.loading { opacity: 0.5; cursor: wait; }
 
-/* Three-dot "thinking" indicator shown in the Nexus bubble while waiting for
-   the first streamed chunk. */
-.compass-nexus-typing {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-}
-.compass-nexus-typing span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 70%, transparent);
-  opacity: 0.4;
-  animation: compass-nexus-typing-bounce 1.2s infinite ease-in-out;
-}
-.compass-nexus-typing span:nth-child(2) { animation-delay: 0.2s; }
-.compass-nexus-typing span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes compass-nexus-typing-bounce {
-  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
-  40%           { opacity: 1;   transform: translateY(-3px); }
-}
-
 .compass-nexus-consent {
   margin: 8px 0;
   padding: 14px 16px;
@@ -3754,6 +3731,10 @@ body.companion-mode .companion-mode-banner { display: block; }
   .sacred-chamber-active::before { animation: none; }
 }
 </style>
+<!-- CommonUnity Nexus activity signal — the shared wordless "Nexus is
+     working" standard, identical here and in stUdio. -->
+<link rel="stylesheet" href="/sdk/nexus-activity.css">
+<script src="/sdk/nexus-activity.js"></script>
 </head>
 
 <body>
@@ -5339,7 +5320,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 
   <!-- Nexus chat modal — seeded with room name, full hexagram JSON, user notes -->
   <div class="compass-nexus-modal" id="compass-nexus-modal" role="dialog" aria-modal="true" aria-labelledby="compass-nexus-title">
-    <div class="compass-nexus-panel">
+    <div class="compass-nexus-panel nexus-activity-field" id="nexus-activity-field">
       <div class="compass-nexus-header">
         <span class="compass-nexus-header-titlewrap">
           <span class="compass-nexus-header-title" id="compass-nexus-title">Nexus</span>
@@ -11467,6 +11448,12 @@ async function openCompassNexus() {
       }
     } catch(_) {}
 
+    // Opening the panel starts from rest. Rehydrated HTML came from a session
+    // that has already ended, so nothing in it may claim Nexus is working.
+    if (window.CommonUnityNexusActivity) {
+      window.CommonUnityNexusActivity.reset(document.getElementById('nexus-activity-field'));
+    }
+
     if (!restored) {
       compassNexusState.history = [];
       const ctx = compassNexusSeedContext();
@@ -11528,6 +11515,18 @@ function compassNexusRequestConsent() {
   return Promise.resolve(true);
 }
 
+// Start the shared Nexus activity signal on the compass conversation panel.
+// Returns an inert stub if the shared module has not loaded, so a missing
+// script can never break sending.
+function compassNexusActivityBegin() {
+  const api = window.CommonUnityNexusActivity;
+  if (!api) return { firstToken() {}, done() {}, fail() {} };
+  return api.begin({
+    field: document.getElementById('nexus-activity-field'),
+    origin: document.getElementById('compass-nexus-convo')
+  });
+}
+
 async function sendCompassNexusMessage() {
   const input = document.getElementById('compass-nexus-input');
   const sendBtn = document.getElementById('compass-nexus-send');
@@ -11557,6 +11556,10 @@ async function sendCompassNexusMessage() {
   autoGrowCompassNexusInput(input);
   appendCompassNexusMsg('user', msg);
   sendBtn.classList.add('loading');
+
+  // Wordless activity signal. Owns the panel outline and the mark at the
+  // response origin until the first token; see sdk/nexus-activity.js.
+  const activity = compassNexusActivityBegin();
 
   const ctx = compassNexusSeedContext();
   const hex = ctx.hexagram || {};
@@ -11629,10 +11632,10 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
 
     const div = document.createElement('div');
     div.className = 'compass-nexus-msg is-nexus';
-    // Seed the bubble with an animated three-dot "thinking" indicator so the
-    // user sees Nexus is working before the first streamed chunk arrives. The
-    // indicator is cleared as soon as the first chunk lands (see read()).
-    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"><span class="compass-nexus-typing" aria-label="Nexus is thinking"><span></span><span></span><span></span></span></div>`;
+    // The bubble starts empty. Nothing renders here until real text arrives —
+    // the shared activity signal is what says Nexus is working, and it is the
+    // same signal stUdio shows.
+    div.innerHTML = `<span class="compass-nexus-sender">Nexus</span><div class="compass-nexus-bubble"></div>`;
     document.getElementById('compass-nexus-convo').appendChild(div);
     const bubble = div.querySelector('.compass-nexus-bubble');
     const conv = document.getElementById('compass-nexus-convo');
@@ -11650,7 +11653,8 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
       if (!line.startsWith('data: ')) return;
       try {
         const d = JSON.parse(line.slice(6));
-        if (d.chunk) { text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
+        if (d.chunk) { activity.firstToken(); text += d.chunk; bubble.textContent = text; conv.scrollTop = conv.scrollHeight; }
+        else if (d.error && !text) { activity.fail(); bubble.textContent = String(d.error); conv.scrollTop = conv.scrollHeight; }
       } catch (_) {}
     }
     function read() {
@@ -11661,8 +11665,7 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
           buffer += decoder.decode();
           if (buffer) { handleLine(buffer); buffer = ''; }
           sendBtn.classList.remove('loading');
-          // Clear the thinking indicator if the stream ended with no content.
-          if (!text) bubble.textContent = '';
+          activity.done();
           compassNexusState.history.push({ role: 'user', text: msg });
           compassNexusState.history.push({ role: 'rose', text });
           // Persist conversation to localStorage
@@ -11686,10 +11689,17 @@ to their own inner work, not a driver of it. Be precise, warm, and unhurried.`;
         buffer = lines.pop(); // keep the incomplete trailing line for the next read
         for (const line of lines) handleLine(line);
         read();
+      }).catch(() => {
+        // The connection dropped mid-stream. Whatever streamed stays; the
+        // signal must not.
+        activity.fail();
+        sendBtn.classList.remove('loading');
+        if (!text) bubble.textContent = 'Something interrupted the connection. Try again when you are ready.';
       });
     }
     read();
   } catch (e) {
+    activity.fail();
     appendCompassNexusMsg('rose', 'Something interrupted the connection. Try again when you are ready.');
     sendBtn.classList.remove('loading');
   }
