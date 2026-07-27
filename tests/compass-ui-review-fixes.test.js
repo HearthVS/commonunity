@@ -61,14 +61,20 @@ ok('consent helpers are preserved',
 ok('the send gate still routes through the consent helper',
    /if \(!compassNexusHasConsent\(\)\)[\s\S]{0,120}compassNexusRequestConsent\(\)/.test(index));
 
-console.log('\n3. Three-dot thinking indicator');
-ok('the Nexus bubble is seeded with a typing indicator',
-   /class="compass-nexus-typing"[\s\S]{0,120}<span><\/span><span><\/span><span><\/span>/.test(index));
-ok('the indicator is cleared if the stream ends with no content',
-   /if \(!text\) bubble\.textContent = ''/.test(index));
-ok('CSS defines the typing dots + bounce keyframes',
-   /\.compass-nexus-typing span \{[\s\S]*?animation: compass-nexus-typing-bounce/.test(index) &&
-   /@keyframes compass-nexus-typing-bounce/.test(index));
+// The compass-local three-dot indicator was replaced by the shared
+// CommonUnity Nexus activity signal (sdk/nexus-activity.*), which cOMpass and
+// stUdio now use identically. The requirement it served — the user can see
+// Nexus is working before the first chunk — still holds; it is now met by the
+// shared module, and covered in full by nexus-activity-signal.test.js.
+console.log('\n3. Pre-first-token activity signal (shared standard)');
+ok('the compass-local typing indicator is gone',
+   !/compass-nexus-typing/.test(index));
+ok('the panel is a shared activity field',
+   /class="compass-nexus-panel nexus-activity-field" id="nexus-activity-field"/.test(index));
+ok('the send path drives the shared signal',
+   /const activity = compassNexusActivityBegin\(\)/.test(index) &&
+   /activity\.firstToken\(\)/.test(index) &&
+   /activity\.done\(\)/.test(index));
 
 console.log('\n4. "Hold to activate" on the Nexus orb');
 ok('orb shows a "Hold to activate" hint span',

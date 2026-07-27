@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""The Work pilot — routing, relevance, grounding, and everything left alone.
+"""The Work room — routing, relevance, grounding, and everything left alone.
 
-Phase 2 changes the behaviour of exactly one room in exactly one mode. This
-suite is written around that claim, and most of it is spent proving the
-negative half:
+The Work was the first room wired to `grounded_v1` and is still the reference
+implementation of the shared room engine. Lens, Field and Call have their own
+suite (`studio-context-rooms.test.py`); this one keeps the deep Work coverage
+and the proofs that everything outside the four canonical rooms is untouched:
 
-  * routing — `work` under grounded_v1 is grounded; Lens/Field/Call, unknown
-    rooms, legacy mode and the Arrival endpoint are byte-for-byte unchanged
+  * routing — `work` under grounded_v1 is grounded; unknown, empty and
+    mis-cased rooms, legacy mode and the Arrival endpoint are byte-for-byte
+    unchanged
   * relevance — a table of requests mapped to the outcome each must produce,
     with ordinary drafting explicitly NOT reaching for Gene Keys
   * trust — client transcript overrides, prompt injection inside uploaded
@@ -39,7 +41,7 @@ sys.path.insert(0, ROOT)
 
 import server  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from studio_context import canonical, modes, prompts, relevance, work  # noqa: E402
+from studio_context import canonical, modes, prompts, relevance, rooms  # noqa: E402
 
 ALICE = "cipher_work_alice"
 BOB = "cipher_work_bob"
@@ -209,16 +211,21 @@ ok(prompts.WORK_CONTRACT_VERSION in grounded_work["system"],
 ok(grounding_of(grounded_events).get("room") == "work",
    "the done event carries grounding metadata for The Work")
 
-for room in ("lens", "field", "call", "", "spark", "WORK "):
+# Not rooms: an empty point, an unknown point, and a point that only differs
+# from `work` by case or padding. Each must keep whatever legacy did with it
+# rather than being normalised into a grounded room.
+for room in ("", "spark", "WORK ", "Work", "work "):
     _, other = inspire(point=room, session_notes="Draft the summary for my studio page.")
     ok(other["system"] == server.INSPIRE_L2_SYSTEM,
        f"room {room!r} stays on the legacy prompt under grounded_v1")
     ok(ALICE_ESSENCE not in prompt_text(other),
        f"room {room!r} never receives grounded personal context")
 
-_, lens_only = inspire(point="lens", session_notes="Draft the summary for my studio page.")
-ok(lens_only["messages"][0]["content"] != legacy_user_msg,
-   "sanity: the Lens legacy message differs from the Work legacy message")
+_, lens_grounded = inspire(point="lens", session_notes="Draft the summary for my studio page.")
+ok(lens_grounded["messages"][0]["content"] != legacy_user_msg,
+   "sanity: the Lens grounded message differs from the Work legacy message")
+ok(ALICE_ESSENCE not in prompt_text(lens_grounded),
+   "Alice's Work records do not leak into her Lens request")
 
 arrival_captured = {}
 with c.stream("POST", "/inspire-arrival", json={"companion": "", "rooms": {}, "audience": {}, "evidence": {}}) as r:
@@ -409,7 +416,7 @@ try:
     grounding = grounding_of(events)
     ok(model == {}, "fail_closed does not call the model when the corpus is broken")
     ok(any("error" in e for e in events), "fail_closed returns an explicit error event")
-    ok(grounding["status"] == work.STATUS_UNAVAILABLE, "the outcome is grounding_unavailable")
+    ok(grounding["status"] == rooms.STATUS_UNAVAILABLE, "the outcome is grounding_unavailable")
     ok("malformed" in grounding["fallback_reason"], "the reason names the corpus problem")
     ok(grounding["used_canonical_sources"] is False, "it does not claim sources it never read")
 
@@ -418,10 +425,10 @@ try:
     grounding = grounding_of(events)
     ok(model["system"] == server.INSPIRE_L2_SYSTEM,
        "fallback_legacy routes the request down the legacy path")
-    ok(grounding["status"] == work.STATUS_FALLBACK_LEGACY, "the fallback is reported, not hidden")
+    ok(grounding["status"] == rooms.STATUS_FALLBACK_LEGACY, "the fallback is reported, not hidden")
     ok(ALICE_ESSENCE not in prompt_text(model), "the legacy fallback is the legacy prompt")
 
-    ok(work.debug_state()["gene_key_corpus"]["ok"] is False,
+    ok(rooms.debug_state()["gene_key_corpus"]["ok"] is False,
        "the admin surface reports the unhealthy corpus")
 finally:
     canonical.corpus_root = _real_root
@@ -437,7 +444,7 @@ try:
     events, model = inspire(session_notes="What does line 3 of my gene key mean for the practice?")
     grounding = grounding_of(events)
     ok(model == {}, "a broken line corpus also fails closed rather than half-grounding")
-    ok(grounding["status"] == work.STATUS_UNAVAILABLE, "the line-corpus failure is audited")
+    ok(grounding["status"] == rooms.STATUS_UNAVAILABLE, "the line-corpus failure is audited")
 finally:
     canonical.line_corpus_root = _real_line_root
     canonical.reset_cache()
@@ -453,9 +460,9 @@ ok(back_to_legacy["system"] == server.INSPIRE_L2_SYSTEM,
    "rolling back restores the legacy system prompt")
 ok(back_to_legacy["messages"][0]["content"] == legacy_user_msg,
    "the legacy user message is byte-for-byte what it was before grounded_v1")
-ok(work.route_inspire_layer2(None, type("P", (), {"point": "work"})()) is None,
-   "the Work pipeline is inert in legacy mode")
-ok(work.is_active() is False, "is_active() reports the pipeline is off")
+ok(rooms.route_inspire_layer2(None, type("P", (), {"point": "work"})()) is None,
+   "the room engine is inert in legacy mode")
+ok(rooms.is_active() is False, "is_active() reports the pipeline is off")
 
 records = c.get("/api/studio/context-records", params={"cipher_id": ALICE, "room": "work"}).json()
 ok(len(records["records"]) >= 4, "rollback loses no orientation records")
@@ -493,13 +500,18 @@ print("\n── admin/debug surface is privacy-safe ──")
 
 set_mode(modes.GROUNDED_V1)
 inspire(session_notes="Deepen this with my Gene Key.")
-state = c.get("/api/admin/studio-context-work").json()
-ok(state["active"] is True, "the admin surface reports grounded Work is active")
-ok(state["rooms_grounded"] == ["work"], "it names exactly which room is grounded")
-ok(sorted(state["rooms_legacy"]) == ["call", "field", "lens"], "and which rooms are not")
-ok(state["line_corpus"]["ok"] is True, "it reports line-corpus readiness")
+state = c.get("/api/admin/studio-context-rooms").json()
+ok(state["active"] is True, "the admin surface reports grounded rooms are active")
+ok(state["rooms_grounded"] == ["work", "lens", "field", "call"],
+   "it names exactly which rooms are grounded")
+ok(state["rooms_legacy"] == [], "and reports none left on legacy while active")
+ok(state["rooms"]["work"]["line_corpus"]["ok"] is True,
+   "it reports per-room line-corpus readiness")
 ok(set(state["relevance_outcomes"]) == set(relevance.OUTCOMES), "it documents the outcomes")
 recent = state["recent"][0]
+ok(recent["room"] == "work", "the activity entry identifies the grounded room")
+ok(recent["source_use"] == rooms.SOURCE_USE_CANONICAL,
+   "the activity entry categorises the source use without revealing content")
 ok(recent["used_personal_context"] is True and recent["used_canonical_sources"] is True,
    "it says whether a response used personal context and canonical sources")
 blob = json.dumps(state)
@@ -509,11 +521,11 @@ for marker in (ALICE_ESSENCE, ALICE_REFLECTION, ALICE_SEALED, BOB_ESSENCE,
 
 anon = TestClient(server.app)
 anon.cookies.clear()
-ok(anon.get("/api/admin/studio-context-work").status_code == 401,
+ok(anon.get("/api/admin/studio-context-rooms").status_code == 401,
    "the debug surface is admin-gated")
 
 set_mode(modes.LEGACY)
-ok(c.get("/api/admin/studio-context-work").json()["active"] is False,
+ok(c.get("/api/admin/studio-context-rooms").json()["active"] is False,
    "the admin surface reports the pipeline is off after rollback")
 
 server.client.messages.stream = _real_stream

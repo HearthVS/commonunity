@@ -1,0 +1,146 @@
+/* ============================================================
+   CommonUnity Nexus activity signal — shared visual standard
+   ------------------------------------------------------------
+   One wordless signal for "Nexus is working", used by every
+   surface that streams a Nexus response (stUdio, cOMpass).
+
+   Three states, in order:
+     is-nexus-working   request sent, nothing has streamed yet.
+                        Field outline breathes; the Nexus mark and
+                        its three points sit at the response origin.
+     is-nexus-settling  first text has arrived. Mark and points are
+                        gone; the outline holds a faint steady lift
+                        so the text is what the eye goes to.
+     (no class)         resting. Completion and error both land here.
+
+   There are deliberately no visible words in any state. The only
+   language is in .nexus-activity-status, which is screen-reader
+   only and driven by nexus-activity.js.
+
+   The mark is the existing Nexus mark (12-point vector equilibrium
+   + hexagram) at small size — not a new logo. Colour comes from the
+   host page's --rose-color so the signal inherits each surface's
+   warmth rather than introducing its own.
+   ============================================================ */
+
+:root {
+  --nexus-activity-color: var(--rose-color, #c4b5fd);
+  --nexus-activity-breath: 3.6s;
+  --nexus-activity-point-cycle: 2.4s;
+}
+
+/* ── the field: a panel whose outline carries the signal ───── */
+
+.nexus-activity-field.is-nexus-working {
+  border-color: color-mix(in srgb, var(--nexus-activity-color) 42%, transparent);
+  animation: nexus-activity-breath var(--nexus-activity-breath) ease-in-out infinite;
+}
+
+.nexus-activity-field.is-nexus-settling {
+  border-color: color-mix(in srgb, var(--nexus-activity-color) 22%, transparent);
+  animation: none;
+}
+
+@keyframes nexus-activity-breath {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--nexus-activity-color) 14%, transparent),
+      0 0 26px color-mix(in srgb, var(--nexus-activity-color) 8%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--nexus-activity-color) 30%, transparent),
+      0 0 52px color-mix(in srgb, var(--nexus-activity-color) 20%, transparent);
+  }
+}
+
+/* ── the mark at the response origin ───────────────────────── */
+
+.nexus-activity-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  opacity: 0.9;
+}
+
+.nexus-activity-glyph {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  animation: nexus-activity-glyph-breath var(--nexus-activity-breath) ease-in-out infinite;
+}
+
+.nexus-activity-glyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@keyframes nexus-activity-glyph-breath {
+  0%, 100% { opacity: 0.55; transform: scale(0.97); }
+  50%      { opacity: 1;    transform: scale(1.03); }
+}
+
+.nexus-activity-points {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nexus-activity-points i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--nexus-activity-color) 65%, transparent);
+  animation: nexus-activity-point var(--nexus-activity-point-cycle) ease-in-out infinite;
+}
+
+.nexus-activity-points i:nth-child(2) { animation-delay: 0.3s; }
+.nexus-activity-points i:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes nexus-activity-point {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50%      { opacity: 0.9;  transform: translateY(-2px); }
+}
+
+/* ── screen-reader status: the only words in the whole signal ─ */
+
+.nexus-activity-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── reduced motion: the signal stays, the movement goes ─────
+   A strengthened static outline and a static mark with static
+   points. Nothing pulses, nothing travels. ─────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .nexus-activity-field.is-nexus-working {
+    animation: none;
+    border-color: color-mix(in srgb, var(--nexus-activity-color) 48%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--nexus-activity-color) 26%, transparent),
+      0 0 30px color-mix(in srgb, var(--nexus-activity-color) 12%, transparent);
+  }
+  .nexus-activity-glyph {
+    animation: none;
+    opacity: 0.85;
+    transform: none;
+  }
+  .nexus-activity-points i {
+    animation: none;
+    opacity: 0.65;
+    transform: none;
+  }
+}

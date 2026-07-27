@@ -1719,8 +1719,8 @@
               <div><span class="infra-label">Previous</span><span id="studio-context-mode-prev">—</span></div>
               <div><span class="infra-label">Failure policy</span><span id="studio-context-policy-active">—</span></div>
               <div><span class="infra-label">Canonical corpus</span><span id="studio-context-sources">—</span></div>
-              <div><span class="infra-label">Grounded rooms</span><span id="studio-context-work">—</span></div>
-              <div><span class="infra-label">Last Work response</span><span id="studio-context-work-last">—</span></div>
+              <div><span class="infra-label">Grounded rooms</span><span id="studio-context-rooms">—</span></div>
+              <div><span class="infra-label">Last room response</span><span id="studio-context-rooms-last">—</span></div>
               <div><span class="infra-label">Last activation</span><span id="studio-context-activation">—</span></div>
             </div>
           </div>
@@ -3769,28 +3769,32 @@
       } catch (e) {
         sources.textContent = 'unavailable';
       }
-      loadStudioContextWork();
+      loadStudioContextRooms();
     }
 
-    // Grounded Work indication. Deliberately content-free: it says whether the
-    // pipeline is live and whether the last response drew on personal context
-    // or canonical sources — never what any of that material said.
-    async function loadStudioContextWork() {
-      const el = $('studio-context-work');
-      const last = $('studio-context-work-last');
+    // Grounded room indication. Deliberately content-free: it says which rooms
+    // are live, which room answered last, and which *category* of source that
+    // answer drew on — never what any of that material said.
+    async function loadStudioContextRooms() {
+      const el = $('studio-context-rooms');
+      const last = $('studio-context-rooms-last');
       if (!el && !last) return;
       try {
-        const d = await api('/api/admin/studio-context-work');
-        const lines = d.line_corpus || {};
+        const d = await api('/api/admin/studio-context-rooms');
         if (el) {
+          const rooms = d.rooms || {};
+          const lines = Object.keys(rooms).map(k => {
+            const c = rooms[k].line_corpus || {};
+            return `${k} ${c.ok ? 'ok' : 'unhealthy'}`;
+          }).join(' · ');
           el.textContent = d.active
-            ? `work: grounded · ${(d.rooms_legacy || []).join(', ')}: legacy · lines ${lines.present || 0}/${lines.expected || 6}`
+            ? `${(d.rooms_grounded || []).join(', ')}: grounded · lines ${lines}`
             : `all rooms legacy (mode ${d.mode})`;
         }
         if (last) {
           const r = (d.recent || [])[0];
           last.textContent = r
-            ? `${r.status} · relevance ${(r.relevance || {}).outcome || '—'} · personal ${r.used_personal_context ? 'yes' : 'no'} · sources ${(r.canonical_source_ids || []).length} · ${r.at || ''}`
+            ? `${r.room || '—'} · ${r.status} · relevance ${(r.relevance || {}).outcome || '—'} · use ${r.source_use || '—'} · sources ${(r.canonical_source_ids || []).length} · ${r.at || ''}`
             : 'none this process';
         }
       } catch (e) {

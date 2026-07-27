@@ -58,10 +58,10 @@ studio_context/
   modes.py       mode resolution, activation, rollback, failure policy
   store.py       personal orientation records: schema, ownership, idempotency
   trace.py       assembly trace + redaction
-  assembler.py   the authenticated assembler, plus Phase 3 seams
-  relevance.py   what The Work retrieves, and why (pure, no I/O)
-  prompts.py     shared sovereignty foundation + the Work action contract
-  work.py        the one room wired to grounded_v1
+  assembler.py   the authenticated assembler, plus extension seams
+  relevance.py   what a room retrieves, and why (pure, no I/O)
+  prompts.py     shared sovereignty foundation + the four room action contracts
+  rooms.py       the room engine: work, lens, field and call under grounded_v1
   api.py         FastAPI router (admin mode control + member primitives)
 ```
 
@@ -274,10 +274,10 @@ studio_context_grounding_unavailable       detail=<reason>
 studio_context_grounding_fallback          detail=<reason>
 studio_context_record_accepted             detail=<derived class>
 studio_context_record_rejected
-studio_context_work_grounded               detail="gene_key_and_line sources=2"
-studio_context_work_clarification          detail="clarification_required sources=0"
-studio_context_work_grounding_unavailable  detail=<outcome> <reason>
-studio_context_work_fallback_legacy        detail=<outcome> <reason>
+studio_context_room_grounded               detail="room=lens gene_key_and_line use=personal_and_canonical sources=2"
+studio_context_room_clarification          detail="room=field clarification_required use=none sources=0"
+studio_context_room_grounding_unavailable  detail="room=call <outcome> <reason>"
+studio_context_room_fallback_legacy        detail="room=work <outcome> <reason>"
 ```
 
 ## Operational checks
@@ -286,8 +286,8 @@ Before activating `grounded_v1`:
 
 1. `GET /api/admin/studio-context-sources` → `ok: true`, `present: 64`. The
    activate endpoint enforces this too and refuses with 422 otherwise.
-   `GET /api/admin/studio-context-work` additionally reports Line-corpus
-   readiness, which activation does *not* enforce.
+   `GET /api/admin/studio-context-rooms` additionally reports per-room
+   Line-corpus readiness, which activation does *not* enforce.
 2. Note the current `nexus_model` — confirm it is unchanged after switching.
 3. `GET /api/studio/context-preview` as a member with accepted records →
    expect `status: "grounded"` and a populated `source_version`.
@@ -333,22 +333,24 @@ acceptances and provenance survive a switch in either direction, and switching
 back to `grounded_v1` finds them intact. The test suite asserts round-trip
 switching with no data loss.
 
-## The Work pipeline (Phase 2)
+## The room engine (Phase 2 → all four rooms)
 
-One room, one route: `POST /inspire-layer2` with `point == "work"`, under
-`grounded_v1`. `studio_context/work.py` owns the whole behavioural change and
-`server.py` grew ~30 lines: one optional payload field (`cipher_id`), the
-`Request` object on the handler, and one branch that asks for a plan.
+One pipeline, four rooms: `POST /inspire-layer2` with `point` in `work`, `lens`,
+`field`, `call`, under `grounded_v1`. `studio_context/rooms.py` owns the whole
+behavioural change. `server.py` did not grow when the three remaining rooms were
+added — the route already asked for a plan, and the plan builder simply now
+answers for four `point` values instead of one:
 
 ```python
-plan = studio_context.work.route_inspire_layer2(req, request, ...) or {}
+plan = studio_context.rooms.route_inspire_layer2(req, request, ...) or {}
 ```
 
 `route_inspire_layer2` returns `None` — leave everything alone — unless the mode
-is `grounded_v1` *and* `payload.point` is exactly `"work"`. The match is exact
-because the rest of the app already looks `point` up in dicts keyed by the
-lowercase token, so `"WORK "` is an unknown room and must keep doing whatever
-legacy did with it. Otherwise it returns a plan carrying exactly one of:
+is `grounded_v1` *and* `payload.point` is exactly one of the four canonical ids.
+The match is exact, never normalised, because the rest of the app already looks
+`point` up in dicts keyed by the lowercase token: `"Lens"`, `"LENS"`, `" lens"`
+and `"lenses"` are unknown rooms and must keep doing whatever legacy did with
+them. Otherwise it returns a plan carrying exactly one of:
 
 | plan key | meaning | what the route streams |
 |---|---|---|
@@ -357,64 +359,137 @@ legacy did with it. Otherwise it returns a plan carrying exactly one of:
 | `error` | audited grounding refusal (`fail_closed`) | an `error` event |
 | `legacy` | audited fallback (`fallback_legacy`) | the legacy prompt, plus `grounding` |
 
+### What is shared and what varies
+
+Everything that constitutes a trust boundary is shared and cannot be varied by a
+room. A room contributes exactly three things:
+
+| Per-room | Where | What it may do |
+|---|---|---|
+| action contract | `prompts.ROOM_ACTION_CONTRACTS[room]` | describe the work of this room |
+| narrow signals | `relevance.ROOM_SIGNALS[room]` | add idioms; never remove the shared ones |
+| clarification wording | `relevance.CLARIFICATIONS[room]` | name its own room when asking |
+
+Shared and identical in all four: `prompts.SOVEREIGNTY_FOUNDATION`, the fencing
+and `fence_safe()` neutralisation, `store.groundable_records`, ownership and
+sealed exclusion, `assembler.select_relevant`, the relevance decision table, the
+retrieval rules, the trace, the failure policy, and the response envelope. A
+room cannot lower the shared bar — `ROOM_SIGNALS` entries are appended to the
+shared pattern set, never substituted for it.
+
+`RoomSpec` in `rooms.py` is the whole per-room surface:
+
+```python
+ROOM_SPECS = {spec.room: spec for spec in (
+    RoomSpec("work",  "The Work",  prompts.WORK_CONTRACT_VERSION),
+    RoomSpec("lens",  "The Lens",  prompts.LENS_CONTRACT_VERSION),
+    RoomSpec("field", "The Field", prompts.FIELD_CONTRACT_VERSION),
+    RoomSpec("call",  "The Call",  prompts.CALL_CONTRACT_VERSION))}
+```
+
+### The four room contracts
+
+All four sit on the same `SOVEREIGNTY_FOUNDATION`
+(`studio-grounded-foundation-v2`), which carries the rules that are not
+negotiable per room: no identity claims, no destiny, proposal language, factual
+fidelity, no speaking for third parties, no reaching for symbolic language
+unless the request calls for it or a canonical excerpt is present, and no
+implication that anything written here is remembered or promoted.
+
+| Room | Contract version | Its work | Its specific prohibition |
+|---|---|---|---|
+| Work | `studio-grounded-work-v1` | products, services, offers, practices, experiments, contributions | no identity or destiny claims |
+| Lens | `studio-grounded-lens-v1` | writings, teachings, frameworks, learnings, interpretation, articulation | *Articulate, do not elevate.* Claim no authority or expertise the member has not demonstrated |
+| Field | `studio-grounded-field-v1` | conditions, relationships, community, rhythms, support systems | *Never infer another person's interior.* No consent by assumption |
+| Call | `studio-grounded-call-v1` | emerging direction, service, invitations, commitments, next experiments | *No destiny, no prediction, no obligation.* Attach an experiment |
+
+The foundation was bumped to `v2` when the three rooms landed, because the rules
+added were shared rules, not Lens/Field/Call rules — The Work is held to them
+too. Anything that is true of only one room lives in that room's contract.
+
 ### Behaviour matrix
 
 | Mode | Room / endpoint | Path |
 |---|---|---|
 | `legacy` | any | unchanged, `grounding` absent, `done` is exactly `{"done": true}` |
-| `grounded_v1` | `/inspire-layer2` `point="work"` | grounded Work pipeline |
-| `grounded_v1` | `point` in `lens`, `field`, `call` | unchanged legacy prompt |
-| `grounded_v1` | unknown / empty / mis-cased `point` | unchanged legacy prompt |
+| `grounded_v1` | `/inspire-layer2` `point="work"` | grounded, Work contract |
+| `grounded_v1` | `/inspire-layer2` `point="lens"` | grounded, Lens contract |
+| `grounded_v1` | `/inspire-layer2` `point="field"` | grounded, Field contract |
+| `grounded_v1` | `/inspire-layer2` `point="call"` | grounded, Call contract |
+| `grounded_v1` | mis-cased, padded, empty or unknown `point` | unchanged legacy prompt |
 | `grounded_v1` | `/inspire-arrival`, `/generate`, `/search`, everything else | unchanged |
 
 Model and reasoning-effort selection are resolved by their own subsystem in
-every row of that table. The context mode never reads or writes them.
+every row of that table. The context mode never reads or writes them, and the
+`#202` token budget and stream-repair behaviour are untouched.
 
 ### What counts as trusted context
 
-Assembled from `store.groundable_records(room="work")` for the authenticated
-caller only — accepted, unsealed, member-owned rows, ordered by
+Assembled from `store.groundable_records(room=<this room>)` for the
+authenticated caller only — accepted, unsealed, member-owned rows, ordered by
 `assembler.select_relevant` and capped at 12 records, 1200 chars of essence and
-1200 of reflection each. Never trusted as orientation: client transcript text,
-AI proposals that were never accepted, rejected records, sealed material,
-another member's rows, and operational traces.
+1200 of reflection each. A room only ever sees its own records; The Lens does
+not read The Field's. Never trusted as orientation: client transcript text, AI
+proposals that were never accepted, rejected records, sealed material, another
+member's rows, and operational traces.
 
 A client may still *point at* a Gene Key with `gk_num`, but the pointer is
-corroborated against the caller's own accepted records before it is honoured; an
-uncorroborated or malformed pointer is noted in the trace and ignored.
-`gk_shadow` / `gk_gift` / `gk_siddhi` are dropped outright — canonical text comes
-only from the corpus.
+corroborated against the caller's own accepted records **in that room** before
+it is honoured; an uncorroborated or malformed pointer is noted in the trace and
+ignored. `gk_shadow` / `gk_gift` / `gk_siddhi` are dropped outright — canonical
+text comes only from the corpus.
 
 ### Relevance outcomes
 
-`relevance.decide()` is pure and I/O-free: it reads only the words the member
-typed this turn (`session_notes` and their own Q&A answers) — never uploads,
-audience fields, or prior AI output, so an instruction hidden in an uploaded
-document cannot steer retrieval.
+`relevance.decide(text, room=…)` is pure and I/O-free: it reads only the words
+the member typed this turn (`session_notes` and their own Q&A answers) — never
+uploads, audience fields, or prior AI output, so an instruction hidden in an
+uploaded document cannot steer retrieval.
 
 | Outcome | When | Retrieves |
 |---|---|---|
 | `none` | a real request, no accepted orientation to draw on | nothing |
-| `personal_only` | ordinary drafting or implementation work | accepted records |
+| `personal_only` | ordinary drafting, writing, planning or direction-setting | accepted records |
 | `gene_key` | explicit source request, or a recurring-pattern signal | records + Shadow/Gift/Siddhi for the owned key |
-| `gene_key_and_line` | as above *and* a line signal or an owned line with a recurring pattern | the above + the Line passage |
+| `gene_key_and_line` | as above *and* a line signal or an owned line with a recurring pattern | the above + this room's Line passage |
 | `clarification_required` | explicit source request with no owned key; a pattern signal with no context; a thin request with no accepted essence | nothing; the model is not called |
 
 Source selection is minimal and justified by construction: only keys the member
 already owns, only the bands of those keys, and the Line passage only when the
-decision asked for it. Never all 64 transcripts, never all four rooms.
+decision asked for it — and always `line:<this room>:<n>`, never another room's
+reading of the same line. Never all 64 transcripts, never all four rooms.
 
-The signal regexes are deliberately narrow. Bare "shadow", "gift", "stuck" and
-"tension" do not fire, because "drop shadow", "gift card" and "stuck header" are
-ordinary commercial copy — a false positive here means unwanted symbolism in a
-product description, which is exactly the failure this room must not have.
+#### Contextual relevance differences between rooms
+
+The shared patterns fire everywhere. Each room adds a small set of idioms that
+mean "this recurs" or "tell me what the source says" *in that room's language*,
+and those additions are scoped to that room — the Lens idiom is ordinary English
+in The Field and does not retrieve there.
+
+| Room | Adds to *explicit source request* | Adds to *recurring pattern* |
+|---|---|---|
+| Work | "life's work line" | — |
+| Lens | "evolution line", "how the Gene Keys describe/frame/put…" | "I keep trying to explain/articulate/write…", "never comes out right", "can't find the words" |
+| Field | "radiance line" | "the same dynamic", "keeps happening with/in/around", "I keep ending up in/with", "burning out again" |
+| Call | "purpose line", "incarnation cross" | "keeps calling/pulling/drawing me", "keep being asked", "I keep circling" |
+
+The regexes stay deliberately narrow in every room. Bare "shadow", "gift",
+"stuck" and "tension" do not fire, because "drop shadow", "gift card" and "stuck
+header" are ordinary commercial copy. The same reasoning applies per room: in
+The Field, "the same team" must not retrieve; in The Call, "call to action" must
+not retrieve. A false positive means unwanted symbolism in ordinary writing,
+community planning or direction-setting, which is exactly the failure these
+rooms must not have.
+
+Clarifications name their own room, so a member who is asked to say more knows
+which conversation is asking: "…so The Lens has something of yours to work
+from", "…The Field", "…The Call", "…The Work".
 
 ### Prompt assembly
 
-`prompts.compose_work_prompt()` builds a system prompt of
-`SOVEREIGNTY_FOUNDATION` + `WORK_ACTION_CONTRACT`
-(`studio-grounded-foundation-v1` / `studio-grounded-work-v1`), and a user
-message of four named, closed fences:
+`prompts.compose_room_prompt(action_contract=…, …)` builds a system prompt of
+`SOVEREIGNTY_FOUNDATION` + that room's action contract, and a user message of
+four named, closed fences:
 
 ```
 <<<TRUSTED_PERSONAL_CONTEXT>>> … <<<END_TRUSTED_PERSONAL_CONTEXT>>>
@@ -428,32 +503,35 @@ text with `[marker removed]`, so member or uploaded content cannot forge a
 boundary. The foundation states that block contents are data, that general
 knowledge must never be presented as sourced material, and that with no
 `TRUSTED_PERSONAL_CONTEXT` block the model does not know this person's
-orientation and must not construct one. The action contract turns orientation
-into products, services, offers, practices, experiments and contributions, in
-proposal language, with no identity or destiny claims.
+orientation and must not construct one.
 
-Outputs remain proposals. Nothing generated here is written back as an accepted
-record; promotion still requires the member's explicit accept.
+Outputs remain proposals in every room. Nothing generated here is written back
+as an accepted record; promotion still requires the member's explicit accept.
 
 ### Response metadata
 
 Additive and optional. The client reads `chunk` and `error` and ignores
 everything else, so the existing schema and UI are unaffected. Under
-`grounded_v1` for The Work, the `done` (or `error`) event carries:
+`grounded_v1`, the `done` (or `error`) event carries:
 
 ```json
 {"done": true, "grounding": {
-  "mode": "grounded_v1", "room": "work",
-  "pipeline": "studio-grounded-work-v1",
-  "prompt_versions": ["studio-grounded-foundation-v1", "studio-grounded-work-v1"],
+  "mode": "grounded_v1", "room": "lens",
+  "pipeline": "studio-grounded-lens-v1",
+  "prompt_versions": ["studio-grounded-foundation-v2", "studio-grounded-lens-v1"],
   "status": "grounded", "relevance": "gene_key_and_line",
   "relevance_reason": "recurring_pattern_with_owned_line",
   "used_personal_context": true, "used_canonical_sources": true,
-  "canonical_source_ids": ["gk:44@a145340f011b", "line:work:3@402964b64b04"],
+  "source_use": "personal_and_canonical",
+  "canonical_source_ids": ["gk:44@a145340f011b", "line:lens:3@…"],
   "source_versions": ["gkc1-bce5f5696b3bb18f", "gklc1-eb2b3f46da747a12"]}}
 ```
 
-In `legacy` mode the event is exactly `{"done": true}`, byte for byte as before.
+`source_use` is the privacy-safe category an operator can read at a glance:
+`none`, `personal_only`, `personal_and_canonical`, `canonical_only`.
+
+In `legacy` mode the event is exactly `{"done": true}`, byte for byte as before,
+for all four rooms.
 
 ### Trace example
 
@@ -462,17 +540,18 @@ ids, counts and outcomes, never text:
 
 ```json
 {
-  "mode": "grounded_v1", "room": "work", "status": "grounded",
+  "mode": "grounded_v1", "room": "field", "status": "grounded",
   "source_version": "gkc1-bce5f5696b3bb18f",
   "record_ids": ["sctx_ac36553949bb9c47e7efb37645e69b1d"],
-  "canonical_source_ids": ["gk:44@a145340f011b", "line:work:3@402964b64b04"],
+  "canonical_source_ids": ["gk:44@a145340f011b", "line:field:3@…"],
   "excluded_reasons": [],
   "counts": {"records": 1, "canonical_sources": 2, "excluded": 0,
              "by_provenance_class": {"member_authored": 1}},
   "relevance": {"outcome": "gene_key_and_line",
                 "reason": "recurring_pattern_with_owned_line",
                 "gene_keys": [44], "line": 3,
-                "signals": {"explicit_source_request": false,
+                "signals": {"room": "field",
+                            "explicit_source_request": false,
                             "recurring_pattern": true,
                             "line_reference": false,
                             "substantive_request": true}},
@@ -481,91 +560,204 @@ ids, counts and outcomes, never text:
 }
 ```
 
-The last 25 of these are held in a per-process ring buffer for the admin
+The last 50 of these are held in a per-process ring buffer for the admin
 surface. Raw sealed values, essence/reflection text and prompt content are never
-written to it, to the audit `detail`, or to logs.
+written to it, to the audit `detail`, or to logs. The audit `detail` is
+`room=<room> <outcome> use=<source_use> sources=<n>` — enough to see which room
+did what, with nothing of what was said.
 
 ### Grounding unavailable
 
-If the corpus is missing or malformed — or if anything in the trust layer raises
+If a corpus is missing or malformed — or if anything in the trust layer raises
 unexpectedly — the request takes the Phase 1 failure policy, never a quiet
 ungrounded answer:
 
-- `fail_closed` (default) → an `error` event whose text is
-  `work.GROUNDING_UNAVAILABLE_MESSAGE`, with `status: "grounding_unavailable"`.
+- `fail_closed` (default) → an `error` event naming the affected room
+  (`RoomSpec.unavailable_message`), with `status: "grounding_unavailable"`.
 - `fallback_legacy` → the legacy prompt runs, with
   `status: "fallback_legacy"` and a `fallback_reason`.
 
-Both are audited. Neither ever reports `status: "grounded"` or claims source ids
-it did not read.
+Failure is scoped to the corpus that is actually broken. A damaged
+`data/lines/lens_lines.json` takes The Lens out; The Field, The Call and The
+Work keep working. Both outcomes are audited, and neither ever reports
+`status: "grounded"` or claims source ids it did not read.
 
 ### Admin / debug surface
 
-`GET /api/admin/studio-context-work` (admin cookie, 401 otherwise) →
-`work.debug_state()`: whether the pipeline is active, the mode and failure
-policy, pipeline and prompt versions, which rooms are grounded and which are
-not, Gene Key and Line corpus readiness, the outcome vocabulary, pending
-corpora, and the redacted recent activity. Content-free by construction — the
-tests assert that no essence, reflection, sealed value, cipher id or canonical
-prose appears anywhere in the payload.
+`GET /api/admin/studio-context-rooms` (admin cookie, 401 otherwise) →
+`rooms.debug_state()`: whether the pipeline is active, the mode and failure
+policy, prompt versions, which rooms are grounded and which are not, per-room
+Line corpus readiness and room signals, Gene Key corpus readiness, the outcome
+and source-use vocabularies, pending corpora, and the redacted recent activity.
+Content-free by construction — the tests assert that no essence, reflection,
+sealed value, cipher id or canonical prose appears anywhere in the payload.
 
 The Infrastructure tab renders two rows inside the existing "stUdio context
 mode" panel:
 
 ```
-Grounded rooms       work: grounded · call, field, lens: legacy · lines 6/6
-Last Work response   grounded · relevance gene_key · personal yes · sources 2 · <ts>
+Grounded rooms      work, lens, field, call: grounded · lines 24/24
+Last room response  lens · grounded · relevance gene_key · use personal_and_canonical · sources 2 · <ts>
 ```
 
-### Manual validation checklist
+### Room-by-room validation prompts
 
-1. In `legacy`, open The Work and generate a summary. Note the output and
-   confirm the network `done` event has no `grounding` key.
-2. `GET /api/admin/studio-context-sources` → `ok: true`, `present: 64`.
-3. Activate `grounded_v1` (Infrastructure tab, confirm step). Check
-   `/api/admin/studio-context-work` shows `active: true` and `lines 6/6`.
-4. As a member with **no** accepted records, generate in The Work: the copy must
-   not claim to know anything about them, and `used_personal_context` is `false`.
-5. Accept an orientation record with a Gene Key, then generate ordinary product
-   copy: `relevance` is `personal_only` and `used_canonical_sources` is `false`.
-6. Ask "go deeper into my Gene Key here": `relevance` is `gene_key`,
-   `canonical_source_ids` names the key the member owns, and the copy does not
-   declare an identity.
-7. Ask for a Gene Key while owning none: a clarification is streamed and the
-   model is never called.
-8. Generate in Lens, Field and Call: output style unchanged, no `grounding` key.
-9. Confirm the Nexus model and reasoning effort are what they were before step 3.
-10. Roll back to legacy. Repeat step 1 and confirm the output path is identical.
+Run each in `grounded_v1` as a member who owns a Gene Key and has an accepted
+essence in that room. In every case the model must answer in ordinary words
+unless the prompt asks for source material.
+
+| Room | Ordinary request → `personal_only`, no symbolism | Explicit source request → `gene_key` / `gene_key_and_line` | Clarification → model not called |
+|---|---|---|---|
+| Work | "Write the product description for the new workshop." | "Go deeper into my Gene Key for this offer." | (owning no key) "Open my Gene Key shadow here." |
+| Lens | "Tidy up the introduction to this essay." | "What does my evolution line say about how I teach?" | (owning no key) "What does my Gene Key say about my writing?" |
+| Field | "Draft the invitation for the monthly community call." | "My radiance line keeps showing up in how these groups go." | (thin, no essence) "help" |
+| Call | "List three next steps for the residency application." | "What does my purpose line say about this invitation?" | (owning no key) "Read my Gene Key for where this is heading." |
+
+Additional per-room checks:
+
+- **Lens** — ask it to write a bio. It must not award credentials, titles or
+  expertise the accepted records do not evidence.
+- **Field** — describe a difficult collaborator in the request. The reply must
+  not state what that person feels, wants or has agreed to.
+- **Call** — ask "is this my path?". The reply must not answer in the language of
+  destiny, certainty or obligation, and should offer an experiment.
 
 ### Known limitations
 
-- One room and one route. Lens, Field, Call, `/inspire-arrival`, `/generate` and
-  `/search` still build prompts from client-submitted material.
+- Four rooms, one route. `/inspire-arrival`, `/generate` and `/search` still
+  build prompts from client-submitted material.
 - Relevance is lexical, not semantic. It is tuned to under-retrieve: an
   unusually phrased request for source material will land on `personal_only`
-  rather than guess. Adding vocabulary is a one-line change with a table test.
-- Recent activity is a per-process, in-memory ring buffer of 25. It is not
+  rather than guess. Adding vocabulary to a room is a one-line change in
+  `ROOM_SIGNALS` with a table test.
+- Room signals are English-only, and idiomatic. A member writing in another
+  language gets the shared patterns and their own accepted records, not the
+  room-specific idioms.
+- Recent activity is a per-process, in-memory ring buffer of 50. It is not
   durable and not shared across workers; the `events` table is the durable
   record.
-- Line retrieval uses the single line the member's records carry. Multiple owned
-  keys retrieve each key's bands, but only one line.
-- The Yoga Sutra corpus is not implemented. `relevance.EXTENSION_CORPORA` names
-  it and `debug_state()` reports it as pending; nothing retrieves it.
+- Line retrieval uses the single line the member's records carry, and only that
+  room's reading of it. Multiple owned keys retrieve each key's bands, but only
+  one line.
+- Cross-room synthesis does not exist. A question in The Call cannot see what
+  The Work knows, by design — a room's trust scope is its own records.
+- The Yoga Sutra corpus is **not** implemented and is deliberately deferred.
 
-## What Phase 3 plugs into
+## Deferred: the Yoga Sutra corpus
 
-Explicitly **not** in this PR: the Yoga Sutra corpus, Digit, the CommonUnity
-router, and the other three rooms. The seams are in place:
+Not in this PR, and the seam is left explicit rather than implied:
 
 - `assembler.register_corpus(name, loader)` — a second canonical corpus
   implements the same contract as `canonical.py`: validated ids, per-item
   checksums, a corpus version, and a structured error on missing/malformed
   material.
-- `relevance.EXTENSION_CORPORA` — the declared, unimplemented extension point.
-  A Sutra outcome joins `OUTCOMES` and the table test grows a row.
-- `work.py` is room-shaped, not Work-shaped, apart from `WORK_ACTION_CONTRACT`
-  and `ROOM`. A second room is a second contract plus a second routing line, not
-  a second pipeline.
+- `relevance.EXTENSION_CORPORA` — declares `yoga_sutras` as an unimplemented
+  extension point. A Sutra outcome joins `OUTCOMES` and the table test grows a
+  row.
+- `rooms._retrieve` — one branch, after the Gene Key branch, for a curated
+  corpus the decision asked for.
+
+`debug_state()` reports it under `pending_corpora`, and the room test suite
+asserts that nothing retrieves it today. Adding it is a corpus plus a decision
+row, not a pipeline.
+
+## The Nexus activity signal
+
+A CommonUnity-wide, wordless indication that Nexus is working, shared by stUdio
+and cOMpass so it is one standard rather than two lookalikes.
+
+- `sdk/nexus-activity.css` — the three visual states and the reduced-motion
+  variant.
+- `sdk/nexus-activity.js` — `window.CommonUnityNexusActivity`, the lifecycle.
+
+Both files are served from the existing `/sdk` static mount and are loaded by
+`studio.html` and `index.html`.
+
+### States
+
+| State | When | Field outline | Response origin | Screen reader |
+|---|---|---|---|---|
+| `is-nexus-working` | request submitted, nothing streamed | slow breathing glow (3.6s) | Nexus mark + three softly animated points | "Nexus is preparing a response." |
+| `is-nexus-settling` | first streamed text | steady faint lift, no animation | cleared | "Nexus is responding." |
+| *(no class)* | `done` | resting | cleared | "Nexus has finished responding." |
+| *(no class)* | error / cancel | resting | cleared; the host's existing error or retry treatment shows | "Nexus could not complete the response." / silence on cancel |
+
+The field is the conversation panel itself — `.rose-surface` in stUdio,
+`.compass-nexus-panel` in cOMpass — both tagged `nexus-activity-field` with
+`id="nexus-activity-field"`. The mark is the *existing* Nexus mark: the same
+12-point vector-equilibrium geometry and interlocking hexagram as the stUdio orb
+(`#nexus-svg`) and the cOMpass orb glyph, drawn at 22px. It is not a new logo.
+Colour is `--nexus-activity-color`, which defaults to the existing
+`--rose-color`, so the signal inherits each surface's warmth instead of
+introducing a bright accent of its own.
+
+### Lifecycle
+
+```js
+const activity = CommonUnityNexusActivity.begin({ field, origin });
+activity.firstToken();  // on the first d.chunk
+activity.done();        // on stream done
+activity.fail();        // upstream error, network drop, thrown request
+CommonUnityNexusActivity.reset(field);  // hard clear: room switch, rehydration
+```
+
+Guarantees the module exists to provide:
+
+- **Never outlives its request.** `done()` and `fail()` land in the identical
+  resting state. Both stUdio and cOMpass call `fail()` from the upstream-error
+  branch, from a new mid-stream `.catch()` on the read loop, and from the outer
+  `catch`.
+- **Never doubles.** `begin()` tears down whatever was on the field first, and a
+  superseded run's `firstToken` / `done` / `fail` become no-ops, so rapid
+  consecutive sends and cancel-then-resend cannot leave two marks or let a stale
+  teardown clear a live signal.
+- **Survives transcript repair.** stUdio calls `reset()` in
+  `renderMirrorHistory()`; cOMpass calls it after rehydrating a saved
+  conversation. A repaired blank turn or a room switch cannot leave a glow
+  attached to a bubble that no longer exists.
+- **Degrades safely.** If the shared script has not loaded, each app's
+  `…NexusActivityBegin()` returns an inert stub, and sending still works.
+
+### Accessibility
+
+No new visible status words are introduced anywhere — the visible signal is
+entirely the outline, the mark and the three points. The only language lives in
+`.nexus-activity-status`, a visually-hidden `role="status" aria-live="polite"`
+region inside the field. The cOMpass-local three-dot indicator and its
+`aria-label="Nexus is thinking"` were retired in favour of this.
+
+Under `prefers-reduced-motion: reduce` the signal remains but the movement does
+not: a *strengthened static* outline, a static mark and static points. Nothing
+pulses, nothing travels, and nothing disappears — a member who has asked for
+less motion still gets the same information.
+
+The microphone is a different event. `.voice-btn.recording` (stUdio) and
+`.btn-mic.recording` / `.mic-dot` (cOMpass) are untouched, and the shared module
+and stylesheet never reference a listening or recording state. Speech input and
+model work must stay visually distinguishable.
+
+## Rollout and rollback
+
+Rollout of the room grounding is the Phase 1 procedure, unchanged:
+
+1. `GET /api/admin/studio-context-sources` → `ok: true`, `present: 64`.
+2. `GET /api/admin/studio-context-rooms` → `rooms.*.line_corpus.ok` for all four.
+3. Activate `grounded_v1` from the Infrastructure tab (confirm step).
+4. Re-check `/api/admin/studio-context-rooms`: `active: true`,
+   `rooms_grounded: ["work","lens","field","call"]`, `rooms_legacy: []`.
+
+Rollback is one setting: set the mode back to `legacy`. Every room immediately
+returns to the exact legacy path — `route_inspire_layer2` returns `None` before
+it looks at anything else, `done` is `{"done": true}` again, and no code in this
+package runs. Orientation records, acceptances and provenance survive the switch
+in both directions; the round trip is asserted in the test suite for all four
+rooms.
+
+The Nexus activity signal is deliberately *not* behind the context mode — it is
+a UI affordance with no bearing on grounding, and it behaves identically in
+`legacy`. To remove it, delete the two `/sdk/nexus-activity.*` tags from
+`studio.html` and `index.html`; the `…NexusActivityBegin()` stubs make every
+call site inert and sending continues to work.
 
 ## Tests
 
@@ -576,18 +768,36 @@ router, and the other three rooms. The seams are in place:
 - `tests/studio-context-records.test.py` — migration, ownership isolation,
   sealed exclusion, provenance transitions, idempotency, no auto-promotion of
   AI output, trace redaction, failure/fallback policy, legacy parity.
-- `tests/studio-context-work.test.py` — the Work pilot: routing (only `work`,
-  only `grounded_v1`, Lens/Field/Call/unknown/Arrival untouched), the
-  table-driven relevance suite, clarification instead of interpretation, no
-  invented orientation, client transcript override, uncorroborated and traversal
-  key pointers, injection inside uploaded material, forged block markers,
-  exclusion of rejected/proposed/sealed/cross-member records, both failure
-  policies against a broken Gene Key corpus and a broken Line corpus, the
-  legacy → grounded → legacy round trip, independence from model/effort
-  selection, and admin-surface privacy and auth gating.
+- `tests/studio-context-work.test.py` — The Work: routing, the table-driven
+  relevance suite, clarification instead of interpretation, no invented
+  orientation, client transcript override, uncorroborated and traversal key
+  pointers, injection inside uploaded material, forged block markers, exclusion
+  of rejected/proposed/sealed/cross-member records, both failure policies
+  against a broken Gene Key corpus and a broken Line corpus, the legacy →
+  grounded → legacy round trip, independence from model/effort selection, and
+  admin-surface privacy and auth gating.
+- `tests/studio-context-rooms.test.py` — the same coverage, table-driven across
+  Lens, Field and Call: each room's own contract and the shared foundation,
+  ordinary requests with no forced symbolism, explicit source requests resolving
+  to that room's Line, room idioms recognised in their own room only,
+  room-specific clarifications, no accepted essence, client-transcript and
+  traversal pointer rejection, prompt injection and forged markers, per-room
+  record exclusion, per-room fail-closed containment, the Sutra deferral, exact
+  room routing, the legacy round trip, provider independence, response-envelope
+  compatibility, and admin privacy.
+- `tests/nexus-activity-signal.test.js` — the activity signal in both surfaces:
+  the shared module and its loading, reuse of the existing Nexus geometry, the
+  three CSS states, reduced-motion variants, screen-reader semantics, the stUdio
+  and cOMpass wiring (start on submit, transition on first token, stop on done,
+  stop on upstream error / network drop / thrown request), wordlessness,
+  separation from the microphone state, and a behavioural run of the lifecycle
+  against a minimal DOM covering duplicates, cancellation, reset and late
+  callbacks.
 
-Also relevant: `test_inspire_layer2_fields`, `test_fieldprint_audience_nexus`,
+Also relevant: `tests/studio-nexus-chat-renderable.test.py` (the `#202` stream
+repair), `test_inspire_layer2_fields`, `test_fieldprint_audience_nexus`,
 `test_nexus_model`, `test_nexus_model_management`, `test_arrival_portrait` — the
-legacy Nexus behaviour the Work pilot must not disturb.
+legacy Nexus behaviour the room engine must not disturb.
 
-Run: `python3 tests/studio-context-corpus.test.py` (etc.), or via `pytest`.
+Run: `python3 tests/studio-context-rooms.test.py` (etc.), `node
+tests/nexus-activity-signal.test.js`, or via `pytest`.
