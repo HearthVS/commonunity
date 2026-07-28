@@ -12514,8 +12514,12 @@ function autoGrowCompassNexusInput(el) {
   /* Upper-middle left, beside the active room rather than at the page bottom,
      so Navigator reads as connected to the current work. Nexus stays at
      bottom/right — never the same vertical level. */
+  /* One source of truth for the vertical offset: the panel derives its own
+     max-height from it, so the open panel can never run past the viewport
+     bottom. Every breakpoint that moves Navigator must set this, not `top`. */
+  --navigator-top: clamp(140px, 41vh, calc(100dvh - 260px));
   position: fixed;
-  top: clamp(140px, 41vh, calc(100dvh - 260px));
+  top: var(--navigator-top);
   left: max(10px, calc(50vw - 550px - 178px));
   z-index: 9000;
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
@@ -12585,13 +12589,21 @@ function autoGrowCompassNexusInput(el) {
   position: absolute;
   top: 0; left: calc(100% + 12px);
   width: 340px;
-  max-height: min(74dvh, 620px);
+  /* Never taller than the room left below the trigger. A grounded Help answer
+     expands the panel, so a viewport-relative cap alone is not enough — it has
+     to subtract where the panel actually starts, plus a safe margin. */
+  max-height: min(620px, calc(100dvh - var(--navigator-top) - 24px));
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(8,8,13,0.96);
-  border: 1px solid color-mix(in srgb, var(--navigator-accent) 24%, rgba(248,242,232,0.16));
+  /* Near-opaque so cOMpass copy underneath can never compete with Navigator's
+     own; the blur keeps the Nexus-family softness rather than reading as a
+     flat slab. */
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(6,6,11,0.985);
+  backdrop-filter: blur(16px) saturate(115%);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  border: 1px solid color-mix(in srgb, var(--navigator-accent) 30%, rgba(248,242,232,0.2));
   border-radius: 20px;
-  box-shadow: 0 24px 70px rgba(0,0,0,0.46), var(--navigator-glow-rest);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.56), var(--navigator-glow-rest);
   overflow: hidden;
   animation: cu-nav-fade 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -12703,7 +12715,16 @@ function autoGrowCompassNexusInput(el) {
   color: var(--navigator-accent);
   border-bottom-color: color-mix(in srgb, var(--navigator-accent) 62%, transparent);
 }
-.cu-comm-section { overflow-y: auto; }
+/* min-height:0 is what actually makes the scroll happen: a flex item defaults
+   to min-height:auto and refuses to shrink below its content, so without this
+   an expanded answer pushes past the panel's max-height and gets clipped. */
+.cu-comm-section {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .cu-comm-section.cu-hidden { display: none; }
 #cu-fb-form.cu-hidden { display: none; }
 #cu-comm-messages { padding: 12px 18px 18px; }
@@ -12805,11 +12826,19 @@ function autoGrowCompassNexusInput(el) {
   #cu-navigator { top: auto; bottom: 104px; left: 12px; }
   #cu-fb-panel {
     position: fixed; top: auto; bottom: 104px; left: 12px; right: 12px;
-    width: auto; max-height: min(66dvh, 520px);
+    /* Anchored to the bottom here, so the cap subtracts that offset instead of
+       --navigator-top (which is `auto` at this breakpoint). */
+    width: auto; max-height: min(520px, calc(100dvh - 104px - 16px));
+    /* Fully opaque on mobile: the panel sits directly over dense room copy at
+       this width, and translucency made the two layers compete. Blur and the
+       amber border keep it in the Nexus family. */
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)), #06060b;
+    border-color: color-mix(in srgb, var(--navigator-accent) 36%, rgba(248,242,232,0.24));
+    box-shadow: 0 26px 74px rgba(0,0,0,0.66), var(--navigator-glow-rest);
   }
 }
 @media (max-height: 620px) {
-  #cu-navigator { top: 96px; }
+  #cu-navigator { --navigator-top: 96px; }
 }
 .cu-msg-item {
   padding: 12px 0; border-bottom: 1px solid rgba(248,242,232,0.08);

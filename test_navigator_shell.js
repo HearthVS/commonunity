@@ -177,6 +177,106 @@ test('narrow viewports keep Navigator compact and clear of lower Nexus', () => {
   assert.ok(HTML.includes('id="cu-fb-tooltip"'), 'compact mode needs the tooltip label');
 });
 
+// ── Viewport-safe panel height ───────────────────────────────────────────────
+//
+// Regression: at 1600x900 the open panel measured top=369 bottom=989 against a
+// 900px viewport, so a grounded Help answer pushed the response and its actions
+// below the fold. A viewport-relative cap is not sufficient on its own — it has
+// to subtract where the panel actually starts.
+
+test('the vertical offset has a single source of truth', () => {
+  const nav = block('#cu-navigator {', '}');
+  assert.match(nav, /--navigator-top:/, 'the offset must be a custom property');
+  assert.match(nav, /top:\s*var\(--navigator-top\)/,
+    'placement must consume the property, not duplicate the value');
+});
+
+test('every breakpoint that moves Navigator keeps the panel cap in sync', () => {
+  // A breakpoint overriding `top` with a literal would desync the panel's
+  // max-height from where the panel actually starts — the original bug.
+  const overrides = HTML.match(/#cu-navigator \{[^}]*\}/g) || [];
+  for (const rule of overrides.slice(1)) {
+    // `[;{\s]top:` so --navigator-top: does not count as a `top` declaration.
+    if (/[;{\s]top:/.test(rule)) {
+      assert.match(rule, /[;{\s]top:\s*auto/,
+        'a breakpoint may only release `top` (mobile), never set a literal offset');
+    }
+  }
+  assert.match(HTML, /@media \(max-height: 620px\)\s*\{\s*#cu-navigator \{[^}]*--navigator-top:/,
+    'the short-viewport breakpoint must move the property, not `top`');
+});
+
+test('panel max-height subtracts its own offset plus a safe margin', () => {
+  const panel = block('#cu-fb-panel {', '}');
+  const mh = /max-height:\s*([^;]+);/.exec(panel);
+  assert.ok(mh, '#cu-fb-panel must cap its height');
+  const expr = mh[1];
+  assert.match(expr, /100dvh/, 'the cap must be viewport-relative');
+  assert.match(expr, /var\(--navigator-top\)/,
+    'the cap must subtract where the panel starts, or it overflows the viewport');
+  const margin = /-\s*(\d+)px/.exec(expr);
+  assert.ok(margin && Number(margin[1]) > 0, 'the cap must leave a safe bottom margin');
+});
+
+test('the mobile panel caps against its own bottom anchor', () => {
+  const mob = (HTML.match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}/) || [])[0];
+  assert.ok(mob, 'mobile breakpoint must exist');
+  const panel = /#cu-fb-panel \{[\s\S]*?\}/.exec(mob)[0];
+  assert.match(panel, /bottom:\s*104px/);
+  const mh = /max-height:\s*([^;]+);/.exec(panel);
+  assert.ok(mh, 'the mobile panel must re-cap its height');
+  // --navigator-top is `auto` at this breakpoint, so reusing it would break.
+  assert.doesNotMatch(mh[1], /var\(--navigator-top\)/,
+    'bottom-anchored panel must subtract its own offset, not --navigator-top');
+  assert.match(mh[1], /100dvh/);
+});
+
+test('an expanded answer scrolls inside the panel instead of clipping', () => {
+  const sec = block('.cu-comm-section {', '}');
+  assert.match(sec, /overflow-y:\s*auto/);
+  // Without min-height:0 a flex item refuses to shrink below its content, so
+  // the section grows past the panel cap and `overflow: hidden` clips it.
+  assert.match(sec, /min-height:\s*0/,
+    'min-height:0 is what makes the internal scroll actually engage');
+  assert.match(sec, /flex:\s*1 1 auto/, 'the section must be the flexible row');
+  assert.match(block('#cu-fb-panel {', '}'), /flex-direction:\s*column/);
+});
+
+// ── Panel surface legibility ─────────────────────────────────────────────────
+//
+// Regression: at 390x844 the panel read as too translucent and underlying
+// cOMpass copy competed with Navigator's own text.
+
+test('the panel surface is near-opaque and blurs what sits behind it', () => {
+  const panel = block('#cu-fb-panel {', '}');
+  const base = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)(?=[;\s]*$|;)/m.exec(panel)
+            || /,\s*rgba\([\d\s,]+?([\d.]+)\)\s*;/.exec(panel);
+  const alpha = Number((/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)\s*;/.exec(panel) || [])[1]);
+  assert.ok(alpha >= 0.98, `panel base alpha must be >= 0.98 (found ${alpha})`);
+  assert.match(panel, /backdrop-filter:\s*blur\(/, 'blur keeps the Nexus-family softness');
+  assert.match(panel, /-webkit-backdrop-filter:\s*blur\(/, 'Safari needs the prefixed pair');
+  assert.ok(base, 'panel must declare an explicit surface colour');
+});
+
+test('the mobile panel is fully opaque', () => {
+  const mob = (HTML.match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}/) || [])[0];
+  const panel = /#cu-fb-panel \{[\s\S]*?\}/.exec(mob)[0];
+  const bg = /background:\s*([^;]+);/.exec(panel);
+  assert.ok(bg, 'the mobile panel must restate its surface');
+  assert.doesNotMatch(bg[1].replace(/rgba\([^)]*0\.0?\d+\)/g, ''), /rgba\([^)]*,\s*0?\.\d+\)\s*$/,
+    'the mobile base layer must not be translucent');
+  assert.match(bg[1], /#[0-9a-f]{6}\s*$/i, 'the mobile base layer must be an opaque hex');
+});
+
+test('the amber treatment survives the stronger surface', () => {
+  const panel = block('#cu-fb-panel {', '}');
+  assert.match(panel, /var\(--navigator-accent\)/, 'border must stay amber-derived');
+  assert.match(panel, /var\(--navigator-glow-rest\)/, 'resting glow must be preserved');
+  const mob = (HTML.match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}/) || [])[0];
+  const mp = /#cu-fb-panel \{[\s\S]*?\}/.exec(mob)[0];
+  assert.match(mp, /var\(--navigator-accent\)/, 'mobile border must stay amber-derived');
+});
+
 // ── Messaging preservation ───────────────────────────────────────────────────
 
 test('the pre-Navigator messaging functions all survive', () => {
