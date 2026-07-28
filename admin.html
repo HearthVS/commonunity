@@ -928,6 +928,11 @@
       font-size: 0.78rem;
       flex-wrap: wrap;
     }
+    .feedback-shot { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 0.78rem; }
+    .feedback-shot img {
+      width: 72px; height: 72px; object-fit: cover; border-radius: 8px; display: block;
+      border: 1px solid var(--border);
+    }
     .feedback-actions { display: flex; gap: 8px; align-items: center; }
     .btn-sm {
       min-height: 34px;
@@ -2804,6 +2809,12 @@
             <span class="feedback-status-pill ${f.status || 'new'}">${escapeHtml(f.status || 'new')}</span>
           </div>
           <div class="feedback-message">${escapeHtml(f.message || '')}</div>
+          ${f.has_image ? `<div class="feedback-shot">
+            <a href="/api/admin/feedback/${encodeURIComponent(f.id)}/image" target="_blank" rel="noopener">
+              <img src="/api/admin/feedback/${encodeURIComponent(f.id)}/image" alt="Screenshot attached to this feedback">
+            </a>
+            <span>${escapeHtml(f.image_name || 'screenshot')} · ${Math.max(1, Math.round((f.image_size || 0) / 1024))} KB</span>
+          </div>` : ''}
           <div class="feedback-meta">
             <span>${escapeHtml(authorName)}</span>
             <span>${date(f.created_at)}</span>
