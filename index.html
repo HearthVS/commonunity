@@ -12725,8 +12725,13 @@ function autoGrowCompassNexusInput(el) {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
-.cu-comm-section.cu-hidden { display: none; }
-#cu-fb-form.cu-hidden { display: none; }
+/* Authoritative, and it has to be: the sections set their own `display` from an
+   ID selector (#cu-comm-help, #cu-fb-form and #cu-fb-success are all grids),
+   which outranks a two-class utility. Regression: with Messages selected, Help
+   stayed painted below it — intro, starters, textarea and Ask button — because
+   `#cu-comm-help { display: grid }` beat this rule. !important here means the
+   next layout rule added to a section cannot reopen the same hole. */
+.cu-comm-section.cu-hidden { display: none !important; }
 #cu-comm-messages { padding: 12px 18px 18px; }
 .cu-msg-empty { font-size: 0.86rem; color: rgba(248,242,232,0.5); line-height: 1.6; margin: 8px 0; }
 .cu-msg-empty-sub { color: rgba(248,242,232,0.38); }
@@ -12801,7 +12806,6 @@ function autoGrowCompassNexusInput(el) {
 .cu-shot-error { margin: 0; font-size: 0.78rem; color: #f0a9a9; line-height: 1.5; }
 .cu-shot-error.cu-hidden { display: none; }
 #cu-fb-success { padding: 18px; display: grid; gap: 8px; }
-#cu-fb-success.cu-hidden { display: none; }
 .cu-fb-success-head { margin: 0; font-size: 0.94rem; color: rgba(248,242,232,0.92); }
 .cu-fb-success-sub { margin: 0 0 4px; font-size: 0.84rem; color: rgba(248,242,232,0.58); line-height: 1.6; }
 
@@ -13009,6 +13013,23 @@ function autoGrowCompassNexusInput(el) {
       helpStarters.appendChild(b);
     });
   }
+  // Help is a transient composition, not a thread: leaving it — switching tabs
+  // or closing Navigator — discards the half-typed question, the previous
+  // answer, the progress/error line and any handoff buttons, so the next visit
+  // opens on a clean prompt rather than a stale one. Starters are contextual
+  // rather than transient, so they are re-derived on entry and never cleared
+  // here. Feedback is deliberately the opposite: its draft and attachment
+  // survive tab switches and closing, and clear only on a confirmed send.
+  // helpPending is left alone — clearing it could let a duplicate ask fire.
+  function resetHelp() {
+    helpInput.value = '';
+    helpQ.textContent = '';
+    helpA.textContent = '';
+    helpNote.textContent = '';
+    helpNote.classList.add('cu-hidden');
+    helpActions.innerHTML = '';
+    helpThread.classList.add('cu-hidden');
+  }
   function helpActionButton(label, onClick) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -13089,6 +13110,8 @@ function autoGrowCompassNexusInput(el) {
 
   function setMode(which, opts) {
     const focusPanel = !!(opts && opts.focus);
+    // Read before the tabs move, so this still sees the mode being left.
+    if (which !== 'help' && currentMode() === 'help') resetHelp();
     tabs.forEach(t => {
       const on = t.dataset.commTab === which;
       t.classList.toggle('cu-comm-tab--active', on);
@@ -13135,6 +13158,7 @@ function autoGrowCompassNexusInput(el) {
     loadMessages();
   }
   function closePanel(returnFocus) {
+    if (currentMode() === 'help') resetHelp();
     panel.classList.add('cu-hidden');
     trigger.classList.remove('cu-nav-open');
     trigger.setAttribute('aria-expanded', 'false');

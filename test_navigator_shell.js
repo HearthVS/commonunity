@@ -395,3 +395,141 @@ test('a failed submission preserves the draft', () => {
 test('success headline is the agreed wording', () => {
   assert.ok(HTML.includes('Thank you. Your signal has been received.'));
 });
+
+// ── One visible mode at a time ───────────────────────────────────────────────
+//
+// Regression: with Messages selected, the whole Help mode stayed painted below
+// the Messages empty state — intro, starter chips, textarea and Ask Navigator.
+// Cause was specificity, not JS: setMode() correctly added .cu-hidden, but
+// `#cu-comm-help { display: grid }` (0,1,0,0) outranks
+// `.cu-comm-section.cu-hidden { display: none }` (0,0,2,0), so the section kept
+// its grid display. #cu-fb-form and #cu-fb-success had escaped it only because
+// each carried its own ID-scoped `.cu-hidden` duplicate.
+
+const SECTION_IDS = ['cu-comm-messages', 'cu-comm-help', 'cu-fb-form', 'cu-fb-success'];
+
+// All declarations for `sel { ... }`, in source order.
+function rulesFor(sel) {
+  const re = new RegExp(sel.replace(/[.#*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g');
+  const out = [];
+  let m;
+  while ((m = re.exec(HTML))) out.push(m[1]);
+  return out;
+}
+
+test('the hidden utility outranks the sections own ID-scoped display rules', () => {
+  const util = rulesFor('.cu-comm-section.cu-hidden');
+  assert.strictEqual(util.length, 1, 'exactly one hiding rule for Navigator sections');
+  assert.match(util[0], /display:\s*none\s*!important/,
+    'a two-class utility loses to an ID selector — hiding must be !important or ' +
+    'a section keeps the display its own #id rule gives it');
+});
+
+test('every section that an ID rule gives a display to is still hideable', () => {
+  // This is the trap the regression fell into: adding `display` to a section
+  // under its ID is a normal layout change, and must stay safe to make.
+  let covered = 0;
+  for (const id of SECTION_IDS) {
+    for (const body of rulesFor('#' + id)) {
+      if (!/(^|;)\s*display:/.test(body)) continue;
+      covered++;
+      assert.doesNotMatch(body, /display:[^;]*!important/,
+        `#${id} must not force its display, or .cu-hidden can never win`);
+    }
+  }
+  assert.ok(covered > 0, 'expected at least one ID-scoped display rule to guard against');
+});
+
+test('flex sizing rules never resurrect a hidden section', () => {
+  // `.cu-comm-section` sets flex/min-height for the internal scroll. Those must
+  // not carry their own `display`, and must not be !important either — both
+  // would beat or tie the hiding rule.
+  const base = rulesFor('.cu-comm-section');
+  assert.ok(base.length, '.cu-comm-section must exist');
+  for (const body of base) {
+    assert.doesNotMatch(body, /(^|;)\s*display:/,
+      'the flex/scroll rule must not set display; .cu-hidden owns visibility');
+    assert.doesNotMatch(body, /!important/,
+      'no !important in the sizing rule — it would tie with the hiding rule');
+  }
+});
+
+test('no section keeps a redundant per-ID hiding duplicate', () => {
+  // Dead rules imply the utility is not authoritative and invite the next
+  // section to be added without one — which is exactly how Help was missed.
+  for (const id of SECTION_IDS) {
+    assert.strictEqual(rulesFor('#' + id + '.cu-hidden').length, 0,
+      `#${id}.cu-hidden is redundant now the utility is authoritative`);
+  }
+});
+
+test('exactly one tabpanel is unhidden in the delivered markup', () => {
+  const open = SECTION_IDS.filter((id) => !/\bcu-hidden\b/.test(panelTag(id)));
+  assert.deepStrictEqual(open, ['cu-comm-messages'],
+    'only the initially selected tab may render unhidden');
+  const selected = tabs().find((t) => t.selected === 'true');
+  assert.strictEqual(selected.controls, 'cu-comm-messages',
+    'the unhidden panel must be the one the selected tab controls');
+});
+
+test('every tabpanel is in the map setMode toggles', () => {
+  // A tabpanel missing from SECTIONS would never be hidden by a mode change.
+  const map = /const SECTIONS = \{([^}]*)\}/.exec(HTML);
+  assert.ok(map, 'setMode must resolve modes through a SECTIONS map');
+  for (const t of tabs()) {
+    assert.match(map[1], new RegExp(`\\b${t.mode}\\s*:`),
+      `mode "${t.mode}" must be in SECTIONS or its panel never hides`);
+  }
+  assert.match(block('function setMode', '\n  }'), /SECTIONS\)\.forEach/);
+  assert.match(block('function setMode', '\n  }'), /successSection\.classList\.add\('cu-hidden'\)/,
+    'the success state is not a tab and must be hidden on every mode change');
+});
+
+// ── Help opens clean; Feedback keeps its draft ───────────────────────────────
+
+test('Help clears its transient state but keeps the contextual starters', () => {
+  const reset = block('function resetHelp', '\n  }');
+  assert.match(reset, /helpInput\.value = ''/, 'the half-typed question must go');
+  assert.match(reset, /helpQ\.textContent = ''/, 'the previous question must go');
+  assert.match(reset, /helpA\.textContent = ''/, 'the previous answer must go');
+  assert.match(reset, /helpNote[\s\S]*cu-hidden/, 'progress/next-step note must be re-hidden');
+  assert.match(reset, /helpActions\.innerHTML = ''/, 'handoff buttons must not persist');
+  assert.match(reset, /helpThread\.classList\.add\('cu-hidden'\)/, 'the thread must close');
+  assert.doesNotMatch(reset, /helpStarters/,
+    'starters are contextual, not transient — they must survive the reset');
+  assert.doesNotMatch(reset, /helpPending/,
+    'resetting must not clear the in-flight guard, or a duplicate ask could fire');
+});
+
+test('leaving Help resets it, so re-entry is never a stale composition', () => {
+  const setMode = block('function setMode', '\n  }');
+  assert.match(setMode, /which !== 'help' && currentMode\(\) === 'help'.*resetHelp\(\)/,
+    'switching away from Help must reset it');
+  // currentMode() reads the tab classes, so the check has to precede the loop
+  // that moves them — otherwise it always sees the incoming mode.
+  assert.ok(setMode.indexOf('resetHelp()') < setMode.indexOf('tabs.forEach'),
+    'the reset check must run before the tabs are updated');
+  assert.match(block('function closePanel', '\n  }'),
+    /currentMode\(\) === 'help'.*resetHelp\(\)/,
+    'closing Navigator on Help must also reset it');
+  // Entry still re-derives the starters for the room the user is now in.
+  assert.match(setMode, /if \(which === 'help'\) renderHelpStarters\(\)/);
+});
+
+test('switching tabs or closing never discards a Feedback draft', () => {
+  for (const [name, fn] of [['setMode', block('function setMode', '\n  }')],
+                            ['closePanel', block('function closePanel', '\n  }')]]) {
+    assert.doesNotMatch(fn, /form\.reset\(\)/,
+      `${name} must not reset the Feedback form — drafts survive navigation`);
+    assert.doesNotMatch(fn, /cu-fb-message/,
+      `${name} must not touch the Feedback message field`);
+    assert.doesNotMatch(fn, /\bshot\b\s*=\s*null/,
+      `${name} must not drop the Feedback attachment`);
+  }
+  // The draft clears only where it always did: a confirmed success.
+  const submit = HTML.slice(HTML.indexOf("form.addEventListener('submit'"));
+  assert.match(submit.slice(0, 3000), /if \(res\.ok\)[\s\S]{0,200}form\.reset\(\)/,
+    'form.reset() must stay behind the success branch');
+  // Cancel closes; it does not wipe. Closing is not a discard.
+  assert.match(HTML, /cancelBtn\.addEventListener\('click', \(\) => closePanel\(\)\)/);
+});
