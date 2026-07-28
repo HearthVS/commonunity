@@ -952,11 +952,12 @@ button { cursor: pointer; background: none; border: none; }
   margin: var(--space-1) 0;
 }
 
-/* Search box */
+/* Search box — a <form>, hence the margin reset */
 .search-box {
   position: relative;
   display: flex;
   align-items: center;
+  margin: 0;
 }
 
 .search-input {
@@ -978,6 +979,16 @@ button { cursor: pointer; background: none; border: none; }
 }
 
 .search-input::placeholder { color: var(--text-faint); }
+
+/* Autofill tripwire. A browser can inject a value into this box at any
+   moment — including long after load, since #screen-compass is
+   display:none while the page boots, so the field is not rendered until
+   Compass opens. The keyframe animates nothing; it exists so
+   :-webkit-autofill raises an `animationstart` event the instant a fill
+   lands, which the guard in initSearch() listens for. That is what
+   replaced the timer-based clears, which lost the race. */
+@keyframes cu-search-autofilled { from { opacity: 1; } to { opacity: 1; } }
+.search-input:-webkit-autofill { animation: cu-search-autofilled 1ms; }
 
 .search-icon {
   position: absolute;
@@ -4033,8 +4044,18 @@ body.companion-mode .companion-mode-banner { display: block; }
 
       <button class="btn-ghost" id="btn-back" title="Back to Setup">← Setup</button>
 
-      <!-- Search box -->
-      <div class="search-box" id="search-box">
+      <!-- Search box — its OWN single-field form on purpose. The rest
+           of the app is form-less, so a browser parses every loose
+           input into one anonymous field group: this box alongside
+           #guide-name, #companion-name, #dob, #tob, #pob and the
+           profile given/family name fields that identity hydration
+           fills with the person's real name. A group holding name and
+           birth fields is what makes a browser classify the unlabelled
+           sibling as another name field and inject the stored profile
+           into it — live deployments showed the companion's first name,
+           and the active Siddhi "Bounteousness", appearing here after a
+           reload. Its own form takes the box out of that group. -->
+      <form class="search-box" id="search-box" role="search" autocomplete="off">
         <span class="search-icon">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
@@ -4043,24 +4064,25 @@ body.companion-mode .companion-mode-banner { display: block; }
           and MUST NEVER be pre-populated with any profile-derived
           value (Gene Key Shadow/Gift/Siddhi terms, companion / guide
           names, birth fields, OM Cipher data, prior responses, etc.)
-          A live deployment leaked the active Siddhi "Bounteousness"
-          into this field through Chrome's autofill heuristic.
-          Belt-and-braces defence:
-            • type="search" — semantic + opt-out of password-style autofill
-            • autocomplete="new-password" — Chrome's most reliable
-              opt-out for non-credential fields since v90+
+          Belt-and-braces defence, beyond the enclosing form above:
+            • type="search" — semantic, and never a credential field
+            • autocomplete="off" — the spec opt-out, and what browsers
+              honour when restoring form state on reload / session
+              restore. NOT "new-password": that declares the box a
+              credential field to the password manager and does
+              nothing to opt out of name autofill.
             • name omitted so browser history cannot key on it
             • inputmode="search" — mobile keyboard hint, no autofill effect
             • data-1p-ignore / data-lpignore="true" / data-form-type="other"
               — silence 1Password / LastPass / Bitwarden autofill
-            • defensive .value = '' on init + on pageshow (bfcache)
-              lives in initSearch() below.
+            • the event-driven runtime guard in initSearch() below,
+              which erases any value the user did not type.
         -->
         <input class="search-input"
                id="search-input"
                type="search"
                placeholder="Search cOMpass…"
-               autocomplete="new-password"
+               autocomplete="off"
                inputmode="search"
                aria-label="Search cOMpass"
                spellcheck="false"
@@ -4072,13 +4094,13 @@ body.companion-mode .companion-mode-banner { display: block; }
         <div class="search-results" id="search-results">
           <div class="search-results-header">
             <span class="search-results-label" id="search-results-label">Results</span>
-            <button class="btn-ghost" id="search-close" style="padding:var(--space-1) var(--space-2);font-size:var(--text-xs);">Close</button>
+            <button type="button" class="btn-ghost" id="search-close" style="padding:var(--space-1) var(--space-2);font-size:var(--text-xs);">Close</button>
           </div>
           <div class="search-results-body" id="search-results-body">
             <p class="search-empty">Type a question to search this session and transcripts.</p>
           </div>
         </div>
-      </div>
+      </form>
 
 
 
@@ -9436,6 +9458,7 @@ let searchTimer = null;
 
 function initSearch() {
   const input      = document.getElementById('search-input');
+  const searchForm = document.getElementById('search-box');
   const results    = document.getElementById('search-results');
   const body       = document.getElementById('search-results-body');
   const label      = document.getElementById('search-results-label');
@@ -9443,37 +9466,75 @@ function initSearch() {
 
   if (!input) return;
 
-  // Privacy hardening: the session search field MUST start empty.
-  // Browsers (Chrome especially) sometimes ignore autocomplete
-  // attributes and pre-populate text inputs from a heuristic
-  // match against any value the user has ever typed elsewhere.
-  // We saw the active Siddhi "Bounteousness" leak in via that
-  // path. The markup carries every reasonable autofill opt-out;
-  // this is the runtime backstop that always wins.
+  // Privacy hardening: the session search field holds the user's own
+  // typing and nothing else. Nothing in the app ever writes to it —
+  // it is absent from `state`, from the persisted session JSON and
+  // from every hydration path — so any value that appears here was
+  // injected by the browser: a saved autofill profile, or restored
+  // form state on reload / session restore after a reboot. That is
+  // why deleting the text never sticks. The value lives in the
+  // browser's own store, which an in-page delete cannot reach, so
+  // every fresh load re-injects it.
+  //
+  // The markup half of the defence is above (own single-field form so
+  // the box is not grouped with the guide/companion name and birth
+  // inputs, autocomplete="off", password-manager ignore hints). This
+  // is the runtime half, and it is event-driven on purpose: the
+  // previous version cleared at 0/250/1000ms after DOMContentLoaded
+  // and lost every race that landed later — and they all land later,
+  // because #screen-compass is display:none while the page boots, so
+  // this field is not even rendered until Compass opens.
+  //
+  // The rule: until the user has typed into the box, any value in it
+  // is not theirs and is erased. The latch resets whenever the box
+  // goes empty, so clearing it by hand re-arms the guard.
+  let userTypedQuery = false;
+
   function clearSearchInput() {
-    try {
-      if (input && input.value) input.value = '';
-    } catch (_) {}
+    try { if (input.value !== '') input.value = ''; } catch (_) {}
+    userTypedQuery = false;
   }
-  // Initial clear — runs after DOMContentLoaded so any
-  // autofill that fired before our handler is wiped.
+  function dropInjectedValue() {
+    if (!userTypedQuery) clearSearchInput();
+  }
+  function markUserTyped() { userTypedQuery = true; }
+
   clearSearchInput();
-  // Some browsers (Safari, Firefox) restore form values from
-  // bfcache when the user navigates back. Re-clear on pageshow.
-  try {
-    window.addEventListener('pageshow', clearSearchInput);
-  } catch (_) {}
-  // Chrome runs autofill in a microtask after load — a couple
-  // of deferred clears catch that window without affecting any
-  // user-typed value (the user can't type before they focus).
-  try { setTimeout(clearSearchInput, 0); } catch (_) {}
-  try { setTimeout(clearSearchInput, 250); } catch (_) {}
-  try { setTimeout(clearSearchInput, 1000); } catch (_) {}
+  // bfcache / session restore hand back a populated form.
+  try { window.addEventListener('pageshow', clearSearchInput); } catch (_) {}
+  // A real edit — typing, pasting, dictation, drag-and-drop — claims
+  // the field for the user. These all precede the `input` event below.
+  input.addEventListener('beforeinput', markUserTyped);
+  input.addEventListener('paste', markUserTyped);
+  input.addEventListener('compositionstart', markUserTyped);
+  input.addEventListener('drop', markUserTyped);
+  // Autofill dispatches input/change too, but without a preceding
+  // edit — so an unlatched value here is the browser's, not the user's.
+  input.addEventListener('input', () => {
+    dropInjectedValue();
+    if (input.value === '') userTypedQuery = false;
+  });
+  input.addEventListener('change', dropInjectedValue);
+  // Chrome raises this through the :-webkit-autofill keyframe the
+  // moment a fill lands, whenever that happens to be.
+  input.addEventListener('animationstart', (e) => {
+    if (e.animationName === 'cu-search-autofilled') dropInjectedValue();
+  });
+  // Form-state restoration fires no events at all; catch it before
+  // the user can act on a query they never wrote.
+  input.addEventListener('focus', dropInjectedValue);
+
+  // Enter searches in place. The form exists only to isolate this
+  // field from the page's other inputs, so submission never navigates.
+  searchForm && searchForm.addEventListener('submit', (e) => e.preventDefault());
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && input.value.trim()) {
-      clearTimeout(searchTimer);
-      runSearch(input.value.trim());
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (input.value.trim()) {
+        clearTimeout(searchTimer);
+        runSearch(input.value.trim());
+      }
     }
     if (e.key === 'Escape') {
       results.classList.remove('open');
@@ -9487,7 +9548,7 @@ function initSearch() {
 
   closeBtn && closeBtn.addEventListener('click', () => {
     results.classList.remove('open');
-    input.value = '';
+    clearSearchInput();
   });
 
   // Close on outside click
