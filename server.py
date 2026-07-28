@@ -10,6 +10,8 @@ import os
 import json
 import pathlib
 import io
+import base64
+import binascii
 import time
 import hmac
 import html
@@ -23,7 +25,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote, urlsplit
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 from typing import Optional
 from anthropic import Anthropic
@@ -1520,6 +1522,20 @@ def _init_admin_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Navigator adds one optional screenshot per submission. Existing DBs
+    # predate these columns and CREATE TABLE IF NOT EXISTS won't add them, so
+    # backfill idempotently — legacy rows simply carry no attachment. Bytes
+    # live in the admin DB alongside the comment they belong to, so no new
+    # volume or storage path has to be provisioned for the beta.
+    _fb_cols = {r[1] for r in conn.execute("PRAGMA table_info(feedback)").fetchall()}
+    if "image_name" not in _fb_cols:
+        conn.execute("ALTER TABLE feedback ADD COLUMN image_name TEXT NOT NULL DEFAULT ''")
+    if "image_mime" not in _fb_cols:
+        conn.execute("ALTER TABLE feedback ADD COLUMN image_mime TEXT NOT NULL DEFAULT ''")
+    if "image_size" not in _fb_cols:
+        conn.execute("ALTER TABLE feedback ADD COLUMN image_size INTEGER NOT NULL DEFAULT 0")
+    if "image_data" not in _fb_cols:
+        conn.execute("ALTER TABLE feedback ADD COLUMN image_data BLOB")
     # ── One-on-one orientation requests ───────────────────────────────────
     # A companion arriving in cOMpass can ask Markus to personally guide
     # their first session. This is intentionally NOT either/or with the
@@ -7577,6 +7593,42 @@ class FeedbackSubmitRequest(BaseModel):
     name: str = ""
     email: str = ""
     invite_token: str = ""
+    # Navigator's optional single screenshot, as a browser `data:` URL.
+    image_data_url: str = ""
+    image_name: str = ""
+
+
+# One screenshot per submission. Kept in sync with the Navigator client copy
+# ("Choose a PNG, JPG, or WEBP image." / "…under 10 MB.").
+FEEDBACK_IMAGE_MIMES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
+FEEDBACK_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+
+
+def _decode_feedback_image(data_url: str) -> tuple[bytes, str]:
+    """Decode a `data:image/...;base64,…` URL into (bytes, mime).
+
+    Raises HTTPException(400) with client-facing microcopy so a rejected
+    screenshot is always reported rather than silently dropped.
+    """
+    head, _, payload = data_url.partition(",")
+    if not payload or not head.startswith("data:") or ";base64" not in head:
+        raise HTTPException(status_code=400, detail="We couldn't read this image. Try another screenshot.")
+    mime = head[5:].split(";", 1)[0].strip().lower()
+    if mime not in FEEDBACK_IMAGE_MIMES:
+        raise HTTPException(status_code=400, detail="Choose a PNG, JPG, or WEBP image.")
+    # Reject on the encoded length first so an oversized payload is never
+    # materialised in memory just to be thrown away.
+    if len(payload) > (FEEDBACK_IMAGE_MAX_BYTES // 3 + 1) * 4 + 64:
+        raise HTTPException(status_code=400, detail="This image is too large. Choose one under 10 MB.")
+    try:
+        raw = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="We couldn't read this image. Try another screenshot.")
+    if not raw:
+        raise HTTPException(status_code=400, detail="We couldn't read this image. Try another screenshot.")
+    if len(raw) > FEEDBACK_IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="This image is too large. Choose one under 10 MB.")
+    return raw, mime
 
 
 @app.post("/api/feedback")
@@ -7589,22 +7641,31 @@ async def submit_feedback(body: FeedbackSubmitRequest, request: Request):
     allowed_apps = {"compass", "studio", "tuner", "hexagram-reader", "commons", "threshold", "other"}
     fb_type = body.type if body.type in allowed_types else "general"
     fb_app = body.app if body.app in allowed_apps else "other"
+    img_bytes: bytes | None = None
+    img_mime = ""
+    img_name = ""
+    if (body.image_data_url or "").strip():
+        img_bytes, img_mime = _decode_feedback_image(body.image_data_url.strip())
+        img_name = (body.image_name or "").strip()[:200] or f"screenshot.{FEEDBACK_IMAGE_MIMES[img_mime]}"
     now = _now_iso()
     ua = request.headers.get("user-agent", "")[:300]
     ip = (request.client.host if request.client else "") or ""
     with _admin_db() as conn:
         conn.execute(
             """
-            INSERT INTO feedback (timestamp, type, app, message, name, email, invite_token, user_agent, ip, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+            INSERT INTO feedback (timestamp, type, app, message, name, email, invite_token, user_agent, ip, status,
+                                  image_name, image_mime, image_size, image_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?)
             """,
             (now, fb_type, fb_app, msg,
              (body.name or "").strip()[:200],
              (body.email or "").strip()[:254],
              (body.invite_token or "").strip()[:200],
-             ua, ip),
+             ua, ip,
+             img_name, img_mime, len(img_bytes or b""),
+             sqlite3.Binary(img_bytes) if img_bytes else None),
         )
-    return {"ok": True}
+    return {"ok": True, "image_attached": bool(img_bytes)}
 
 
 @app.get("/api/admin/feedback")
@@ -7622,7 +7683,33 @@ async def admin_feedback(request: Request, status: str = ""):
         unread = conn.execute(
             "SELECT COUNT(*) as n FROM feedback WHERE status='new'"
         ).fetchone()["n"]
-    return {"entries": [_row_to_dict(r) for r in rows], "unread": unread}
+    entries = []
+    for r in rows:
+        d = _row_to_dict(r)
+        # Never ship screenshot bytes in the list payload — the register would
+        # become megabytes. Fetch them one at a time from the image endpoint.
+        d.pop("image_data", None)
+        d["has_image"] = bool(d.get("image_size"))
+        entries.append(d)
+    return {"entries": entries, "unread": unread}
+
+
+@app.get("/api/admin/feedback/{feedback_id}/image")
+async def admin_feedback_image(feedback_id: int, request: Request):
+    """Admin-only read of one feedback screenshot."""
+    _require_admin(request)
+    with _admin_db() as conn:
+        row = conn.execute(
+            "SELECT image_data, image_mime, image_name FROM feedback WHERE id=?", (feedback_id,)
+        ).fetchone()
+    if not row or not row["image_data"]:
+        raise HTTPException(status_code=404, detail="no screenshot")
+    mime = row["image_mime"] if row["image_mime"] in FEEDBACK_IMAGE_MIMES else "application/octet-stream"
+    return Response(
+        content=bytes(row["image_data"]),
+        media_type=mime,
+        headers={"Cache-Control": "private, max-age=300"},
+    )
 
 
 @app.post("/api/admin/feedback/{feedback_id}/acknowledge")
@@ -7653,6 +7740,262 @@ async def delete_feedback(feedback_id: int, request: Request):
             raise HTTPException(status_code=404, detail="not found")
         conn.execute("DELETE FROM feedback WHERE id=?", (feedback_id,))
     return {"ok": True}
+
+
+# ── Navigator Help ────────────────────────────────────────────────────────────
+#
+# Navigator Help is a bounded product-orientation layer for the cOMpass beta —
+# "where am I, what is this, what can I do next". It is deliberately NOT Nexus:
+# no reflective companionship, no interpretation of the person, no memory.
+#
+# Its source of truth is the versioned registry below plus the bounded context
+# the client sends (route, active room, visible control ids, UI state). The
+# model may shape language but is forbidden from supplying product facts that
+# are not in the registry, so a copy change in cOMpass is corrected by editing
+# NAVIGATOR_REGISTRY in the same release — not by hoping the model guessed.
+NAVIGATOR_PRODUCT_VERSION = "compass-beta-2026-07"
+
+NAVIGATOR_REGISTRY: dict = {
+    "version": NAVIGATOR_PRODUCT_VERSION,
+    "product": "cOMpass — the four-room orientation surface of CommonUnity.",
+    "rooms": [
+        {
+            "id": "work",
+            "label": "The Work",
+            "route": "/compass#work",
+            "purpose": "The work that finds you — what you keep being drawn back to do.",
+            "actions": ["Write raw input", "Synthesise (Layer 2)", "Prepare website copy (Layer 3)",
+                        "Set your current frequency", "Open Nexus for reflection"],
+            "next": "When The Work holds enough raw material, move to The Lens.",
+        },
+        {
+            "id": "lens",
+            "label": "The Lens",
+            "route": "/compass#lens",
+            "purpose": "How you see and what you see — the angle of perception your path produced.",
+            "actions": ["Write raw input", "Synthesise (Layer 2)", "Prepare website copy (Layer 3)",
+                        "Set your current frequency", "Open Nexus for reflection"],
+            "next": "After The Lens, The Field describes how your energy meets others.",
+        },
+        {
+            "id": "field",
+            "label": "The Field",
+            "route": "/compass#field",
+            "purpose": "How your energy meets the world — relationships, communities, belonging.",
+            "actions": ["Write raw input", "Synthesise (Layer 2)", "Prepare website copy (Layer 3)",
+                        "Set your current frequency", "Open Nexus for reflection"],
+            "next": "The Call is the last of the four rooms.",
+        },
+        {
+            "id": "call",
+            "label": "The Call",
+            "route": "/compass#call",
+            "purpose": "What is moving through you — what you are building or being asked toward.",
+            "actions": ["Write raw input", "Synthesise (Layer 2)", "Prepare website copy (Layer 3)",
+                        "Set your current frequency", "Open Nexus for reflection"],
+            "next": "With all four rooms held, the material can travel to stUdio.",
+        },
+    ],
+    "controls": [
+        {"id": "compass-tab-btn", "label": "Room tabs (The Work / The Lens / The Field / The Call)",
+         "purpose": "Switch between the four cOMpass rooms."},
+        {"id": "layer-tab-btn", "label": "Layer tabs",
+         "purpose": "Layer 1 — Raw Input is what you write freely. Layer 2 — Synthesis is the reviewed "
+                    "structure drawn from it. Layer 3 — Website is public-facing copy.",
+         "preconditions": "Layer 2 and Layer 3 need raw material in Layer 1 first."},
+        {"id": "freq-slider", "label": "Frequency slider",
+         "purpose": "Where you are operating on this room's Gene Key spectrum right now: 0 shadow, "
+                    "1–4 shadow frequency, 5–9 gift frequency, 10 siddhi.",
+         "notes": "It shapes Nexus's next message only; it does not change replies already received."},
+        {"id": "compass-nexus-orb", "label": "Nexus activator",
+         "purpose": "The reflective conversation, lower on the page in blue. Press and hold to open.",
+         "notes": "Nexus is for reflection and depth, not for product orientation."},
+        {"id": "cu-navigator-trigger", "label": "Navigator",
+         "purpose": "Messages, Help, and Feedback for the beta experience."},
+        {"id": "hex-reader", "label": "Hexagram Reader",
+         "purpose": "Per-room hexagram source material.",
+         "preconditions": "Locked until an access code is entered; the unlock lasts for the page session only."},
+        {"id": "golden-thread-knot", "label": "Knot / Golden Thread",
+         "purpose": "Tying a knot on a Nexus reply keeps that one moment in your Golden Thread. "
+                    "Keep exports the whole conversation to your own device."},
+    ],
+    "flows": [
+        "Each room is written in Layer 1 (Raw Input) first, then synthesised, then shaped for a website.",
+        "Nothing in cOMpass is submitted for approval — the four rooms are yours to fill in any order.",
+        "Messages in Navigator come from the CommonUnity team; Navigator Help cannot read them.",
+    ],
+    "limits": [
+        "Navigator Help cannot see your private messages, your notes, or your identity record.",
+        "Navigator Help cannot complete steps, navigate for you, or change anything on your behalf.",
+    ],
+}
+
+
+class NavigatorHelpRequest(BaseModel):
+    question: str = ""
+    route: str = ""
+    room: str = ""
+    layer: str = ""
+    ui_state: str = ""
+    visible_controls: list[str] = []
+    invite_token: str = ""
+
+
+NAVIGATOR_HELP_SYSTEM = """You are Navigator Help inside the CommonUnity cOMpass beta.
+
+Your only role is bounded product orientation: where the participant is, what a
+room / label / control means, what actions are available from the current state,
+and what usually comes next. You are practical, concise, and warm. You are not
+Nexus, not a companion, not a support agent, and not an authority on the person.
+
+Hard rules:
+- Use ONLY the product knowledge given in the registry and context below. If the
+  registry does not confirm something, say plainly that you are not certain.
+- Never invent rooms, controls, permissions, completion state, or roadmap.
+- Never claim to see interface state that was not provided to you.
+- Never read, summarise, or speculate about private messages, notes, or identity.
+- Never interpret the person's readiness, meaning, identity, or development.
+- Never take action on their behalf or claim to have done so.
+
+Answer length: 1–3 short paragraphs, or up to four short steps. No preamble, no
+sign-off, no questions back unless you genuinely need one detail to be accurate.
+
+Reply with ONLY a JSON object, no code fence:
+{"kind": "...", "answer": "...", "next_action": "..."}
+
+"kind" is one of:
+- "grounded"   — the registry and context fully support the answer.
+- "partial"    — part is known; name the uncertainty and ask at most one
+                 focused clarifying question.
+- "unknown"    — the available cOMpass guidance does not confirm it. Say so; do
+                 not guess.
+- "reflective" — the question is personal, interpretive, or exploratory rather
+                 than navigational. Say briefly that it belongs in a more
+                 spacious reflective place; do not attempt the reflection.
+
+"next_action" is a short imperative phrase naming one concrete available action,
+or an empty string. Do not name an action that is hidden, locked, or unavailable.
+"""
+
+
+def _navigator_registry_prompt() -> str:
+    return json.dumps(NAVIGATOR_REGISTRY, ensure_ascii=False)
+
+
+def _navigator_room(room_id: str) -> dict | None:
+    for r in NAVIGATOR_REGISTRY["rooms"]:
+        if r["id"] == (room_id or "").strip().lower():
+            return r
+    return None
+
+
+def _navigator_context_prompt(body: NavigatorHelpRequest) -> str:
+    """Bounded, allow-listed context. Only registry-known control ids survive, so
+    a client can never smuggle arbitrary text in as 'visible interface'."""
+    known = {c["id"] for c in NAVIGATOR_REGISTRY["controls"]}
+    controls = [c for c in (body.visible_controls or [])[:20] if c in known]
+    room = _navigator_room(body.room)
+    lines = [f"Product version: {NAVIGATOR_PRODUCT_VERSION}"]
+    lines.append(f"Current route: {(body.route or '')[:120] or 'unknown'}")
+    lines.append(f"Active room: {room['label'] if room else 'unknown'}")
+    if body.layer:
+        lines.append(f"Active layer: {body.layer[:40]}")
+    if body.ui_state:
+        lines.append(f"Relevant UI state: {body.ui_state[:120]}")
+    lines.append("Visible controls: " + (", ".join(controls) if controls else "not reported"))
+    if not room:
+        lines.append(
+            "The active room was NOT provided. Do not assume one — if the answer depends on it, "
+            "ask which of The Work, The Lens, The Field, or The Call they are in."
+        )
+    return "\n".join(lines)
+
+
+def _navigator_fallback(body: NavigatorHelpRequest) -> dict:
+    """Deterministic registry answer used when the model call is unavailable.
+
+    Still grounded and still honest about its limits, so a provider outage
+    degrades Navigator to plain orientation rather than to silence."""
+    room = _navigator_room(body.room)
+    if room:
+        answer = (
+            f"You're in {room['label']} — {room['purpose']} "
+            f"Here you can: {', '.join(room['actions'][:3])}. {room['next']}"
+        )
+        return {"kind": "partial", "answer": answer, "next_action": room["actions"][0]}
+    return {
+        "kind": "unknown",
+        "answer": ("I can help, but I can't tell which part of cOMpass you're looking at. "
+                   "Are you in The Work, The Lens, The Field, or The Call?"),
+        "next_action": "",
+    }
+
+
+def _navigator_parse(text: str) -> dict | None:
+    raw = (text or "").strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
+    start, end = raw.find("{"), raw.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    try:
+        data = json.loads(raw[start:end + 1])
+    except (ValueError, TypeError):
+        return None
+    answer = str(data.get("answer") or "").strip()
+    if not answer:
+        return None
+    kind = str(data.get("kind") or "").strip().lower()
+    return {
+        "kind": kind if kind in {"grounded", "partial", "unknown", "reflective"} else "partial",
+        "answer": answer[:2000],
+        "next_action": str(data.get("next_action") or "").strip()[:120],
+    }
+
+
+@app.post("/api/navigator/help")
+async def navigator_help(body: NavigatorHelpRequest, request: Request):
+    """One bounded orientation question, one concise grounded answer."""
+    if not _has_member_access(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+    question = (body.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question required")
+    if len(question) > 800:
+        raise HTTPException(status_code=400, detail="Question too long (max 800 chars)")
+
+    user_msg = (
+        f"cOMpass product registry (the only permitted source of product facts):\n"
+        f"{_navigator_registry_prompt()}\n\n"
+        f"Bounded interface context:\n{_navigator_context_prompt(body)}\n\n"
+        f"Participant question:\n{question}"
+    )
+    result = None
+    try:
+        resp = client.messages.create(
+            model=_nexus_model(),
+            output_config=_nexus_output_config(),
+            max_tokens=_NEXUS_SHORT_MAX_TOKENS,
+            system=NAVIGATOR_HELP_SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        text = "".join(getattr(b, "text", "") or "" for b in (resp.content or []))
+        result = _navigator_parse(text)
+        if result:
+            log_tokens(
+                companion="",
+                endpoint="navigator-help",
+                room=(body.room or ""),
+                model=_nexus_model(),
+                input_tokens=resp.usage.input_tokens,
+                output_tokens=resp.usage.output_tokens,
+                invite_token=(body.invite_token or "")[:200],
+            )
+    except Exception:
+        result = None
+    if not result:
+        result = _navigator_fallback(body)
+    return {"ok": True, "version": NAVIGATOR_PRODUCT_VERSION, **result}
 
 
 # ── One-on-one orientation requests ───────────────────────────────────────────
