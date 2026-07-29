@@ -19,7 +19,11 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const HTML = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+// Navigator lives in one shared partial now (navigator.html), loaded by every
+// beta surface that hosts it — cOMpass and stUdio. The markup, styles and
+// controller are the same text that used to sit inline at the end of index.html,
+// so these static assertions read the partial directly.
+const HTML = fs.readFileSync(path.join(__dirname, 'navigator.html'), 'utf8');
 
 function block(startMarker, endMarker) {
   const s = HTML.indexOf(startMarker);

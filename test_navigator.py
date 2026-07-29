@@ -234,6 +234,51 @@ class NavigatorHelpTests(unittest.TestCase):
         for rule in ("never invent", "private messages", "not nexus"):
             self.assertIn(rule, system)
 
+    def test_shared_partial_is_served_to_members_only(self):
+        """Both beta surfaces fetch the one Navigator implementation, and it is
+        gated like the member data it fronts — never world-readable."""
+        anon = TestClient(server.app)
+        self.assertEqual(anon.get("/navigator.html").status_code, 403)
+        r = _admin().get("/navigator.html")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertIn('id="cu-navigator"', r.text)
+        self.assertIn("/api/navigator/help", r.text)
+
+    def test_help_from_studio_orients_to_studio_not_to_compass_rooms(self):
+        """Navigator now runs in stUdio too, where the four rooms are not the
+        answer: the outage floor must orient to stUdio instead of asking which
+        cOMpass room the person is in."""
+        r = _admin().post("/api/navigator/help", json={
+            "question": "what is this?", "surface": "studio", "route": "/studio",
+            "visible_controls": ["studio-room-switcher", "studio-fo-view-tabs"],
+        })
+        self.assertEqual(r.status_code, 200, r.text)
+        answer = r.json()["answer"]
+        self.assertIn("stUdio", answer)
+        self.assertNotIn("The Work", answer)
+        self.assertNotIn("The Lens", answer)
+
+    def test_studio_context_names_the_surface_and_drops_the_room_question(self):
+        body = server.NavigatorHelpRequest(
+            question="where do I go next?", surface="studio", route="/studio",
+            ui_state="studio-room:observations",
+            visible_controls=["studio-fo-view-tabs", "compass-tab-btn", "not-a-control"],
+        )
+        prompt = server._navigator_context_prompt(body)
+        self.assertIn("Current surface: stUdio", prompt)
+        self.assertIn("came from stUdio", prompt)
+        self.assertIn("studio-fo-view-tabs", prompt)
+        # The allow-list is still the only way a control id reaches the prompt.
+        self.assertNotIn("not-a-control", prompt)
+        # The "which of the four rooms are you in" nudge is cOMpass-only.
+        self.assertNotIn("The Work, The Lens", prompt)
+
+    def test_unknown_surface_falls_back_to_compass_behaviour(self):
+        for surface in ("", "tuner"):
+            body = server.NavigatorHelpRequest(question="what next?", surface=surface)
+            self.assertIn("The Work, The Lens", server._navigator_context_prompt(body))
+            self.assertEqual(server._navigator_fallback(body)["kind"], "unknown")
+
     def test_model_json_answer_is_parsed_and_kind_is_validated(self):
         parsed = server._navigator_parse(
             '```json\n{"kind":"reflective","answer":"That belongs somewhere more spacious.",'

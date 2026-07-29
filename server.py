@@ -7113,6 +7113,24 @@ async def serve_fieldprint_cipher_field_js(request: Request):
     return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "fieldprint-cipher-field.js", media_type="application/javascript")
 
 
+@app.get("/navigator.html")
+async def serve_navigator_partial(request: Request):
+    """The shared Navigator suite (Messages · Help · Feedback), fetched by every
+    beta surface that hosts it. Gated like the member data it fronts rather than
+    with _serve_private_file: this is a subresource, so a gate page or a redirect
+    would be injected as markup instead of sending the caller to the threshold."""
+    if not _has_member_access(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+    partial = pathlib.Path(__file__).parent / "navigator.html"
+    if not partial.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(partial, media_type="text/html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+
 @app.get("/studio-palette.js")
 async def serve_studio_palette_js(request: Request):
     return _serve_private_file(request, "studio", pathlib.Path(__file__).parent / "studio-palette.js", media_type="application/javascript")
@@ -7758,6 +7776,36 @@ NAVIGATOR_PRODUCT_VERSION = "compass-beta-2026-07"
 NAVIGATOR_REGISTRY: dict = {
     "version": NAVIGATOR_PRODUCT_VERSION,
     "product": "cOMpass — the four-room orientation surface of CommonUnity.",
+    # Navigator now runs on more than one beta surface. Rooms below are cOMpass's
+    # information architecture; a question asked from stUdio must be answered
+    # from stUdio's entry here instead, which is why the surface is named in the
+    # context and why the stUdio entry says plainly what it is not.
+    "surfaces": [
+        {
+            "id": "compass",
+            "label": "cOMpass",
+            "route": "/compass",
+            "purpose": "The four-room orientation surface: The Work, The Lens, The Field, The Call.",
+            "next": "When the four rooms hold enough, the material travels to stUdio.",
+        },
+        {
+            "id": "studio",
+            "label": "stUdio",
+            "route": "/studio",
+            "purpose": "The workspace where cOMpass material becomes something made — field notes "
+                       "per room, FieldPrint, and the shaping of a living digital expression.",
+            "actions": ["Choose a room to work in from the room pills",
+                        "Write and keep field notes",
+                        "Switch between Field Observations and FieldPrint",
+                        "Set your vibe — sound and colour",
+                        "Save or load a session",
+                        "Reflect with Nexus in the mirror track on the right"],
+            "next": "Field notes and FieldPrint feed the living digital expression.",
+            "notes": "stUdio has room pills of its own, but the four-room descriptions in this "
+                     "registry are cOMpass guidance. Never answer a stUdio question with "
+                     "cOMpass-room instructions or cOMpass layer guidance.",
+        },
+    ],
     "rooms": [
         {
             "id": "work",
@@ -7815,6 +7863,17 @@ NAVIGATOR_REGISTRY: dict = {
         {"id": "hex-reader", "label": "Hexagram Reader",
          "purpose": "Per-room hexagram source material.",
          "preconditions": "Locked until an access code is entered; the unlock lasts for the page session only."},
+        {"id": "studio-room-switcher", "label": "Room pills (stUdio)",
+         "purpose": "Choose which room's material you are working on inside stUdio.",
+         "notes": "Switching rooms in stUdio changes the working material, not the cOMpass rooms themselves."},
+        {"id": "studio-fo-view-tabs", "label": "Field Observations / FieldPrint tabs (stUdio)",
+         "purpose": "Field Observations is where notes are written; FieldPrint is the field surface "
+                    "drawn from them."},
+        {"id": "studio-save-load", "label": "Save / Load (stUdio)",
+         "purpose": "Save the current stUdio session to a file, or load one back."},
+        {"id": "studio-nexus-mirror", "label": "Nexus mirror track (stUdio)",
+         "purpose": "The reflective conversation, in the right-hand track of the stUdio workspace.",
+         "notes": "Nexus is for reflection and depth, not for product orientation."},
         {"id": "golden-thread-knot", "label": "Knot / Golden Thread",
          "purpose": "Tying a knot on a Nexus reply keeps that one moment in your Golden Thread. "
                     "Keep exports the whole conversation to your own device."},
@@ -7833,6 +7892,9 @@ NAVIGATOR_REGISTRY: dict = {
 
 class NavigatorHelpRequest(BaseModel):
     question: str = ""
+    # Which beta surface the question came from. Defaults to cOMpass so older
+    # clients and direct calls behave exactly as before.
+    surface: str = "compass"
     route: str = ""
     room: str = ""
     layer: str = ""
@@ -7841,7 +7903,9 @@ class NavigatorHelpRequest(BaseModel):
     invite_token: str = ""
 
 
-NAVIGATOR_HELP_SYSTEM = """You are Navigator Help inside the CommonUnity cOMpass beta.
+NAVIGATOR_HELP_SYSTEM = """You are Navigator Help inside the CommonUnity private
+beta. The same Navigator runs on more than one surface (cOMpass, stUdio); the
+context below names the one the question came from.
 
 Your only role is bounded product orientation: where the participant is, what a
 room / label / control means, what actions are available from the current state,
@@ -7852,6 +7916,9 @@ Hard rules:
 - Use ONLY the product knowledge given in the registry and context below. If the
   registry does not confirm something, say plainly that you are not certain.
 - Never invent rooms, controls, permissions, completion state, or roadmap.
+- Answer about the current surface only. The four rooms (The Work, The Lens, The
+  Field, The Call) and the layer tabs are cOMpass guidance: never offer them as
+  instructions when the question came from another surface.
 - Never claim to see interface state that was not provided to you.
 - Never read, summarise, or speculate about private messages, notes, or identity.
 - Never interpret the person's readiness, meaning, identity, or development.
@@ -7889,13 +7956,26 @@ def _navigator_room(room_id: str) -> dict | None:
     return None
 
 
+def _navigator_surface(surface_id: str) -> dict:
+    """The registry entry for the surface the question came from. Anything the
+    registry does not know falls back to cOMpass, which is what every client
+    before stUdio implicitly asked about."""
+    wanted = (surface_id or "").strip().lower()
+    for s in NAVIGATOR_REGISTRY["surfaces"]:
+        if s["id"] == wanted:
+            return s
+    return NAVIGATOR_REGISTRY["surfaces"][0]
+
+
 def _navigator_context_prompt(body: NavigatorHelpRequest) -> str:
     """Bounded, allow-listed context. Only registry-known control ids survive, so
     a client can never smuggle arbitrary text in as 'visible interface'."""
     known = {c["id"] for c in NAVIGATOR_REGISTRY["controls"]}
     controls = [c for c in (body.visible_controls or [])[:20] if c in known]
     room = _navigator_room(body.room)
+    surface = _navigator_surface(body.surface)
     lines = [f"Product version: {NAVIGATOR_PRODUCT_VERSION}"]
+    lines.append(f"Current surface: {surface['label']} — {surface['purpose']}")
     lines.append(f"Current route: {(body.route or '')[:120] or 'unknown'}")
     lines.append(f"Active room: {room['label'] if room else 'unknown'}")
     if body.layer:
@@ -7903,7 +7983,12 @@ def _navigator_context_prompt(body: NavigatorHelpRequest) -> str:
     if body.ui_state:
         lines.append(f"Relevant UI state: {body.ui_state[:120]}")
     lines.append("Visible controls: " + (", ".join(controls) if controls else "not reported"))
-    if not room:
+    if surface["id"] != "compass":
+        lines.append(
+            f"This question came from {surface['label']}, not from cOMpass. Answer only about "
+            f"{surface['label']} using its registry entry. {surface.get('notes', '')}".strip()
+        )
+    elif not room:
         lines.append(
             "The active room was NOT provided. Do not assume one — if the answer depends on it, "
             "ask which of The Work, The Lens, The Field, or The Call they are in."
@@ -7916,6 +8001,16 @@ def _navigator_fallback(body: NavigatorHelpRequest) -> dict:
 
     Still grounded and still honest about its limits, so a provider outage
     degrades Navigator to plain orientation rather than to silence."""
+    surface = _navigator_surface(body.surface)
+    if surface["id"] != "compass":
+        # Outside cOMpass there are no rooms to ask about, so the honest floor is
+        # orientation to the surface itself rather than a room question.
+        answer = (
+            f"You're in {surface['label']} — {surface['purpose']} "
+            f"Here you can: {', '.join(surface.get('actions', [])[:3])}."
+        )
+        return {"kind": "partial", "answer": answer,
+                "next_action": (surface.get("actions") or [""])[0]}
     room = _navigator_room(body.room)
     if room:
         answer = (
