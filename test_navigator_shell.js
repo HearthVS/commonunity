@@ -181,6 +181,17 @@ test('narrow viewports keep Navigator compact and clear of lower Nexus', () => {
   assert.ok(HTML.includes('id="cu-fb-tooltip"'), 'compact mode needs the tooltip label');
 });
 
+test('only the mobile breakpoint collapses the NAVIGATOR label', () => {
+  // Beta discoverability: laptops and the ~1385px stUdio width must keep the
+  // labelled pill, so no wider media query may visually hide .cu-nav-label.
+  for (const [, width, body] of HTML.matchAll(/@media \(max-width: (\d+)px\)( \{[\s\S]*?\n\})/g)) {
+    if (/\.cu-nav-label \{/.test(body)) {
+      assert.strictEqual(width, '720',
+        `.cu-nav-label may only collapse at the mobile breakpoint, not ${width}px`);
+    }
+  }
+});
+
 // ── Viewport-safe panel height ───────────────────────────────────────────────
 //
 // Regression: at 1600x900 the open panel measured top=369 bottom=989 against a
