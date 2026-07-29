@@ -476,21 +476,11 @@
 .cu-fb-success-head { margin: 0; font-size: 0.94rem; color: rgba(248,242,232,0.92); }
 .cu-fb-success-sub { margin: 0 0 4px; font-size: 0.84rem; color: rgba(248,242,232,0.58); line-height: 1.6; }
 
-/* ── Responsive placement ──────────────────────────────────────────────────
-   Below ~1420px there is no content margin wide enough to hold the labelled
-   pill without covering the room's own controls, so the pill collapses to a
-   compact affordance and the tooltip carries the label. The accessible name
-   stays "Navigator" at every width. */
-@media (max-width: 1419px) {
-  #cu-navigator { left: 12px; }
-  .cu-nav-label {
-    position: absolute; width: 1px; height: 1px; margin: -1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-  }
-  #cu-fb-trigger { padding: 10px; gap: 0; }
-  #cu-navigator:hover #cu-fb-tooltip, #cu-navigator:focus-within #cu-fb-tooltip { opacity: 1; }
-  #cu-fb-panel { width: min(340px, calc(100vw - 36px)); }
-}
+/* ── Responsive placement ─────────────────────────────────────────────────
+   The labelled pill stays legible on every non-mobile width: during the beta
+   the visible "NAVIGATOR" wordmark is what makes feedback discoverable, and
+   laptop/tablet margins do hold it. Only mobile collapses to the circle, where
+   the tooltip carries the label. The accessible name stays "Navigator". */
 @media (max-width: 720px) {
   /* Mobile: compact, above the footer actions, and clearly separated from the
      lower-right Nexus pill — never side by side with it. */
@@ -507,6 +497,12 @@
     border-color: color-mix(in srgb, var(--navigator-accent) 36%, rgba(248,242,232,0.24));
     box-shadow: 0 26px 74px rgba(0,0,0,0.66), var(--navigator-glow-rest);
   }
+  .cu-nav-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  #cu-fb-trigger { padding: 10px; gap: 0; }
+  #cu-navigator:hover #cu-fb-tooltip, #cu-navigator:focus-within #cu-fb-tooltip { opacity: 1; }
 }
 @media (max-height: 620px) {
   #cu-navigator { --navigator-top: 96px; }
