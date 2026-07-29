@@ -1,0 +1,1073 @@
+<!-- CommonUnity Navigator — shared partial (Messages · Help · Feedback).
+
+     One implementation, loaded by every beta surface that needs it: cOMpass
+     (index.html) and stUdio (studio.html) both fetch this file and mount it as
+     the last thing in <body>, which is exactly where the block used to live
+     inline in cOMpass. Markup, styles and controller are unchanged from that
+     inline version; the only additions are surface-aware placement, Help
+     context and the Nexus handoff, all keyed off the current route so neither
+     host page has to configure anything.
+
+     Served from /navigator.html behind the beta/member gate. -->
+<!-- CommonUnity Navigator — Messages · Help · Feedback.
+     Built as a Nexus sibling: same pill geometry, border softness, glow
+     construction and motion quality, in amber instead of blue, and placed
+     upper-middle-left beside the active room rather than at the page bottom.
+     Nexus stays lower-right and blue; the two are never at the same level. -->
+<div id="cu-navigator">
+  <div id="cu-fb-tooltip" role="tooltip">Messages, help, and feedback</div>
+  <button id="cu-fb-trigger" type="button" aria-expanded="false" aria-controls="cu-fb-panel"
+          aria-label="Navigator — messages, help, and feedback">
+    <span class="cu-nav-glyph" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M15.6 8.4 10.9 10.9 8.4 15.6l4.7-2.5 2.5-4.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span class="cu-nav-label">Navigator</span>
+    <span id="cu-comm-dot" class="cu-hidden" aria-hidden="true"></span>
+  </button>
+  <div id="cu-fb-panel" class="cu-hidden" role="dialog" aria-labelledby="cu-nav-title" tabindex="-1">
+    <div id="cu-fb-head">
+      <span class="cu-nav-headtext">
+        <span id="cu-nav-title">Navigator</span>
+        <span id="cu-nav-sub">A little help finding your way</span>
+      </span>
+      <button id="cu-fb-close" type="button" aria-label="Close Navigator">×</button>
+    </div>
+    <div id="cu-comm-tabs" role="tablist" aria-label="Navigator modes">
+      <button type="button" role="tab" id="cu-tab-messages" class="cu-comm-tab cu-comm-tab--active"
+              data-comm-tab="messages" aria-selected="true" aria-controls="cu-comm-messages" tabindex="0">Messages</button>
+      <button type="button" role="tab" id="cu-tab-help" class="cu-comm-tab"
+              data-comm-tab="help" aria-selected="false" aria-controls="cu-comm-help" tabindex="-1">Help</button>
+      <button type="button" role="tab" id="cu-tab-feedback" class="cu-comm-tab"
+              data-comm-tab="feedback" aria-selected="false" aria-controls="cu-fb-form" tabindex="-1">Feedback</button>
+    </div>
+
+    <!-- Messages — the existing cOMmunication layer, unchanged in behaviour. -->
+    <div id="cu-comm-messages" class="cu-comm-section" role="tabpanel" aria-labelledby="cu-tab-messages" tabindex="-1">
+      <div id="cu-msg-list"><p class="cu-msg-empty">No new messages just now.<br><span class="cu-msg-empty-sub">Messages shared through cOMmunication will appear here.</span></p></div>
+    </div>
+
+    <!-- Help — bounded in-context orientation. Never reads Messages. -->
+    <div id="cu-comm-help" class="cu-comm-section cu-hidden" role="tabpanel" aria-labelledby="cu-tab-help" tabindex="-1">
+      <p class="cu-help-intro">Ask about what you’re seeing, where to find something, or what you might do next.</p>
+      <div id="cu-help-starters" class="cu-help-starters"></div>
+      <form id="cu-help-form">
+        <label class="cu-help-label" for="cu-help-input">What would help you find your way?</label>
+        <textarea id="cu-help-input" rows="2" placeholder="Ask a simple question about cOMpass…" required></textarea>
+        <button type="submit" id="cu-help-send">Ask Navigator</button>
+      </form>
+      <div id="cu-help-thread" class="cu-hidden">
+        <p class="cu-help-q" id="cu-help-q"></p>
+        <div class="cu-help-a" id="cu-help-a" role="status" aria-live="polite"></div>
+        <p class="cu-help-note cu-hidden" id="cu-help-note"></p>
+        <div class="cu-help-actions" id="cu-help-actions"></div>
+      </div>
+    </div>
+
+    <!-- Feedback — existing submission path, plus one optional screenshot. -->
+    <form id="cu-fb-form" class="cu-comm-section cu-hidden" role="tabpanel" aria-labelledby="cu-tab-feedback" tabindex="-1">
+      <p class="cu-fb-intro">Share what felt unclear, useful, or unfinished.</p>
+      <div class="cu-fb-row">
+        <label>Type</label>
+        <div class="cu-fb-radios">
+          <label><input type="radio" name="fb-type" value="bug" /> Bug</label>
+          <label><input type="radio" name="fb-type" value="feature" /> Feature</label>
+          <label><input type="radio" name="fb-type" value="general" checked /> General</label>
+        </div>
+      </div>
+      <div class="cu-fb-row">
+        <label for="cu-fb-app">App</label>
+        <select id="cu-fb-app">
+          <option value="compass">cOMpass</option>
+          <option value="studio">stUdio</option>
+          <option value="tuner">Tuner</option>
+          <option value="hexagram-reader">Hexagram Reader</option>
+          <option value="threshold">Threshold</option>
+          <option value="commons">cOMmons</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="cu-fb-row">
+        <label for="cu-fb-message">Your feedback</label>
+        <textarea id="cu-fb-message" placeholder="What happened, and what would have helped?" required></textarea>
+      </div>
+      <div class="cu-fb-row" id="cu-shot-row">
+        <label for="cu-shot-input">Screenshot (optional)</label>
+        <input type="file" id="cu-shot-input" accept="image/png,image/jpeg,image/webp"
+               class="cu-visually-hidden" aria-describedby="cu-shot-help">
+        <button type="button" id="cu-shot-attach" class="cu-shot-attach">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="2.5" y="3.5" width="15" height="13" rx="2.5" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="7.25" cy="8" r="1.35" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M3 14.2l4.1-3.6 3.3 2.9 2.6-2.2 4 3.4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+          Attach a screenshot
+        </button>
+        <div id="cu-shot-card" class="cu-shot-card cu-hidden">
+          <img id="cu-shot-thumb" alt="Preview of the screenshot you attached">
+          <span class="cu-shot-meta">
+            <span id="cu-shot-name" class="cu-shot-name"></span>
+            <span id="cu-shot-size" class="cu-shot-size"></span>
+          </span>
+          <span class="cu-shot-actions">
+            <button type="button" id="cu-shot-replace">Replace</button>
+            <button type="button" id="cu-shot-remove">Remove</button>
+          </span>
+        </div>
+        <p id="cu-shot-help" class="cu-shot-help">PNG, JPG, or WEBP · up to 10 MB. Please don’t include personal, sacred, or sensitive information.</p>
+        <p id="cu-shot-error" class="cu-shot-error cu-hidden" role="alert"></p>
+        <p id="cu-shot-live" class="cu-visually-hidden" role="status" aria-live="polite"></p>
+      </div>
+      <div class="cu-fb-row">
+        <label for="cu-fb-name">Name (optional)</label>
+        <input id="cu-fb-name" type="text" placeholder="How should we refer to you?">
+      </div>
+      <button type="submit" id="cu-fb-submit">Send feedback</button>
+      <button type="button" id="cu-fb-cancel" class="cu-fb-cancel">Cancel</button>
+      <div id="cu-fb-msg"></div>
+    </form>
+    <div id="cu-fb-success" class="cu-comm-section cu-hidden" tabindex="-1">
+      <p class="cu-fb-success-head">Thank you. Your signal has been received.</p>
+      <p class="cu-fb-success-sub">It will help us make the beta clearer and more supportive.</p>
+      <div class="cu-help-actions">
+        <button type="button" id="cu-fb-done">Done</button>
+        <button type="button" id="cu-fb-again">Send another</button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+/* ── Navigator semantic tokens ───────────────────────────────────────────
+   Amber/gold role colour, mixed against the live cOMpass surface the same
+   way the Nexus pill mixes its blue. Colour is never the only cue — the pill
+   carries a visible "Navigator" label and sits at a different height. */
+:root {
+  --navigator-accent: #d6a84a;
+  --navigator-accent-bright: #e6bc63;
+  --navigator-accent-deep: #8f6420;
+  --navigator-border: color-mix(in srgb, var(--navigator-accent) 48%, transparent);
+  --navigator-surface: color-mix(in srgb, var(--bg, #0a0810) 84%, var(--navigator-accent) 7%);
+  --navigator-text: color-mix(in srgb, var(--navigator-accent-bright) 82%, var(--text, #f8f2e8));
+  /* Same glow construction as the Nexus pill / living-pulse peak
+     (0 0 18px 3px @ 0.5). Interactive states are that value × 1.2. */
+  --navigator-glow-rest:  0 0 9px 1px rgba(214,168,74,0.18);
+  --navigator-glow-hover: 0 0 22px 4px rgba(214,168,74,0.60);
+  --navigator-glow-open:  0 0 15px 2px rgba(214,168,74,0.34);
+}
+#cu-fb-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(8,8,13,0.92);
+  border: 1px solid rgba(248,242,232,0.16);
+  color: rgba(248,242,232,0.82);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 5px 11px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+/* The tooltip only earns its keep once the visible label has collapsed —
+   revealed in the compact breakpoint below, never while the label is legible. */
+#cu-navigator {
+  /* Upper-middle left, beside the active room rather than at the page bottom,
+     so Navigator reads as connected to the current work. Nexus stays at
+     bottom/right — never the same vertical level. */
+  /* One source of truth for the vertical offset: the panel derives its own
+     max-height from it, so the open panel can never run past the viewport
+     bottom. Every breakpoint that moves Navigator must set this, not `top`. */
+  --navigator-top: clamp(140px, 41vh, calc(100dvh - 260px));
+  position: fixed;
+  top: var(--navigator-top);
+  left: max(10px, calc(50vw - 550px - 178px));
+  z-index: 9000;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+#cu-fb-trigger {
+  /* Nexus pill geometry: same radius, border softness, translucency model,
+     backdrop blur, elevation and transition curve. */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 9px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--navigator-border);
+  background:
+    radial-gradient(circle at 22px 50%, color-mix(in srgb, var(--navigator-accent) 20%, transparent) 0%, transparent 62%),
+    var(--navigator-surface);
+  color: var(--navigator-text);
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-rest);
+  backdrop-filter: blur(8px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.cu-nav-glyph { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.cu-nav-glyph svg { filter: drop-shadow(0 0 6px rgba(214,168,74,0.35)); transition: transform 0.18s ease; }
+.cu-nav-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#cu-fb-trigger:hover,
+#cu-fb-trigger.cu-nav-open:hover {
+  border-color: color-mix(in srgb, var(--navigator-accent) 66%, transparent);
+  color: var(--navigator-accent-bright);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-hover);
+}
+/* 1–2px directional drift, same motion quality as the Nexus glyph. */
+#cu-fb-trigger:hover .cu-nav-glyph svg { transform: translate(1.5px, -1.5px); }
+#cu-fb-trigger:focus-visible {
+  /* Focus matches hover visibility and adds a ring outside the glow —
+     never glow alone. */
+  border-color: color-mix(in srgb, var(--navigator-accent) 66%, transparent);
+  color: var(--navigator-accent-bright);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-hover);
+  outline: 2px solid var(--navigator-accent-bright);
+  outline-offset: 4px;
+}
+#cu-fb-trigger:active {
+  transform: scale(0.985);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.36), 0 0 12px 1px rgba(214,168,74,0.42);
+  background:
+    radial-gradient(circle at 22px 50%, color-mix(in srgb, var(--navigator-accent-deep) 26%, transparent) 0%, transparent 62%),
+    color-mix(in srgb, var(--bg, #0a0810) 92%, var(--navigator-accent) 5%);
+}
+/* Panel open: a quieter persistent glow ties the trigger to the panel. */
+#cu-fb-trigger.cu-nav-open {
+  border-color: color-mix(in srgb, var(--navigator-accent) 58%, transparent);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-open);
+}
+#cu-fb-panel {
+  /* Opens toward the content area, never off-screen or over the header. */
+  position: absolute;
+  top: 0; left: calc(100% + 12px);
+  width: 340px;
+  /* Never taller than the room left below the trigger. A grounded Help answer
+     expands the panel, so a viewport-relative cap alone is not enough — it has
+     to subtract where the panel actually starts, plus a safe margin. */
+  max-height: min(620px, calc(100dvh - var(--navigator-top) - 24px));
+  display: flex;
+  flex-direction: column;
+  /* Near-opaque so cOMpass copy underneath can never compete with Navigator's
+     own; the blur keeps the Nexus-family softness rather than reading as a
+     flat slab. */
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)), rgba(6,6,11,0.985);
+  backdrop-filter: blur(16px) saturate(115%);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  border: 1px solid color-mix(in srgb, var(--navigator-accent) 30%, rgba(248,242,232,0.2));
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.56), var(--navigator-glow-rest);
+  overflow: hidden;
+  animation: cu-nav-fade 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes cu-nav-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#cu-fb-panel.cu-hidden { display: none; }
+#cu-fb-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid rgba(248,242,232,0.09);
+  color: rgba(248,242,232,0.86);
+}
+.cu-nav-headtext { display: flex; flex-direction: column; gap: 3px; }
+#cu-nav-title { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; }
+#cu-nav-sub { font-size: 0.76rem; color: rgba(248,242,232,0.5); letter-spacing: 0.01em; }
+#cu-fb-close {
+  background: none; border: none; color: rgba(248,242,232,0.46);
+  font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0 2px;
+  border-radius: 6px;
+}
+#cu-fb-close:focus-visible { outline: 2px solid var(--navigator-accent-bright); outline-offset: 2px; }
+#cu-fb-form { padding: 14px 18px 18px; display: grid; gap: 12px; }
+.cu-visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.cu-fb-row { display: grid; gap: 6px; }
+.cu-fb-row label { font-size: 0.72rem; color: rgba(248,242,232,0.46); letter-spacing: 0.12em; text-transform: uppercase; }
+.cu-fb-radios { display: flex; gap: 12px; }
+.cu-fb-radios label { font-size: 0.84rem; color: rgba(248,242,232,0.78); text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+#cu-fb-form textarea, #cu-fb-form input[type="text"], #cu-fb-form select,
+#cu-comm-help textarea {
+  width: 100%; color: rgba(248,242,232,0.9);
+  border: 1px solid rgba(248,242,232,0.16); border-radius: 12px;
+  background: rgba(0,0,0,0.24); padding: 10px 12px; font: inherit; font-size: 0.9rem; outline: none;
+}
+#cu-fb-form textarea { min-height: 80px; resize: vertical; }
+#cu-fb-form textarea:focus-visible, #cu-fb-form input:focus-visible,
+#cu-fb-form select:focus-visible, #cu-comm-help textarea:focus-visible {
+  border-color: color-mix(in srgb, var(--navigator-accent) 62%, transparent);
+  box-shadow: 0 0 0 3px rgba(214,168,74,0.16);
+}
+#cu-fb-submit, #cu-help-send {
+  width: 100%; padding: 11px; border: 0; border-radius: 999px;
+  background: linear-gradient(135deg, var(--navigator-accent-bright), var(--navigator-accent));
+  color: #0a0805; font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+#cu-fb-submit:disabled, #cu-help-send:disabled { opacity: 0.6; cursor: default; }
+#cu-fb-submit:focus-visible, #cu-help-send:focus-visible,
+.cu-fb-cancel:focus-visible, .cu-shot-attach:focus-visible,
+.cu-shot-actions button:focus-visible, .cu-help-actions button:focus-visible,
+.cu-help-starters button:focus-visible, .cu-comm-tab:focus-visible {
+  outline: 2px solid var(--navigator-accent-bright); outline-offset: 2px;
+}
+.cu-fb-cancel {
+  width: 100%; padding: 8px; border: 0; border-radius: 999px; background: none;
+  color: rgba(248,242,232,0.55); font: inherit; font-size: 0.82rem; cursor: pointer;
+}
+#cu-fb-msg { font-size: 0.8rem; color: rgba(248,242,232,0.6); min-height: 18px; }
+/* Calm attention: a small soft-gold dot, never a red badge or count. */
+#cu-comm-dot {
+  position: absolute; top: 5px; right: 6px;
+  width: 8px; height: 8px; border-radius: 999px;
+  background: radial-gradient(circle, #f5e7bd, var(--navigator-accent));
+  box-shadow: 0 0 8px rgba(214,168,74,0.6);
+}
+#cu-comm-dot.cu-hidden { display: none; }
+/* Sign of life: a slow, soft gold glow that breathes on the pill when
+   something unread is waiting — not an alert, just a living presence.
+   Calms the moment messages are read/opened (class removed). */
+@keyframes cu-living-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-rest);
+    border-color: var(--navigator-border);
+  }
+  50% {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-hover);
+    border-color: color-mix(in srgb, var(--navigator-accent) 66%, transparent);
+  }
+}
+#cu-fb-trigger.cu-living {
+  color: var(--navigator-accent-bright);
+  border-color: color-mix(in srgb, var(--navigator-accent) 58%, transparent);
+  animation: cu-living-pulse 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No pulsing and no transforms; colour, border and glow states still change
+     instantly so every interactive state stays legible. */
+  #cu-fb-trigger.cu-living {
+    animation: none;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.32), var(--navigator-glow-open);
+  }
+  #cu-fb-trigger, .cu-nav-glyph svg { transition: none; }
+  #cu-fb-trigger:hover { transform: none; }
+  #cu-fb-trigger:active { transform: none; }
+  #cu-fb-trigger:hover .cu-nav-glyph svg { transform: none; }
+  #cu-fb-panel { animation: none; }
+}
+#cu-comm-tabs { display: flex; gap: 4px; padding: 10px 18px 0; flex: none; }
+.cu-comm-tab {
+  background: none; border: none; cursor: pointer;
+  color: rgba(248,242,232,0.5); font: inherit; font-size: 0.78rem;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 4px;
+  border-bottom: 2px solid transparent; border-radius: 4px 4px 0 0;
+}
+.cu-comm-tab--active {
+  color: var(--navigator-accent);
+  border-bottom-color: color-mix(in srgb, var(--navigator-accent) 62%, transparent);
+}
+/* min-height:0 is what actually makes the scroll happen: a flex item defaults
+   to min-height:auto and refuses to shrink below its content, so without this
+   an expanded answer pushes past the panel's max-height and gets clipped. */
+.cu-comm-section {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Authoritative, and it has to be: the sections set their own `display` from an
+   ID selector (#cu-comm-help, #cu-fb-form and #cu-fb-success are all grids),
+   which outranks a two-class utility. Regression: with Messages selected, Help
+   stayed painted below it — intro, starters, textarea and Ask button — because
+   `#cu-comm-help { display: grid }` beat this rule. !important here means the
+   next layout rule added to a section cannot reopen the same hole. */
+.cu-comm-section.cu-hidden { display: none !important; }
+#cu-comm-messages { padding: 12px 18px 18px; }
+.cu-msg-empty { font-size: 0.86rem; color: rgba(248,242,232,0.5); line-height: 1.6; margin: 8px 0; }
+.cu-msg-empty-sub { color: rgba(248,242,232,0.38); }
+.cu-msg-error { font-size: 0.86rem; color: rgba(248,242,232,0.62); line-height: 1.6; margin: 8px 0; }
+.cu-msg-retry {
+  margin-top: 6px; background: none; border: 1px solid rgba(248,242,232,0.2);
+  border-radius: 999px; padding: 5px 12px; color: rgba(248,242,232,0.72);
+  font: inherit; font-size: 0.8rem; cursor: pointer;
+}
+
+/* ── Help mode ─────────────────────────────────────────────────────────── */
+#cu-comm-help { padding: 12px 18px 18px; display: grid; gap: 12px; }
+.cu-help-intro, .cu-fb-intro {
+  font-size: 0.86rem; color: rgba(248,242,232,0.62); line-height: 1.6; margin: 0;
+}
+.cu-help-starters { display: flex; flex-wrap: wrap; gap: 6px; }
+.cu-help-starters button {
+  background: color-mix(in srgb, var(--navigator-accent) 8%, rgba(0,0,0,0.24));
+  border: 1px solid color-mix(in srgb, var(--navigator-accent) 26%, transparent);
+  border-radius: 999px; padding: 5px 11px; cursor: pointer;
+  color: rgba(248,242,232,0.8); font: inherit; font-size: 0.78rem;
+}
+.cu-help-starters button:hover { border-color: var(--navigator-border); }
+#cu-help-form { display: grid; gap: 8px; }
+.cu-help-label { font-size: 0.72rem; color: rgba(248,242,232,0.46); letter-spacing: 0.12em; text-transform: uppercase; }
+#cu-help-thread { display: grid; gap: 8px; }
+#cu-help-thread.cu-hidden { display: none; }
+.cu-help-q {
+  margin: 0; font-size: 0.84rem; color: rgba(248,242,232,0.58);
+  border-left: 2px solid var(--navigator-border); padding-left: 10px;
+}
+.cu-help-a { font-size: 0.88rem; color: rgba(248,242,232,0.88); line-height: 1.65; white-space: pre-wrap; }
+.cu-help-note { margin: 0; font-size: 0.8rem; color: rgba(248,242,232,0.55); line-height: 1.55; }
+.cu-help-note.cu-hidden { display: none; }
+.cu-help-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.cu-help-actions button {
+  background: none; border: 1px solid color-mix(in srgb, var(--navigator-accent) 30%, transparent);
+  border-radius: 999px; padding: 6px 13px; cursor: pointer;
+  color: var(--navigator-text); font: inherit; font-size: 0.8rem;
+}
+.cu-help-actions button:hover { border-color: var(--navigator-border); color: var(--navigator-accent-bright); }
+.cu-help-version { font-size: 0.66rem; color: rgba(248,242,232,0.24); letter-spacing: 0.06em; }
+
+/* ── Screenshot attachment ─────────────────────────────────────────────── */
+.cu-shot-attach {
+  display: inline-flex; align-items: center; gap: 7px; justify-self: start;
+  background: rgba(0,0,0,0.24);
+  border: 1px dashed color-mix(in srgb, var(--navigator-accent) 34%, transparent);
+  border-radius: 12px; padding: 8px 13px; cursor: pointer;
+  color: rgba(248,242,232,0.8); font: inherit; font-size: 0.84rem;
+}
+.cu-shot-attach:hover { border-color: var(--navigator-border); color: var(--navigator-accent-bright); }
+.cu-shot-attach.cu-hidden { display: none; }
+.cu-shot-card {
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 10px;
+  background: rgba(0,0,0,0.24);
+  border: 1px solid color-mix(in srgb, var(--navigator-accent) 26%, transparent);
+  border-radius: 12px; padding: 8px 10px;
+}
+.cu-shot-card.cu-hidden { display: none; }
+#cu-shot-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; display: block; }
+.cu-shot-meta { display: grid; gap: 2px; min-width: 0; }
+.cu-shot-name { font-size: 0.8rem; color: rgba(248,242,232,0.86); overflow: hidden; white-space: nowrap; }
+.cu-shot-size { font-size: 0.72rem; color: rgba(248,242,232,0.44); }
+.cu-shot-actions { display: flex; flex-direction: column; gap: 3px; }
+.cu-shot-actions button {
+  background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px;
+  color: rgba(248,242,232,0.6); font: inherit; font-size: 0.74rem; text-align: right;
+}
+.cu-shot-actions button:hover { color: var(--navigator-accent-bright); }
+.cu-shot-help { margin: 0; font-size: 0.72rem; color: rgba(248,242,232,0.42); line-height: 1.5; text-transform: none; letter-spacing: 0; }
+.cu-shot-error { margin: 0; font-size: 0.78rem; color: #f0a9a9; line-height: 1.5; }
+.cu-shot-error.cu-hidden { display: none; }
+#cu-fb-success { padding: 18px; display: grid; gap: 8px; }
+.cu-fb-success-head { margin: 0; font-size: 0.94rem; color: rgba(248,242,232,0.92); }
+.cu-fb-success-sub { margin: 0 0 4px; font-size: 0.84rem; color: rgba(248,242,232,0.58); line-height: 1.6; }
+
+/* ── Responsive placement ──────────────────────────────────────────────────
+   Below ~1420px there is no content margin wide enough to hold the labelled
+   pill without covering the room's own controls, so the pill collapses to a
+   compact affordance and the tooltip carries the label. The accessible name
+   stays "Navigator" at every width. */
+@media (max-width: 1419px) {
+  #cu-navigator { left: 12px; }
+  .cu-nav-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  #cu-fb-trigger { padding: 10px; gap: 0; }
+  #cu-navigator:hover #cu-fb-tooltip, #cu-navigator:focus-within #cu-fb-tooltip { opacity: 1; }
+  #cu-fb-panel { width: min(340px, calc(100vw - 36px)); }
+}
+@media (max-width: 720px) {
+  /* Mobile: compact, above the footer actions, and clearly separated from the
+     lower-right Nexus pill — never side by side with it. */
+  #cu-navigator { top: auto; bottom: 104px; left: 12px; }
+  #cu-fb-panel {
+    position: fixed; top: auto; bottom: 104px; left: 12px; right: 12px;
+    /* Anchored to the bottom here, so the cap subtracts that offset instead of
+       --navigator-top (which is `auto` at this breakpoint). */
+    width: auto; max-height: min(520px, calc(100dvh - 104px - 16px));
+    /* Fully opaque on mobile: the panel sits directly over dense room copy at
+       this width, and translucency made the two layers compete. Blur and the
+       amber border keep it in the Nexus family. */
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)), #06060b;
+    border-color: color-mix(in srgb, var(--navigator-accent) 36%, rgba(248,242,232,0.24));
+    box-shadow: 0 26px 74px rgba(0,0,0,0.66), var(--navigator-glow-rest);
+  }
+}
+@media (max-height: 620px) {
+  #cu-navigator { --navigator-top: 96px; }
+}
+/* stUdio placement — the same upper-left region as in cOMpass, only dropped
+   below stUdio's 56px sticky room header so the pill never sits over the
+   back / save / load controls, and left-aligned because stUdio is full-bleed
+   rather than a centred column. Nexus keeps the mirror track on the right, so
+   the two are never at the same level here either. Still one source of truth
+   for the offset, so the panel cap stays in sync. */
+#cu-navigator.cu-nav--studio {
+  --navigator-top: clamp(76px, 24vh, calc(100dvh - 260px));
+  left: 14px;
+}
+.cu-msg-item {
+  padding: 12px 0; border-bottom: 1px solid rgba(248,242,232,0.08);
+}
+.cu-msg-item:last-child { border-bottom: none; }
+.cu-msg-item.cu-msg-new { position: relative; }
+.cu-msg-subject { color: rgba(248,242,232,0.92); font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.cu-msg-new-dot { width: 7px; height: 7px; border-radius: 999px; background: radial-gradient(circle, #f5e7bd, #d5ad64); flex: none; }
+.cu-msg-body { color: rgba(248,242,232,0.74); font-size: 0.88rem; line-height: 1.6; margin: 5px 0 0; white-space: pre-wrap; }
+.cu-msg-meta { color: rgba(248,242,232,0.4); font-size: 0.72rem; margin-top: 6px; letter-spacing: 0.04em; }
+.cu-msg-kind { color: rgba(213,173,100,0.7); }
+</style>
+<script>
+(function() {
+  const trigger = document.getElementById('cu-fb-trigger');
+  const panel = document.getElementById('cu-fb-panel');
+  const closeBtn = document.getElementById('cu-fb-close');
+  const form = document.getElementById('cu-fb-form');
+  const msg = document.getElementById('cu-fb-msg');
+  const dot = document.getElementById('cu-comm-dot');
+  const tabs = Array.from(document.querySelectorAll('.cu-comm-tab'));
+  const msgSection = document.getElementById('cu-comm-messages');
+  const msgList = document.getElementById('cu-msg-list');
+  const helpSection = document.getElementById('cu-comm-help');
+  const successSection = document.getElementById('cu-fb-success');
+  const SECTIONS = { messages: msgSection, help: helpSection, feedback: form };
+  // Which beta surface is hosting Navigator, derived from the route so a host
+  // page only has to load this partial. cOMpass is the default: everything
+  // that is not stUdio behaves exactly as it did before the partial existed.
+  const NAV_SURFACE = location.pathname.startsWith('/studio') ? 'studio' : 'compass';
+  const IN_STUDIO = NAV_SURFACE === 'studio';
+  if (IN_STUDIO) document.getElementById('cu-navigator').classList.add('cu-nav--studio');
+  // Last-used mode for this page session only. In-memory by design: no new
+  // storage key, nothing to migrate, nothing to go stale.
+  let lastMode = null;
+  let messagesFailed = false;
+
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+  function fmtDate(v) { try { return v ? new Date(v).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : ''; } catch { return ''; } }
+
+  let messages = [];
+  let markTimer = null;
+  let pollTimer = null;
+  // Modest, respectful refresh so new messages appear without a manual reload.
+  const CU_POLL_INTERVAL_MS = 45000;
+  function panelOpen() { return !panel.classList.contains('cu-hidden'); }
+  function renderMessages() {
+    if (messagesFailed && !messages.length) {
+      msgList.innerHTML = '<p class="cu-msg-error">Messages couldn’t be loaded just now.' +
+        '<br><button type="button" class="cu-msg-retry" id="cu-msg-retry">Try again</button></p>';
+      const retry = document.getElementById('cu-msg-retry');
+      if (retry) retry.addEventListener('click', () => { messagesFailed = false; renderMessages(); loadMessages(); });
+      return;
+    }
+    if (!messages.length) {
+      msgList.innerHTML = '<p class="cu-msg-empty">No new messages just now.' +
+        '<br><span class="cu-msg-empty-sub">Messages shared through cOMmunication will appear here.</span></p>';
+      return;
+    }
+    msgList.innerHTML = messages.map(m => `
+      <div class="cu-msg-item ${m.read ? '' : 'cu-msg-new'}">
+        <div class="cu-msg-subject">${m.read ? '' : '<span class="cu-msg-new-dot"></span>'}${escapeHtml(m.subject || '(no subject)')}</div>
+        <div class="cu-msg-body">${escapeHtml(m.body || '')}</div>
+        <div class="cu-msg-meta">${fmtDate(m.created_at)}${m.kind === 'broadcast' ? ' · <span class="cu-msg-kind">to the cohort</span>' : ''}</div>
+      </div>`).join('');
+  }
+  function updateDot() {
+    const unread = messages.filter(m => !m.read).length;
+    dot.classList.toggle('cu-hidden', unread === 0);
+    // Soft gold "sign of life" glow on the bubble; calms once nothing is unread.
+    trigger.classList.toggle('cu-living', unread > 0);
+  }
+  function scheduleMarkRead() {
+    clearTimeout(markTimer);
+    markTimer = setTimeout(markAllRead, 1200);
+  }
+  async function loadMessages() {
+    try {
+      const res = await fetch('/api/messages', { credentials: 'same-origin' });
+      if (!res.ok) { messagesFailed = true; renderMessages(); return; }
+      const data = await res.json();
+      messages = data.messages || [];
+      messagesFailed = false;
+      renderMessages();
+      updateDot();
+      // Preserve mark-read behaviour: if the panel is open (initial open or a
+      // poll that arrived while open), mark read after the brief reveal delay.
+      if (panelOpen() && currentMode() === 'messages') scheduleMarkRead();
+    } catch (_) {
+      messagesFailed = true;
+      renderMessages();
+    }
+  }
+  async function markAllRead() {
+    const unread = messages.filter(m => !m.read);
+    if (!unread.length) return;
+    await Promise.all(unread.map(m =>
+      fetch(`/api/messages/${m.id}/read`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+    ));
+    messages = messages.map(m => ({ ...m, read: true }));
+    renderMessages();
+    updateDot();
+  }
+  function startPolling() {
+    if (pollTimer) return;
+    // Back off while the tab is hidden; refresh only when the page is visible.
+    pollTimer = setInterval(() => { if (!document.hidden) loadMessages(); }, CU_POLL_INTERVAL_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadMessages();
+  });
+
+  // ── Help mode ────────────────────────────────────────────────────────────
+  // Bounded orientation only. The context sent is derived from explicit
+  // application state — active room tab, active layer tab, route — and never
+  // includes message content, feedback drafts, notes or identity data.
+  const helpForm = document.getElementById('cu-help-form');
+  const helpInput = document.getElementById('cu-help-input');
+  const helpSend = document.getElementById('cu-help-send');
+  const helpThread = document.getElementById('cu-help-thread');
+  const helpQ = document.getElementById('cu-help-q');
+  const helpA = document.getElementById('cu-help-a');
+  const helpNote = document.getElementById('cu-help-note');
+  const helpActions = document.getElementById('cu-help-actions');
+  const helpStarters = document.getElementById('cu-help-starters');
+  const NAV_ROOM_LABELS = { work: 'The Work', lens: 'The Lens', field: 'The Field', call: 'The Call' };
+  let helpPending = false;
+  // Help asks about the surface it was opened from, so the prompt names it.
+  if (IN_STUDIO) helpInput.placeholder = 'Ask a simple question about stUdio…';
+
+  function navActiveRoom() {
+    // The four rooms are cOMpass's own information architecture. stUdio has
+    // room pills of its own, but Help must not answer with cOMpass-room
+    // guidance from stUdio, so no room is ever reported from there.
+    if (IN_STUDIO) return '';
+    const tab = document.querySelector('.compass-tab-btn.active');
+    const point = tab && tab.dataset ? tab.dataset.point : '';
+    return NAV_ROOM_LABELS[point] ? point : '';
+  }
+  function navActiveLayer() {
+    if (IN_STUDIO) return '';
+    const panelEl = document.querySelector('.layer-panel.active');
+    const btn = document.querySelector('.layer-tab-btn.active');
+    return (panelEl && panelEl.dataset.layer) || (btn && btn.dataset.layer) || '';
+  }
+  function navVisibleControls() {
+    // Stable identifiers only, and only for controls actually on screen. The
+    // server keeps its own allow-list, so an id it does not know is dropped.
+    const ids = [];
+    const seen = (sel, id) => { if (document.querySelector(sel)) ids.push(id); };
+    if (IN_STUDIO) {
+      seen('#room-switcher', 'studio-room-switcher');
+      seen('#fo-view-tabs', 'studio-fo-view-tabs');
+      seen('#btn-studio-save', 'studio-save-load');
+      seen('#mirror-input', 'studio-nexus-mirror');
+      seen('#cu-fb-trigger', 'cu-navigator-trigger');
+      return ids;
+    }
+    seen('.compass-tab-btn', 'compass-tab-btn');
+    seen('.layer-tab-btn', 'layer-tab-btn');
+    seen('.freq-input', 'freq-slider');
+    seen('#compass-nexus-orb', 'compass-nexus-orb');
+    seen('#cu-fb-trigger', 'cu-navigator-trigger');
+    return ids;
+  }
+  function navUiState() {
+    if (IN_STUDIO) {
+      // stUdio's own coarse state: the entrance trail, or the room workspace
+      // and which of its two views is showing.
+      const room = document.getElementById('screen-room');
+      if (!room || !room.classList.contains('active')) return 'studio-entrance';
+      const view = document.querySelector('.fo-view-tab.active');
+      const which = view && view.dataset ? view.dataset.foView : '';
+      return which ? `studio-room:${which}` : 'studio-room';
+    }
+    const screen = document.getElementById('screen-compass');
+    return screen && getComputedStyle(screen).display !== 'none' ? 'compass' : 'setup';
+  }
+  function navHelpContext() {
+    return {
+      surface: NAV_SURFACE,
+      route: location.pathname + location.hash,
+      room: navActiveRoom(),
+      layer: navActiveLayer(),
+      ui_state: navUiState(),
+      visible_controls: navVisibleControls()
+    };
+  }
+  function renderHelpStarters() {
+    const room = navActiveRoom();
+    const label = NAV_ROOM_LABELS[room];
+    const items = IN_STUDIO
+      ? ['What is stUdio for?', 'Where do I go next?', 'How do I save my work?']
+      : label
+      ? [`What is ${label}?`, 'Where do I go next?', 'How do I return to my path?']
+      : ['What is this section?', 'Where do I go next?', 'How do I return to my path?'];
+    helpStarters.innerHTML = '';
+    items.forEach(text => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      b.addEventListener('click', () => { helpInput.value = text; askNavigator(text); });
+      helpStarters.appendChild(b);
+    });
+  }
+  // Help is a transient composition, not a thread: leaving it — switching tabs
+  // or closing Navigator — discards the half-typed question, the previous
+  // answer, the progress/error line and any handoff buttons, so the next visit
+  // opens on a clean prompt rather than a stale one. Starters are contextual
+  // rather than transient, so they are re-derived on entry and never cleared
+  // here. Feedback is deliberately the opposite: its draft and attachment
+  // survive tab switches and closing, and clear only on a confirmed send.
+  // helpPending is left alone — clearing it could let a duplicate ask fire.
+  function resetHelp() {
+    helpInput.value = '';
+    helpQ.textContent = '';
+    helpA.textContent = '';
+    helpNote.textContent = '';
+    helpNote.classList.add('cu-hidden');
+    helpActions.innerHTML = '';
+    helpThread.classList.add('cu-hidden');
+  }
+  function helpActionButton(label, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    helpActions.appendChild(b);
+  }
+  function prefillFeedbackFrom(question) {
+    // Explicit user action only — the question is never submitted for them.
+    const messageField = document.getElementById('cu-fb-message');
+    if (messageField && !messageField.value.trim()) messageField.value = question;
+    setMode('feedback', { focus: true });
+  }
+  async function askNavigator(question) {
+    const q = (question || '').trim();
+    if (!q || helpPending) return;
+    helpPending = true;
+    helpSend.disabled = true;
+    helpSend.textContent = 'Finding a way…';
+    helpThread.classList.remove('cu-hidden');
+    helpQ.textContent = q;
+    helpA.textContent = `Navigator is looking at this part of ${IN_STUDIO ? 'stUdio' : 'cOMpass'}.`;
+    helpNote.classList.add('cu-hidden');
+    helpActions.innerHTML = '';
+    try {
+      const res = await fetch('/api/navigator/help', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ question: q, ...navHelpContext() })
+      });
+      if (!res.ok) throw new Error('help_failed');
+      const data = await res.json();
+      helpA.textContent = data.answer || '';
+      if (data.next_action) {
+        helpNote.textContent = `Next: ${data.next_action}`;
+        helpNote.classList.remove('cu-hidden');
+      }
+      helpActionButton('Ask another', () => {
+        helpThread.classList.add('cu-hidden');
+        helpInput.value = '';
+        helpInput.focus();
+      });
+      if (data.kind === 'reflective') {
+        helpNote.textContent = 'This feels less like a navigation question and more like something to reflect with. Nexus offers more room for that.';
+        helpNote.classList.remove('cu-hidden');
+        // Opens Nexus only — the question is never transferred automatically.
+        helpActionButton('Continue in Nexus', () => {
+          closePanel(false);
+          if (IN_STUDIO) {
+            // Nexus lives in stUdio's mirror track rather than behind an orb:
+            // reveal its composer and leave the question with the person.
+            const mirror = document.getElementById('mirror-input');
+            if (mirror) { mirror.scrollIntoView({ block: 'center' }); mirror.focus(); }
+            return;
+          }
+          const orb = document.getElementById('compass-nexus-orb');
+          if (orb) orb.scrollIntoView({ block: 'center' });
+          if (typeof openCompassNexus === 'function') openCompassNexus();
+          else if (orb) orb.focus();
+        });
+      }
+      if (data.kind === 'unknown' || data.kind === 'partial') {
+        helpActionButton('Send as feedback', () => prefillFeedbackFrom(q));
+      }
+    } catch (_) {
+      helpA.textContent = 'Navigator couldn’t answer that just now. You can try again or share what felt unclear.';
+      helpActionButton('Try again', () => askNavigator(q));
+      helpActionButton('Share feedback', () => prefillFeedbackFrom(q));
+    } finally {
+      helpPending = false;
+      helpSend.disabled = false;
+      helpSend.textContent = 'Ask Navigator';
+    }
+  }
+  helpForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    askNavigator(helpInput.value);
+  });
+
+  function currentMode() {
+    const active = tabs.find(t => t.classList.contains('cu-comm-tab--active'));
+    return (active && active.dataset.commTab) || 'messages';
+  }
+
+  function setMode(which, opts) {
+    const focusPanel = !!(opts && opts.focus);
+    // Read before the tabs move, so this still sees the mode being left.
+    if (which !== 'help' && currentMode() === 'help') resetHelp();
+    tabs.forEach(t => {
+      const on = t.dataset.commTab === which;
+      t.classList.toggle('cu-comm-tab--active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+    });
+    Object.entries(SECTIONS).forEach(([key, el]) => el.classList.toggle('cu-hidden', key !== which));
+    // Leaving the success state whenever a mode is chosen keeps Feedback from
+    // reopening on a stale confirmation.
+    successSection.classList.add('cu-hidden');
+    lastMode = which;
+    if (which === 'messages' && panelOpen()) scheduleMarkRead();
+    if (which === 'help') renderHelpStarters();
+    if (focusPanel && SECTIONS[which]) SECTIONS[which].focus();
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => setMode(tab.dataset.commTab));
+    tab.addEventListener('keydown', (e) => {
+      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!step && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const i = tabs.indexOf(tab);
+      const next = e.key === 'Home' ? tabs[0]
+        : e.key === 'End' ? tabs[tabs.length - 1]
+        : tabs[(i + step + tabs.length) % tabs.length];
+      setMode(next.dataset.commTab);
+      next.focus();
+    });
+  });
+
+  function defaultMode() {
+    // Unread relational activity takes precedence, then the mode used earlier
+    // in this session, then Help for a first visit with nothing waiting.
+    if (messages.some(m => !m.read)) return 'messages';
+    return lastMode || 'help';
+  }
+
+  function openPanel() {
+    panel.classList.remove('cu-hidden');
+    trigger.classList.add('cu-nav-open');
+    trigger.setAttribute('aria-expanded', 'true');
+    setMode(defaultMode(), { focus: true });
+    loadMessages();
+  }
+  function closePanel(returnFocus) {
+    if (currentMode() === 'help') resetHelp();
+    panel.classList.add('cu-hidden');
+    trigger.classList.remove('cu-nav-open');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (returnFocus !== false) trigger.focus();
+  }
+  trigger.addEventListener('click', () => {
+    if (panelOpen()) closePanel(false); else openPanel();
+  });
+  closeBtn.addEventListener('click', () => closePanel());
+  // Escape from anywhere inside Navigator (trigger or panel) closes and
+  // returns focus to the trigger. Scoped to the widget so it can never
+  // swallow Escape from the Nexus modal or any other surface.
+  document.getElementById('cu-navigator').addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !panelOpen()) return;
+    e.stopPropagation();
+    closePanel();
+  });
+  loadMessages();
+  startPolling();
+
+  // Detect current app from URL
+  const path = location.pathname;
+  const appMap = { '/compass': 'compass', '/studio': 'studio', '/tuner': 'tuner', '/commons': 'commons', '/threshold': 'threshold' };
+  const detectedApp = Object.entries(appMap).find(([k]) => path.startsWith(k))?.[1] || 'other';
+  const appSelect = document.getElementById('cu-fb-app');
+  if (appSelect) appSelect.value = detectedApp;
+
+  // ── Screenshot attachment ────────────────────────────────────────────────
+  // One image, held locally until the feedback itself is sent. Nothing is
+  // uploaded on selection, and a rejected file is always reported.
+  const SHOT_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+  const SHOT_MAX_BYTES = 10 * 1024 * 1024;
+  const shotInput = document.getElementById('cu-shot-input');
+  const shotAttach = document.getElementById('cu-shot-attach');
+  const shotCard = document.getElementById('cu-shot-card');
+  const shotThumb = document.getElementById('cu-shot-thumb');
+  const shotName = document.getElementById('cu-shot-name');
+  const shotSize = document.getElementById('cu-shot-size');
+  const shotRemove = document.getElementById('cu-shot-remove');
+  const shotReplace = document.getElementById('cu-shot-replace');
+  const shotError = document.getElementById('cu-shot-error');
+  const shotHelp = document.getElementById('cu-shot-help');
+  const shotLive = document.getElementById('cu-shot-live');
+  // { name, size, dataUrl } — the only screenshot state there is.
+  let shot = null;
+
+  function fmtBytes(n) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  function middleTruncate(name, max) {
+    if (name.length <= max) return name;
+    const keep = Math.floor((max - 1) / 2);
+    return `${name.slice(0, keep)}…${name.slice(-keep)}`;
+  }
+  function announce(text) { shotLive.textContent = text; }
+  function showShotError(text) {
+    shotError.textContent = text;
+    shotError.classList.remove('cu-hidden');
+    announce(text);
+  }
+  function clearShotError() {
+    shotError.textContent = '';
+    shotError.classList.add('cu-hidden');
+  }
+  function renderShot() {
+    const has = !!shot;
+    shotCard.classList.toggle('cu-hidden', !has);
+    shotAttach.classList.toggle('cu-hidden', has);
+    shotHelp.textContent = has
+      ? 'Screenshot ready to send with your feedback. Please don’t include personal, sacred, or sensitive information.'
+      : 'PNG, JPG, or WEBP · up to 10 MB. Please don’t include personal, sacred, or sensitive information.';
+    if (!has) return;
+    shotThumb.src = shot.dataUrl;
+    shotName.textContent = middleTruncate(shot.name, 28);
+    shotName.title = shot.name;
+    shotSize.textContent = fmtBytes(shot.size);
+  }
+  function readShot(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('unreadable'));
+      reader.readAsDataURL(file);
+    });
+  }
+  async function handleShotFiles(files) {
+    clearShotError();
+    if (!files || !files.length) return;
+    if (files.length > 1) { showShotError('Navigator can attach one screenshot at a time.'); return; }
+    const file = files[0];
+    if (!SHOT_TYPES.includes(file.type)) { showShotError('Choose a PNG, JPG, or WEBP image.'); return; }
+    if (file.size > SHOT_MAX_BYTES) { showShotError('This image is too large. Choose one under 10 MB.'); return; }
+    try {
+      const dataUrl = await readShot(file);
+      if (!dataUrl.startsWith('data:image/')) throw new Error('unreadable');
+      // A failed replacement leaves the previous valid screenshot in place.
+      shot = { name: file.name || 'screenshot', size: file.size, dataUrl };
+      renderShot();
+      announce(`Screenshot ${shot.name} attached, ${fmtBytes(shot.size)}.`);
+    } catch (_) {
+      showShotError('We couldn’t read this image. Try another screenshot.');
+    }
+  }
+  shotAttach.addEventListener('click', () => shotInput.click());
+  shotReplace.addEventListener('click', () => shotInput.click());
+  shotRemove.addEventListener('click', () => {
+    shot = null;
+    shotInput.value = '';
+    clearShotError();
+    renderShot();
+    announce('Screenshot removed.');
+    shotAttach.focus();
+  });
+  shotInput.addEventListener('change', () => {
+    handleShotFiles(shotInput.files);
+    // Reset so choosing the same file twice still fires a change event.
+    shotInput.value = '';
+  });
+
+  const successDone = document.getElementById('cu-fb-done');
+  const successAgain = document.getElementById('cu-fb-again');
+  const cancelBtn = document.getElementById('cu-fb-cancel');
+  function showFeedbackForm() {
+    successSection.classList.add('cu-hidden');
+    form.classList.remove('cu-hidden');
+    msg.textContent = '';
+  }
+  successDone.addEventListener('click', () => { showFeedbackForm(); closePanel(); });
+  successAgain.addEventListener('click', () => { showFeedbackForm(); document.getElementById('cu-fb-message').focus(); });
+  cancelBtn.addEventListener('click', () => closePanel());
+
+  function setFormDisabled(on) {
+    Array.from(form.elements).forEach(el => { el.disabled = on; });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('cu-fb-submit');
+    if (submitBtn.disabled) return;
+    clearShotError();
+    setFormDisabled(true);
+    submitBtn.textContent = 'Sending…';
+    msg.textContent = '';
+    try {
+      const type = form.querySelector('input[name="fb-type"]:checked')?.value || 'general';
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          app: appSelect.value,
+          message: document.getElementById('cu-fb-message').value,
+          name: document.getElementById('cu-fb-name').value,
+          image_data_url: shot ? shot.dataUrl : '',
+          image_name: shot ? shot.name : '',
+        }),
+      });
+      if (res.ok) {
+        // The draft is cleared only once success is confirmed.
+        form.reset();
+        appSelect.value = detectedApp;
+        shot = null;
+        shotInput.value = '';
+        renderShot();
+        form.classList.add('cu-hidden');
+        successSection.classList.remove('cu-hidden');
+        successSection.focus();
+      } else if (res.status === 400) {
+        let detail = '';
+        try { detail = (await res.json()).detail || ''; } catch (_) {}
+        if (shot && !/message required/i.test(detail)) {
+          // The server rejected the attachment specifically — never drop it
+          // silently; keep the text and preview and say what happened.
+          showShotError(detail || 'Your screenshot couldn’t be attached. Try again, remove it, or send your feedback without it.');
+        } else {
+          msg.textContent = detail || 'Your feedback hasn’t been sent yet. Please try again.';
+        }
+      } else {
+        msg.textContent = 'Your feedback hasn’t been sent yet. Please try again.';
+      }
+    } catch {
+      msg.textContent = 'Your feedback hasn’t been sent yet. Please try again.';
+    } finally {
+      setFormDisabled(false);
+      submitBtn.textContent = 'Send feedback';
+    }
+  });
+})();
+</script>

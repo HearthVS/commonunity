@@ -18,11 +18,11 @@
         assertions check resolved `display` plus getClientRects(), which is
         indifferent to where the panel's internal scroll happens to sit.
 
-   The Navigator is one self-contained block at the end of index.html (markup,
-   its <style>, its <script>), so the block is mounted on its own. That runs the
-   real cascade and the real controller without booting all of cOMpass, which
-   needs a session and the beta gate. fetch is stubbed, so no network and no
-   server: the test is hermetic.
+   The Navigator is one self-contained partial (navigator.html: markup, its
+   <style>, its <script>) that each host page fetches and mounts, so the block is
+   mounted on its own here too. That runs the real cascade and the real controller
+   without booting all of cOMpass, which needs a session and the beta gate. fetch
+   is stubbed, so no network and no server: the test is hermetic.
 
    playwright-core + a chromium build are NOT repo dependencies, so the suite
    SKIPS rather than fails when they are unavailable.
@@ -34,7 +34,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const HTML = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const HTML = fs.readFileSync(path.join(__dirname, 'navigator.html'), 'utf8');
 
 function resolveDeps() {
   const coreCandidates = [
@@ -70,7 +70,7 @@ const PNG_1PX = Buffer.from(
 
 function navigatorFragment() {
   const start = HTML.indexOf('<div id="cu-navigator">');
-  assert.ok(start > -1, 'Navigator markup must exist in index.html');
+  assert.ok(start > -1, 'Navigator markup must exist in navigator.html');
   const end = HTML.lastIndexOf('</script>');
   assert.ok(end > start, 'Navigator script must follow its markup');
   const frag = HTML.slice(start, end + '</script>'.length);
