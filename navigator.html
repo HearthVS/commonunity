@@ -516,9 +516,12 @@
    back / save / load controls, and left-aligned because stUdio is full-bleed
    rather than a centred column. Nexus keeps the mirror track on the right, so
    the two are never at the same level here either. Still one source of truth
-   for the offset, so the panel cap stays in sync. */
+   for the offset, so the panel cap stays in sync.
+   The floor also has to clear the closed Archive drawer toggle, which the left
+   rail lays out at a fixed ~194–234px regardless of viewport height — a purely
+   proportional offset put the pill on top of it at laptop heights. */
 #cu-navigator.cu-nav--studio {
-  --navigator-top: clamp(76px, 24vh, calc(100dvh - 260px));
+  --navigator-top: clamp(254px, 33vh, calc(100dvh - 260px));
   left: 14px;
 }
 .cu-msg-item {
