@@ -51,6 +51,13 @@ test('Navigator is placed upper-left in stUdio, clear of the room header', () =>
     'the offset must move through the property so the panel cap stays in sync');
   assert.doesNotMatch(rule[1], /[;{\s]top:/, 'a literal top would desync the panel cap');
   assert.match(rule[1], /left:/, 'stUdio placement is left-anchored like cOMpass');
+  // The closed Archive drawer toggle sits at ~194–234px in the left rail no
+  // matter the viewport height, so the clamp floor — not just the proportional
+  // middle term — has to clear it with a visible gap.
+  const floor = /--navigator-top:\s*clamp\(\s*(\d+)px/.exec(rule[1]);
+  assert.ok(floor, 'the stUdio offset must keep a px floor to clear the Archive toggle');
+  assert.ok(Number(floor[1]) >= 250,
+    `stUdio offset floor ${floor[1]}px overlaps the closed Archive toggle (ends ~234px)`);
   assert.match(NAV, /classList\.add\('cu-nav--studio'\)/,
     'the modifier must be applied from the detected surface');
   // Nexus keeps the lower-right / mirror track: Navigator must not move there.
