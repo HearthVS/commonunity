@@ -580,6 +580,43 @@ button { cursor: pointer; background: none; border: none; }
 
 .field-input::placeholder { color: var(--text-faint); }
 
+/* City combobox — suggestion list for #pob */
+.place-combo { position: relative; }
+.place-suggest {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 232px;
+  overflow-y: auto;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.place-suggest.open { display: block; }
+.place-suggest li {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+.place-suggest li.active,
+.place-suggest li:hover { background: var(--card-alt); }
+.place-suggest li.place-suggest-empty { color: var(--text-faint); cursor: default; }
+.place-error {
+  display: none;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: #f43f5e;
+}
+.place-error.visible { display: block; }
+
 /* ============================================================
    PROFILE CALCULATOR COLLAPSIBLE
    ============================================================ */
@@ -3890,7 +3927,13 @@ body.companion-mode .companion-mode-banner { display: block; }
         </div>
         <div class="field-group">
           <label class="field-label" for="pob">Place of birth</label>
-          <input class="field-input" id="pob" type="text" placeholder="City, Country…">
+          <div class="place-combo" id="pob-combo">
+            <input class="field-input" id="pob" type="text" placeholder="Start typing a city…"
+                   autocomplete="off" role="combobox" aria-expanded="false"
+                   aria-autocomplete="list" aria-controls="pob-suggest">
+            <ul class="place-suggest" id="pob-suggest" role="listbox" aria-label="City suggestions"></ul>
+          </div>
+          <div class="place-error" id="pob-error" role="alert"></div>
         </div>
         <div class="calc-activate-wrap">
           <button class="btn-calc" id="btn-calc">Reveal my profile</button>
@@ -5631,6 +5674,8 @@ const state = {
   displayNameCustom: '',
   sendRealNameToAI: false,
   dob: '', tob: '', pob: '',
+  // Canonical gazetteer record behind state.pob — see pobSetSelection.
+  pob_place: null,
   gk_profile: { cs: null, us: null, ce: null, ue: null },
   points: {
     work:  { raw:'', theme:'', summary:'', insights:[], web_heading:'', web_intro:'', highlights:[], web_closing:'', observations:'', gk_num:'', gk_line:'', qa_answers:{}, frequency: -1 },
@@ -6250,7 +6295,7 @@ function cuPurgeForeignCompanionState(authoritativeName) {
       state.profile.legal_name = '';
     }
     state.companion = '';
-    state.dob = ''; state.tob = ''; state.pob = '';
+    state.dob = ''; state.tob = ''; state.pob = ''; state.pob_place = null;
     ['companion-name','dob','tob','pob'].forEach(function (elId) {
       var el = document.getElementById(elId);
       if (el) el.value = '';
@@ -6329,6 +6374,214 @@ function cuHydrateGeneKeysFromContract() {
   } catch (_) { /* best-effort: never block the threshold handoff */ }
 }
 
+// ============================================================
+// PLACE OF BIRTH — validated city selection
+// ============================================================
+// #pob used to be free text: whatever was typed became state.pob and
+// was only fuzzy-matched afterwards, so a typo or an unlisted place
+// silently produced blank or wrong birth coordinates. Selection now
+// comes from the vendored gazetteer and downstream reads the canonical
+// record (state.pob_place), never the typed string.
+var _pobMatches = [];
+var _pobActiveIndex = -1;
+var _pobUserTyped = false;
+
+function pobGazetteer() {
+  return (typeof window !== 'undefined' && window.CommonUnityPlaces) || null;
+}
+
+function pobSetSelection(rec, method) {
+  state.pob_place = {
+    provider:          'city-timezones/vendored-gazetteer',
+    place_id:          rec.id,
+    display_label:     rec.displayLabel,
+    city:              rec.city,
+    region:            rec.province || '',
+    country:           rec.country || '',
+    country_code:      rec.iso2 || '',
+    latitude:          rec.latitude,
+    longitude:         rec.longitude,
+    tz_offset_minutes: rec.tzOffsetMinutes,
+    iana:              rec.iana || '',
+    selection_method:  method || 'suggestion'
+  };
+  state.pob = rec.displayLabel;
+  return state.pob_place;
+}
+
+// A selection only counts while the visible text still matches it —
+// editing the label afterwards must invalidate it.
+function pobHasSelection() {
+  var sel = state.pob_place;
+  if (!sel || !sel.place_id) return false;
+  var el = document.getElementById('pob');
+  var typed = el ? (el.value || '').trim() : (state.pob || '').trim();
+  return typed === (sel.display_label || '');
+}
+
+// Sessions saved (or JSON imported) before validated selection carry a
+// bare string. Resolve it once so returning users are not blocked;
+// anything typed in this session must still come from the list.
+function pobAdoptStoredValue() {
+  if (_pobUserTyped || pobHasSelection()) return;
+  var raw = (state.pob || '').trim();
+  if (!raw) return;
+  var g = pobGazetteer();
+  if (!g || typeof g.resolve !== 'function') return;
+  var rec = null;
+  try { rec = g.resolve(raw); } catch (_) { rec = null; }
+  if (!rec) return;
+  pobSetSelection(rec, 'legacy-resolved');
+  var el = document.getElementById('pob');
+  if (el) el.value = state.pob;
+}
+
+// Write the confirmed selection into state.profile as the canonical
+// birth location. Returns the selection, or null when there is none —
+// in which case callers fall back to fuzzy-resolving the raw string.
+function pobSyncCanonicalPlace() {
+  pobAdoptStoredValue();
+  if (!pobHasSelection()) return null;
+  var sel = state.pob_place;
+  state.profile = state.profile || {};
+  state.profile.birth_place_canonical = sel;
+  if (state.profile.birth_latitude == null || state.profile.birth_latitude === '') {
+    state.profile.birth_latitude = sel.latitude;
+  }
+  if (state.profile.birth_longitude == null || state.profile.birth_longitude === '') {
+    state.profile.birth_longitude = sel.longitude;
+  }
+  if (state.profile.birth_tz_offset_minutes == null ||
+      state.profile.birth_tz_offset_minutes === '') {
+    state.profile.birth_tz_offset_minutes = sel.tz_offset_minutes;
+  }
+  state.profile.birth_coordinates = state.profile.birth_coordinates || {
+    latitude:          sel.latitude,
+    longitude:         sel.longitude,
+    tz_offset_minutes: sel.tz_offset_minutes,
+    iana:              sel.iana,
+    place_id:          sel.place_id,
+    resolved_from:     sel.display_label
+  };
+  return sel;
+}
+
+function pobSetError(msg) {
+  var err = document.getElementById('pob-error');
+  if (!err) return;
+  err.textContent = msg || '';
+  err.classList.toggle('visible', !!msg);
+}
+
+function pobCloseSuggestions() {
+  var list = document.getElementById('pob-suggest');
+  var el   = document.getElementById('pob');
+  if (list) { list.classList.remove('open'); list.innerHTML = ''; }
+  if (el) el.setAttribute('aria-expanded', 'false');
+  _pobMatches = [];
+  _pobActiveIndex = -1;
+}
+
+function pobHighlight(index) {
+  var list = document.getElementById('pob-suggest');
+  if (!list) return;
+  var items = list.querySelectorAll('li[role="option"]');
+  if (!items.length) return;
+  _pobActiveIndex = (index + items.length) % items.length;
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.toggle('active', i === _pobActiveIndex);
+  }
+  items[_pobActiveIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function pobChoose(index) {
+  var rec = _pobMatches[index];
+  if (!rec) return;
+  pobSetSelection(rec, 'suggestion');
+  var el = document.getElementById('pob');
+  if (el) el.value = rec.displayLabel;
+  _pobUserTyped = false;
+  pobCloseSuggestions();
+  pobSetError('');
+  saveToStorage();
+}
+
+function pobRenderSuggestions() {
+  var el   = document.getElementById('pob');
+  var list = document.getElementById('pob-suggest');
+  if (!el || !list) return;
+  var q = (el.value || '').trim();
+  var g = pobGazetteer();
+  _pobMatches = (q && g && typeof g.suggest === 'function')
+    ? g.suggest(q, { limit: 8 })
+    : [];
+  _pobActiveIndex = -1;
+  list.innerHTML = '';
+  if (!q) { pobCloseSuggestions(); return; }
+  if (!_pobMatches.length) {
+    var none = document.createElement('li');
+    none.className = 'place-suggest-empty';
+    none.textContent = 'No matching city';
+    list.appendChild(none);
+  } else {
+    _pobMatches.forEach(function (rec, i) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.textContent = rec.displayLabel;
+      // mousedown, not click: blur would close the list first.
+      li.addEventListener('mousedown', function (ev) { ev.preventDefault(); pobChoose(i); });
+      list.appendChild(li);
+    });
+  }
+  list.classList.add('open');
+  el.setAttribute('aria-expanded', 'true');
+}
+
+// Gate for save / continue. An empty place stays allowed (it always
+// was); typed text that was never confirmed against the list fails.
+function pobRequireSelection() {
+  pobAdoptStoredValue();
+  var el = document.getElementById('pob');
+  var typed = el ? (el.value || '').trim() : '';
+  if (!typed) {
+    state.pob = '';
+    state.pob_place = null;
+    pobSetError('');
+    return true;
+  }
+  if (pobHasSelection()) { pobSetError(''); return true; }
+  pobSetError('Please choose a city from the list');
+  if (el) { el.focus(); pobRenderSuggestions(); }
+  return false;
+}
+
+function initPlaceOfBirthField() {
+  var el = document.getElementById('pob');
+  if (!el) return;
+  el.addEventListener('input', function () {
+    _pobUserTyped = true;
+    state.pob = el.value;
+    state.pob_place = null;
+    pobSetError('');
+    pobRenderSuggestions();
+    saveToStorage();
+  });
+  el.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowDown')      { ev.preventDefault(); pobHighlight(_pobActiveIndex + 1); }
+    else if (ev.key === 'ArrowUp')   { ev.preventDefault(); pobHighlight(_pobActiveIndex - 1); }
+    else if (ev.key === 'Enter')     { if (_pobActiveIndex >= 0) { ev.preventDefault(); pobChoose(_pobActiveIndex); } }
+    else if (ev.key === 'Escape')    { pobCloseSuggestions(); }
+  });
+  el.addEventListener('focus', function () { if (el.value.trim() && !pobHasSelection()) pobRenderSuggestions(); });
+  el.addEventListener('blur', function () {
+    setTimeout(function () {
+      pobCloseSuggestions();
+      if (el.value.trim() && !pobHasSelection()) pobSetError('Please choose a city from the list');
+    }, 120);
+  });
+  pobAdoptStoredValue();
+}
+
 function syncSetupIntoProfile() {
   state.profile = state.profile || {};
 
@@ -6384,9 +6637,13 @@ function syncSetupIntoProfile() {
   var guide   = guideEl ? (guideEl.value || '').trim() : '';
   state.guide = state.guide || guide;
 
+  // Confirmed selection → canonical place + birth_* coordinates. The
+  // block below then only fuzzy-resolves an unconfirmed legacy string.
+  var pobPlace = (typeof pobSyncCanonicalPlace === 'function') ? pobSyncCanonicalPlace() : null;
+
   // POB → current_cities (array) + current_location (joined string).
   // Only writes when the user hasn't already entered something.
-  var pob = (state.pob || '').trim();
+  var pob = pobPlace ? pobPlace.display_label : (state.pob || '').trim();
   if (pob) {
     var hasCities = Array.isArray(state.profile.current_cities) &&
                     state.profile.current_cities.length > 0;
@@ -6433,6 +6690,10 @@ function calcGeneKeys() {
   const tobVal = document.getElementById('tob').value;
 
   if (!dobVal) { showToast('Please enter a date of birth first'); return; }
+  if (typeof pobRequireSelection === 'function' && !pobRequireSelection()) {
+    showToast('Please choose a city from the list');
+    return;
+  }
 
   // Parse birth local time — the input is in local (user-entered) wall clock time.
   // We treat it as a local datetime and convert to UTC for the JD calculation.
@@ -7544,7 +7805,10 @@ function loadJSON(file) {
       const inPob = data.pob || data.place_of_birth || state.profile.birthplace || state.profile.place_of_birth || '';
       if (inDob) state.dob = inDob; else if (!state.dob) state.dob = '';
       if (inTob) state.tob = inTob; else if (!state.tob) state.tob = '';
-      if (inPob) state.pob = inPob; else if (!state.pob) state.pob = '';
+      // An imported place string supersedes any selection held in state;
+      // it is re-resolved to a canonical record by pobAdoptStoredValue().
+      if (inPob) { state.pob = inPob; state.pob_place = data.pob_place || null; }
+      else if (!state.pob) { state.pob = ''; state.pob_place = null; }
 
       // Re-apply
       applyTheme(state.theme);
@@ -7873,7 +8137,12 @@ function init() {
   document.getElementById('btn-calc').addEventListener('click', calcGeneKeys);
 
   // Open compass
-  document.getElementById('btn-open-compass').addEventListener('click', openCompass);
+  // Gate the user-initiated entry only: boot/handoff restores call
+  // openCompass() directly and must never be blocked by a legacy value.
+  document.getElementById('btn-open-compass').addEventListener('click', function () {
+    if (!pobRequireSelection()) { showToast('Please choose a city from the list'); return; }
+    openCompass();
+  });
 
   // Back to setup
   document.getElementById('btn-back').addEventListener('click', backToSetup);
@@ -7908,11 +8177,12 @@ function init() {
   document.getElementById('tob').value = state.tob || '';
   document.getElementById('pob').value = state.pob || '';
 
-  // DOB/TOB/POB bindings
-  ['dob','tob','pob'].forEach(id => {
+  // DOB/TOB bindings — #pob is a validated combobox, wired separately.
+  ['dob','tob'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => { state[id] = el.value; saveToStorage(); });
   });
+  initPlaceOfBirthField();
 
   // Save/Load JSON
   document.getElementById('btn-save-json').addEventListener('click', saveJSON);

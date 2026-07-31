@@ -627,9 +627,9 @@
     return s;
   }
 
-  // Resolve a place string. Returns
-  //   { latitude, longitude, tzOffsetMinutes, iana, city, province,
-  //     country, iso2, source }
+  // Resolve a place string. Returns the canonical record
+  //   { id, displayLabel, latitude, longitude, tzOffsetMinutes, iana,
+  //     city, province, country, iso2, source }
   // or null if no row matches.
   function resolve(input) {
     if (input == null) return null;
@@ -677,29 +677,104 @@
       }
     }
     if (!row) return null;
+    return canonical(row);
+  }
 
+  // Canonical record for one dataset row — the single shape every
+  // caller (suggest, resolve, findById) hands back. `id` is derived
+  // from the row's own fields so it is stable across reloads without
+  // the dataset carrying explicit identifiers.
+  function canonical(row) {
     var iana = row.timezone || row.iana || '';
     var tzOff = IANA_STANDARD_OFFSETS[iana];
     if (typeof tzOff !== 'number') tzOff = 0;
-
+    var city     = strSafe(row.city) || strSafe(row.city_ascii);
+    var province = strSafe(row.province);
+    var country  = strSafe(row.country);
+    var iso2     = strSafe(row.iso2);
+    var lat      = Number(row.lat);
+    var lng      = Number(row.lng);
     return {
-      latitude:        Number(row.lat),
-      longitude:       Number(row.lng),
+      id:              [slug(city), iso2.toLowerCase(), slug(province),
+                        isFinite(lat) ? lat.toFixed(4) : '',
+                        isFinite(lng) ? lng.toFixed(4) : ''].join('|'),
+      displayLabel:    [city, province, country].filter(Boolean).join(', '),
+      latitude:        lat,
+      longitude:       lng,
       tzOffsetMinutes: tzOff,
       iana:            iana,
-      city:            row.city || row.city_ascii || '',
-      province:        row.province || '',
-      country:         row.country  || '',
-      iso2:            row.iso2     || '',
+      city:            city,
+      province:        province,
+      country:         country,
+      iso2:            iso2,
       source:          (_CITIES.length > EMERGENCY_INLINE.length)
                           ? 'city-timezones · vendored'
                           : 'emergency-inline'
     };
   }
 
+  // Suggest city-level matches for a partial query. Every row in the
+  // dataset is a city/locality, so results are locality-level by
+  // construction. Ranking: whole-label prefix, then city prefix, then
+  // city substring; population breaks ties inside each band.
+  function suggest(query, opts) {
+    var limit = (opts && opts.limit) || 8;
+    var q = slug(query);
+    if (q.length < 2) return [];
+    var qTokens = q.split(' ');
+    var head = qTokens[0];
+    var out = [];
+    for (var i = 0; i < _CITIES.length; i++) {
+      var row = _CITIES[i];
+      if (!row) continue;
+      var citySlug = slug(strSafe(row.city_ascii) || strSafe(row.city));
+      if (!citySlug) continue;
+      var band;
+      if (citySlug === q || slug([row.city, row.province, row.country].join(' ')).indexOf(q) === 0) band = 3;
+      else if (citySlug.indexOf(head) === 0) band = 2;
+      else if (citySlug.indexOf(head) > 0) band = 1;
+      else continue;
+      // Extra query tokens must be honoured by province / country /
+      // iso2 so "sudbury ont" narrows instead of listing every Sudbury.
+      var rest = qTokens.slice(1);
+      var ok = true;
+      for (var t = 0; t < rest.length; t++) {
+        var tok = rest[t];
+        if (slug(strSafe(row.province)).indexOf(tok) < 0 &&
+            slug(strSafe(row.country)).indexOf(tok) < 0 &&
+            strSafe(row.iso2).toLowerCase() !== tok &&
+            strSafe(row.state_ansi).toLowerCase() !== tok &&
+            citySlug.indexOf(tok) < 0) { ok = false; break; }
+      }
+      if (!ok) continue;
+      out.push({ row: row, band: band, pop: Number(row.pop) || 0 });
+    }
+    out.sort(function (a, b) { return (b.band - a.band) || (b.pop - a.pop); });
+    var seen = {}, results = [];
+    for (var j = 0; j < out.length && results.length < limit; j++) {
+      var rec = canonical(out[j].row);
+      if (seen[rec.id]) continue;
+      seen[rec.id] = true;
+      results.push(rec);
+    }
+    return results;
+  }
+
+  // Re-hydrate a canonical record from a previously stored id.
+  function findById(id) {
+    if (!id) return null;
+    for (var i = 0; i < _CITIES.length; i++) {
+      var rec = canonical(_CITIES[i]);
+      if (rec.id === id) return rec;
+    }
+    return null;
+  }
+
   return {
     slug:                  slug,
     resolve:               resolve,
+    suggest:               suggest,
+    findById:              findById,
     preload:               preload,
     _setCities:            _setCities,
     EMERGENCY_INLINE:      EMERGENCY_INLINE,
