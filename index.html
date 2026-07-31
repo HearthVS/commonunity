@@ -5496,7 +5496,10 @@ body.companion-mode .companion-mode-banner { display: block; }
 <script src="/sdk/genekeys.js"></script>
 <script src="/sdk/astronomy.js"></script>
 <script src="/sdk/human_design.js"></script>
-<script src="/sdk/place_gazetteer.js"></script>
+<!-- ?v= is load-bearing: /sdk/* is served with max-age=14400 behind a CDN,
+     so without a fresh URL a 4h-stale gazetteer pairs with never-cached HTML
+     and the city suggestions silently stop working. Bump on every change. -->
+<script src="/sdk/place_gazetteer.js?v=2"></script>
 <script>window.CU_OM_CIPHER_ENABLED = true;</script>
 <script src="/sdk/om_cipher_layer6_data.js"></script>
 <script src="/sdk/om_cipher.js"></script>
@@ -6390,6 +6393,14 @@ function pobGazetteer() {
   return (typeof window !== 'undefined' && window.CommonUnityPlaces) || null;
 }
 
+// A stale cached copy of the gazetteer still defines the global, just
+// without suggest(). Probe the method, never the object, and treat its
+// absence as "cannot answer" rather than "no such city".
+function pobProviderReady() {
+  var g = pobGazetteer();
+  return !!(g && typeof g.suggest === 'function');
+}
+
 function pobSetSelection(rec, method) {
   state.pob_place = {
     provider:          'city-timezones/vendored-gazetteer',
@@ -6511,13 +6522,11 @@ function pobRenderSuggestions() {
   var list = document.getElementById('pob-suggest');
   if (!el || !list) return;
   var q = (el.value || '').trim();
-  var g = pobGazetteer();
-  _pobMatches = (q && g && typeof g.suggest === 'function')
-    ? g.suggest(q, { limit: 8 })
-    : [];
+  if (!q || !pobProviderReady()) { pobCloseSuggestions(); return; }
+  try { _pobMatches = pobGazetteer().suggest(q, { limit: 8 }) || []; }
+  catch (_) { _pobMatches = []; }
   _pobActiveIndex = -1;
   list.innerHTML = '';
-  if (!q) { pobCloseSuggestions(); return; }
   if (!_pobMatches.length) {
     var none = document.createElement('li');
     none.className = 'place-suggest-empty';
@@ -6550,6 +6559,9 @@ function pobRequireSelection() {
     return true;
   }
   if (pobHasSelection()) { pobSetError(''); return true; }
+  // No usable gazetteer means no list to choose from — refusing here
+  // would lock the user out of their own profile.
+  if (!pobProviderReady()) { pobSetError(''); return true; }
   pobSetError('Please choose a city from the list');
   if (el) { el.focus(); pobRenderSuggestions(); }
   return false;
@@ -6576,7 +6588,7 @@ function initPlaceOfBirthField() {
   el.addEventListener('blur', function () {
     setTimeout(function () {
       pobCloseSuggestions();
-      if (el.value.trim() && !pobHasSelection()) pobSetError('Please choose a city from the list');
+      if (el.value.trim() && !pobHasSelection() && pobProviderReady()) pobSetError('Please choose a city from the list');
     }, 120);
   });
   pobAdoptStoredValue();

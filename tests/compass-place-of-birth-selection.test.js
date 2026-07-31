@@ -109,12 +109,12 @@ section('3. index.html · combobox markup');
 
 // ── Sandbox for the field controller ──────────────────────────────
 const CONTROLLER = [
-  'pobGazetteer', 'pobSetSelection', 'pobHasSelection', 'pobAdoptStoredValue',
-  'pobSyncCanonicalPlace', 'pobSetError', 'pobCloseSuggestions',
-  'pobRenderSuggestions', 'pobRequireSelection',
+  'pobGazetteer', 'pobProviderReady', 'pobSetSelection', 'pobHasSelection',
+  'pobAdoptStoredValue', 'pobSyncCanonicalPlace', 'pobSetError',
+  'pobCloseSuggestions', 'pobRenderSuggestions', 'pobRequireSelection',
 ].map(n => extractFn(indexSrc, n)).join('\n\n');
 
-function build(stateOver) {
+function build(stateOver, provider) {
   const els = {};
   function el(id) {
     if (!els[id]) {
@@ -128,7 +128,9 @@ function build(stateOver) {
           contains: c => !!els[id]._cls[c],
         },
         setAttribute() {}, focus() { els[id].focused = true; },
-        appendChild() {}, querySelectorAll: () => [],
+        _children: [],
+        appendChild(node) { els[id]._children.push(node); },
+        querySelectorAll: () => [],
       };
     }
     return els[id];
@@ -137,15 +139,23 @@ function build(stateOver) {
     { pob: '', pob_place: null, profile: {} }, stateOver || {});
   const sandbox = {
     state, console,
-    window: { CommonUnityPlaces: Places },
-    document: { getElementById: el, createElement: () => ({ setAttribute() {}, addEventListener() {} }) },
+    window: { CommonUnityPlaces: provider === undefined ? Places : provider },
+    document: {
+      getElementById: el,
+      createElement: () => {
+        const node = { setAttribute() {}, addEventListener() {}, className: '', textContent: '' };
+        return node;
+      },
+    },
     saveToStorage() {},
     _pobUserTyped: false, _pobMatches: [], _pobActiveIndex: -1,
   };
   vm.createContext(sandbox);
   vm.runInContext(CONTROLLER +
     '\nthis.__api = { pobRequireSelection, pobHasSelection, pobSetSelection,' +
-    ' pobAdoptStoredValue, pobSyncCanonicalPlace };', sandbox);
+    ' pobAdoptStoredValue, pobSyncCanonicalPlace, pobRenderSuggestions,' +
+    ' pobProviderReady: typeof pobProviderReady === "function" ? pobProviderReady : null };',
+    sandbox);
   return { api: sandbox.__api, state, el, sandbox };
 }
 
@@ -250,6 +260,76 @@ section('7. Profile sync uses the canonical place, not typed text');
   const none = build();
   ok('no selection → null (caller falls back to fuzzy resolve)',
      none.api.pobSyncCanonicalPlace() === null);
+}
+
+// ── 8. Browser runtime · the production "No matching city" failure ─
+//
+// Sections 1–7 hand the controller a gazetteer loaded through Node
+// require(), so they can never see what the browser sees. Production
+// broke because /sdk/*.js is served with max-age=14400 behind a CDN
+// while the HTML is never cached: fresh markup calling suggest() was
+// paired with a 4h-stale gazetteer that only had resolve(). The global
+// existed, the method did not, and every keystroke answered
+// "No matching city" — through hard refreshes.
+section('8. Browser runtime · stale/missing gazetteer must not lie');
+{
+  // 8a. The script URL must carry a version so new HTML can never load
+  //     an old cached gazetteer.
+  const tag = indexSrc.match(/<script src="\/sdk\/place_gazetteer\.js([^"]*)"><\/script>/);
+  ok('the gazetteer <script> tag exists', !!tag);
+  ok('its URL is cache-busted with a version query',
+     !!tag && /^\?v=\d+$/.test(tag[1]));
+
+  // 8b. Loaded the browser way — no require(), no module, only a global.
+  const gsrc = fs.readFileSync(path.join(ROOT, 'sdk', 'place_gazetteer.js'), 'utf8');
+  const win = {};
+  const browserBox = { self: win, window: win, console };
+  vm.createContext(browserBox);
+  vm.runInContext(gsrc, browserBox, { filename: 'place_gazetteer.js' });
+  const G = win.CommonUnityPlaces;
+  ok('exposes window.CommonUnityPlaces without CommonJS', !!G);
+  ok('the browser global carries suggest()', !!G && typeof G.suggest === 'function');
+  ok('it suggests before preload() lands (EMERGENCY_INLINE covers Sudbury)',
+     !!G && G.suggest('Su').some(r => r.city === 'Sudbury'));
+
+  // 8c. A stale gazetteer — global present, suggest() absent — is the
+  //     exact production shape. It must degrade quietly, not accuse the
+  //     user of typing a city that does not exist.
+  const stale = build({}, { resolve: Places.resolve });
+  ok('a stale gazetteer is reported as not ready',
+     !!stale.api.pobProviderReady && stale.api.pobProviderReady() === false);
+  stale.el('pob').value = 'Su';
+  stale.sandbox._pobUserTyped = true;
+  stale.api.pobRenderSuggestions();
+  ok('it does not render "No matching city"',
+     stale.el('pob-suggest')._children.every(n => n.textContent !== 'No matching city'));
+  ok('the suggestion list stays closed',
+     stale.el('pob-suggest')._cls.open !== true);
+
+  // 8d. …and it must not lock the user out of their own profile.
+  ok('save/continue is not blocked when the list cannot load',
+     stale.api.pobRequireSelection() === true);
+  ok('no error is shown', stale.el('pob-error').textContent === '');
+
+  // 8e. Script missing entirely behaves the same way.
+  const absent = build({}, null);
+  absent.el('pob').value = 'Su';
+  absent.sandbox._pobUserTyped = true;
+  absent.api.pobRenderSuggestions();
+  ok('a missing gazetteer renders nothing',
+     absent.el('pob-suggest')._children.length === 0);
+  ok('and still lets the user continue',
+     absent.api.pobRequireSelection() === true);
+
+  // 8f. With a working gazetteer the honest empty state is preserved.
+  const live = build();
+  live.el('pob').value = 'zzzznotacity';
+  live.sandbox._pobUserTyped = true;
+  live.api.pobRenderSuggestions();
+  ok('a real miss still says "No matching city"',
+     live.el('pob-suggest')._children.some(n => n.textContent === 'No matching city'));
+  ok('and still blocks save/continue',
+     live.api.pobRequireSelection() === false);
 }
 
 console.log('');
