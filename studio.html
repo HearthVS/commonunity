@@ -198,6 +198,31 @@ input, textarea { font: inherit; color: inherit; }
   gap: var(--space-4);
 }
 
+/* stUdio U mark — a quiet signature in the corner of the portal field, not a
+   control. Declared after .entrance-left because the entrance media queries
+   sit above the base rules in this sheet, so the mobile override below has to
+   follow this one to win on equal specificity. */
+.entrance-mark {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  width: 30px;
+  height: 30px;
+  opacity: 0.75;
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 600px) {
+  .entrance-mark {
+    /* max() keeps the mark clear of notches/rounded corners without pushing it
+       inward on devices that report no inset. */
+    top: max(22px, env(safe-area-inset-top, 0px));
+    left: max(22px, env(safe-area-inset-left, 0px));
+    width: 27px;
+    height: 27px;
+  }
+}
+
 /* Right sidebar — inputs */
 .entrance-right {
   width: 340px;
@@ -10370,6 +10395,21 @@ body.hw-open { overflow: hidden; }
       <path d="M 122 4 L 126 9 L 122 14 L 118 9 Z" fill="#d4a04a" opacity="0.96"
             filter="url(#cu-om-glow)"/>
     </symbol>
+    <linearGradient id="su-vessel" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#c7d2fe"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <!-- stUdio U mark, glyph-only. Same vessel + held glow as
+         favicon-studio.svg, minus that file's rounded #0b1120 tile so the
+         mark sits directly on the entrance field instead of reading as a
+         button. Keep the geometry in sync with favicon-studio.svg. -->
+    <symbol id="studio-u-mark" viewBox="0 0 100 100">
+      <path d="M30 26 V52 a20 20 0 0 0 40 0 V26"
+            fill="none" stroke="url(#su-vessel)" stroke-width="9"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="50" cy="54" r="9" fill="#fde68a" fill-opacity="0.85"/>
+      <circle cx="50" cy="54" r="3" fill="#fef9ee" fill-opacity="0.95"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -10383,6 +10423,8 @@ body.hw-open { overflow: hidden; }
 
   <!-- Left: torus portal -->
   <div class="entrance-left">
+    <!-- Decorative: identity is already announced by the sidebar wordmark. -->
+    <svg class="entrance-mark" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><use href="#studio-u-mark"/></svg>
     <div class="portal-wrap" id="portal" title="Hold to open">
       <div class="portal-hint" id="portal-hint">hold to open</div>
       <canvas id="torus-canvas" class="torus-canvas" aria-label="CommonUnity Studio"></canvas>
