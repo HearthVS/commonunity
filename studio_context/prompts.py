@@ -21,18 +21,16 @@ marker, the foundation states that block contents are data rather than
 instructions, and `fence_safe()` neutralises any marker-shaped text inside the
 content so member material cannot forge a boundary.
 
-The delimiters are load-bearing. A grounded request carries material with three
-very different trust levels — the member's accepted orientation, verbatim
-excerpts from a versioned corpus, and whatever the browser sent — and the model
-has to be able to tell them apart. Each block is fenced with an unambiguous
-marker, the foundation states that block contents are data rather than
-instructions, and `fence_safe()` neutralises any marker-shaped text inside the
-content so member material cannot forge a boundary.
+The same four rooms open from two products, so the foundation names the one the
+member is actually looking at. Nothing else about it varies: the trust levels,
+the fences and the prohibitions are the same wherever the request came from.
 """
 
 from __future__ import annotations
 
 import re
+
+from .relevance import COMPASS, STUDIO, normalize_surface
 
 FOUNDATION_VERSION = "studio-grounded-foundation-v2"
 WORK_CONTRACT_VERSION = "studio-grounded-work-v1"
@@ -63,7 +61,17 @@ def block(name: str, body: str) -> str:
     return f"<<<{name}>>>\n{content}\n<<<END_{name}>>>"
 
 
-SOVEREIGNTY_FOUNDATION = f"""You are Nexus, working inside a member's own stUdio ({FOUNDATION_VERSION}).
+# The member is looking at one product, and the foundation should name it. A
+# prompt that says "stUdio" to someone working in cOMpass invites the model to
+# describe a place they are not in and to send them there for material.
+_SURFACE_WORKSPACES = {STUDIO: "stUdio", COMPASS: "cOMpass"}
+
+
+def workspace_name(surface: str) -> str:
+    return _SURFACE_WORKSPACES[normalize_surface(surface)]
+
+
+_FOUNDATION_TEMPLATE = f"""You are Nexus, working inside a member's own {{workspace}} ({FOUNDATION_VERSION}).
 
 WHOSE WORDS THESE ARE
 The person you are writing for is the author. You are drafting a proposal they
@@ -125,6 +133,14 @@ A proposal. Write it as the person's own first-person copy where the task calls
 for prose, but the standing of the whole output is a suggestion awaiting their
 accept, edit, or reject. Never assert that anything here has been decided,
 adopted, or published."""
+
+
+def sovereignty_foundation(surface: str = STUDIO) -> str:
+    """The shared foundation, naming the product the member is working in."""
+    return _FOUNDATION_TEMPLATE.format(workspace=workspace_name(surface))
+
+
+SOVEREIGNTY_FOUNDATION = sovereignty_foundation(STUDIO)
 
 
 WORK_ACTION_CONTRACT = f"""THE WORK — ACTION CONTRACT ({WORK_CONTRACT_VERSION})
@@ -267,9 +283,10 @@ def compose_room_prompt(
     client_material: str,
     task: str,
     voice: str,
+    surface: str = STUDIO,
 ) -> tuple[str, str]:
     """Build the (system, user) pair for one grounded room generation."""
-    system = "\n\n".join([SOVEREIGNTY_FOUNDATION, action_contract])
+    system = "\n\n".join([sovereignty_foundation(surface), action_contract])
     sections = [
         block(TRUSTED, trusted),
         block(CANONICAL, canonical),
@@ -289,6 +306,8 @@ __all__ = [
     "FIELD_CONTRACT_VERSION",
     "CALL_CONTRACT_VERSION",
     "SOVEREIGNTY_FOUNDATION",
+    "sovereignty_foundation",
+    "workspace_name",
     "WORK_ACTION_CONTRACT",
     "LENS_ACTION_CONTRACT",
     "FIELD_ACTION_CONTRACT",

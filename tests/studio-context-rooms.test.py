@@ -353,7 +353,7 @@ for room in NEW_ROOMS:
        f"{room}: explicit source request with no owned key asks for clarification")
     ok(model == {}, f"{room}: a clarification never calls the model")
     reply = "".join(e.get("chunk", "") for e in events)
-    ok(reply == relevance.CLARIFICATIONS[room]["no_owned_key"],
+    ok(reply == relevance.clarification_text(room, "no_owned_key", relevance.STUDIO),
        f"{room}: the clarification is this room's own wording")
     ok(f"The {room.capitalize()}" in reply, f"{room}: the clarification names the room")
     ok(grounding["used_canonical_sources"] is False, f"{room}: a clarification retrieves nothing")
@@ -363,7 +363,7 @@ for room in NEW_ROOMS:
        f"{room}: a thin request with no accepted context asks for clarification")
     ok(model == {}, f"{room}: the thin-request clarification never calls the model")
     ok("".join(e.get("chunk", "") for e in events)
-       == relevance.CLARIFICATIONS[room]["thin_request"],
+       == relevance.clarification_text(room, "thin_request", relevance.STUDIO),
        f"{room}: the thin-request clarification is room-specific")
 
 

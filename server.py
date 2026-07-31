@@ -6380,6 +6380,13 @@ class InspireLayer2Request(BaseModel):
     companion: str = ""
     session_notes: str = ""
     qa_answers: list = []   # list of {question, answer} dicts
+    # Which product opened the room: "compass" or "studio" (see
+    # studio_context.relevance.SURFACES). The four rooms are shared, but a
+    # member's orientation lives in a different place in each, so the grounded
+    # pipeline needs to know which one asked. Anything unrecognised — including
+    # the empty default sent by older clients — reads as "studio", the stricter
+    # contract, so a surface cannot be invented to loosen grounding.
+    surface: str = ""
     gk_num: str = ""
     gk_line: str = ""
     gk_shadow: str = ""
