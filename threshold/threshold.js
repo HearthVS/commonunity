@@ -63,7 +63,8 @@
       full_name: '',
       birth_date: '',
       birth_time: '',
-      birth_place: ''
+      birth_place: '',
+      birth_place_canonical: null
     },
     nameNarrative: {
       status: 'idle',  // idle | pending | complete | error
@@ -715,6 +716,157 @@
     root.appendChild(card);
   }
 
+  // ---- Birth-place field -------------------------------------------------
+  //
+  // Same contract as the cOMpass #pob field: suggestions come from the
+  // vendored gazetteer, only a chosen city counts, and the record we keep
+  // is CommonUnityPlaces.toStoredPlace() so both surfaces store one shape.
+
+  let thPlaceTyped = false;
+  let thPlaceMatches = [];
+
+  function thPlaceProvider() {
+    const g = window.CommonUnityPlaces;
+    return (g && typeof g.suggest === 'function' &&
+            typeof g.toStoredPlace === 'function') ? g : null;
+  }
+
+  function thPlaceInput() { return document.getElementById('th-birth-place'); }
+
+  function thPlaceHasSelection() {
+    const sel = state.identity.birth_place_canonical;
+    if (!sel || !sel.place_id) return false;
+    const input = thPlaceInput();
+    const typed = input ? input.value.trim() : (state.identity.birth_place || '').trim();
+    return typed === (sel.display_label || '');
+  }
+
+  // A draft saved before the threshold validated cities carries a bare
+  // string. Resolve it once so returning people are not sent back a step.
+  function thPlaceAdoptStored() {
+    if (thPlaceTyped || thPlaceHasSelection()) return;
+    const raw = (state.identity.birth_place || '').trim();
+    const g = thPlaceProvider();
+    if (!raw || !g) return;
+    let rec = null;
+    try { rec = g.resolve(raw); } catch (_) { rec = null; }
+    if (!rec) return;
+    thPlaceSelect(rec, 'legacy-resolved');
+    const input = thPlaceInput();
+    if (input) input.value = rec.displayLabel;
+  }
+
+  function thPlaceSelect(rec, method) {
+    state.identity.birth_place_canonical =
+      thPlaceProvider().toStoredPlace(rec, method);
+    state.identity.birth_place = rec.displayLabel;
+  }
+
+  function thPlaceSetError(msg) {
+    const box = document.getElementById('th-birth-place-error');
+    if (!box) return;
+    box.textContent = msg || '';
+    box.classList.toggle('visible', !!msg);
+  }
+
+  function thPlaceClose() {
+    const list = document.getElementById('th-birth-place-suggest');
+    if (list) { list.classList.remove('open'); list.innerHTML = ''; }
+    const input = thPlaceInput();
+    if (input) input.setAttribute('aria-expanded', 'false');
+    thPlaceMatches = [];
+  }
+
+  function thPlaceRender() {
+    const input = thPlaceInput();
+    const list = document.getElementById('th-birth-place-suggest');
+    if (!input || !list) return;
+    const q = input.value.trim();
+    const g = thPlaceProvider();
+    // No usable gazetteer means we cannot answer — say nothing rather
+    // than claiming the city does not exist.
+    if (!q || !g) { thPlaceClose(); return; }
+    try { thPlaceMatches = g.suggest(q, { limit: 8 }) || []; }
+    catch (_) { thPlaceMatches = []; }
+    list.innerHTML = '';
+    if (!thPlaceMatches.length) {
+      list.appendChild(el('li', { class: 'place-suggest-empty' }, 'No matching city'));
+    } else {
+      thPlaceMatches.forEach((rec) => {
+        const li = el('li', { role: 'option' }, rec.displayLabel);
+        // mousedown, not click: blur would close the list first.
+        li.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          thPlaceSelect(rec, 'suggestion');
+          input.value = rec.displayLabel;
+          thPlaceTyped = false;
+          thPlaceClose();
+          thPlaceSetError('');
+        });
+        list.appendChild(li);
+      });
+    }
+    list.classList.add('open');
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  // Empty stays allowed — place of birth was never required here.
+  function thPlaceRequireSelection() {
+    thPlaceAdoptStored();
+    const input = thPlaceInput();
+    const typed = input ? input.value.trim() : '';
+    if (!typed) {
+      state.identity.birth_place = '';
+      state.identity.birth_place_canonical = null;
+      thPlaceSetError('');
+      return true;
+    }
+    if (thPlaceHasSelection()) { thPlaceSetError(''); return true; }
+    if (!thPlaceProvider()) { thPlaceSetError(''); return true; }
+    thPlaceSetError('Please choose a city from the list');
+    input.focus();
+    thPlaceRender();
+    return false;
+  }
+
+  function thPlaceField() {
+    const input = el('input', {
+      id: 'th-birth-place', type: 'text', placeholder: 'Start typing a city…',
+      autocomplete: 'off', role: 'combobox', 'aria-expanded': 'false',
+      'aria-autocomplete': 'list', 'aria-controls': 'th-birth-place-suggest',
+      value: state.identity.birth_place
+    });
+    input.addEventListener('input', () => {
+      thPlaceTyped = true;
+      state.identity.birth_place = input.value;
+      state.identity.birth_place_canonical = null;
+      thPlaceSetError('');
+      thPlaceRender();
+    });
+    input.addEventListener('focus', () => {
+      if (input.value.trim() && !thPlaceHasSelection()) thPlaceRender();
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        thPlaceClose();
+        if (input.value.trim() && !thPlaceHasSelection() && thPlaceProvider()) {
+          thPlaceSetError('Please choose a city from the list');
+        }
+      }, 120);
+    });
+    return el('div', { class: 'threshold-field' },
+      el('label', { for: 'th-birth-place' }, 'Place of birth'),
+      el('div', { class: 'place-combo' },
+        input,
+        el('ul', {
+          class: 'place-suggest', id: 'th-birth-place-suggest',
+          role: 'listbox', 'aria-label': 'City suggestions'
+        })
+      ),
+      el('div', { class: 'place-error', id: 'th-birth-place-error', role: 'alert' })
+    );
+  }
+
   // ---- Screen 5: Identity Completion -------------------------------------
 
   function renderIdentityCompletion() {
@@ -730,12 +882,8 @@
       el('label', { for: 'th-birth-time' }, 'Time of birth'),
       el('input', { id: 'th-birth-time', type: 'time', value: state.identity.birth_time })
     );
-    const placeField = el('div', { class: 'threshold-field' },
-      el('label', { for: 'th-birth-place' }, 'Place of birth'),
-      el('input', { id: 'th-birth-place', type: 'text', placeholder: 'City, Country…', value: state.identity.birth_place })
-    );
     card.appendChild(timeField);
-    card.appendChild(placeField);
+    card.appendChild(thPlaceField());
 
     card.appendChild(el('p', { class: 'threshold-helper' }, 'These details help refine the field that is being prepared for you.'));
 
@@ -751,10 +899,13 @@
 
   function onCompleteIdentity(errBox) {
     const t = document.getElementById('th-birth-time').value.trim();
-    const p = document.getElementById('th-birth-place').value.trim();
-    // Both optional per the brief — but recommended. Don't block.
+    // Time stays optional. Place stays optional too, but typed text that
+    // was never confirmed against the list must not pass as a place.
     state.identity.birth_time = t;
-    state.identity.birth_place = p;
+    if (!thPlaceRequireSelection()) {
+      errBox.textContent = 'Please choose a city from the list';
+      return;
+    }
 
     // Finalize palette now that we have full identity.
     const palette = generatePalette(state.identity);
@@ -920,6 +1071,7 @@
     contract.identity.birth_date  = state.identity.birth_date;
     contract.identity.birth_time  = state.identity.birth_time;
     contract.identity.birth_place = state.identity.birth_place;
+    contract.identity.birth_place_canonical = state.identity.birth_place_canonical;
     contract.name_narrative.essay         = state.nameNarrative.essay;
     contract.name_narrative.generated_at  = state.nameNarrative.generated_at || new Date().toISOString();
     contract.name_narrative.version       = 1;

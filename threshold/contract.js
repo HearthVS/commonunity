@@ -36,7 +36,11 @@
         full_name: '',
         birth_date: '',
         birth_time: '',
-        birth_place: ''
+        birth_place: '',
+        // Gazetteer record for birth_place. Null on contracts written
+        // before the threshold validated the city; cOMpass then falls
+        // back to resolving the label, exactly as it always has.
+        birth_place_canonical: null
       },
       name_narrative: {
         essay: '',
