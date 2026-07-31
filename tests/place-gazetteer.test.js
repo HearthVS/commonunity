@@ -124,6 +124,60 @@ console.log('\nPlace gazetteer · IANA → standard-offset coverage');
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Secondary cities. The original city-timezones vendoring stopped well
+// short of these; the dataset now also carries the GeoNames cities15000
+// tier, so a birth place outside the largest few thousand cities can
+// actually be chosen instead of failing the "choose a city" gate.
+console.log('\nPlace gazetteer \u00b7 secondary cities resolve and canonicalise');
+[
+  { q: 'prokuplje', geonameid: 786690, city: 'Prokuplje', iso2: 'RS',
+    country: 'Serbia', lat: 43.23417, lng: 21.58806,
+    iana: 'Europe/Belgrade', tz: 60 },
+  { q: 'marmaris',  geonameid: 304782, city: 'Marmaris',  iso2: 'TR',
+    country: 'Turkey', lat: 36.855,   lng: 28.27417,
+    iana: 'Europe/Istanbul', tz: 180 }
+].forEach(function (c) {
+  const rec = P.resolve(c.q);
+  assert(!!rec, c.city + ' resolves');
+  if (!rec) return;
+  assertEq(rec.city,            c.city,    c.city + ' \u00b7 city');
+  assertEq(rec.iso2,            c.iso2,    c.city + ' \u00b7 iso2');
+  assertEq(rec.country,         c.country, c.city + ' \u00b7 country');
+  assert(!!rec.province,                   c.city + ' \u00b7 carries a region');
+  assertClose(rec.latitude,  c.lat, 0.001, c.city + ' \u00b7 latitude');
+  assertClose(rec.longitude, c.lng, 0.001, c.city + ' \u00b7 longitude');
+  assertEq(rec.iana,            c.iana,    c.city + ' \u00b7 IANA zone');
+  assertEq(rec.tzOffsetMinutes, c.tz,      c.city + ' \u00b7 standard offset');
+
+  // The stable GeoNames id, so a stored place survives a dataset refresh.
+  assertEq(rec.id, 'geonames:' + c.geonameid, c.city + ' \u00b7 place id');
+  const back = P.findById(rec.id);
+  assertEq(back && back.displayLabel, rec.displayLabel,
+    c.city + ' \u00b7 id round-trips through findById');
+
+  // Both selectors reach it the same way the user does \u2014 by typing.
+  const hit = P.suggest(c.q.slice(0, 6)).filter(function (r) {
+    return r.id === rec.id;
+  });
+  assertEq(hit.length, 1, c.city + ' \u00b7 is offered as a suggestion');
+
+  const stored = P.toStoredPlace(rec, 'suggestion');
+  assertEq(stored.place_id,          rec.id,  c.city + ' \u00b7 stored place_id');
+  assertEq(stored.display_label,     rec.displayLabel,
+    c.city + ' \u00b7 stored label');
+  assertEq(stored.tz_offset_minutes, c.tz,    c.city + ' \u00b7 stored offset');
+  assertEq(stored.country_code,      c.iso2,  c.city + ' \u00b7 stored country code');
+});
+
+// Rows vendored before GeoNames keep the derived id they were stored
+// under, so places already chosen still re-hydrate.
+{
+  const sudbury = P.resolve('Sudbury ontario canada');
+  assertEq(sudbury && sudbury.id, 'sudbury|ca|ontario|46.5000|-80.9666',
+    'a pre-GeoNames row keeps its derived place id');
+}
+
+// ────────────────────────────────────────────────────────────────────
 console.log('\nPlace gazetteer · degrades cleanly on unknown / empty input');
 assertEq(P.resolve(''),          null, 'empty string → null');
 assertEq(P.resolve(null),        null, 'null → null');

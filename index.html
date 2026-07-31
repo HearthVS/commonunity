@@ -5499,7 +5499,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 <!-- ?v= is load-bearing: /sdk/* is served with max-age=14400 behind a CDN,
      so without a fresh URL a 4h-stale gazetteer pairs with never-cached HTML
      and the city suggestions silently stop working. Bump on every change. -->
-<script src="/sdk/place_gazetteer.js?v=3"></script>
+<script src="/sdk/place_gazetteer.js?v=4"></script>
 <script>window.CU_OM_CIPHER_ENABLED = true;</script>
 <script src="/sdk/om_cipher_layer6_data.js"></script>
 <script src="/sdk/om_cipher.js"></script>
@@ -5512,7 +5512,7 @@ body.companion-mode .companion-mode-banner { display: block; }
   (function () {
     if (typeof window === 'undefined' || !window.CommonUnityPlaces) return;
     try {
-      window.CommonUnityPlaces.preload('/data/places/city_timezones.json')
+      window.CommonUnityPlaces.preload('/data/places/city_timezones.json?v=4')
         .then(function (ok) { window.__cuPlacesReady = !!ok; });
     } catch (_) {}
   })();
