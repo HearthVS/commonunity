@@ -10260,6 +10260,11 @@ function inspireLayer2(point, field) {
     companion:     compassSynthAddress(),
     session_notes: pt.raw || '',
     qa_answers:    getQAAnswers(point),
+    // This room's key and line are resolved here by the OM Cipher and shown in
+    // the header; there is no server-side copy. Naming the surface is what
+    // lets the grounded pipeline read them as the room's own state instead of
+    // looking for an accepted stUdio record that cOMpass never writes.
+    surface:   'compass',
     gk_num:    String(gkNum),
     gk_line:   String(pt.gk_line || ''),
     gk_shadow: gkData.shadow  || '',

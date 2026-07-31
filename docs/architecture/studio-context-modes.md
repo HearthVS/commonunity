@@ -73,9 +73,10 @@ app, and so `server.py` does not grow another few hundred lines.
 
 ## Trust boundaries
 
-1. **Client input is never authoritative in grounded mode.** A client may point
-   at a Gene Key (an integer) but may not supply its text. Canonical content is
-   only ever read from the corpus.
+1. **Client input never supplies source material.** A client may name a Gene
+   Key (an integer) but may not supply its text. Canonical content is only ever
+   read from the corpus, on every surface. Which key may be named is a separate
+   question, answered per surface — see [Surfaces](#surfaces).
 2. **Ownership is enforced server-side.** Records are scoped by the
    pseudonymous `cipher_id`, with the signed invite-token cookie as fallback —
    the same contract as Field Observations. The invite token is read from the
@@ -89,6 +90,32 @@ app, and so `server.py` does not grow another few hundred lines.
    excluded from every assembly, in SQL and again in Python.
 5. **Traces carry identifiers, not content.** No essence text, reflection text,
    member name, cipher id, invite token or prompt content reaches a log.
+
+### Surfaces
+
+The four rooms open from two products, and a member's orientation lives in a
+different place in each. The `surface` field on `/inspire-layer2` says which
+one asked; `relevance.SURFACES` is the vocabulary.
+
+| surface | where orientation lives | how `gk_num` is read |
+| --- | --- | --- |
+| `studio` (default) | accepted records in `studio_context_records` | a **pointer**: it may narrow grounding to a key the member has accepted, never widen it to one they have not |
+| `compass` | the browser — the OM Cipher resolves each room's key and line and the header displays them | the **room baseline**: authoritative for *which* key, because there is no server-side copy to check it against |
+
+Neither surface lets the browser supply *content*: honouring a key means
+reading its corpus entry, and `gk_shadow` / `gk_gift` / `gk_siddhi` are dropped
+on both. What the surface changes is only whose say-so selects the key.
+
+Accepted records outrank the baseline wherever they exist: if the member has
+accepted a key for the room, `gk_num` may only select among those keys, on
+either surface. `relevance.normalize_surface` coerces anything unrecognised —
+an empty field from an older client, a typo, an invented value — to `studio`,
+the stricter contract, so a surface cannot be asserted to loosen grounding.
+
+Clarifications and the sovereignty foundation are phrased for the surface that
+asked. A cOMpass member is never told to add a key "into your stUdio" — that
+names a product which does not hold their material and asks for something
+already on screen.
 
 ## Data model
 
@@ -433,11 +460,19 @@ not read The Field's. Never trusted as orientation: client transcript text, AI
 proposals that were never accepted, rejected records, sealed material, another
 member's rows, and operational traces.
 
-A client may still *point at* a Gene Key with `gk_num`, but the pointer is
-corroborated against the caller's own accepted records **in that room** before
-it is honoured; an uncorroborated or malformed pointer is noted in the trace and
-ignored. `gk_shadow` / `gk_gift` / `gk_siddhi` are dropped outright — canonical
-text comes only from the corpus.
+A client may also name a Gene Key with `gk_num`. Where the caller's own
+accepted records **in that room** corroborate it, it narrows grounding to that
+key (`gene_key_source: accepted_record_selected_by_client`). Where they do not,
+what happens depends on the surface: in stUdio it is noted in the trace and
+ignored; in cOMpass it is the room's resolved baseline and is honoured
+(`compass_room_baseline`). A malformed or out-of-range key is refused on both.
+`gk_shadow` / `gk_gift` / `gk_siddhi` are dropped outright everywhere —
+canonical text comes only from the corpus. See [Surfaces](#surfaces).
+
+Note that the baseline decides *which* key may be opened, never *whether* to
+open one. Retrieval still requires the relevance table below to call for it, so
+an ordinary drafting request in a cOMpass room with a key on screen retrieves
+nothing.
 
 ### Relevance outcomes
 
@@ -483,13 +518,18 @@ rooms must not have.
 
 Clarifications name their own room, so a member who is asked to say more knows
 which conversation is asking: "…so The Lens has something of yours to work
-from", "…The Field", "…The Call", "…The Work".
+from", "…The Field", "…The Call", "…The Work". They also name their own
+*product*: `relevance.clarification_text(room, kind, surface)` renders the
+room's template with the two phrases that differ per surface, so a cOMpass
+member is pointed at their cOMpass and a stUdio member at their stUdio. The
+`CLARIFICATIONS` table holds templates, not finished strings — read it through
+`clarification_text`.
 
 ### Prompt assembly
 
-`prompts.compose_room_prompt(action_contract=…, …)` builds a system prompt of
-`SOVEREIGNTY_FOUNDATION` + that room's action contract, and a user message of
-four named, closed fences:
+`prompts.compose_room_prompt(action_contract=…, surface=…, …)` builds a system
+prompt of `prompts.sovereignty_foundation(surface)` + that room's action
+contract, and a user message of four named, closed fences:
 
 ```
 <<<TRUSTED_PERSONAL_CONTEXT>>> … <<<END_TRUSTED_PERSONAL_CONTEXT>>>
@@ -505,6 +545,10 @@ knowledge must never be presented as sourced material, and that with no
 `TRUSTED_PERSONAL_CONTEXT` block the model does not know this person's
 orientation and must not construct one.
 
+The foundation is identical on both surfaces apart from its first line, which
+names the product the member is working in ("inside a member's own cOMpass").
+`SOVEREIGNTY_FOUNDATION` remains as the stUdio rendering.
+
 Outputs remain proposals in every room. Nothing generated here is written back
 as an accepted record; promotion still requires the member's explicit accept.
 
@@ -517,6 +561,7 @@ everything else, so the existing schema and UI are unaffected. Under
 ```json
 {"done": true, "grounding": {
   "mode": "grounded_v1", "room": "lens",
+  "surface": "studio", "gene_key_source": "accepted_records",
   "pipeline": "studio-grounded-lens-v1",
   "prompt_versions": ["studio-grounded-foundation-v2", "studio-grounded-lens-v1"],
   "status": "grounded", "relevance": "gene_key_and_line",
@@ -529,6 +574,13 @@ everything else, so the existing schema and UI are unaffected. Under
 
 `source_use` is the privacy-safe category an operator can read at a glance:
 `none`, `personal_only`, `personal_and_canonical`, `canonical_only`.
+
+`gene_key_source` says on whose authority the retrieved key was chosen —
+`none`, `accepted_records`, `accepted_record_selected_by_client`, or
+`compass_room_baseline` — which is what distinguishes a key the member has
+adopted from one their browser asserted. Both read the same corpus entry; they
+are not the same level of evidence. `status` is `grounded`,
+`clarification_required`, `grounding_unavailable` or `fallback_legacy`.
 
 In `legacy` mode the event is exactly `{"done": true}`, byte for byte as before,
 for all four rooms.
@@ -641,6 +693,12 @@ Additional per-room checks:
   one line.
 - Cross-room synthesis does not exist. A question in The Call cannot see what
   The Work knows, by design — a room's trust scope is its own records.
+- cOMpass has no server-side orientation store, so on that surface the room's
+  Gene Key is only as trustworthy as the caller. It is reported as
+  `compass_room_baseline` rather than presented as accepted material, and it
+  still cannot supply source text. If cOMpass ever persists a member's baseline
+  server-side, the surface branch in `rooms._orientation` collapses into an
+  ordinary corroboration check.
 - The Yoga Sutra corpus is **not** implemented and is deliberately deferred.
 
 ## Deferred: the Yoga Sutra corpus
@@ -785,6 +843,14 @@ call site inert and sending continues to work.
   record exclusion, per-room fail-closed containment, the Sutra deferral, exact
   room routing, the legacy round trip, provider independence, response-envelope
   compatibility, and admin privacy.
+- `tests/compass-inspire-room-baseline.test.py` — the cOMpass surface: the
+  room's visible Gene Key and line reaching the corpus, imported Setup
+  transcript text reaching the prompt, no stUdio wording anywhere on the
+  cOMpass path (foundation, prompt, and every room's clarifications), client
+  band text still dropped, malformed keys and out-of-range lines refused,
+  stUdio's corroborated-pointer rule intact, unrecognised surfaces coerced to
+  stUdio, accepted records still outranking the baseline, retrieval bar not
+  lowered by a resolved key, admin-surface privacy, and the legacy round trip.
 - `tests/nexus-activity-signal.test.js` — the activity signal in both surfaces:
   the shared module and its loading, reuse of the existing Nexus geometry, the
   three CSS states, reduced-motion variants, screen-reader semantics, the stUdio

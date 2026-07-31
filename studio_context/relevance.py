@@ -36,6 +36,11 @@ Two rules keep this honest:
     never invents a Gene Key, and a key named in the request that the member
     has no accepted record for produces a clarification rather than a lookup.
 
+What counts as material the member owns depends on which surface asked, and the
+caller resolves that before calling `decide` — see `SURFACES`. This module only
+needs to know the surface so that when it does have to ask a question, it names
+the place that actually holds the member's orientation.
+
 Yoga Sutra retrieval is not implemented. `EXTENSION_CORPORA` marks where a
 second corpus joins the outcome vocabulary when it exists.
 """
@@ -44,6 +49,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field as _dc_field
+from typing import Any
 
 NONE = "none"
 PERSONAL_ONLY = "personal_only"
@@ -148,6 +154,59 @@ ROOM_SIGNALS = {
 
 DEFAULT_ROOM = "work"
 
+ROOM_LABELS = {
+    "work": "The Work",
+    "lens": "The Lens",
+    "field": "The Field",
+    "call": "The Call",
+}
+
+# The product surface a request came from. Two surfaces open the same four
+# rooms, and a member's orientation lives in a different place in each: stUdio
+# works from records the member accepted into it, while cOMpass resolves a Gene
+# Key from the member's own baseline and shows it in the room header. A
+# clarification that names the wrong one is not an off-brand detail — it sends
+# the member to a product that does not hold their material and tells them to
+# add something they can already see on screen.
+STUDIO = "studio"
+COMPASS = "compass"
+SURFACES = (STUDIO, COMPASS)
+DEFAULT_SURFACE = STUDIO
+
+# The two phrases that differ per surface. Everything else a clarification says
+# is about the room and the request, which are the same wherever it was asked.
+_SURFACE_PHRASES = {
+    STUDIO: {
+        "owned_keys": "the keys you have accepted into your stUdio",
+        "nothing_recorded": "There is nothing accepted for {room} in your stUdio",
+        "anything_recorded": "anything you have accepted for {room}",
+    },
+    COMPASS: {
+        "owned_keys": "the keys your cOMpass has resolved for you",
+        "nothing_recorded": "There is nothing recorded for {room} in your cOMpass",
+        "anything_recorded": "anything recorded for {room} in your cOMpass",
+    },
+}
+
+
+def normalize_surface(surface: Any) -> str:
+    """Coerce a caller-supplied surface to a known one. Unknown reads as stUdio,
+    which is the stricter contract — a surface cannot be invented to loosen it."""
+    value = surface.strip().lower() if isinstance(surface, str) else ""
+    return value if value in SURFACES else DEFAULT_SURFACE
+
+
+def clarification_text(room: str, kind: str, surface: str = DEFAULT_SURFACE) -> str:
+    """One clarification, phrased for the surface that asked it."""
+    room_key = room if room in CLARIFICATIONS else DEFAULT_ROOM
+    phrases = _SURFACE_PHRASES[normalize_surface(surface)]
+    label = ROOM_LABELS[room_key]
+    return CLARIFICATIONS[room_key][kind].format(
+        owned_keys=phrases["owned_keys"],
+        nothing_recorded=phrases["nothing_recorded"].format(room=label),
+        anything_recorded=phrases["anything_recorded"].format(room=label),
+    )
+
 
 def _compile(base: tuple[str, ...], extra: tuple[str, ...]):
     return re.compile("|".join(base + tuple(extra)), re.IGNORECASE)
@@ -217,16 +276,23 @@ def decide(
     owned_gene_keys: tuple[int, ...] | list[int] = (),
     owned_line: int | None = None,
     has_accepted_essence: bool = False,
+    surface: str = DEFAULT_SURFACE,
 ) -> RelevanceDecision:
     """Choose the minimal retrieval that serves this request.
 
-    `owned_gene_keys` and `owned_line` come from the member's own accepted
-    records — never from the request payload. That is what makes "explicit
-    Gene Key request" safe to honour: the request selects *whether* to open
-    the corpus, and the member's records select *what* is opened.
+    `owned_gene_keys` and `owned_line` describe the orientation the caller has
+    already established the member holds — accepted records in stUdio, the
+    resolved room baseline in cOMpass — never raw request text. That is what
+    makes "explicit Gene Key request" safe to honour: the request selects
+    *whether* to open the corpus, and the member's own orientation selects
+    *what* is opened.
     """
     signals = signals_for(request_text, room)
-    clarify = CLARIFICATIONS.get(signals["room"], CLARIFICATIONS[DEFAULT_ROOM])
+    surface = normalize_surface(surface)
+
+    def clarify(kind):
+        return clarification_text(signals["room"], kind, surface)
+
     keys = tuple(sorted({int(k) for k in owned_gene_keys if k}))
 
     if signals["explicit_source_request"]:
@@ -234,7 +300,7 @@ def decide(
             return RelevanceDecision(
                 CLARIFICATION_REQUIRED,
                 "explicit_source_request_without_owned_key",
-                clarification=clarify["no_owned_key"],
+                clarification=clarify("no_owned_key"),
                 signals=signals,
             )
         if owned_line is not None and (signals["line_reference"] or signals["recurring_pattern"]):
@@ -265,13 +331,13 @@ def decide(
             )
         return RelevanceDecision(
             CLARIFICATION_REQUIRED, "recurring_pattern_without_any_context",
-            clarification=clarify["pattern_no_context"], signals=signals,
+            clarification=clarify("pattern_no_context"), signals=signals,
         )
 
     if not signals["substantive_request"] and not has_accepted_essence:
         return RelevanceDecision(
             CLARIFICATION_REQUIRED, "insufficient_request_and_no_accepted_context",
-            clarification=clarify["thin_request"], signals=signals,
+            clarification=clarify("thin_request"), signals=signals,
         )
 
     if has_accepted_essence:
@@ -290,88 +356,83 @@ CLARIFICATIONS = {
     "work": {
         "no_owned_key": (
             "Before I bring Gene Keys material into this, I need to know which key "
-            "you mean — I only work from the keys you have accepted into your "
-            "stUdio, and I do not have one recorded for The Work yet. Add the key "
-            "(and line, if you know it) and I will draft from the actual source "
-            "rather than from a general impression."
+            "you mean — I only work from {owned_keys}, and I do not have one "
+            "recorded for The Work yet. Add the key (and line, if you know it) "
+            "and I will draft from the actual source rather than from a general "
+            "impression."
         ),
         "pattern_no_context": (
-            "It sounds like you are pointing at something that keeps recurring, and "
-            "I would rather ask than assume. I do not yet have anything you have "
-            "accepted about your work to read it against. Tell me in a sentence or "
-            "two what the pattern shows up as in practice — or accept an essence "
-            "for The Work — and I will work from that."
+            "It sounds like you are pointing at something that keeps recurring, "
+            "and I would rather ask than assume. I do not yet have "
+            "{anything_recorded} to read it against. Tell me in a sentence or two "
+            "what the pattern shows up as in practice, and I will work from that."
         ),
         "thin_request": (
-            "I do not have enough to work from yet. There is nothing accepted for "
-            "The Work in your stUdio, and this request does not say what you are "
-            "making, offering, or trying to move. Give me a line or two about it "
-            "and I will draft something concrete."
+            "I do not have enough to work from yet. {nothing_recorded}, and this "
+            "request does not say what you are making, offering, or trying to "
+            "move. Give me a line or two about it and I will draft something "
+            "concrete."
         ),
     },
     "lens": {
         "no_owned_key": (
-            "I can only open Gene Keys material for keys you have accepted into "
-            "your stUdio, and I do not have one recorded for The Lens yet. Add the "
-            "key (and line, if you know it) and I will read from the source. "
-            "Otherwise, tell me what you are trying to put into words and I will "
-            "work from that instead."
+            "I can only open Gene Keys material for {owned_keys}, and I do not have "
+            "one recorded for The Lens yet. Add the key (and line, if you know "
+            "it) and I will read from the source. Otherwise, tell me what you "
+            "are trying to put into words and I will work from that instead."
         ),
         "pattern_no_context": (
             "You are pointing at something that keeps coming back in how you see or "
             "explain this, and I would rather ask than invent. I do not have "
-            "anything you have accepted for The Lens to read it against. Say in a "
-            "sentence or two what you keep trying to articulate, and I will start "
-            "from your words."
+            "{anything_recorded} to read it against. Say in a sentence or two what "
+            "you keep trying to articulate, and I will start from your words."
         ),
         "thin_request": (
-            "I do not have enough to work from yet. There is nothing accepted for "
-            "The Lens in your stUdio, and this request does not say what you are "
-            "trying to express or teach. Give me the rough version — even badly "
-            "phrased — and I will help you sharpen it."
+            "I do not have enough to work from yet. {nothing_recorded}, and this "
+            "request does not say what you are trying to express or teach. Give "
+            "me the rough version — even badly phrased — and I will help you "
+            "sharpen it."
         ),
     },
     "field": {
         "no_owned_key": (
-            "I only open Gene Keys material for keys you have accepted into your "
-            "stUdio, and I do not have one recorded for The Field yet. Add the key "
-            "(and line, if you know it), or tell me about the conditions and "
-            "support you are actually working with, and I will start there."
+            "I only open Gene Keys material for {owned_keys}, and I do not have one "
+            "recorded for The Field yet. Add the key (and line, if you know it), "
+            "or tell me about the conditions and support you are actually "
+            "working with, and I will start there."
         ),
         "pattern_no_context": (
             "It sounds like something keeps recurring in your conditions or "
-            "relationships. I do not have anything you have accepted for The Field "
-            "to read it against, and I will not guess at what anyone else involved "
-            "wants or intends. Describe what you have observed happening, and I "
-            "will work from that."
+            "relationships. I do not have {anything_recorded} to read it against, "
+            "and I will not guess at what anyone else involved wants or intends. "
+            "Describe what you have observed happening, and I will work from that."
         ),
         "thin_request": (
-            "I do not have enough to work from yet. There is nothing accepted for "
-            "The Field in your stUdio, and this request does not say what "
-            "conditions, rhythms or support you are trying to change. A line or "
-            "two about your actual week would be enough."
+            "I do not have enough to work from yet. {nothing_recorded}, and this "
+            "request does not say what conditions, rhythms or support you are "
+            "trying to change. A line or two about your actual week would be "
+            "enough."
         ),
     },
     "call": {
         "no_owned_key": (
-            "I only open Gene Keys material for keys you have accepted into your "
-            "stUdio, and I do not have one recorded for The Call yet. Add the key "
-            "(and line, if you know it), or tell me what is drawing you at the "
-            "moment, and I will work from that rather than from a general "
-            "impression."
+            "I only open Gene Keys material for {owned_keys}, and I do not have one "
+            "recorded for The Call yet. Add the key (and line, if you know it), "
+            "or tell me what is drawing you at the moment, and I will work from "
+            "that rather than from a general impression."
         ),
         "pattern_no_context": (
             "Something seems to keep pulling at you here, and I would rather ask "
-            "than tell you what it means. I do not have anything you have accepted "
-            "for The Call to read it against. Say what keeps showing up as an "
-            "invitation or a pull, and I will treat it as a direction to test "
-            "rather than a conclusion."
+            "than tell you what it means. I do not have {anything_recorded} to "
+            "read it against. Say what keeps showing up as an invitation or a "
+            "pull, and I will treat it as a direction to test rather than a "
+            "conclusion."
         ),
         "thin_request": (
-            "I do not have enough to work from yet. There is nothing accepted for "
-            "The Call in your stUdio, and this request does not say what direction, "
-            "invitation or commitment you are weighing. Tell me what is in front of "
-            "you and I will propose something you could actually try."
+            "I do not have enough to work from yet. {nothing_recorded}, and this "
+            "request does not say what direction, invitation or commitment you "
+            "are weighing. Tell me what is in front of you and I will propose "
+            "something you could actually try."
         ),
     },
 }
@@ -389,7 +450,14 @@ __all__ = [
     "ROOM_SIGNALS",
     "CLARIFICATIONS",
     "DEFAULT_ROOM",
+    "ROOM_LABELS",
+    "STUDIO",
+    "COMPASS",
+    "SURFACES",
+    "DEFAULT_SURFACE",
     "RelevanceDecision",
     "decide",
     "signals_for",
+    "normalize_surface",
+    "clarification_text",
 ]

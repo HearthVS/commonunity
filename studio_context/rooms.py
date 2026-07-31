@@ -28,11 +28,21 @@ The pipeline is five steps, each of which can only narrow what reaches a model:
                    verified excerpts and browser-supplied material apart.
   5. Trace         a privacy-safe record of what was selected and why.
 
-What the browser sends is never orientation. `gk_shadow` / `gk_gift` /
+What the browser sends is never source material. `gk_shadow` / `gk_gift` /
 `gk_siddhi` carry transcript text in the legacy payload; in grounded mode they
 are dropped on the floor and noted, because canonical text comes from the
-corpus or it does not exist. `gk_num` is honoured only as a *pointer*, and only
-when one of the member's own accepted records already names that key.
+corpus or it does not exist. That holds on every surface: honouring a key means
+reading the corpus entry for it, never believing the browser's copy of it.
+
+Which key to read is a different question, and its answer depends on the
+surface (`SURFACES` in `relevance.py`). In stUdio a member's orientation lives
+in accepted records, so `gk_num` is honoured only as a *pointer* — it may narrow
+grounding to one of the keys they have accepted, never widen it to one they have
+not. cOMpass has no such store: the OM Cipher resolves the room's key and line
+in the browser from the member's own baseline and the room header displays them,
+so there the payload's key *is* the structured room state. Refusing it does not
+protect anything — it just asks the member to supply a key they can already see
+on screen, in a product that has nowhere to put it.
 
 Yoga Sutra retrieval is not part of this phase. The seam is
 `assembler.register_corpus` plus `relevance.EXTENSION_CORPORA`: a second corpus
@@ -81,6 +91,22 @@ SOURCE_USE_CATEGORIES = (
     SOURCE_USE_PERSONAL_ONLY,
     SOURCE_USE_CANONICAL,
     SOURCE_USE_CANONICAL_ONLY,
+)
+
+# Where the key that was grounded in came from. Reported in the response
+# metadata so an operator can tell an accepted record apart from a room
+# baseline the browser asserted, which are different levels of evidence even
+# though both read the same corpus entry.
+KEY_SOURCE_NONE = "none"
+KEY_SOURCE_ACCEPTED = "accepted_records"
+KEY_SOURCE_POINTER = "accepted_record_selected_by_client"
+KEY_SOURCE_BASELINE = "compass_room_baseline"
+
+KEY_SOURCES = (
+    KEY_SOURCE_NONE,
+    KEY_SOURCE_ACCEPTED,
+    KEY_SOURCE_POINTER,
+    KEY_SOURCE_BASELINE,
 )
 
 
@@ -166,19 +192,22 @@ def route_inspire_layer2(
         return None
 
     ctx = trace_mod.ContextTrace(mode=modes.GROUNDED_V1, room=spec.room)
+    surface = relevance.normalize_surface(getattr(payload, "surface", ""))
+    ctx.note(f"surface={surface}")
     try:
         return _build(request, payload, ctx, spec, task=task, voice=voice,
-                      client_material=client_material)
+                      client_material=client_material, surface=surface)
     except CanonicalSourceError as exc:
-        return _unavailable(str(exc), ctx, spec)
+        return _unavailable(str(exc), ctx, spec, surface)
     except Exception as exc:  # pragma: no cover - defensive
         # An unexpected failure inside the trust layer is exactly the situation
         # where guessing is worst. It takes the same audited path as a missing
         # corpus rather than quietly producing an ungrounded answer.
-        return _unavailable(f"{spec.room} pipeline error: {type(exc).__name__}", ctx, spec)
+        return _unavailable(f"{spec.room} pipeline error: {type(exc).__name__}", ctx, spec,
+                            surface)
 
 
-def _build(request, payload, ctx, spec, *, task, voice, client_material) -> dict:
+def _build(request, payload, ctx, spec, *, task, voice, client_material, surface) -> dict:
     records = store.groundable_records(
         request, cipher_id=(getattr(payload, "cipher_id", "") or ""),
         room=spec.room, limit=MAX_RECORDS * 4,
@@ -187,12 +216,7 @@ def _build(request, payload, ctx, spec, *, task, voice, client_material) -> dict
     for record in records:
         ctx.add_record(record)
 
-    owned_keys = tuple(sorted({int(r["gene_key"]) for r in records if r.get("gene_key")}))
-    owned_line = _owned_line(records)
-    declared = _declared_pointer(payload, owned_keys, ctx)
-    if declared:
-        owned_keys = (declared,)
-        owned_line = _owned_line([r for r in records if r.get("gene_key") == declared]) or owned_line
+    owned_keys, owned_line, key_source = _orientation(payload, records, surface, ctx)
     _note_dropped_client_transcript(payload, ctx)
 
     request_text = _request_text(payload, spec)
@@ -203,12 +227,14 @@ def _build(request, payload, ctx, spec, *, task, voice, client_material) -> dict
         owned_gene_keys=owned_keys,
         owned_line=owned_line,
         has_accepted_essence=has_essence,
+        surface=surface,
     )
     ctx.note(f"relevance={decision.outcome}:{decision.reason}")
 
     if decision.outcome == relevance.CLARIFICATION_REQUIRED:
         ctx.status = STATUS_CLARIFICATION
-        meta = _meta(spec, decision, used_personal=False, source_ids=(), source_versions=())
+        meta = _meta(spec, decision, used_personal=False, source_ids=(), source_versions=(),
+                     status=STATUS_CLARIFICATION, surface=surface, key_source=key_source)
         _audit("studio_context_room_clarification", ctx, spec, decision, meta)
         return {"reply": decision.clarification, "meta": meta}
 
@@ -225,6 +251,7 @@ def _build(request, payload, ctx, spec, *, task, voice, client_material) -> dict
         client_material=_client_block(client_material),
         task=task,
         voice=voice,
+        surface=surface,
     )
 
     ctx.status = STATUS_GROUNDED
@@ -234,6 +261,8 @@ def _build(request, payload, ctx, spec, *, task, voice, client_material) -> dict
         used_personal=bool(trusted),
         source_ids=source_ids,
         source_versions=source_versions,
+        surface=surface,
+        key_source=key_source,
     )
     _audit("studio_context_room_grounded", ctx, spec, decision, meta)
     return {"system": system, "user": user, "meta": meta}
@@ -273,7 +302,7 @@ def _retrieve(decision, ctx, spec) -> tuple[list[str], list[str], list[str]]:
     return excerpts, source_ids, versions
 
 
-def _unavailable(reason: str, ctx, spec) -> dict:
+def _unavailable(reason: str, ctx, spec, surface: str = relevance.DEFAULT_SURFACE) -> dict:
     """Apply the Phase 1 failure policy. Neither branch claims grounding."""
     ctx.note(reason)
     policy = modes.failure_policy()
@@ -281,13 +310,13 @@ def _unavailable(reason: str, ctx, spec) -> dict:
     if policy == modes.FALLBACK_LEGACY:
         ctx.status = STATUS_FALLBACK_LEGACY
         meta = _meta(spec, decision, used_personal=False, source_ids=(), source_versions=(),
-                     status=STATUS_FALLBACK_LEGACY, fallback_reason=reason)
+                     status=STATUS_FALLBACK_LEGACY, fallback_reason=reason, surface=surface)
         _audit("studio_context_room_fallback_legacy", ctx, spec, decision, meta, detail=reason)
         return {"legacy": True, "meta": meta}
 
     ctx.status = STATUS_UNAVAILABLE
     meta = _meta(spec, decision, used_personal=False, source_ids=(), source_versions=(),
-                 status=STATUS_UNAVAILABLE, fallback_reason=reason)
+                 status=STATUS_UNAVAILABLE, fallback_reason=reason, surface=surface)
     _audit("studio_context_room_grounding_unavailable", ctx, spec, decision, meta, detail=reason)
     return {"error": spec.unavailable_message, "meta": meta}
 
@@ -384,26 +413,62 @@ def _owned_line(records: list[dict]) -> int | None:
     return None
 
 
-def _declared_pointer(payload: Any, owned_keys: tuple[int, ...], ctx) -> int | None:
-    """Honour `gk_num` only where the member's own records corroborate it.
+def _orientation(
+    payload: Any, records: list[dict], surface: str, ctx
+) -> tuple[tuple[int, ...], int | None, str]:
+    """Which keys and line this room is grounded in, and on whose authority.
 
-    The browser may narrow grounding to one of the member's keys; it may not
-    widen it to a key they have not accepted. An uncorroborated pointer is
-    noted and ignored rather than rejected outright, because the common cause
-    is a cOMpass baseline that has not been accepted into stUdio yet.
+    Accepted records come first on every surface: if the member has accepted a
+    key for this room, that is their orientation, and `gk_num` may only select
+    among those keys. What differs is what happens when the browser names a key
+    no record corroborates. In stUdio that is a pointer at material the member
+    has not adopted, and it is ignored. In cOMpass it is the room's own resolved
+    baseline — the key and line rendered in the header the member is looking at
+    — and there is no server-side record to check it against, because cOMpass
+    keeps its state in the browser. Treating it as unknown there produces a
+    clarification asking for something already on screen.
+
+    Honouring the key never means trusting the browser's text for it: the
+    Shadow/Gift/Siddhi content is always read from the versioned corpus.
     """
+    owned_keys = tuple(sorted({int(r["gene_key"]) for r in records if r.get("gene_key")}))
+    owned_line = _owned_line(records)
+    key_source = KEY_SOURCE_ACCEPTED if owned_keys else KEY_SOURCE_NONE
+    baseline_line = _declared_line(payload, ctx) if surface == relevance.COMPASS else None
+
+    declared = _declared_key(payload, ctx)
+    if declared is None:
+        return owned_keys, owned_line or baseline_line, key_source
+    if declared in owned_keys:
+        line = _owned_line([r for r in records if r.get("gene_key") == declared])
+        return (declared,), line or owned_line or baseline_line, KEY_SOURCE_POINTER
+    if surface == relevance.COMPASS:
+        ctx.note("grounded in the cOMpass room baseline")
+        return (declared,), baseline_line, KEY_SOURCE_BASELINE
+    ctx.note("client gene key pointer is not in the member's accepted records")
+    return owned_keys, owned_line, key_source
+
+
+def _declared_key(payload: Any, ctx) -> int | None:
     raw = getattr(payload, "gk_num", "")
     if raw in (None, "", 0):
         return None
     try:
-        declared = canonical.validate_gene_key(raw)
+        return canonical.validate_gene_key(raw)
     except CanonicalSourceError as exc:
         ctx.note(f"ignored client gene key pointer: {exc}")
         return None
-    if declared not in owned_keys:
-        ctx.note("client gene key pointer is not in the member's accepted records")
+
+
+def _declared_line(payload: Any, ctx) -> int | None:
+    raw = getattr(payload, "gk_line", "")
+    if raw in (None, "", 0):
         return None
-    return declared
+    try:
+        return canonical.validate_line(raw)
+    except CanonicalSourceError as exc:
+        ctx.note(f"ignored client gene key line: {exc}")
+        return None
 
 
 def _note_dropped_client_transcript(payload: Any, ctx) -> None:
@@ -434,6 +499,8 @@ def _meta(
     source_versions,
     status: str = STATUS_GROUNDED,
     fallback_reason: str = "",
+    surface: str = relevance.DEFAULT_SURFACE,
+    key_source: str = KEY_SOURCE_NONE,
 ) -> dict:
     """Non-sensitive grounding metadata for the response envelope.
 
@@ -445,6 +512,8 @@ def _meta(
     grounding = {
         "mode": modes.GROUNDED_V1,
         "room": spec.room,
+        "surface": relevance.normalize_surface(surface),
+        "gene_key_source": key_source,
         "pipeline": spec.contract_version,
         "prompt_versions": [prompts.FOUNDATION_VERSION, spec.contract_version],
         "status": status,
@@ -505,6 +574,8 @@ def debug_state() -> dict:
                            + [ROOM_SPECS[r].contract_version for r in GROUNDED_ROOMS],
         "relevance_outcomes": list(relevance.OUTCOMES),
         "source_use_categories": list(SOURCE_USE_CATEGORIES),
+        "surfaces": list(relevance.SURFACES),
+        "gene_key_sources": list(KEY_SOURCES),
         "rooms_grounded": list(GROUNDED_ROOMS) if active else [],
         "rooms_legacy": [] if active else list(GROUNDED_ROOMS),
         "rooms": {
@@ -539,6 +610,11 @@ __all__ = [
     "STATUS_UNAVAILABLE",
     "STATUS_FALLBACK_LEGACY",
     "SOURCE_USE_CATEGORIES",
+    "KEY_SOURCES",
+    "KEY_SOURCE_NONE",
+    "KEY_SOURCE_ACCEPTED",
+    "KEY_SOURCE_POINTER",
+    "KEY_SOURCE_BASELINE",
     "source_use",
     "spec_for",
     "is_active",
