@@ -95,9 +95,10 @@ assert(
 );
 
 // Helper must use CommonUnityPlaces.resolve and write the three
-// canonical profile fields.
+// canonical profile fields. The window spans the whole helper — a
+// tighter bound stopped short of the birth_tz_offset_minutes write.
 const syncStart = indexSrc.indexOf('function syncSetupIntoProfile');
-const syncSlice = indexSrc.slice(syncStart, syncStart + 4000);
+const syncSlice = indexSrc.slice(syncStart, syncStart + 6000);
 assert(
   /CommonUnityPlaces\.resolve\s*\(/.test(syncSlice),
   'syncSetupIntoProfile calls CommonUnityPlaces.resolve()'
