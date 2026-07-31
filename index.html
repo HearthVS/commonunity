@@ -1346,6 +1346,16 @@ button { cursor: pointer; background: none; border: none; }
   cursor: default;
 }
 
+/* Core Theme: same skin as .layer-input, but two lines tall to start and grown
+   by autosizeField() as content arrives. min-height keeps the two lines while a
+   layer panel is display:none, where scrollHeight cannot be measured. */
+textarea.layer-input {
+  line-height: 1.7;
+  min-height: calc(2 * 1.7em + 2 * var(--space-3) + 2px);
+  resize: none;
+  overflow: hidden;
+}
+
 /* ============================================================
    INSIGHT BLOCKS
    ============================================================ */
@@ -4376,7 +4386,7 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="layer-panel" data-layer="synthesis">
       <div>
         <p class="layer-section-label">Core Theme</p>
-        <input class="layer-input" type="text" data-key="work.theme" placeholder="The essential thread…">
+        <textarea class="layer-input" data-key="work.theme" rows="2" data-autosize placeholder="The essential thread…"></textarea>
         <button class="inspire-l2-btn" data-inspire-l2="work.theme" title="AI draft from your profile">✨ Inspire</button>
         <div class="inspire-l2-suggestion" id="inspire-l2-work-theme"></div>
       </div>
@@ -4656,7 +4666,7 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="layer-panel" data-layer="synthesis">
       <div>
         <p class="layer-section-label">Core Theme</p>
-        <input class="layer-input" type="text" data-key="lens.theme" placeholder="The essential thread…">
+        <textarea class="layer-input" data-key="lens.theme" rows="2" data-autosize placeholder="The essential thread…"></textarea>
         <button class="inspire-l2-btn" data-inspire-l2="lens.theme" title="AI draft from your profile">✨ Inspire</button>
         <div class="inspire-l2-suggestion" id="inspire-l2-lens-theme"></div>
       </div>
@@ -4933,7 +4943,7 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="layer-panel" data-layer="synthesis">
       <div>
         <p class="layer-section-label">Core Theme</p>
-        <input class="layer-input" type="text" data-key="field.theme" placeholder="The essential thread…">
+        <textarea class="layer-input" data-key="field.theme" rows="2" data-autosize placeholder="The essential thread…"></textarea>
         <button class="inspire-l2-btn" data-inspire-l2="field.theme" title="AI draft from your profile">✨ Inspire</button>
         <div class="inspire-l2-suggestion" id="inspire-l2-field-theme"></div>
       </div>
@@ -5210,7 +5220,7 @@ body.companion-mode .companion-mode-banner { display: block; }
     <div class="layer-panel" data-layer="synthesis">
       <div>
         <p class="layer-section-label">Core Theme</p>
-        <input class="layer-input" type="text" data-key="call.theme" placeholder="The essential thread…">
+        <textarea class="layer-input" data-key="call.theme" rows="2" data-autosize placeholder="The essential thread…"></textarea>
         <button class="inspire-l2-btn" data-inspire-l2="call.theme" title="AI draft from your profile">✨ Inspire</button>
         <div class="inspire-l2-suggestion" id="inspire-l2-call-theme"></div>
       </div>
@@ -5916,6 +5926,22 @@ function lookupGK(point) {
 }
 
 // ============================================================
+// AUTOSIZE — [data-autosize] textareas grow with their content
+// ============================================================
+function autosizeField(el) {
+  if (!el || el.tagName !== 'TEXTAREA' || el.dataset.autosize === undefined) return;
+  el.style.height = 'auto';
+  // scrollHeight is 0 while an ancestor layer panel is display:none, so leave
+  // the CSS min-height in place and measure again once the panel is shown.
+  if (el.scrollHeight > 0) el.style.height = el.scrollHeight + 'px';
+  else el.style.removeProperty('height');
+}
+
+function autosizeAllFields(root) {
+  (root || document).querySelectorAll('textarea[data-autosize]').forEach(autosizeField);
+}
+
+// ============================================================
 // DATA BINDING — bind all [data-key] elements to state
 // ============================================================
 function bindDataKeys() {
@@ -5925,9 +5951,11 @@ function bindDataKeys() {
     // Set initial value
     if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
       el.value = state.points[point][field] || '';
+      autosizeField(el);
     }
 
     el.addEventListener('input', () => {
+      autosizeField(el);
       // Sacred Mode guard: while the Field Notes surface for this point
       // is in Sacred Mode, the textarea holds the in-memory sacred buffer.
       // It must NOT be written into state.points[*].raw (and therefore must
@@ -6070,7 +6098,9 @@ function initLayerTabs() {
         tabBtns.forEach(b => b.classList.remove('active'));
         panels.forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
-        card.querySelector(`.layer-panel[data-layer="${layer}"]`).classList.add('active');
+        const panel = card.querySelector(`.layer-panel[data-layer="${layer}"]`);
+        panel.classList.add('active');
+        autosizeAllFields(panel);
       });
     });
   });
@@ -6089,7 +6119,9 @@ function initCompassTabs() {
       tabBtns.forEach(b => b.classList.remove('active'));
       cards.forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
-      document.querySelector(`.compass-card[data-card="${point}"]`).classList.add('active');
+      const card = document.querySelector(`.compass-card[data-card="${point}"]`);
+      card.classList.add('active');
+      autosizeAllFields(card);
     });
   });
 }
@@ -6321,7 +6353,7 @@ function cuPurgeForeignCompanionState(authoritativeName) {
     try {
       document.querySelectorAll('[data-key]').forEach(function (el) {
         var parts = String(el.dataset.key || '').split('.');
-        if (parts.length === 2 && state.points && state.points[parts[0]]) el.value = '';
+        if (parts.length === 2 && state.points && state.points[parts[0]]) { el.value = ''; autosizeField(el); }
       });
     } catch (_) {}
     state.gk_profile = { cs: null, us: null, ce: null, ue: null };
@@ -7056,6 +7088,7 @@ function openCompass() {
     const [point, field] = el.dataset.key.split('.');
     if (state.points[point] && state.points[point][field] !== undefined) {
       el.value = state.points[point][field];
+      autosizeField(el);
     }
   });
 
@@ -7073,6 +7106,7 @@ function openCompass() {
 
   document.getElementById('screen-setup').style.display    = 'none';
   document.getElementById('screen-compass').style.display  = 'flex';
+  autosizeAllFields();
   window.scrollTo(0, 0);
 
   // Defensive: ensure the OM Cipher pill in the Compass header is
@@ -7866,6 +7900,7 @@ function restoreAllFields() {
     const [point, field] = el.dataset.key.split('.');
     if (state.points[point] && state.points[point][field] !== undefined) {
       el.value = state.points[point][field];
+      autosizeField(el);
     }
   });
 
@@ -9660,6 +9695,7 @@ function resetSession() {
     const [point, field] = el.dataset.key.split('.');
     if (state.points[point] && state.points[point][field] !== undefined) {
       el.value = state.points[point][field];
+      autosizeField(el);
     }
   });
   POINTS.forEach(p => {
