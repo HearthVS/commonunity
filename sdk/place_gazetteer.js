@@ -760,6 +760,27 @@
     return results;
   }
 
+  // The persisted / handed-off shape of a chosen place. Every surface
+  // that captures one (cOMpass #pob, threshold #th-birth-place) stores
+  // this, so a place chosen on either means the same thing downstream.
+  function toStoredPlace(rec, method) {
+    if (!rec) return null;
+    return {
+      provider:          'city-timezones/vendored-gazetteer',
+      place_id:          rec.id,
+      display_label:     rec.displayLabel,
+      city:              rec.city,
+      region:            rec.province || '',
+      country:           rec.country || '',
+      country_code:      rec.iso2 || '',
+      latitude:          rec.latitude,
+      longitude:         rec.longitude,
+      tz_offset_minutes: rec.tzOffsetMinutes,
+      iana:              rec.iana || '',
+      selection_method:  method || 'suggestion'
+    };
+  }
+
   // Re-hydrate a canonical record from a previously stored id.
   function findById(id) {
     if (!id) return null;
@@ -775,6 +796,7 @@
     resolve:               resolve,
     suggest:               suggest,
     findById:              findById,
+    toStoredPlace:         toStoredPlace,
     preload:               preload,
     _setCities:            _setCities,
     EMERGENCY_INLINE:      EMERGENCY_INLINE,

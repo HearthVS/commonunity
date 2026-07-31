@@ -504,6 +504,49 @@ html, body {
   min-height: 1.25rem;
 }
 
+/* City suggestions for the birth-place field — same behaviour as the
+   cOMpass #pob dropdown, drawn with this page's own tokens. */
+.place-combo { position: relative; }
+.place-suggest {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  background: var(--threshold-input-bg);
+  border: 1px solid var(--threshold-border);
+  border-radius: 10px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+}
+.place-suggest.open { display: block; }
+.place-suggest li {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  color: var(--threshold-text);
+  cursor: pointer;
+}
+.place-suggest li:hover {
+  background: color-mix(in srgb, var(--cipher-primary) 18%, transparent);
+}
+.place-suggest li.place-suggest-empty {
+  color: var(--threshold-text-faint);
+  cursor: default;
+  background: none;
+}
+.place-error {
+  display: none;
+  color: #f87171;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+}
+.place-error.visible { display: block; }
+
 /* ─────────────────────────────────────────────────────────────────────────
    Interim chamber — the theatrical center.
    ───────────────────────────────────────────────────────────────────── */

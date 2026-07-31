@@ -5499,7 +5499,7 @@ body.companion-mode .companion-mode-banner { display: block; }
 <!-- ?v= is load-bearing: /sdk/* is served with max-age=14400 behind a CDN,
      so without a fresh URL a 4h-stale gazetteer pairs with never-cached HTML
      and the city suggestions silently stop working. Bump on every change. -->
-<script src="/sdk/place_gazetteer.js?v=2"></script>
+<script src="/sdk/place_gazetteer.js?v=3"></script>
 <script>window.CU_OM_CIPHER_ENABLED = true;</script>
 <script src="/sdk/om_cipher_layer6_data.js"></script>
 <script src="/sdk/om_cipher.js"></script>
@@ -6368,6 +6368,9 @@ function cuHydrateGeneKeysFromContract() {
     }
     if (id.birth_place && !state.pob) {
       state.pob = id.birth_place;
+      // The threshold now validates the city against the same gazetteer,
+      // so carry its record across rather than fuzzy-matching the label.
+      if (id.birth_place_canonical) state.pob_place = id.birth_place_canonical;
       var pobEl = document.getElementById('pob');
       if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
     }
@@ -6398,24 +6401,12 @@ function pobGazetteer() {
 // absence as "cannot answer" rather than "no such city".
 function pobProviderReady() {
   var g = pobGazetteer();
-  return !!(g && typeof g.suggest === 'function');
+  return !!(g && typeof g.suggest === 'function' &&
+            typeof g.toStoredPlace === 'function');
 }
 
 function pobSetSelection(rec, method) {
-  state.pob_place = {
-    provider:          'city-timezones/vendored-gazetteer',
-    place_id:          rec.id,
-    display_label:     rec.displayLabel,
-    city:              rec.city,
-    region:            rec.province || '',
-    country:           rec.country || '',
-    country_code:      rec.iso2 || '',
-    latitude:          rec.latitude,
-    longitude:         rec.longitude,
-    tz_offset_minutes: rec.tzOffsetMinutes,
-    iana:              rec.iana || '',
-    selection_method:  method || 'suggestion'
-  };
+  state.pob_place = pobGazetteer().toStoredPlace(rec, method);
   state.pob = rec.displayLabel;
   return state.pob_place;
 }
@@ -9301,6 +9292,9 @@ function initThresholdContract() {
   }
   if (id.birth_place) {
     state.pob = state.pob || id.birth_place;
+    if (id.birth_place_canonical && !state.pob_place) {
+      state.pob_place = id.birth_place_canonical;
+    }
     const pobEl = document.getElementById('pob');
     if (pobEl && !pobEl.value) pobEl.value = id.birth_place;
   }

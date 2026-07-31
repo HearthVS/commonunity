@@ -24,6 +24,17 @@
       document.head.appendChild(s);
     })();
   </script>
+  <!-- City gazetteer for the birth-place field. Same vendored provider and
+       same ?v= cache key as cOMpass: /sdk/* is served max-age=14400 behind a
+       CDN, so an unversioned URL can pair new markup with a stale script. -->
+  <script src="/sdk/place_gazetteer.js?v=3"></script>
+  <script>
+    (function () {
+      if (!window.CommonUnityPlaces) return;
+      try { window.CommonUnityPlaces.preload('/data/places/city_timezones.json'); }
+      catch (_) {}
+    })();
+  </script>
   <script src="/threshold/threshold.js"></script>
 <!-- CommonUnity Feedback Widget -->
 <div id="cu-feedback-widget">
