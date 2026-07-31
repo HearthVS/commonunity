@@ -75,8 +75,11 @@ section('2. threshold.html loads the same gazetteer, cache-busted');
   ok('its URL is cache-busted', !!thTag);
   ok('both pages pin the same version so neither can go stale alone',
      !!thTag && !!ixTag && thTag[1] === ixTag[1]);
-  ok('it preloads the vendored dataset — no new provider or key',
-     /CommonUnityPlaces\.preload\('\/data\/places\/city_timezones\.json'\)/.test(thHtml));
+  const thData = thHtml.match(/preload\('\/data\/places\/city_timezones\.json\?v=(\d+)'\)/);
+  const ixData = indexSrc.match(/preload\('\/data\/places\/city_timezones\.json\?v=(\d+)'\)/);
+  ok('it preloads the vendored dataset — no new provider or key', !!thData);
+  ok('the dataset URL is cache-busted too — /data is cached like /sdk',
+     !!thData && !!ixData && thData[1] === ixData[1]);
   ok('no second geocoding provider is introduced',
      !/googleapis|mapbox|nominatim|opencage/i.test(thHtml + thSrc));
   ok('the contract schema carries the canonical record',

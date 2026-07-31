@@ -1,11 +1,11 @@
 /* CommonUnity place gazetteer — deterministic local resolver for
  * birth-place strings → { latitude, longitude, tzOffsetMinutes, iana }.
  *
- * Backing dataset: a vendored copy of `city-timezones` (Kevin Roberts,
- * MIT — https://github.com/kevinroberts/city-timezones), ~7,300 cities
- * worldwide with city / lat / lng / iso2 / iso3 / province / timezone
- * (IANA name). The dataset lives at `data/places/city_timezones.json`;
- * see `data/places/README.md` for provenance.
+ * Backing dataset: a vendored merge of `city-timezones` (Kevin Roberts,
+ * MIT) and the GeoNames cities15000 tier (CC BY 4.0), ~21,700 cities
+ * worldwide with city / lat / lng / iso2 / province / timezone (IANA
+ * name). The dataset lives at `data/places/city_timezones.json`; see
+ * `data/places/README.md` for provenance.
  *
  * Resolution strategy (no runtime network calls):
  *
@@ -152,7 +152,9 @@
     'America/Cayman':         -300,
     'America/Chicago':        -360,
     'America/Chihuahua':      -420,
+    'America/Ciudad_Juarez':  -420, // Mountain, split from America/Ojinaga
     'America/Costa_Rica':     -360,
+    'America/Coyhaique':      -180, // Aysen, permanent UTC-3
     'America/Creston':        -420,
     'America/Cuiaba':         -240,
     'America/Curacao':        -240,
@@ -221,6 +223,7 @@
     'America/North_Dakota/Beulah':   -360,
     'America/North_Dakota/Center':   -360,
     'America/North_Dakota/New_Salem':-360,
+    'America/Nuuk':           -120, // Greenland standard since 2023 (was America/Godthab)
     'America/Ojinaga':        -420,
     'America/Panama':         -300,
     'America/Pangnirtung':    -300,
@@ -333,6 +336,7 @@
     'Asia/Pontianak':    420,
     'Asia/Pyongyang':    540,
     'Asia/Qatar':        180,
+    'Asia/Qostanay':     300, // == Asia/Qyzylorda (UTC+5)
     'Asia/Qyzylorda':    300,
     'Asia/Riyadh':       180,
     'Asia/Sakhalin':     660,
@@ -510,7 +514,7 @@
 
   // Emergency inline subset — used while the full dataset is loading
   // in the browser (or if loading fails). Tiny on purpose; the full
-  // ~7,300-city dataset is in data/places/city_timezones.json.
+  // ~21,700-city dataset is in data/places/city_timezones.json.
   var EMERGENCY_INLINE = [
     { city: 'Sudbury',     country: 'Canada', iso2: 'CA', province: 'Ontario',         lat: 46.4917,  lng: -80.9930, timezone: 'America/Toronto' },
     { city: 'Toronto',     country: 'Canada', iso2: 'CA', province: 'Ontario',         lat: 43.6532,  lng: -79.3832, timezone: 'America/Toronto' },
@@ -681,9 +685,10 @@
   }
 
   // Canonical record for one dataset row — the single shape every
-  // caller (suggest, resolve, findById) hands back. `id` is derived
-  // from the row's own fields so it is stable across reloads without
-  // the dataset carrying explicit identifiers.
+  // caller (suggest, resolve, findById) hands back. `id` is the GeoNames
+  // id where the row has one, so it survives the coordinate refinements
+  // a dataset refresh brings; rows vendored before GeoNames keep the
+  // derived id they were stored under.
   function canonical(row) {
     var iana = row.timezone || row.iana || '';
     var tzOff = IANA_STANDARD_OFFSETS[iana];
@@ -695,9 +700,11 @@
     var lat      = Number(row.lat);
     var lng      = Number(row.lng);
     return {
-      id:              [slug(city), iso2.toLowerCase(), slug(province),
-                        isFinite(lat) ? lat.toFixed(4) : '',
-                        isFinite(lng) ? lng.toFixed(4) : ''].join('|'),
+      id:              row.geonameid
+                        ? 'geonames:' + row.geonameid
+                        : [slug(city), iso2.toLowerCase(), slug(province),
+                           isFinite(lat) ? lat.toFixed(4) : '',
+                           isFinite(lng) ? lng.toFixed(4) : ''].join('|'),
       displayLabel:    [city, province, country].filter(Boolean).join(', '),
       latitude:        lat,
       longitude:       lng,
