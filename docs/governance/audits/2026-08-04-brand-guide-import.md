@@ -54,7 +54,7 @@
 | # | Limb | Reservation | Owner | Follow-up |
 | - | --- | --- | --- | --- |
 | 1 | Dhyana | DIGIT absent from the guide's Product architecture | Markus | Add DIGIT to the guide in its next revision (v0.2) |
-| 2 | Dhyana | Key↔Cipher public naming not propagated to UI/copy | Markus | Apply "CommonUnity Key" as the public name for the Cipher in member-facing surfaces when copy work happens |
+| 2 | Dhyana | CommonUnity Key public naming not yet in UI/copy | Markus | Introduce "CommonUnity Key" in member-facing surfaces for the portable file that carries the OM Cipher + Living Profile, when copy work happens |
 | 3 | Asana | Guide is v0.1 review draft, not settled | Markus | Review/refine toward v0.2; casing "Studio" → "stUdio" for repo consistency |
 
 ## Outcome
