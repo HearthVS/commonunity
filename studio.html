@@ -3092,6 +3092,35 @@ input, textarea { font: inherit; color: inherit; }
 }
 .digit-stance { font-size: 11px; color: var(--text-muted); margin-left: auto; text-align: right; }
 
+/* About affordance — governance copy on hover/focus, not permanent chrome. */
+.digit-about {
+  position: relative; flex-shrink: 0; padding: 0; cursor: help;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.digit-about:hover, .digit-about:focus-visible {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 50%, transparent);
+  outline: none;
+}
+.digit-about-i { font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 9px; line-height: 1; }
+.digit-about-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 20;
+  width: 220px; text-align: left; text-transform: none; font-weight: 400;
+  font-size: 10px; line-height: 1.5; letter-spacing: 0.01em; color: var(--text-muted);
+  padding: 8px 10px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  opacity: 0; visibility: hidden; transform: translateY(-3px); pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms;
+}
+.digit-about:hover .digit-about-pop,
+.digit-about:focus .digit-about-pop,
+.digit-about:focus-visible .digit-about-pop { opacity: 1; visibility: visible; transform: translateY(0); }
+
 /* Stage rail — orient → plan · act · review · publish (last three deferred). */
 .digit-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .digit-stage {
@@ -11699,6 +11728,12 @@ body.hw-open { overflow: hidden; }
             <span class="spb-dot" aria-hidden="true"></span>
             <span class="digit-name">DIGIT</span>
             <span class="digit-stance" id="digit-stance">Here when you're ready to build.</span>
+            <!-- Governance copy lives here on hover/focus rather than sitting on
+                 the surface permanently (matches the info-overlay convention). -->
+            <button type="button" class="digit-about" aria-label="About DIGIT">
+              <span class="digit-about-i" aria-hidden="true">i</span>
+              <span class="digit-about-pop" role="tooltip">Nexus orients meaning · DIGIT composes form. DIGIT works only with what you bring forward, never touches Sacred material, and publishing is always yours to confirm.</span>
+            </button>
           </div>
           <!-- Creation dashboard — makes DIGIT's process legible (not a black
                box): these are STATUS, not navigation. They light up to show what
@@ -11717,7 +11752,7 @@ body.hw-open { overflow: hidden; }
              distinct from Nexus, which reflects and does not make artifacts. -->
         <div class="digit-thread" id="digit-thread">
           <div class="digit-msg digit-msg-digit">
-            <p>You're in <strong>The Work</strong> — your Fieldprint, the private stage where form takes shape. Tell me what you'd like to build, or bring something forward, and I'll shape it with you. I only work with what you offer, and publishing is always yours to confirm.</p>
+            <p>You're in <strong>The Work</strong> — your private Fieldprint. Tell me what you'd like to build, or bring something forward, and I'll shape it with you.</p>
           </div>
         </div>
 
@@ -11729,7 +11764,6 @@ body.hw-open { overflow: hidden; }
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             </button>
           </div>
-          <p class="digit-boundary"><strong>Nexus orients meaning · DIGIT composes form.</strong> Never touches Sacred material.</p>
         </div>
       </div>
 
@@ -13707,7 +13741,7 @@ function studioDigitResetThread() {
   const thread = document.getElementById('digit-thread');
   if (thread) {
     thread.innerHTML =
-      '<div class="digit-msg digit-msg-digit"><p>You\'re in <strong>The Work</strong> — your Fieldprint, the private stage where form takes shape. Tell me what you\'d like to build, or bring something forward, and I\'ll shape it with you. I only work with what you offer, and publishing is always yours to confirm.</p></div>';
+      '<div class="digit-msg digit-msg-digit"><p>You\'re in <strong>The Work</strong> — your private Fieldprint. Tell me what you\'d like to build, or bring something forward, and I\'ll shape it with you.</p></div>';
   }
   digitSetDash({});
   const send = document.getElementById('digit-send');
