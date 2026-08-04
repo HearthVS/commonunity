@@ -32,6 +32,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     ai-roles.md                          ← Nexus ↔ DIGIT boundary and handoff logic
     codex-golden-thread.md               ← compressed codex entry, primary retrieval
     om-cipher.md                         ← foundational framing of the cipher
+    om-cipher-white-paper.md             ← originating vision: fixed/living, the Key, matching algorithm
   /architecture                          ← how the system is built
     system-map.md                        ← layers and their relationships
     app-map.md                           ← surfaces (Studio, cOMmons, Personal Home, ...)
