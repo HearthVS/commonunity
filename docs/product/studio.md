@@ -8,6 +8,8 @@ Studio is the member's **higher-octave toolkit and living workspace**. It is dow
 
 Studio is where the person works with their new baseline. It provides creative, healing, productive, and innovative tools that help the member manifest Unity in practice.
 
+Studio holds both AI presences: **Nexus** (contemplative, orienting) and **DIGIT** (the compositional builder presence — see [`./digit.md`](./digit.md)). Their boundary is defined in [`../foundation/ai-roles.md`](../foundation/ai-roles.md): Nexus orients meaning; DIGIT composes form.
+
 ## What Studio is not
 
 - Studio is **not** where Om Cipher or Living Profile are generated. Those come from Compass.

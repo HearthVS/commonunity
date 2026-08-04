@@ -1,0 +1,283 @@
+CommonUnity stUdio, Archive, and AI Ambience —
+Second-Pass Direction
+Date: 2026-07-04
+
+Core shift
+The article clarifies that CommonUnity is not trying to become a more capable AI app. It is
+trying to become a human orientation system in a world where intelligence becomes ambient.
+This changes the design target for stUdio. We should not keep adding features as if the goal is to
+prove what AI can do. The goal is to shape an environment where intelligence is present,
+proportionate, consentful, and in right relationship with the human field.
+The operating question is no longer:
+       What can Nexus process?
+It becomes:
+       What should intelligence touch, what should simply be remembered, and what should
+       remain held?
+
+Resonance as internal architecture
+The Resonance Virtual Machine / executable phenomenology frame adds a useful internal
+design lens, but should not become front-of-house terminology yet.
+The useful insight is not the label. It is the shift from organizing interactions by content type to
+organizing them by the kind of transformation they perform.
+CommonUnity should therefore ask:
+       What kind of transformation is this interaction designed to produce?
+Rather than:
+       What kind of file or prompt is this?
+This suggests that stUdio is not merely a workspace and Archive is not merely storage.
+Together, they contain repeatable symbolic protocols that shape attention, memory, reflection,
+and action.
+Possible internal protocol families:
+    Diagnostic protocols: reveal what is already present but unseen.
+    Holding protocols: let something be remembered without being processed.
+    Preparation protocols: extract, transcribe, describe, clean, or make material readable
+    without interpreting it.
+    Offering protocols: let the user intentionally bring selected material into Nexus.
+    Reflective protocols: help the user see patterns, assumptions, tensions, and questions.
+    Generative protocols: turn worked material into artifacts, maps, language, pages,
+    messages, or new grammars.
+    Return protocols: bring interpreted material back into Archive as continuity.
+This should remain mostly invisible to the user. The user should feel a living sequence, not
+study a taxonomy.
+
+Four surfaces, four roles
+The article gives a clean role separation that should guide the product architecture:
+    cOMpass: orients the field. It is threshold, direction, identity, consent, and inner
+    alignment.
+    stUdio: works the field. It turns fragments into forms, reflections into artifacts, questions
+    into maps, and observations into patterns.
+    Archive: remembers the field. It preserves continuity without forcing everything into the
+    present moment.
+    Field Recorder: captures the field. It catches phrases, sounds, photos, dreams, bodily
+    sensations, synchronicities, and fragments before they know what they want to become.
+The current stUdio build is converging toward this, but Archive and Nexus need better
+ambience and clearer boundaries.
+
+Archive should not be a feed
+Archive is not a drawer of files, a searchable dumping ground, or a productivity inbox. It is
+continuity.
+Its purpose is to let material be stored, retrieved, revisited, and re-understood across time. It
+should protect depth, not create another attention surface.
+This implies:
+    Quiet by default: Archive should not visually compete with Field Observations or Nexus.
+    Remember, do not demand: Archive should hold material without constantly asking the
+    user to act.
+    Temporal depth: Archive should support revisiting and re-understanding, not just sorting
+    by file type.
+    Consentful activation: Archive material should become active only when selected, opened,
+    processed, or invited into Nexus.
+    No feed behavior: Avoid endless scrolling, novelty bias, unread badges, or engagement-
+    style signals.
+Archive states
+Archive should have explicit states that map to the trust boundary:
+  1. Held
+         Captured and remembered.
+         Not processed.
+         Not interpreted.
+         Not in Nexus.
+  2. Prepared
+         Text extracted, audio transcribed, or image described.
+         Still not interpreted.
+         Human can review, edit, discard, or keep.
+  3. Offered
+         User intentionally selects material and offers it to Nexus.
+         Nexus sees it because the user invited it.
+  4. Worked
+         Nexus has reflected, interpreted, mapped, summarized, or transformed it.
+         Result becomes an artifact, insight, thread, map, or next action.
+  5. Returned
+         The worked material returns to Archive as continuity.
+         The system remembers what happened, without forcing it into the active field forever.
+This is the loop:
+       Capture → Hold → Prepare → Offer → Work → Return
+This is more aligned than:
+       Upload → Process → Chat
+The Resonance Virtual Machine frame strengthens this state model. These are not only data
+states; they are experiential states. Each one changes the human relationship to the material:
+    Held preserves agency by allowing memory without action.
+    Prepared increases clarity without interpretation.
+    Offered marks consent.
+    Worked invites intelligence into relationship.
+    Returned protects continuity after the active moment has passed.
+This distinction matters because CommonUnity should not collapse all captured material into
+computation. Some material is meant to remain held. Some is meant to be prepared. Some is
+meant to be interpreted. Some may be meant to be released.
+AI ambience
+The right AI ambience is neither hidden automation nor noisy assistant.
+Nexus should feel like an ambient intelligence that becomes available when invited. It should
+not constantly ask to help. It should not interpret everything. It should not treat every captured
+thing as raw material for computation.
+Good ambience:
+      “I am here when you are ready.”
+      “This can be held without being processed.”
+      “This can be prepared before interpretation.”
+      “This can remain private.”
+      “You can ask me to look when the time is right.”
+Bad ambience:
+      “I summarized this for you automatically.”
+      “I found patterns in everything you uploaded.”
+      “Here are suggestions before you asked.”
+      “Your archive is full of tasks.”
+      “Everything is available to AI by default.”
+
+UI implication: the Archive action layer
+The Archive action layer should not feel like a productivity toolbar. It should feel like an
+invitation layer.
+Instead of a generic box saying:
+         What do you want to do with these files?
+The better CommonUnity phrasing may be:
+         How would you like to meet this material?
+Or:
+         What kind of attention does this need?
+Actions can be grouped by depth:
+
+Remember
+      Keep held
+      Add note
+      Add source/context
+    Group into bundle
+    Mark private
+    Mark not for processing
+
+Prepare
+    Extract text
+    Transcribe audio
+    Describe image
+    Clean formatting
+    Create review text
+
+Offer to Nexus
+    Bring selected text to Nexus
+    Ask Nexus to reflect
+    Ask Nexus to map patterns
+    Ask Nexus to turn into artifact
+    Ask Nexus what kind of attention this material needs
+
+Release
+    Hide from active room
+    Archive quietly
+    Delete
+    Mark “not for processing”
+This makes the Archive an ethical interface, not just a file manager.
+
+Selection should feel ritual, not mechanical
+Checkboxes are functional, but they should be framed as “choosing what enters the field.”
+Possible labels:
+    Select
+    Include
+    Offer
+    Bring forward
+    Work with this
+For CommonUnity, “Bring forward” may be the strongest phrase. It already exists in the current
+language and carries the right meaning: material moves from held memory into active
+attention.
+The central Field Observations surface
+The central surface should remain the place where life enters. It should be receptive, spacious,
+and non-demanding.
+Its primary gesture is:
+       I notice this. I place it here.
+After capture, stUdio can gently reveal the next possible gestures:
+    Hold in Archive
+    Prepare for reading
+    Bring forward
+    Ask Nexus
+    Shape into artifact
+But these should emerge contextually, not crowd the first moment.
+
+Nexus relation to Archive
+Nexus should not “scan the Archive.” It should meet what is offered.
+Nexus can know that Archive exists, and it can ask for consent:
+    “I can work with material from your Archive if you choose what to bring forward.”
+    “This PDF has been extracted. Would you like me to reflect on it?”
+    “There are three observations from this room. Should I look across them?”
+This creates a conscious boundary:
+    Archive remembers.
+    User chooses.
+    Nexus interprets.
+
+Processing tools are not all Nexus
+The article helps distinguish between utility and interpretation.
+Some operations are standard preparation:
+    PDF text extraction
+    Audio transcription
+    OCR
+    File type detection
+    Basic cleanup
+These do not need Nexus. They are preparation tools.
+Other operations are interpretive:
+    What pattern is here?
+    What is this asking of me?
+    How does this relate to my current room?
+    What wants to become artifact?
+    What should be shared, held, or forgotten?
+These belong with Nexus.
+The UI should preserve this distinction.
+The RVM lens makes this more explicit:
+    Extraction is not interpretation.
+    Transcription is not reflection.
+    Description is not meaning.
+    Summarization may be preparation or interpretation depending on depth.
+    Nexus work begins when the user asks for pattern, relation, meaning, implication, or
+    transformation.
+Therefore the UI should avoid saying “AI processed this” as if all processing is the same. It
+should say what happened:
+    Text extracted
+    Audio transcribed
+    Image described
+    Material offered
+    Pattern reflected
+    Artifact generated
+
+Design principle: intelligence present, not dominant
+Every stUdio decision should pass this test:
+    Does this make AI louder, or help the human hear clearly?
+    Does this preserve attention, or harvest it?
+    Does this deepen continuity, or merely accumulate data?
+    Does this invite participation, or automate discernment away?
+    Does this respect what should remain private, sacred, unresolved, or unprocessed?
+If a feature fails these questions, it may be powerful but not CommonUnity.
+Recommended next implementation pass
+The next implementation should not be “more processing buttons.” It should be an Archive
+ambience and state model pass.
+
+P0
+     Rename the Archive action layer from “What do you want to do with these files?” to a more
+     CommonUnity-native invitation, likely “How would you like to meet this material?”
+     Add visible material states: Held, Prepared, Offered, Worked.
+     Replace purely mechanical selection language with “Bring forward” / “Offer to Nexus.”
+     Make extracted PDF text appear as Prepared material, not just another output card.
+     Clarify that Nexus only sees what is brought forward.
+     Add subtle status language that distinguishes preparation from interpretation.
+
+P1
+     Add “Not for processing” or “Hold only” state for sensitive material.
+     Add “Return to Archive” after Nexus work, so interpreted material becomes continuity
+     rather than transient chat.
+     Add observation bundles as a way to gather multiple fragments before offering them to
+     Nexus.
+     Add internal protocol labels in code or metadata, not necessarily visible in UI: holding,
+     preparation, offering, reflection, generation, return.
+
+P2
+     Add Field Recorder integration as a mobile capture surface.
+     Add time-based re-understanding: “Revisit this after one week/month.”
+     Add room-level memory views: what has this room been holding, preparing, offering, and
+     working over time?
+     Explore whether some protocols deserve ritualized UI modes rather than ordinary buttons.
+
+Summary
+The article confirms that Archive is not a secondary panel. It is one of the philosophical load-
+bearing structures of CommonUnity.
+If stUdio is where the field is worked, Archive is where the field is remembered without being
+consumed. Nexus is where selected material can become conversation, reflection, pattern, and
+artifact.
+The central design task is to make this feel effortless while preserving agency:
+       Capture without friction.
+       Remember without pressure.
+       Prepare without interpretation.
+       Offer with consent.
+       Work with intelligence.
+       Return with meaning.
+The enhanced design thesis:
+       CommonUnity should not make AI louder.
+       It should make the human field more legible, more sovereign, and more alive.
+

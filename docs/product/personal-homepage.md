@@ -4,7 +4,7 @@ Status: v0.1 stub. Canonical source: [`../foundation/commonunity-architecture-v0
 
 ## What the Personal Home Page is
 
-The Personal Home Page is the **face the member shows the world** — their public refraction of Om Cipher + Living Profile.
+The Personal Home Page (**Personal hOMepage**) is the **face the member shows the world** — their public refraction of Om Cipher + Living Profile. It is the *published result*; the private editing stage that produces it is the **Fieldprint**. See [`./fieldprint.md`](./fieldprint.md) for the Fieldprint (private edit) ↔ Personal hOMepage (published) boundary.
 
 It is built inside Studio (via the homepage builder / Website Preview path) but lives outside Studio as a public surface.
 

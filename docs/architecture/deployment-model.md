@@ -2,9 +2,19 @@
 
 Status: v0.1. Snapshot at the time of writing; verify against Railway and `handoffs/next-thread-handoff.md` for current truth.
 
-## Hosting
+## Hosting and edge
 
 CommonUnity is hosted on **Railway** (project: `balanced-illumination`, environment: `production`). The workspace is on the Railway Pro plan; the upgrade unblocked outbound SMTP.
+
+The stack across the three providers is:
+
+| Provider | Role |
+| --- | --- |
+| **GoDaddy** | Domain **registrar** for `commonunity.io` and holder of the email (MX/SPF/DKIM/DMARC) records. DNS is handled here via forwarding to the edge (see DNS below). |
+| **Cloudflare** | **Active** at the edge (DNS / proxy layer) in front of the Railway services. |
+| **Railway** | Application **hosting** — the running services and their custom-domain bindings. |
+
+The provider stack (Railway + Cloudflare + GitHub) matches the 2026-05-16 decision-log entry. The GoDaddy-CNAME-directly-to-Railway arrangement described in earlier snapshots is superseded: Cloudflare now sits at the edge, with GoDaddy retained as registrar and DNS forwarder.
 
 ## Services
 
@@ -27,20 +37,20 @@ CommonUnity is hosted on **Railway** (project: `balanced-illumination`, environm
 
 ## DNS
 
-Custom domains added in Railway:
+The domain `commonunity.io` is registered at **GoDaddy**; the DNS/edge layer is **Cloudflare**, which fronts the Railway services. Custom domains are bound in Railway for:
 
 - `commonunity.io` → main service
 - `www.commonunity.io` → main service
 - `commons.commonunity.io` → cOMmons
 
-GoDaddy CNAME records:
+The earlier arrangement pointed GoDaddy CNAMEs directly at Railway hostnames:
 
 ```text
 www      → 231xfgkz.up.railway.app
 commons  → 2c4ikjdp.up.railway.app
 ```
 
-The apex `@` CNAME could not be set in GoDaddy. The accepted approach is to use `www.commonunity.io` as canonical and forward the apex.
+This is now historical. With Cloudflare active at the edge, the exact live records (which hostnames are proxied through Cloudflare vs. forwarded from GoDaddy, and their targets) should be **verified in the Cloudflare and GoDaddy dashboards** before being relied upon — they are not reproduced here to avoid recording stale values. The apex `@` could not be set as a CNAME in GoDaddy; the accepted approach remains: use `www.commonunity.io` as canonical and forward the apex.
 
 **Do not touch** MX, SPF, DKIM, DMARC, or other email records — these support GoDaddy email and must remain intact.
 
