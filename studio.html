@@ -2983,6 +2983,170 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
+/* ── DIGIT — compositional builder presence (slice 1, The Work) ──────────
+   DIGIT shares the mirror panel with Nexus via a segmented switch, but the two
+   never blend: selecting a mode swaps the WHOLE panel body, one presence shown
+   at a time (docs/foundation/ai-roles.md — "handoff is explicit, not blended").
+   Nexus keeps its ceremonial rose orb; DIGIT reads as a compact, instrument-
+   like builder surface (docs/product/digit.md — "closer to R2-D2 than a
+   productivity dashboard"). Front-end scaffold only: no model calls, no
+   backend, no context intake. The switch is gated to The Work for now via
+   .room-body[data-room="work"]. */
+.ai-dock-switch {
+  display: none;                       /* shown only in The Work (gate below) */
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: var(--space-4) var(--space-4) 0;
+}
+.room-body[data-room="work"] .ai-dock-switch { display: flex; }
+.ai-dock-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+}
+.ai-dock-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  padding: 3px var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), background-color var(--transition),
+              box-shadow var(--transition);
+}
+.ai-dock-tab:hover { color: var(--text-muted, var(--text)); }
+.ai-dock-tab.active {
+  color: var(--accent-color, var(--setup-accent));
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, var(--surface, #fff2));
+}
+.ai-dock-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+}
+/* Presence seed inside the DIGIT tab — the shared spb-dot motif, not a new glyph. */
+.ai-dock-tab .spb-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 60%, transparent);
+  flex-shrink: 0;
+}
+
+/* Mode swap: DIGIT active hides the Nexus surface and shows DIGIT's. Default
+   (no data-ai-mode, or "nexus") leaves the Nexus panel exactly as before. */
+.digit-surface { display: none; }
+.room-mirror[data-ai-mode="digit"] .nexus-activity-field { display: none; }
+.room-mirror[data-ai-mode="digit"] .digit-surface { display: flex; }
+
+/* DIGIT surface — mirrors the framed rose-surface card, instrument register. */
+.digit-surface {
+  flex: 1;
+  flex-direction: column;
+  margin: var(--space-3) var(--space-4) var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, var(--border));
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 8%, transparent),
+    0 4px 32px rgba(0,0,0,0.2);
+  overflow: hidden;
+  min-height: 0;
+}
+.digit-inner {
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-5);
+  overflow-y: auto;
+  min-height: 0;
+}
+.digit-identity { display: flex; align-items: center; gap: 10px; }
+.digit-identity .spb-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 70%, transparent);
+  flex-shrink: 0;
+  animation: digit-breathe 3.4s ease-in-out infinite;
+}
+@keyframes digit-breathe {
+  0%, 100% { opacity: 0.5;  transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1);  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digit-identity .spb-dot { animation: none; }
+}
+.digit-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent-color, var(--setup-accent));
+}
+.digit-stance { font-size: 11px; color: var(--text-muted); margin-left: auto; text-align: right; }
+
+/* Stage rail — orient → plan · act · review · publish (last three deferred). */
+.digit-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.digit-stage {
+  appearance: none; background: none; cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 999px;
+  color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: color var(--transition), background-color var(--transition),
+              border-color var(--transition);
+}
+.digit-stage:hover:not([disabled]) { color: var(--text-muted); }
+.digit-stage.active {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+}
+.digit-stage[disabled] { opacity: 0.4; cursor: default; }
+.digit-stage-sep { font-size: 10px; color: var(--text-faint); opacity: 0.5; }
+
+.digit-step { display: none; flex-direction: column; gap: var(--space-3); }
+.digit-step.active { display: flex; }
+.digit-step h4 {
+  margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--text);
+}
+.digit-step p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--text-muted); }
+.digit-note {
+  font-size: 10.5px; line-height: 1.6; color: var(--text-faint);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.digit-note strong { color: var(--text-muted); font-weight: 600; }
+.digit-boundary {
+  font-size: 10px; letter-spacing: 0.04em; color: var(--text-faint);
+}
+.digit-boundary strong { color: var(--text-muted); font-weight: 600; }
+
+/* Inert preview of the vibe-coding dialogue seat — visibly not yet wired. */
+.digit-composer { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.digit-composer-preview {
+  font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in srgb, var(--accent-color, var(--setup-accent)) 30%, var(--border));
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  opacity: 0.75;
+}
+.digit-composer-note {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-faint); opacity: 0.7;
+}
+
 /* ── Nexus context bar ─────────────────────────────────────── */
 .nexus-context-bar-track {
   height: 3px;
@@ -11222,8 +11386,25 @@ body.hw-open { overflow: hidden; }
          aria-valuenow="340"
          tabindex="0"></div>
 
-    <!-- Nexus (right panel) -->
-    <div class="room-mirror" id="room-mirror">
+    <!-- AI dock (right panel) — Nexus by default, DIGIT on request -->
+    <div class="room-mirror" id="room-mirror" data-ai-mode="nexus">
+
+      <!-- ── AI dock switch (Nexus | DIGIT) ────────────────────────────────
+           Slice 1: shown only in The Work (gated in CSS by
+           .room-body[data-room="work"]). Selecting a mode swaps the WHOLE panel
+           body below — the two presences are never shown together and never
+           blend (docs/foundation/ai-roles.md). Nexus is the default; DIGIT is
+           always a deliberate switch. Front-end only — no model calls. -->
+      <div class="ai-dock-switch" role="group" aria-label="AI presence">
+        <div class="ai-dock-tabs" role="tablist" aria-label="Switch between Nexus and DIGIT">
+          <button type="button" class="ai-dock-tab active" id="ai-tab-nexus"
+                  role="tab" aria-selected="true" data-ai-mode="nexus">Nexus</button>
+          <button type="button" class="ai-dock-tab" id="ai-tab-digit"
+                  role="tab" aria-selected="false" data-ai-mode="digit">
+            <span class="spb-dot" aria-hidden="true"></span>DIGIT</button>
+        </div>
+      </div>
+
       <div class="rose-surface nexus-activity-field" id="nexus-activity-field">
 
       <!-- Flat header bar — matches Archive and Notepad -->
@@ -11355,6 +11536,54 @@ body.hw-open { overflow: hidden; }
         </button>
       </div>
       </div><!-- /rose-surface -->
+
+      <!-- ── DIGIT surface — compositional builder presence ────────────────
+           Hidden until DIGIT mode is selected (CSS: .room-mirror[data-ai-mode="digit"]).
+           Slice 1 is a STATIC orient → plan scaffold: no model calls, no
+           context intake, no backend. DIGIT only ever works with what a member
+           brings forward; it never scans the Archive or touches Sacred / "not
+           for processing" material, and publishing is always member-confirmed. -->
+      <div class="digit-surface" id="digit-surface" role="tabpanel" aria-label="DIGIT — build">
+        <div class="digit-inner">
+          <div class="digit-identity">
+            <span class="spb-dot" aria-hidden="true"></span>
+            <span class="digit-name">DIGIT</span>
+            <span class="digit-stance" id="digit-stance">Here when you're ready to build.</span>
+          </div>
+
+          <div class="digit-rail" role="tablist" aria-label="DIGIT stages">
+            <button type="button" class="digit-stage active" data-digit-step="orient" role="tab" aria-selected="true">Orient</button>
+            <button type="button" class="digit-stage" data-digit-step="plan" role="tab" aria-selected="false">Plan</button>
+            <span class="digit-stage-sep" aria-hidden="true">·</span>
+            <button type="button" class="digit-stage" data-digit-step="act" role="tab" aria-selected="false" disabled title="Comes in a later slice">Act</button>
+            <button type="button" class="digit-stage" data-digit-step="review" role="tab" aria-selected="false" disabled title="Comes in a later slice">Review</button>
+            <button type="button" class="digit-stage" data-digit-step="publish" role="tab" aria-selected="false" disabled title="Comes in a later slice">Publish</button>
+          </div>
+
+          <!-- ORIENT -->
+          <div class="digit-step active" data-digit-panel="orient" role="tabpanel">
+            <h4>Orient</h4>
+            <p>You're in <strong>The Work</strong> — the room for structure and making. This is your Fieldprint: the private stage where form takes shape before anything is published.</p>
+            <div class="digit-note">I work only with what you <strong>bring forward</strong>. I don't scan your Archive, and I never touch material you've marked Sacred or "not for processing."</div>
+          </div>
+
+          <!-- PLAN -->
+          <div class="digit-step" data-digit-panel="plan" role="tabpanel">
+            <h4>Plan</h4>
+            <p>When you bring something forward, I'll propose a small set of moves here — legible and unhurried, one step at a time. Nothing runs on its own.</p>
+            <div class="digit-note">Act, Review, and Publish arrive in a later slice. Publishing your Personal hOMepage is always yours to confirm.</div>
+          </div>
+
+          <p class="digit-boundary"><strong>Nexus orients meaning · DIGIT composes form.</strong></p>
+
+          <!-- Inert preview of the dialogue seat (vibe-coding intent, not yet wired) -->
+          <div class="digit-composer" aria-hidden="true">
+            <div class="digit-composer-preview">Build through dialogue — describe what you want to make, and DIGIT composes it with you.</div>
+            <span class="digit-composer-note">Preview · dialogue building arrives in a later slice</span>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div><!-- /room-body -->
@@ -13287,6 +13516,57 @@ async function fetchRosePrompt(context) {
 // ============================================================
 // ROOM
 // ============================================================
+// ── DIGIT dock (slice 1) — Nexus | DIGIT mode switch + orient/plan steps ──
+// Front-end only: swaps the mirror panel body between the two presences and
+// switches the static DIGIT step. No model calls, no backend, no storage.
+// Nexus is always the default; DIGIT is only ever a deliberate switch, and the
+// two are never shown together (docs/foundation/ai-roles.md).
+function studioSetAiMode(mode) {
+  const mirror = document.getElementById('room-mirror');
+  if (!mirror) return;
+  const m = mode === 'digit' ? 'digit' : 'nexus';
+  mirror.setAttribute('data-ai-mode', m);
+  const nexusTab = document.getElementById('ai-tab-nexus');
+  const digitTab = document.getElementById('ai-tab-digit');
+  if (nexusTab) { nexusTab.classList.toggle('active', m === 'nexus'); nexusTab.setAttribute('aria-selected', m === 'nexus' ? 'true' : 'false'); }
+  if (digitTab) { digitTab.classList.toggle('active', m === 'digit'); digitTab.setAttribute('aria-selected', m === 'digit' ? 'true' : 'false'); }
+}
+window.studioSetAiMode = studioSetAiMode;
+
+function studioSetDigitStep(step) {
+  const surface = document.getElementById('digit-surface');
+  if (!surface) return;
+  const allowed = ['orient', 'plan'];      // act/review/publish are deferred (slice 1)
+  const s = allowed.includes(step) ? step : 'orient';
+  surface.querySelectorAll('.digit-stage').forEach((btn) => {
+    const on = btn.dataset.digitStep === s;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  surface.querySelectorAll('.digit-step').forEach((panel) => {
+    panel.classList.toggle('active', panel.dataset.digitPanel === s);
+  });
+}
+
+(function initDigitDock() {
+  const switchEl = document.querySelector('.ai-dock-switch');
+  if (switchEl) {
+    switchEl.addEventListener('click', (e) => {
+      const tab = e.target.closest('.ai-dock-tab');
+      if (!tab) return;
+      studioSetAiMode(tab.dataset.aiMode);
+    });
+  }
+  const surface = document.getElementById('digit-surface');
+  if (surface) {
+    surface.addEventListener('click', (e) => {
+      const stage = e.target.closest('.digit-stage');
+      if (!stage || stage.disabled) return;
+      studioSetDigitStep(stage.dataset.digitStep);
+    });
+  }
+})();
+
 function enterRoom(roomKey) {
   currentRoom = roomKey;
   // Refresh the Living Digital Expression context card for the newly opened
@@ -13401,6 +13681,14 @@ function doEnterRoom(roomKey, meta) {
   const roomTint        = cipherTintRaw || `var(${meta.color})`;
   roomScreen.style.setProperty('--room-tint', roomTint);
   document.querySelector('.room-body').style.setProperty('--room-tint', roomTint);
+
+  // DIGIT dock (slice 1): expose the open room to CSS so the Nexus|DIGIT switch
+  // is gated to The Work, and always reset the mirror to Nexus on room entry so
+  // DIGIT never grabs the panel on load (presence, not dominance).
+  const roomBodyEl = document.querySelector('.room-body');
+  if (roomBodyEl) roomBodyEl.setAttribute('data-room', roomKey);
+  if (typeof studioSetAiMode === 'function') studioSetAiMode('nexus');
+  if (typeof studioSetDigitStep === 'function') studioSetDigitStep('orient');
 
   // Paint the room's distinct background atmosphere + panel surfaces.
   applyRoomAtmosphere(roomKey);
