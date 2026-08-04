@@ -29,6 +29,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     om-field-golden-thread.md            ← Sutra-rooted framework for the OM Field
     four-layer-architecture.md           ← Field → Orientation → stUdio → Cipher (added in PR #50)
     nexus-guidance-charter.md            ← behavioural rules for Nexus
+    ai-roles.md                          ← Nexus ↔ DIGIT boundary and handoff logic
     codex-golden-thread.md               ← compressed codex entry, primary retrieval
     om-cipher.md                         ← foundational framing of the cipher
   /architecture                          ← how the system is built
@@ -42,8 +43,13 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     om-cipher-v1-implementation-plan.md  ← canonical v1 build plan (incl. Bhramari)
     living-profile.md
     studio.md
+    digit.md                             ← compositional builder presence inside stUdio
     commons.md
+    fieldprint.md                        ← private edit stage → Personal hOMepage boundary
     personal-homepage.md
+  /brand                                 ← voice, narrative, and visual identity
+    commonunity-brand-communication-guide-v0.1.md  ← voice & communication authority (v0.1 review)
+    asset-map.md
   /governance                            ← keeping the system honest
     decision-log.md
     audit-rituals.md                     ← milestone integrity audit via adapted 8 limbs
