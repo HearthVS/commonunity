@@ -2,6 +2,8 @@
 
 Status: v0.1 stub. Canonical source: [`commonunity-architecture-v0.2.md`](./commonunity-architecture-v0.2.md), sections *"Om Cipher"*, *"Om Cipher v1 engine model"*, *"Bhramari / Humming Bee activation"*. For the product surface, see [`../product/om-cipher.md`](../product/om-cipher.md). For the canonical v1 build plan, see [`../product/om-cipher-v1-implementation-plan.md`](../product/om-cipher-v1-implementation-plan.md).
 
+For the fuller originating vision — the fixed/living philosophy, the 64-template, the **CommonUnity Key** architecture (the portable file holding both the OM Cipher and the Living Profile), and the **matching algorithm** (honest data, complementarity, Field Handle — a future track, not v1) — see [`./om-cipher-white-paper.md`](./om-cipher-white-paper.md).
+
 ## What Om Cipher is
 
 Om Cipher is the objective source-code layer of a member. It is a **compressed information fractal** of the person's source pattern: the geometry of their given structure.
