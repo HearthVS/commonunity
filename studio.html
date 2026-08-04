@@ -3435,6 +3435,14 @@ input, textarea { font: inherit; color: inherit; }
   color: var(--accent-color, var(--setup-accent)); margin-top: 4px;
 }
 .digit-cvkit-more:hover { text-decoration: underline; }
+/* The prose block is itself the expand/collapse affordance. */
+.digit-cvkit-bio.is-toggleable { cursor: pointer; }
+.digit-cvkit-bio.is-toggleable:hover { color: var(--text); }
+.digit-cvkit-bio.is-toggleable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+  border-radius: var(--radius-md);
+}
 .digit-cvkit-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .digit-cvkit-tag {
   font-size: 9px; padding: 2px 8px; border-radius: 999px;
@@ -3447,6 +3455,14 @@ input, textarea { font: inherit; color: inherit; }
 }
 .digit-cvkit-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .digit-cvkit-note { font-size: 9.5px; color: var(--text-faint); margin-top: 7px; }
+.digit-cvkit-preview-note {
+  font-size: 10px; line-height: 1.5; margin-top: 8px;
+  padding: 6px 9px; border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+}
+.digit-cvkit-preview-note[hidden] { display: none; }
 
 /* ── Nexus context bar ─────────────────────────────────────── */
 .nexus-context-bar-track {
@@ -13966,7 +13982,11 @@ function digitCvKitDetailHtml() {
   if (proseParts.length) {
     const prose = proseParts.join(' ');
     const long = prose.length > 220;
-    html += '<p class="digit-cvkit-bio' + (long ? ' is-clamped' : '') + '" id="digit-cvkit-bio">' + digitEsc(prose) + '</p>';
+    // The text itself is the affordance — click anywhere in the prose to
+    // expand or collapse it, not just the small link beneath.
+    html += '<p class="digit-cvkit-bio' + (long ? ' is-clamped is-toggleable' : '') + '" id="digit-cvkit-bio"' +
+      (long ? ' data-digit-cvkit="toggle-bio" role="button" tabindex="0" title="Click to expand or collapse"' : '') +
+      '>' + digitEsc(prose) + '</p>';
     if (long) {
       html += '<button type="button" class="digit-cvkit-more" id="digit-cvkit-more-btn" data-digit-cvkit="toggle-bio">Show more</button>';
     }
@@ -13979,9 +13999,10 @@ function digitCvKitDetailHtml() {
   }
   html += '<div class="digit-cvkit-actions">' +
     '<button type="button" class="digit-abtn digit-abtn-primary" data-digit-cvkit="download"' + (hasAny ? '' : ' disabled') + '>Download</button>' +
-    '<button type="button" class="digit-abtn" data-digit-cvkit="pulldown">Preview on hOMepage</button>' +
+    '<button type="button" class="digit-abtn" data-digit-cvkit="pulldown">Open hOMepage preview</button>' +
     '</div>' +
-    '<p class="digit-cvkit-note">A shareable kit — bio, CV, headshot — kept in a pull-down on your hOMepage, not the point of the page.</p>';
+    '<p class="digit-cvkit-preview-note" id="digit-cvkit-preview-note" role="status" hidden></p>' +
+    '<p class="digit-cvkit-note">A shareable kit — bio, CV, headshot — intended for a pull-down on your hOMepage, not the point of the page.</p>';
   return html;
 }
 
@@ -14025,23 +14046,19 @@ function digitDownloadCvKit() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Preview how the kit would sit as a pull-down on the hOMepage — a distinct,
-// narrower view from the full-page preview, and clearly not the live site.
-function digitPulldownPreviewHtml() {
-  const p = digitReadProfile();
-  const avatar = p.photo
-    ? '<img class="digit-cvkit-avatar" src="' + digitEsc(p.photo) + '" alt="" style="width:56px;height:56px;">'
-    : '<span class="digit-cvkit-avatar" style="width:56px;height:56px;font-size:18px;">' + digitEsc(digitInitials(p.name)) + '</span>';
-  return '<div class="digit-page" style="padding:40px;">' +
-    '<div class="digit-page-eyebrow">Preview · hOMepage pull-down (not yet live)</div>' +
-    '<div style="margin-top:18px;border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:18px 20px;background:#fbf7ef;max-width:420px;">' +
-      '<div style="display:flex;align-items:center;gap:12px;">' + avatar +
-        '<div><div style="font-weight:600;font-size:14px;color:#241f16;">' + digitEsc(p.name || 'Your name') + '</div>' +
-        '<div style="font-size:11px;color:#8a7d68;">About &amp; CV — shareable kit</div></div></div>' +
-      (p.workBackground ? '<p style="font-size:12.5px;line-height:1.55;color:#4a4234;margin:12px 0 0;">' + digitEsc(p.workBackground) + '</p>' : '') +
-      '<div style="margin-top:12px;"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:5px 11px;border-radius:999px;border:1px solid rgba(0,0,0,0.14);color:#5c5446;">Download</span></div>' +
-    '</div>' +
-  '</div>';
+// Open the REAL hOMepage preview — the same surface the existing "Preview
+// Personal Home" path uses (window.openWebsitePreview, studio.html ~29733).
+// Previously this rendered a hand-written mock that had no relation to the
+// actual render; that misrepresented what exists and has been removed.
+// Note: the About & CV kit does not yet appear inside the hOMepage render —
+// there is no pull-down section for it. Until that exists, this shows the
+// person their real page, and DIGIT says plainly that the kit isn't on it yet.
+function digitOpenRealHomepagePreview() {
+  if (typeof window.openWebsitePreview === 'function') {
+    window.openWebsitePreview();
+    return true;
+  }
+  return false;
 }
 
 // Creation dashboard — reflect what DIGIT is doing. states keyed by stage:
@@ -14233,12 +14250,27 @@ function digitPublishPrompt() {
       if (!btn || btn.disabled) return;
       const a = btn.dataset.digitCvkit;
       if (a === 'download') digitDownloadCvKit();
-      else if (a === 'pulldown') digitOpenPreview(digitPulldownPreviewHtml());
+      else if (a === 'pulldown') {
+        // Opens the person's actual hOMepage preview. The kit itself is not
+        // rendered there yet, so say so rather than letting the absence read
+        // as a bug.
+        const opened = digitOpenRealHomepagePreview();
+        const note = document.getElementById('digit-cvkit-preview-note');
+        if (note) {
+          note.textContent = opened
+            ? 'Opened your real hOMepage preview. The About & CV kit isn\'t placed on the page yet — that pull-down is still to be built.'
+            : 'Couldn\'t open the hOMepage preview from here — open it from the Personal Home path instead.';
+          note.hidden = false;
+        }
+      }
       else if (a === 'toggle-bio') {
+        // Either the prose itself or the link beneath it can fire this, so
+        // always resolve the label button by id rather than the clicked node.
         const bio = document.getElementById('digit-cvkit-bio');
         if (!bio) return;
         const nowClamped = bio.classList.toggle('is-clamped');
-        btn.textContent = nowClamped ? 'Show more' : 'Show less';
+        const label = document.getElementById('digit-cvkit-more-btn');
+        if (label) label.textContent = nowClamped ? 'Show more' : 'Show less';
       }
     });
   }
