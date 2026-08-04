@@ -2983,6 +2983,349 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
+/* ── DIGIT — compositional builder presence (slice 1, The Work) ──────────
+   DIGIT shares the mirror panel with Nexus via a segmented switch, but the two
+   never blend: selecting a mode swaps the WHOLE panel body, one presence shown
+   at a time (docs/foundation/ai-roles.md — "handoff is explicit, not blended").
+   Nexus keeps its ceremonial rose orb; DIGIT reads as a compact, instrument-
+   like builder surface (docs/product/digit.md — "closer to R2-D2 than a
+   productivity dashboard"). Front-end scaffold only: no model calls, no
+   backend, no context intake. The switch is gated to The Work for now via
+   .room-body[data-room="work"]. */
+.ai-dock-switch {
+  display: none;                       /* shown only in The Work (gate below) */
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: var(--space-4) var(--space-4) 0;
+}
+.room-body[data-room="work"] .ai-dock-switch { display: flex; }
+.ai-dock-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+}
+.ai-dock-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  padding: 3px var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), background-color var(--transition),
+              box-shadow var(--transition);
+}
+.ai-dock-tab:hover { color: var(--text-muted, var(--text)); }
+.ai-dock-tab.active {
+  color: var(--accent-color, var(--setup-accent));
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, var(--surface, #fff2));
+}
+.ai-dock-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+}
+/* Presence seed inside the DIGIT tab — the shared spb-dot motif, not a new glyph. */
+.ai-dock-tab .spb-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 60%, transparent);
+  flex-shrink: 0;
+}
+
+/* Mode swap: DIGIT active hides the Nexus surface and shows DIGIT's. Default
+   (no data-ai-mode, or "nexus") leaves the Nexus panel exactly as before. */
+.digit-surface { display: none; }
+.room-mirror[data-ai-mode="digit"] .nexus-activity-field { display: none; }
+.room-mirror[data-ai-mode="digit"] .digit-surface { display: flex; }
+
+/* DIGIT surface — mirrors the framed rose-surface card, instrument register. */
+.digit-surface {
+  flex: 1;
+  flex-direction: column;
+  margin: var(--space-3) var(--space-4) var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, var(--border));
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 8%, transparent),
+    0 4px 32px rgba(0,0,0,0.2);
+  overflow: hidden;
+  min-height: 0;
+}
+.digit-inner {
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-5);
+  overflow-y: auto;
+  min-height: 0;
+}
+.digit-identity { display: flex; align-items: center; gap: 10px; }
+.digit-identity .spb-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 70%, transparent);
+  flex-shrink: 0;
+  animation: digit-breathe 3.4s ease-in-out infinite;
+}
+@keyframes digit-breathe {
+  0%, 100% { opacity: 0.5;  transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1);  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digit-identity .spb-dot { animation: none; }
+}
+.digit-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent-color, var(--setup-accent));
+}
+.digit-stance { font-size: 11px; color: var(--text-muted); margin-left: auto; text-align: right; }
+
+/* About affordance — governance copy on hover/focus, not permanent chrome. */
+.digit-about {
+  position: relative; flex-shrink: 0; padding: 0; cursor: help;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.digit-about:hover, .digit-about:focus-visible {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 50%, transparent);
+  outline: none;
+}
+.digit-about-i { font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 9px; line-height: 1; }
+.digit-about-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 20;
+  width: 220px; text-align: left; text-transform: none; font-weight: 400;
+  font-size: 10px; line-height: 1.5; letter-spacing: 0.01em; color: var(--text-muted);
+  padding: 8px 10px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  opacity: 0; visibility: hidden; transform: translateY(-3px); pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms;
+}
+.digit-about:hover .digit-about-pop,
+.digit-about:focus .digit-about-pop,
+.digit-about:focus-visible .digit-about-pop { opacity: 1; visibility: visible; transform: translateY(0); }
+
+/* Stage rail — orient → plan · act · review · publish (last three deferred). */
+.digit-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.digit-stage {
+  appearance: none; background: none; cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 999px;
+  color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: color var(--transition), background-color var(--transition),
+              border-color var(--transition);
+}
+.digit-stage:hover:not([disabled]) { color: var(--text-muted); }
+.digit-stage.active {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+}
+.digit-stage[disabled] { opacity: 0.4; cursor: default; }
+.digit-stage-sep { font-size: 10px; color: var(--text-faint); opacity: 0.5; }
+
+.digit-step { display: none; flex-direction: column; gap: var(--space-3); }
+.digit-step.active { display: flex; }
+.digit-step h4 {
+  margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--text);
+}
+.digit-step p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--text-muted); }
+.digit-note {
+  font-size: 10.5px; line-height: 1.6; color: var(--text-faint);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.digit-note strong { color: var(--text-muted); font-weight: 600; }
+.digit-boundary {
+  font-size: 10px; letter-spacing: 0.04em; color: var(--text-faint);
+}
+.digit-boundary strong { color: var(--text-muted); font-weight: 600; }
+
+/* Inert preview of the vibe-coding dialogue seat — visibly not yet wired. */
+.digit-composer { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.digit-composer-preview {
+  font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in srgb, var(--accent-color, var(--setup-accent)) 30%, var(--border));
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  opacity: 0.75;
+}
+.digit-composer-note {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-faint); opacity: 0.7;
+}
+
+/* ── DIGIT slice 2 — conversation-first shell + creation dashboard + preview ──
+   The DIGIT surface becomes a thread (build through dialogue) with a live
+   status dashboard above it, so DIGIT's process stays visible (not a black
+   box). Distinct from Nexus: DIGIT's messages produce artifacts/previews. */
+.digit-surface { padding: 0; }
+.digit-head {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  flex-shrink: 0;
+}
+
+/* Creation dashboard — status chips that light up as DIGIT works. */
+.digit-dash { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.digit-dash-step {
+  font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px;
+  color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+}
+.digit-dash-step::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; opacity: 0.35; flex-shrink: 0;
+}
+.digit-dash-step[data-state="active"] {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+}
+.digit-dash-step[data-state="active"]::before { opacity: 1; animation: digit-breathe 1.4s ease-in-out infinite; }
+.digit-dash-step[data-state="done"] {
+  color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 80%, var(--text-muted));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 28%, transparent);
+}
+.digit-dash-step[data-state="done"]::before { opacity: 0.9; }
+@media (prefers-reduced-motion: reduce) { .digit-dash-step[data-state="active"]::before { animation: none; } }
+
+/* Thread */
+.digit-thread {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: var(--space-4);
+}
+.digit-msg { font-size: 12px; line-height: 1.6; }
+.digit-msg p { margin: 0 0 6px; }
+.digit-msg p:last-child { margin-bottom: 0; }
+.digit-msg-digit { color: var(--text-muted); }
+.digit-msg-user {
+  align-self: flex-end; max-width: 85%; color: var(--text);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 22%, transparent);
+  border-radius: 12px 12px 4px 12px; padding: 8px 11px;
+}
+.digit-msg-status { font-size: 10.5px; color: var(--text-faint); display: flex; align-items: center; gap: 7px; }
+.digit-msg-status .spb-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 60%, transparent);
+  flex-shrink: 0;
+}
+
+/* Inline artifact card — DIGIT's messages produce things (name what happened). */
+.digit-artifact {
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 26%, var(--border));
+  border-radius: var(--radius-md); overflow: hidden;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+.digit-artifact-thumb { height: 96px; background: linear-gradient(135deg, #f6f1e7, #ece3d3); position: relative; overflow: hidden; }
+.digit-artifact-thumb .da-hero { position: absolute; left: 12px; bottom: 10px; z-index: 1; color: #3a3226; font-family: var(--font-display, Georgia, serif); }
+.digit-artifact-thumb .da-hero b { display: block; font-size: 14px; font-weight: 600; }
+.digit-artifact-thumb .da-hero span { font-size: 9px; letter-spacing: 0.08em; opacity: 0.7; }
+.digit-artifact-thumb::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 80% at 82% 8%, color-mix(in srgb, #c07a22 30%, transparent), transparent 70%); }
+.digit-artifact-meta { padding: 9px 11px; display: flex; flex-direction: column; gap: 8px; }
+.digit-artifact-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+.digit-artifact-title { font-size: 12px; color: var(--text); font-weight: 600; }
+.digit-artifact-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.digit-abtn {
+  appearance: none; cursor: pointer; font-family: var(--font-body);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
+  background: none; color: var(--accent-color, var(--setup-accent));
+  transition: background-color var(--transition);
+}
+.digit-abtn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 14%, transparent); }
+.digit-abtn-primary { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, transparent); }
+
+/* Composer */
+.digit-composer {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  gap: 8px; margin-top: 0; flex-shrink: 0;
+}
+.digit-proto-note { font-size: 9px; letter-spacing: 0.06em; color: var(--text-faint); opacity: 0.75; padding: 0 2px; }
+.digit-composer-row { display: flex; gap: 8px; align-items: flex-end; }
+.digit-input {
+  flex: 1; resize: none; box-sizing: border-box; font-family: var(--font-body); font-size: 12px;
+  padding: 9px 11px; border-radius: var(--radius-md); max-height: 120px; line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 26%, var(--border));
+  background: color-mix(in srgb, var(--card) 45%, transparent); color: var(--text);
+}
+.digit-input:focus-visible { outline: none; border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent); }
+.digit-send {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 14%, transparent);
+  color: var(--accent-color, var(--setup-accent));
+}
+.digit-send:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 24%, transparent); }
+.digit-send[disabled] { opacity: 0.4; cursor: default; }
+
+/* ── DIGIT preview — pop-up "window" of the member's own build ─────────── */
+.digit-preview {
+  position: fixed; inset: 0; z-index: 600;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: color-mix(in srgb, #000 55%, transparent);
+}
+.digit-preview[hidden] { display: none; }
+.digit-preview-window {
+  width: min(920px, 94vw); height: min(80vh, 760px);
+  display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden; background: #f7f3ea;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.2);
+}
+.digit-preview-bar {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding: 9px 14px; background: #efe7d8; border-bottom: 1px solid rgba(0,0,0,0.08); color: #3a3226;
+}
+.digit-preview-dot { width: 9px; height: 9px; border-radius: 50%; background: #c07a22; box-shadow: 0 0 8px rgba(192,122,34,0.6); }
+.digit-preview-title { font-size: 12px; font-weight: 600; }
+.digit-preview-note { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7d68; }
+.digit-preview-close { margin-left: auto; appearance: none; border: none; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: #5c5446; width: 28px; height: 28px; border-radius: 6px; }
+.digit-preview-close:hover { background: rgba(0,0,0,0.06); }
+.digit-preview-body { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* Representative Personal hOMepage render (mock; warm public palette). Swaps to
+   the live CommonUnity render model in a later step. */
+.digit-page { font-family: var(--font-body); color: #2a2419; }
+.digit-page-hero { padding: 56px 40px 40px; background: linear-gradient(160deg, #f7f3ea, #ece3d3); }
+.digit-page-eyebrow { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #a9741f; }
+.digit-page-title { font-family: Georgia, serif; font-size: 34px; font-weight: 600; margin: 10px 0 8px; color: #241f16; }
+.digit-page-lede { font-size: 15px; line-height: 1.6; max-width: 52ch; color: #4a4234; }
+.digit-page-rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; padding: 28px 40px 48px; }
+.digit-page-room { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 16px; background: #fbf7ef; }
+.digit-page-room h5 { margin: 0 0 6px; font-size: 13px; color: #241f16; }
+.digit-page-room p { margin: 0; font-size: 12px; line-height: 1.55; color: #5c5446; }
+
 /* ── Nexus context bar ─────────────────────────────────────── */
 .nexus-context-bar-track {
   height: 3px;
@@ -11092,7 +11435,7 @@ body.hw-open { overflow: hidden; }
         <!-- NOW — live capture surface (existing behaviour, unchanged) -->
         <div class="fo-mode-panel" id="fo-panel-now" data-fo-panel="now" role="tabpanel">
         <textarea class="notepad-textarea" id="workbench-input"
-          placeholder="Observe freely. Reflections, questions, fragments, intentions. This space is yours.&#10;&#10;Or — Save observation is the button above. Saved Field Observations become available to Nexus."></textarea>
+          placeholder="Observe freely — reflections, fragments, questions, intentions. This space is yours."></textarea>
         <p class="notepad-nexus-hint" id="notepad-nexus-hint" role="status" aria-live="polite">
           <strong>Saved.</strong> This Field Observation is now available to Nexus for reflection, and for shaping your Living Profile, Personal Home, and Personal OS.
         </p>
@@ -11222,8 +11565,25 @@ body.hw-open { overflow: hidden; }
          aria-valuenow="340"
          tabindex="0"></div>
 
-    <!-- Nexus (right panel) -->
-    <div class="room-mirror" id="room-mirror">
+    <!-- AI dock (right panel) — Nexus by default, DIGIT on request -->
+    <div class="room-mirror" id="room-mirror" data-ai-mode="nexus">
+
+      <!-- ── AI dock switch (Nexus | DIGIT) ────────────────────────────────
+           Slice 1: shown only in The Work (gated in CSS by
+           .room-body[data-room="work"]). Selecting a mode swaps the WHOLE panel
+           body below — the two presences are never shown together and never
+           blend (docs/foundation/ai-roles.md). Nexus is the default; DIGIT is
+           always a deliberate switch. Front-end only — no model calls. -->
+      <div class="ai-dock-switch" role="group" aria-label="AI presence">
+        <div class="ai-dock-tabs" role="tablist" aria-label="Switch between Nexus and DIGIT">
+          <button type="button" class="ai-dock-tab active" id="ai-tab-nexus"
+                  role="tab" aria-selected="true" data-ai-mode="nexus">Nexus</button>
+          <button type="button" class="ai-dock-tab" id="ai-tab-digit"
+                  role="tab" aria-selected="false" data-ai-mode="digit">
+            <span class="spb-dot" aria-hidden="true"></span>DIGIT</button>
+        </div>
+      </div>
+
       <div class="rose-surface nexus-activity-field" id="nexus-activity-field">
 
       <!-- Flat header bar — matches Archive and Notepad -->
@@ -11355,11 +11715,82 @@ body.hw-open { overflow: hidden; }
         </button>
       </div>
       </div><!-- /rose-surface -->
+
+      <!-- ── DIGIT surface — compositional builder presence ────────────────
+           Hidden until DIGIT mode is selected (CSS: .room-mirror[data-ai-mode="digit"]).
+           Slice 1 is a STATIC orient → plan scaffold: no model calls, no
+           context intake, no backend. DIGIT only ever works with what a member
+           brings forward; it never scans the Archive or touches Sacred / "not
+           for processing" material, and publishing is always member-confirmed. -->
+      <div class="digit-surface" id="digit-surface" role="tabpanel" aria-label="DIGIT — build">
+        <div class="digit-head">
+          <div class="digit-identity">
+            <span class="spb-dot" aria-hidden="true"></span>
+            <span class="digit-name">DIGIT</span>
+            <span class="digit-stance" id="digit-stance">Here when you're ready to build.</span>
+            <!-- Governance copy lives here on hover/focus rather than sitting on
+                 the surface permanently (matches the info-overlay convention). -->
+            <button type="button" class="digit-about" aria-label="About DIGIT">
+              <span class="digit-about-i" aria-hidden="true">i</span>
+              <span class="digit-about-pop" role="tooltip">Nexus orients meaning · DIGIT composes form. DIGIT works only with what you bring forward, never touches Sacred material, and publishing is always yours to confirm.</span>
+            </button>
+          </div>
+          <!-- Creation dashboard — makes DIGIT's process legible (not a black
+               box): these are STATUS, not navigation. They light up to show what
+               DIGIT is doing as it works, so nothing happens unseen. -->
+          <div class="digit-dash" id="digit-dash" role="status" aria-label="DIGIT progress" aria-live="polite">
+            <span class="digit-dash-step" data-stage="orient">Orient</span>
+            <span class="digit-dash-step" data-stage="plan">Plan</span>
+            <span class="digit-dash-step" data-stage="act">Act</span>
+            <span class="digit-dash-step" data-stage="review">Review</span>
+            <span class="digit-dash-step" data-stage="publish">Publish</span>
+          </div>
+        </div>
+
+        <!-- Conversation thread — build through dialogue. DIGIT's messages
+             PRODUCE things (drafts, previews, diffs); this is what keeps it
+             distinct from Nexus, which reflects and does not make artifacts. -->
+        <div class="digit-thread" id="digit-thread">
+          <div class="digit-msg digit-msg-digit">
+            <p>You're in <strong>The Work</strong> — your private Fieldprint. Tell me what you'd like to build, or bring something forward, and I'll shape it with you.</p>
+          </div>
+        </div>
+
+        <div class="digit-composer">
+          <div class="digit-proto-note" id="digit-proto-note">Prototype · DIGIT isn't wired to a model yet — this previews the flow.</div>
+          <div class="digit-composer-row">
+            <textarea class="digit-input" id="digit-input" rows="1" placeholder="Describe what you want to make…"></textarea>
+            <button type="button" class="digit-send" id="digit-send" title="Send" aria-label="Send to DIGIT">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div><!-- /room-body -->
 
 </div><!-- /screen-room -->
+
+<!-- ── DIGIT preview — a pop-up "window" showing the member's OWN build (the
+     Personal hOMepage / Fieldprint render), opened from an artifact card in the
+     DIGIT thread. Reuses the warm public-render look; front-end only, read-only,
+     dismissible, and clearly marked a private draft. This slice ships a
+     representative render and attempts the live CommonUnity render engine when
+     available; wiring it fully to that model is the next step. Lives at screen
+     level so the fixed overlay is never clipped by the panel's overflow. -->
+<div class="digit-preview" id="digit-preview" hidden aria-hidden="true" role="dialog" aria-label="Preview — your Personal hOMepage">
+  <div class="digit-preview-window">
+    <div class="digit-preview-bar">
+      <span class="digit-preview-dot" aria-hidden="true"></span>
+      <span class="digit-preview-title">Preview · your Personal hOMepage</span>
+      <span class="digit-preview-note">Private draft — not published</span>
+      <button type="button" class="digit-preview-close" id="digit-preview-close" aria-label="Close preview">×</button>
+    </div>
+    <div class="digit-preview-body" id="digit-preview-body"></div>
+  </div>
+</div>
 
 
 <!-- ============================================================
@@ -13287,6 +13718,215 @@ async function fetchRosePrompt(context) {
 // ============================================================
 // ROOM
 // ============================================================
+// ── DIGIT dock (slice 1) — Nexus | DIGIT mode switch + orient/plan steps ──
+// Front-end only: swaps the mirror panel body between the two presences and
+// switches the static DIGIT step. No model calls, no backend, no storage.
+// Nexus is always the default; DIGIT is only ever a deliberate switch, and the
+// two are never shown together (docs/foundation/ai-roles.md).
+function studioSetAiMode(mode) {
+  const mirror = document.getElementById('room-mirror');
+  if (!mirror) return;
+  const m = mode === 'digit' ? 'digit' : 'nexus';
+  mirror.setAttribute('data-ai-mode', m);
+  const nexusTab = document.getElementById('ai-tab-nexus');
+  const digitTab = document.getElementById('ai-tab-digit');
+  if (nexusTab) { nexusTab.classList.toggle('active', m === 'nexus'); nexusTab.setAttribute('aria-selected', m === 'nexus' ? 'true' : 'false'); }
+  if (digitTab) { digitTab.classList.toggle('active', m === 'digit'); digitTab.setAttribute('aria-selected', m === 'digit' ? 'true' : 'false'); }
+}
+window.studioSetAiMode = studioSetAiMode;
+
+// Reset the DIGIT thread + dashboard to the opening state (called on room entry
+// so DIGIT never carries a stale build into a freshly opened room).
+function studioDigitResetThread() {
+  const thread = document.getElementById('digit-thread');
+  if (thread) {
+    thread.innerHTML =
+      '<div class="digit-msg digit-msg-digit"><p>You\'re in <strong>The Work</strong> — your private Fieldprint. Tell me what you\'d like to build, or bring something forward, and I\'ll shape it with you.</p></div>';
+  }
+  digitSetDash({});
+  const send = document.getElementById('digit-send');
+  if (send) send.disabled = false;
+}
+
+// Creation dashboard — reflect what DIGIT is doing. states keyed by stage:
+// 'active' | 'done' (absent = pending). Purely presentational.
+function digitSetDash(states) {
+  document.querySelectorAll('#digit-dash .digit-dash-step').forEach((el) => {
+    const s = states && states[el.dataset.stage];
+    if (s) el.setAttribute('data-state', s); else el.removeAttribute('data-state');
+  });
+}
+
+function digitAppend(html, cls) {
+  const thread = document.getElementById('digit-thread');
+  if (!thread) return null;
+  const div = document.createElement('div');
+  div.className = 'digit-msg ' + (cls || 'digit-msg-digit');
+  div.innerHTML = html;
+  thread.appendChild(div);
+  thread.scrollTop = thread.scrollHeight;
+  return div;
+}
+
+function digitEsc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// Scripted prototype: a believable orient→plan→act→review flow that lights the
+// dashboard and ends in an inline artifact. NO model calls — a front-end preview
+// of the real dialogue loop, so the UX can be felt before anything is wired.
+function digitRunScriptedBuild() {
+  const send = document.getElementById('digit-send');
+  if (send) send.disabled = true;
+  digitSetDash({ orient: 'active' });
+  const stat = digitAppend('<span class="spb-dot" aria-hidden="true"></span><span class="digit-stat-text">Orienting to what you brought forward…</span>', 'digit-msg-status');
+  const setStat = (t) => { if (stat) { const s = stat.querySelector('.digit-stat-text'); if (s) s.textContent = t; } };
+  setTimeout(() => {
+    digitSetDash({ orient: 'done', plan: 'active' });
+    setStat('Planned 3 moves for your threshold.');
+    setTimeout(() => {
+      digitSetDash({ orient: 'done', plan: 'done', act: 'active' });
+      digitAppend('<p>Drafting a first shape — a threshold, three rooms, and an invitation.</p>');
+      setTimeout(() => {
+        digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'active' });
+        digitAppend(
+          '<div class="digit-artifact">' +
+            '<div class="digit-artifact-thumb"><span class="da-hero"><b>Your Personal hOMepage</b><span>Draft · The Work</span></span></div>' +
+            '<div class="digit-artifact-meta">' +
+              '<span class="digit-artifact-label">Draft generated</span>' +
+              '<span class="digit-artifact-title">A first threshold + three rooms</span>' +
+              '<div class="digit-artifact-actions">' +
+                '<button type="button" class="digit-abtn digit-abtn-primary" data-digit-action="preview">Open preview</button>' +
+                '<button type="button" class="digit-abtn" data-digit-action="publish">Publish…</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+        digitAppend('<p>Here\'s a first draft. Open the preview to see it as a visitor would, and tell me what to change before you publish.</p>');
+        digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'done' });
+        if (send) send.disabled = false;
+      }, 700);
+    }, 700);
+  }, 700);
+}
+
+function digitSend() {
+  const input = document.getElementById('digit-input');
+  const send = document.getElementById('digit-send');
+  if (!input || (send && send.disabled)) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const msg = digitAppend('<p></p>', 'digit-msg-user');
+  if (msg) msg.querySelector('p').textContent = text;   // textContent = safe (escaped)
+  input.value = '';
+  input.style.height = '';
+  digitRunScriptedBuild();
+}
+
+// Pop-up preview of the member's own build. Attempts the live CommonUnity
+// render engine, then falls back to a representative render (this slice ships
+// the fallback). Read-only; nothing is published.
+function digitMockPageHtml() {
+  const name = (window.state && state.person && state.person.name) ? state.person.name : 'Your name';
+  return '<div class="digit-page">' +
+    '<div class="digit-page-hero">' +
+      '<div class="digit-page-eyebrow">Personal hOMepage</div>' +
+      '<div class="digit-page-title">' + digitEsc(name) + '</div>' +
+      '<p class="digit-page-lede">A living threshold — who I am, what I\'m working on, and how to meet me. Shaped in the Fieldprint, published when ready.</p>' +
+    '</div>' +
+    '<div class="digit-page-rooms">' +
+      '<div class="digit-page-room"><h5>The Work</h5><p>What I\'m building and how I structure it.</p></div>' +
+      '<div class="digit-page-room"><h5>The Lens</h5><p>How I see — framing, narrative, point of view.</p></div>' +
+      '<div class="digit-page-room"><h5>The Field</h5><p>Where I belong and who I move with.</p></div>' +
+    '</div>' +
+  '</div>';
+}
+function digitOpenPreview() {
+  const wrap = document.getElementById('digit-preview');
+  const body = document.getElementById('digit-preview-body');
+  if (!wrap || !body) return;
+  let html = '';
+  try {
+    const api = window.CommonUnity && window.CommonUnity.home;
+    if (api && typeof api.publicHomeHtml === 'function' && api.currentPublicModel) {
+      html = api.publicHomeHtml(api.currentPublicModel);
+    }
+  } catch (_) { /* never break preview */ }
+  body.innerHTML = html || digitMockPageHtml();
+  wrap.hidden = false;
+  wrap.setAttribute('aria-hidden', 'false');
+}
+function digitClosePreview() {
+  const wrap = document.getElementById('digit-preview');
+  if (!wrap) return;
+  wrap.hidden = true;
+  wrap.setAttribute('aria-hidden', 'true');
+}
+
+// Publish — always member-confirmed. This slice only confirms; it never
+// publishes anything and nothing leaves the device.
+function digitPublishPrompt() {
+  digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'done', publish: 'active' });
+  digitAppend(
+    '<div class="digit-artifact"><div class="digit-artifact-meta">' +
+      '<span class="digit-artifact-label">Confirm publish</span>' +
+      '<span class="digit-artifact-title">Publish your Personal hOMepage?</span>' +
+      '<p style="margin:0;font-size:11px;line-height:1.5;color:var(--text-muted);">This makes your draft public. In this prototype nothing is actually published — publishing is always yours to confirm.</p>' +
+      '<div class="digit-artifact-actions">' +
+        '<button type="button" class="digit-abtn digit-abtn-primary" data-digit-action="publish-confirm">Yes, publish</button>' +
+        '<button type="button" class="digit-abtn" data-digit-action="publish-cancel">Not yet</button>' +
+      '</div>' +
+    '</div></div>'
+  );
+}
+
+(function initDigitDock() {
+  const switchEl = document.querySelector('.ai-dock-switch');
+  if (switchEl) {
+    switchEl.addEventListener('click', (e) => {
+      const tab = e.target.closest('.ai-dock-tab');
+      if (!tab) return;
+      studioSetAiMode(tab.dataset.aiMode);
+    });
+  }
+  const send = document.getElementById('digit-send');
+  if (send) send.addEventListener('click', digitSend);
+  const input = document.getElementById('digit-input');
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); digitSend(); }
+    });
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+  }
+  const thread = document.getElementById('digit-thread');
+  if (thread) {
+    thread.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-digit-action]');
+      if (!btn) return;
+      const a = btn.dataset.digitAction;
+      if (a === 'preview') digitOpenPreview();
+      else if (a === 'publish') digitPublishPrompt();
+      else if (a === 'publish-confirm') {
+        digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'done', publish: 'done' });
+        digitAppend('<p><strong>Published (prototype).</strong> In the real flow your Personal hOMepage would now be live; here nothing left your device.</p>');
+      } else if (a === 'publish-cancel') {
+        digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'done' });
+        digitAppend('<p>Held as a private draft. Nothing published.</p>');
+      }
+    });
+  }
+  const closeBtn = document.getElementById('digit-preview-close');
+  if (closeBtn) closeBtn.addEventListener('click', digitClosePreview);
+  const previewWrap = document.getElementById('digit-preview');
+  if (previewWrap) previewWrap.addEventListener('click', (e) => { if (e.target === previewWrap) digitClosePreview(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { const w = document.getElementById('digit-preview'); if (w && !w.hidden) digitClosePreview(); }
+  });
+})();
+
 function enterRoom(roomKey) {
   currentRoom = roomKey;
   // Refresh the Living Digital Expression context card for the newly opened
@@ -13401,6 +14041,14 @@ function doEnterRoom(roomKey, meta) {
   const roomTint        = cipherTintRaw || `var(${meta.color})`;
   roomScreen.style.setProperty('--room-tint', roomTint);
   document.querySelector('.room-body').style.setProperty('--room-tint', roomTint);
+
+  // DIGIT dock (slice 1): expose the open room to CSS so the Nexus|DIGIT switch
+  // is gated to The Work, and always reset the mirror to Nexus on room entry so
+  // DIGIT never grabs the panel on load (presence, not dominance).
+  const roomBodyEl = document.querySelector('.room-body');
+  if (roomBodyEl) roomBodyEl.setAttribute('data-room', roomKey);
+  if (typeof studioSetAiMode === 'function') studioSetAiMode('nexus');
+  if (typeof studioDigitResetThread === 'function') studioDigitResetThread();
 
   // Paint the room's distinct background atmosphere + panel surfaces.
   applyRoomAtmosphere(roomKey);
