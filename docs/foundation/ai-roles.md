@@ -66,3 +66,4 @@ The failure mode this document prevents is a single generic assistant that is me
 - [`./four-layer-architecture.md`](./four-layer-architecture.md) — where each presence sits in the layer model.
 - [`../product/fieldprint.md`](../product/fieldprint.md) — the private edit stage DIGIT primarily inhabits.
 - [`../brand/commonunity-brand-communication-guide-v0.1.md`](../brand/commonunity-brand-communication-guide-v0.1.md) — voice authority for both presences (Nexus = "synthesis layer"; both "support your evolution without outsourcing your wisdom").
+- [`../governance/external-ai-boundary.md`](../governance/external-ai-boundary.md) — the trust boundary, Sacred Mode, and non-accumulation rules that bind **both** Nexus and DIGIT (each is a boundary-crossing event; Sacred Mode is never sent to either).

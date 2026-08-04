@@ -52,6 +52,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     asset-map.md
   /governance                            ← keeping the system honest
     decision-log.md
+    external-ai-boundary.md              ← trust boundary, Sacred Mode, non-accumulation (governs Nexus + DIGIT)
     audit-rituals.md                     ← milestone integrity audit via adapted 8 limbs
     milestone-checklist.md
     integrity-review-template.md
