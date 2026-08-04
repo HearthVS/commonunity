@@ -3423,6 +3423,18 @@ input, textarea { font: inherit; color: inherit; }
 .digit-cvkit-name { font-size: 12px; font-weight: 600; color: var(--text); }
 .digit-cvkit-source { font-size: 10px; color: var(--text-faint); }
 .digit-cvkit-bio { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); margin: 8px 0 0; }
+/* Clamped by default so a long bio/education paragraph never dumps as a wall
+   of text — one click reveals the rest. */
+.digit-cvkit-bio.is-clamped {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.digit-cvkit-more {
+  appearance: none; cursor: pointer; background: none; border: none; padding: 0;
+  font-family: var(--font-body); font-size: 10px; font-weight: 700;
+  color: var(--accent-color, var(--setup-accent)); margin-top: 4px;
+}
+.digit-cvkit-more:hover { text-decoration: underline; }
 .digit-cvkit-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .digit-cvkit-tag {
   font-size: 9px; padding: 2px 8px; border-radius: 999px;
@@ -13929,21 +13941,38 @@ function digitInitials(name) {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
 }
 
+// Real member profiles are free text — a degree/role/community-involvement
+// entry may arrive as one long unbroken sentence with no newline or semicolon
+// to split on. Rendering that verbatim as a "tag" pill produces an oversized
+// blob (the bug this fixes). Anything short enough to read as a label becomes
+// a small pill; anything longer reads as prose instead, folded into the same
+// clamped bio block so the card stays scannable rather than a raw data dump.
+const DIGIT_TAG_MAX = 42;
+
 function digitCvKitDetailHtml() {
   const p = digitReadProfile();
   const avatar = p.photo
     ? '<img class="digit-cvkit-avatar" src="' + digitEsc(p.photo) + '" alt="">'
     : '<span class="digit-cvkit-avatar">' + digitEsc(digitInitials(p.name)) + '</span>';
-  const hasAny = p.workBackground || p.education.length || p.practices.length;
+  const allItems = p.education.concat(p.practices);
+  const shortTags = allItems.filter((t) => t.length <= DIGIT_TAG_MAX);
+  const longItems = allItems.filter((t) => t.length > DIGIT_TAG_MAX);
+  const hasAny = p.workBackground || allItems.length;
   let html = '<div class="digit-cvkit-head">' + avatar +
     '<div><div class="digit-cvkit-name">' + digitEsc(p.name || 'Your profile') + '</div>' +
     '<div class="digit-cvkit-source">Drawn live from your cOMpass profile</div></div></div>';
-  if (p.workBackground) {
-    html += '<p class="digit-cvkit-bio">' + digitEsc(p.workBackground) + '</p>';
+
+  const proseParts = [p.workBackground].concat(longItems).filter(Boolean);
+  if (proseParts.length) {
+    const prose = proseParts.join(' ');
+    const long = prose.length > 220;
+    html += '<p class="digit-cvkit-bio' + (long ? ' is-clamped' : '') + '" id="digit-cvkit-bio">' + digitEsc(prose) + '</p>';
+    if (long) {
+      html += '<button type="button" class="digit-cvkit-more" id="digit-cvkit-more-btn" data-digit-cvkit="toggle-bio">Show more</button>';
+    }
   }
-  const tags = p.education.concat(p.practices);
-  if (tags.length) {
-    html += '<div class="digit-cvkit-tags">' + tags.map((t) => '<span class="digit-cvkit-tag">' + digitEsc(t) + '</span>').join('') + '</div>';
+  if (shortTags.length) {
+    html += '<div class="digit-cvkit-tags">' + shortTags.map((t) => '<span class="digit-cvkit-tag">' + digitEsc(t) + '</span>').join('') + '</div>';
   }
   if (!hasAny) {
     html += '<p class="digit-cvkit-empty">No CV or bio on file yet. Bring a CV or LinkedIn export forward in Archive, and I\'ll structure it into your profile — this card updates from the same data automatically.</p>';
@@ -14205,6 +14234,12 @@ function digitPublishPrompt() {
       const a = btn.dataset.digitCvkit;
       if (a === 'download') digitDownloadCvKit();
       else if (a === 'pulldown') digitOpenPreview(digitPulldownPreviewHtml());
+      else if (a === 'toggle-bio') {
+        const bio = document.getElementById('digit-cvkit-bio');
+        if (!bio) return;
+        const nowClamped = bio.classList.toggle('is-clamped');
+        btn.textContent = nowClamped ? 'Show more' : 'Show less';
+      }
     });
   }
   const closeBtn = document.getElementById('digit-preview-close');
