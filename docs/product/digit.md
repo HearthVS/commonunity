@@ -120,3 +120,4 @@ Actual runtime work is out of scope for this documentation pass and will follow 
 - [`./studio.md`](./studio.md) — the environment that holds DIGIT.
 - [`../foundation/four-layer-architecture.md`](../foundation/four-layer-architecture.md) — where DIGIT sits in the layer model.
 - [`../brand/commonunity-brand-communication-guide-v0.1.md`](../brand/commonunity-brand-communication-guide-v0.1.md) — the voice and communication authority DIGIT must honour.
+- [`../governance/external-ai-boundary.md`](../governance/external-ai-boundary.md) — trust boundary, Sacred Mode, and non-accumulation: DIGIT is a boundary-crossing event; it minimises/permission-layers context and never touches Sacred Mode material.
