@@ -65,3 +65,4 @@ The failure mode this document prevents is a single generic assistant that is me
 - [`../product/digit.md`](../product/digit.md) — DIGIT as a product surface.
 - [`./four-layer-architecture.md`](./four-layer-architecture.md) — where each presence sits in the layer model.
 - [`../product/fieldprint.md`](../product/fieldprint.md) — the private edit stage DIGIT primarily inhabits.
+- [`../brand/commonunity-brand-communication-guide-v0.1.md`](../brand/commonunity-brand-communication-guide-v0.1.md) — voice authority for both presences (Nexus = "synthesis layer"; both "support your evolution without outsourcing your wisdom").

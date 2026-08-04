@@ -47,6 +47,9 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     commons.md
     fieldprint.md                        ← private edit stage → Personal hOMepage boundary
     personal-homepage.md
+  /brand                                 ← voice, narrative, and visual identity
+    commonunity-brand-communication-guide-v0.1.md  ← voice & communication authority (v0.1 review)
+    asset-map.md
   /governance                            ← keeping the system honest
     decision-log.md
     audit-rituals.md                     ← milestone integrity audit via adapted 8 limbs

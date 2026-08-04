@@ -82,6 +82,8 @@ Its character:
 - Playful in small signals, not theatrical.
 - Precise in craft — especially when shaping language, structure, and publishing decisions.
 
+DIGIT's voice is governed by the [brand & communication guide](../brand/commonunity-brand-communication-guide-v0.1.md) — in particular its **human-centered / not automation-first** rule. As the one CommonUnity tool most tempted to sound automation-first, DIGIT must stay on the right side of it: it helps a person *build*, it does not build the self *for* them ("supports your evolution," never "let DIGIT do the work of becoming for you").
+
 ## Visual identity
 
 DIGIT's visual identity is defined **by its qualities**, not yet by a fixed mark:
@@ -117,3 +119,4 @@ Actual runtime work is out of scope for this documentation pass and will follow 
 - [`./personal-homepage.md`](./personal-homepage.md) — the published result DIGIT helps prepare.
 - [`./studio.md`](./studio.md) — the environment that holds DIGIT.
 - [`../foundation/four-layer-architecture.md`](../foundation/four-layer-architecture.md) — where DIGIT sits in the layer model.
+- [`../brand/commonunity-brand-communication-guide-v0.1.md`](../brand/commonunity-brand-communication-guide-v0.1.md) — the voice and communication authority DIGIT must honour.
