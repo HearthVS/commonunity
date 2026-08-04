@@ -74,16 +74,48 @@ The card is a *receipt*, not the artifact:
 
 If this proves out in build, it should graduate to its own doc as a DIGIT-wide convention.
 
-## 6. Where the full view lives
+## 6. Where the full view lives — and how the hOMe surfaces relate
 
-Per [`./rooms-and-digit.md`](./rooms-and-digit.md) — **deeper, not wider** — the full view reuses an existing surface rather than adding a permanent one:
+Establishing this first, because the surfaces are **generations, not siblings**, and mistaking one for the other sends work to a dead path. Traced in code 2026-08-04:
 
-- **Compact card** → the DIGIT panel (right dock).
-- **Full view** → the existing **FieldPrint preview** surface in the centre workbench.
+### The lineage
 
-This mirrors the pattern stUdio already uses successfully: **the editor lives in the centre; the AI proposes from the side** — exactly how the FieldPrint tab and Nexus *Inspire* already work together.
+`studio.html` carries an explicit cascade inside `openStudioProject()`:
 
-Explicitly **not** doing: a new third workspace tab, or structured editing inside the narrow dock.
+```
+Fieldprint v5   →   hOMe Workbench   →   "Preview Personal Home" modal
+  (current)          (superseded)              (legacy fallback)
+```
+
+The code says so itself: the Workbench comment reads *"Replaces the old 'Preview Personal Home' modal as the primary builder entry (the old modal remains reachable as a transitional fallback)"*, and the router comment reads *"Primary surface is now the Fieldprint v5 field experience."*
+
+**Anything opening a hOMe surface must route through `window.openStudioProject('home')`** — the canonical entry every other caller uses — never a direct call to `openWebsitePreview()`. Routing through the router means a caller follows whatever becomes primary next instead of pinning to legacy. (DIGIT briefly called the legacy modal directly; corrected.)
+
+### The current division of labour
+
+| Surface | Owns | Where |
+| --- | --- | --- |
+| Field Observations | raw capture | centre tab |
+| **FieldPrint tab** (`fo-view-lde`) | **content** — 7 fields × 4 rooms, the Level 2 draft | centre tab |
+| **Fieldprint v5 Builder** | **composition** — hero framing, images, layout, palette, cipher | `/fieldprint`, own app in an iframe |
+| Personal hOMepage | the published result | public |
+
+They are joined by an explicitly **non-destructive, content-only** handoff: *Send to FieldPrint Builder* → `phV5SendPrefill(sections, arrival, ack)`, whose own acknowledgement states *"hero framing, images and layout untouched."*
+
+**This is a content / composition split, and it is the right one.** It also maps exactly onto §2 of this note: the FieldPrint tab supplies *content*; the Builder supplies *beauty*. That is the same reason DIGIT must never generate layout — the Builder already owns composition, deterministically.
+
+### Where the kit's views land
+
+- **Compact artifact card** → the DIGIT panel (right dock) — the receipt.
+- **Full view** → the **Fieldprint** surface, reached via `openStudioProject('home')`.
+
+Explicitly **not** doing: a new workspace tab, structured editing inside the narrow dock, or DIGIT touching composition. Per [`./rooms-and-digit.md`](./rooms-and-digit.md) — **deeper, not wider**.
+
+### Consequence for DIGIT
+
+DIGIT writes **content into the same Level 2 record the FieldPrint tab owns**, and may trigger the same non-destructive handoff into the Builder. It must not become a third content editor, and must not touch hero framing, images, layout, or palette — those belong to the Builder.
+
+> **Naming caveat.** "Fieldprint" currently names three things: the private stage (per [`./fieldprint.md`](./fieldprint.md)), the content tab, and the v5 Builder app. That ambiguity is pre-existing and out of scope here, but it is the open item `fieldprint.md` already flags — worth resolving separately.
 
 ## 7. The loop: propose → review → write
 
