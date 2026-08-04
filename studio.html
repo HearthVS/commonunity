@@ -3188,31 +3188,47 @@ input, textarea { font: inherit; color: inherit; }
   flex-shrink: 0;
 }
 
-/* Creation dashboard — status chips that light up as DIGIT works. */
-.digit-dash { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+/* Creation dashboard — a progress/status STEPPER, deliberately not styled like
+   the pill buttons (which are CTAs). No frame, no fill: each stage is a state
+   dot + label, joined by a hairline track that fills as stages complete, so it
+   reads as "where DIGIT is," never as something to click. */
+.digit-dash { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
 .digit-dash-step {
-  font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 3px 9px; border-radius: 999px;
-  color: var(--text-faint);
-  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   display: inline-flex; align-items: center; gap: 5px;
-  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+  padding: 0; border: none; background: none;
+  font-size: 8.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-faint);
+  transition: color var(--transition);
 }
+/* State node — hollow ring by default, fills as the stage advances. */
 .digit-dash-step::before {
-  content: ""; width: 5px; height: 5px; border-radius: 50%;
-  background: currentColor; opacity: 0.35; flex-shrink: 0;
+  content: ""; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--text-faint) 50%, transparent);
+  transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
-.digit-dash-step[data-state="active"] {
-  color: var(--accent-color, var(--setup-accent));
-  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
-  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+/* Connector track between stages. */
+.digit-dash-step:not(:last-child)::after {
+  content: ""; width: 12px; height: 1px; margin: 0 6px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--text-faint) 28%, transparent);
+  transition: background-color var(--transition);
 }
-.digit-dash-step[data-state="active"]::before { opacity: 1; animation: digit-breathe 1.4s ease-in-out infinite; }
-.digit-dash-step[data-state="done"] {
-  color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 80%, var(--text-muted));
-  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 28%, transparent);
+.digit-dash-step[data-state="active"] { color: var(--accent-color, var(--setup-accent)); }
+.digit-dash-step[data-state="active"]::before {
+  background: var(--accent-color, var(--setup-accent));
+  border-color: var(--accent-color, var(--setup-accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, transparent);
+  animation: digit-breathe 1.6s ease-in-out infinite;
 }
-.digit-dash-step[data-state="done"]::before { opacity: 0.9; }
+.digit-dash-step[data-state="done"] { color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 68%, var(--text-muted)); }
+.digit-dash-step[data-state="done"]::before {
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 78%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 78%, transparent);
+}
+/* Fill the connector leaving a completed stage — the progress "track". */
+.digit-dash-step[data-state="done"]:not(:last-child)::after {
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 52%, transparent);
+}
 @media (prefers-reduced-motion: reduce) { .digit-dash-step[data-state="active"]::before { animation: none; } }
 
 /* Thread */
