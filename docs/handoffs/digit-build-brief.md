@@ -64,7 +64,7 @@ Capture → Held → Prepared → Offered → Worked → Returned
 
 DIGIT only sees material that has been **Offered / "brought forward"** by the user — it does not scan the Archive or the whole Fieldprint. "Bring forward" is the consent gesture; invitation framing ("How would you like to meet this material?") over mechanical toolbars.
 
-> Note: **Archive** and **Field Recorder** are net-new surfaces not yet in the repo docs — flagged for canonicalization; not required for DIGIT slice 1.
+> Note: **Archive** is not greenfield — there is already work in flight on the Archive surface (open PRs #98 "Archive selection, PDF text extraction, and intentional Nexus handoff" and #102 "Field Observations depth modes; Archive as memory index"). Reconcile with those before building Archive behaviour; don't rebuild what's started. **Field Recorder** is net-new. Neither is required for DIGIT slice 1, but both are docs-canonicalization candidates.
 
 ---
 
