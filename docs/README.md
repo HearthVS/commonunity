@@ -40,6 +40,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     deployment-model.md                  ← Railway, domains, services, SMTP
   /product                               ← member-facing layers
     compass.md
+    name-as-code.md                      ← the Name Gateway: name etymology + Bhramari, entry to Layer 1
     om-cipher.md                         ← product surface of the cipher
     om-cipher-v1-implementation-plan.md  ← canonical v1 build plan (incl. Bhramari)
     living-profile.md
