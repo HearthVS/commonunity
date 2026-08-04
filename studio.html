@@ -3272,14 +3272,19 @@ input, textarea { font: inherit; color: inherit; }
 .digit-artifact-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .digit-abtn {
   appearance: none; cursor: pointer; font-family: var(--font-body);
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 5px 11px; border-radius: 999px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent-color, var(--setup-accent)) 40%, transparent);
   background: none; color: var(--accent-color, var(--setup-accent));
   transition: background-color var(--transition);
 }
 .digit-abtn:hover { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 14%, transparent); }
 .digit-abtn-primary { background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 16%, transparent); }
+.digit-abtn[disabled] {
+  cursor: default; opacity: 0.4; color: var(--text-faint);
+  border-color: color-mix(in srgb, var(--border) 55%, transparent); background: none;
+}
+.digit-abtn[disabled]:hover { background: none; }
 
 /* Composer */
 .digit-composer {
@@ -3341,6 +3346,95 @@ input, textarea { font: inherit; color: inherit; }
 .digit-page-room { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 16px; background: #fbf7ef; }
 .digit-page-room h5 { margin: 0 0 6px; font-size: 13px; color: #241f16; }
 .digit-page-room p { margin: 0; font-size: 12px; line-height: 1.55; color: #5c5446; }
+
+/* ── DIGIT launchpad (slice 3) — guided starter tasks ─────────────────────
+   Pinned above the conversation thread: a toggle bar of preprogrammed tasks
+   (the first-things-to-do DIGIT is ready to work through) plus a detail card
+   for the selected one. Not the only thing DIGIT does — the composer below
+   still handles "ask for anything." One task (About & CV kit) is fully live;
+   others are honest stubs so the bar can hold several without overpromising. */
+.digit-launchpad {
+  flex-shrink: 0; padding: var(--space-3) var(--space-4) 0;
+}
+/* Collapsed by default — a slim, low-key entry line, not a standing panel.
+   The work surface stays calm; the tasks are one click away, not always on. */
+.digit-launchpad-toggle {
+  appearance: none; cursor: pointer; width: 100%;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-body); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 4px 2px; border: none; background: none; color: var(--text-faint);
+}
+.digit-launchpad-toggle:hover { color: var(--text-muted); }
+.digit-launchpad-chevron { transition: transform var(--transition); flex-shrink: 0; }
+.digit-launchpad-toggle[aria-expanded="true"] .digit-launchpad-chevron { transform: rotate(90deg); }
+.digit-launchpad-count {
+  margin-left: auto; font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 55%, transparent); color: var(--text-faint);
+}
+.digit-launchpad-body { padding-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.digit-launchpad-body[hidden] { display: none; }
+
+.digit-tasks { display: flex; flex-wrap: wrap; gap: 5px; }
+.digit-task {
+  appearance: none; cursor: pointer; text-align: left;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-body); font-size: 10px; font-weight: 600;
+  padding: 4px 9px; border-radius: 999px;
+  color: var(--text-muted);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  transition: color var(--transition), border-color var(--transition), background-color var(--transition);
+}
+.digit-task:hover { color: var(--text); }
+.digit-task.active {
+  color: var(--accent-color, var(--setup-accent));
+  border-color: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 12%, transparent);
+}
+.digit-task-price {
+  font-size: 8px; font-weight: 700; padding: 0 5px; border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 55%, transparent); color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+.digit-task-locked { opacity: 0.75; }
+.digit-task-locked .digit-task-price {
+  background: color-mix(in srgb, #f5a524 22%, transparent);
+  color: color-mix(in srgb, #f5a524 85%, var(--text));
+}
+
+/* Task detail card — one shared frame; content swaps per task. */
+.digit-task-detail {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 10px; padding: 11px 12px;
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+}
+.digit-task-detail-empty { font-size: 11.5px; color: var(--text-faint); }
+
+/* CV kit card */
+.digit-cvkit-head { display: flex; align-items: center; gap: 9px; }
+.digit-cvkit-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; background: color-mix(in srgb, var(--accent-color, var(--setup-accent)) 18%, var(--card));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--accent-color, var(--setup-accent));
+}
+.digit-cvkit-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.digit-cvkit-source { font-size: 10px; color: var(--text-faint); }
+.digit-cvkit-bio { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); margin: 8px 0 0; }
+.digit-cvkit-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.digit-cvkit-tag {
+  font-size: 9px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); color: var(--text-faint);
+}
+.digit-cvkit-empty {
+  font-size: 11px; line-height: 1.55; color: var(--text-faint);
+  padding: 7px 9px; margin-top: 4px;
+  border: 1px dashed color-mix(in srgb, var(--border) 65%, transparent); border-radius: var(--radius-md);
+}
+.digit-cvkit-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.digit-cvkit-note { font-size: 9.5px; color: var(--text-faint); margin-top: 7px; }
 
 /* ── Nexus context bar ─────────────────────────────────────── */
 .nexus-context-bar-track {
@@ -11763,14 +11857,33 @@ body.hw-open { overflow: hidden; }
           </div>
         </div>
 
+        <!-- Launchpad — preprogrammed starter tasks DIGIT is ready to work
+             through, pinned above the thread but COLLAPSED by default (present,
+             not dominant — the work surface stays calm until invited open).
+             About & CV kit is live (reads real profile.* data, real Download);
+             the rest are honest stubs. Not the only thing DIGIT does — the
+             composer below always works regardless of this panel's state. -->
+        <div class="digit-launchpad" id="digit-launchpad">
+          <button type="button" class="digit-launchpad-toggle" id="digit-launchpad-toggle" aria-expanded="false" aria-controls="digit-launchpad-body">
+            <svg class="digit-launchpad-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            <span>Guided tasks</span>
+            <span class="digit-launchpad-count">4</span>
+          </button>
+          <div class="digit-launchpad-body" id="digit-launchpad-body" hidden>
+            <div class="digit-tasks" id="digit-tasks" role="tablist" aria-label="Guided tasks">
+              <button type="button" class="digit-task active" data-task="cv-kit" role="tab" aria-selected="true">About &amp; CV kit</button>
+              <button type="button" class="digit-task" data-task="project" role="tab" aria-selected="false">Add a project</button>
+              <button type="button" class="digit-task" data-task="offerings" role="tab" aria-selected="false">Add your offerings</button>
+              <button type="button" class="digit-task digit-task-locked" data-task="brand-pack" role="tab" aria-selected="false">Brand pack<span class="digit-task-price">$</span></button>
+            </div>
+            <div class="digit-task-detail" id="digit-task-detail"></div>
+          </div>
+        </div>
+
         <!-- Conversation thread — build through dialogue. DIGIT's messages
              PRODUCE things (drafts, previews, diffs); this is what keeps it
              distinct from Nexus, which reflects and does not make artifacts. -->
-        <div class="digit-thread" id="digit-thread">
-          <div class="digit-msg digit-msg-digit">
-            <p>You're in <strong>The Work</strong> — your private Fieldprint. Tell me what you'd like to build, or bring something forward, and I'll shape it with you.</p>
-          </div>
-        </div>
+        <div class="digit-thread" id="digit-thread"></div>
 
         <div class="digit-composer">
           <div class="digit-proto-note" id="digit-proto-note">Prototype · DIGIT isn't wired to a model yet — this previews the flow.</div>
@@ -13755,13 +13868,151 @@ window.studioSetAiMode = studioSetAiMode;
 // so DIGIT never carries a stale build into a freshly opened room).
 function studioDigitResetThread() {
   const thread = document.getElementById('digit-thread');
-  if (thread) {
-    thread.innerHTML =
-      '<div class="digit-msg digit-msg-digit"><p>You\'re in <strong>The Work</strong> — your private Fieldprint. Tell me what you\'d like to build, or bring something forward, and I\'ll shape it with you.</p></div>';
-  }
+  if (thread) thread.innerHTML = '';
   digitSetDash({});
   const send = document.getElementById('digit-send');
   if (send) send.disabled = false;
+  digitSelectTask('cv-kit');
+  digitSetLaunchpadExpanded(false);   // collapsed on every fresh room entry — present, not standing open
+}
+
+// Collapsible launchpad — kept closed by default so the guided tasks don't sit
+// as permanent chrome on the work surface; one click opens them.
+function digitSetLaunchpadExpanded(expanded) {
+  const toggle = document.getElementById('digit-launchpad-toggle');
+  const body = document.getElementById('digit-launchpad-body');
+  if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  if (body) body.hidden = !expanded;
+}
+function digitToggleLaunchpad() {
+  const toggle = document.getElementById('digit-launchpad-toggle');
+  digitSetLaunchpadExpanded(toggle && toggle.getAttribute('aria-expanded') !== 'true');
+}
+
+// ── DIGIT launchpad — guided starter tasks ─────────────────────────────────
+// A preprogrammed "first things to do" bar. About & CV kit is fully live: it
+// reads the member's real compassData.profile (the same field that /extract-cv
+// and cOMpass's onboarding write into — see docs/handoffs) and offers a real,
+// working Download. The others are honest stubs — DIGIT names what's not
+// built yet rather than faking it. This is one recipe among many DIGIT can
+// run, not the only thing it does — "ask for anything" still works below.
+const DIGIT_TASK_LABELS = {
+  'cv-kit': 'About & CV kit',
+  'project': 'Add a project',
+  'offerings': 'Add your offerings',
+  'brand-pack': 'Brand pack',
+};
+
+function digitReadProfile() {
+  const cd = (window.state && state.compassData) || {};
+  const p = (cd.profile && typeof cd.profile === 'object') ? cd.profile
+    : ((window.state && state.profile && typeof state.profile === 'object') ? state.profile : {});
+  const str = (v) => (typeof v === 'string' ? v.trim() : '');
+  const list = (v) => {
+    if (Array.isArray(v)) return v.map((x) => str(typeof x === 'string' ? x : (x && (x.text || x.name)))).filter(Boolean);
+    if (typeof v === 'string' && v.trim()) return v.split(/[\n;]+/).map((s) => s.trim()).filter(Boolean);
+    return [];
+  };
+  const name = str(window.state && state.person && state.person.name) || str(cd.companion) || '';
+  return {
+    name,
+    workBackground: str(p.work_background),
+    education: list(p.education),
+    practices: list(p.practices),
+    photo: str(p.profile_image_data) || str(p.profile_image) || '',
+  };
+}
+
+function digitInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '·';
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+function digitCvKitDetailHtml() {
+  const p = digitReadProfile();
+  const avatar = p.photo
+    ? '<img class="digit-cvkit-avatar" src="' + digitEsc(p.photo) + '" alt="">'
+    : '<span class="digit-cvkit-avatar">' + digitEsc(digitInitials(p.name)) + '</span>';
+  const hasAny = p.workBackground || p.education.length || p.practices.length;
+  let html = '<div class="digit-cvkit-head">' + avatar +
+    '<div><div class="digit-cvkit-name">' + digitEsc(p.name || 'Your profile') + '</div>' +
+    '<div class="digit-cvkit-source">Drawn live from your cOMpass profile</div></div></div>';
+  if (p.workBackground) {
+    html += '<p class="digit-cvkit-bio">' + digitEsc(p.workBackground) + '</p>';
+  }
+  const tags = p.education.concat(p.practices);
+  if (tags.length) {
+    html += '<div class="digit-cvkit-tags">' + tags.map((t) => '<span class="digit-cvkit-tag">' + digitEsc(t) + '</span>').join('') + '</div>';
+  }
+  if (!hasAny) {
+    html += '<p class="digit-cvkit-empty">No CV or bio on file yet. Bring a CV or LinkedIn export forward in Archive, and I\'ll structure it into your profile — this card updates from the same data automatically.</p>';
+  }
+  html += '<div class="digit-cvkit-actions">' +
+    '<button type="button" class="digit-abtn digit-abtn-primary" data-digit-cvkit="download"' + (hasAny ? '' : ' disabled') + '>Download</button>' +
+    '<button type="button" class="digit-abtn" data-digit-cvkit="pulldown">Preview on hOMepage</button>' +
+    '</div>' +
+    '<p class="digit-cvkit-note">A shareable kit — bio, CV, headshot — kept in a pull-down on your hOMepage, not the point of the page.</p>';
+  return html;
+}
+
+function digitStubDetailHtml(task) {
+  if (task === 'brand-pack') {
+    return '<p class="digit-task-detail-empty"><strong>Brand pack</strong> is a premium task — DIGIT would compose a consistent visual identity (palette, type, motifs) across your hOMepage from your OM Cipher. Not built yet, and gated to a paid tier when it ships.</p>';
+  }
+  return '<p class="digit-task-detail-empty"><strong>' + digitEsc(DIGIT_TASK_LABELS[task] || task) + '</strong> isn\'t built yet — for now, describe it in the composer below and DIGIT will walk the same orient → plan → act loop.</p>';
+}
+
+function digitSelectTask(task) {
+  const bar = document.getElementById('digit-tasks');
+  const detail = document.getElementById('digit-task-detail');
+  if (bar) {
+    bar.querySelectorAll('.digit-task').forEach((btn) => {
+      const on = btn.dataset.task === task;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+  if (detail) detail.innerHTML = task === 'cv-kit' ? digitCvKitDetailHtml() : digitStubDetailHtml(task);
+}
+
+// Real, working download — no model call, just the member's own profile data
+// assembled client-side into a plain-text file via a Blob (nothing uploaded).
+function digitDownloadCvKit() {
+  const p = digitReadProfile();
+  const lines = [p.name || 'About & CV', '='.repeat((p.name || 'About & CV').length), ''];
+  if (p.workBackground) lines.push(p.workBackground, '');
+  if (p.education.length) lines.push('Education', ...p.education.map((e) => '- ' + e), '');
+  if (p.practices.length) lines.push('Practices', ...p.practices.map((e) => '- ' + e), '');
+  lines.push('Generated by DIGIT from your CommonUnity profile.');
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (p.name || 'about-cv').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Preview how the kit would sit as a pull-down on the hOMepage — a distinct,
+// narrower view from the full-page preview, and clearly not the live site.
+function digitPulldownPreviewHtml() {
+  const p = digitReadProfile();
+  const avatar = p.photo
+    ? '<img class="digit-cvkit-avatar" src="' + digitEsc(p.photo) + '" alt="" style="width:56px;height:56px;">'
+    : '<span class="digit-cvkit-avatar" style="width:56px;height:56px;font-size:18px;">' + digitEsc(digitInitials(p.name)) + '</span>';
+  return '<div class="digit-page" style="padding:40px;">' +
+    '<div class="digit-page-eyebrow">Preview · hOMepage pull-down (not yet live)</div>' +
+    '<div style="margin-top:18px;border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:18px 20px;background:#fbf7ef;max-width:420px;">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' + avatar +
+        '<div><div style="font-weight:600;font-size:14px;color:#241f16;">' + digitEsc(p.name || 'Your name') + '</div>' +
+        '<div style="font-size:11px;color:#8a7d68;">About &amp; CV — shareable kit</div></div></div>' +
+      (p.workBackground ? '<p style="font-size:12.5px;line-height:1.55;color:#4a4234;margin:12px 0 0;">' + digitEsc(p.workBackground) + '</p>' : '') +
+      '<div style="margin-top:12px;"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:5px 11px;border-radius:999px;border:1px solid rgba(0,0,0,0.14);color:#5c5446;">Download</span></div>' +
+    '</div>' +
+  '</div>';
 }
 
 // Creation dashboard — reflect what DIGIT is doing. states keyed by stage:
@@ -13857,17 +14108,19 @@ function digitMockPageHtml() {
     '</div>' +
   '</div>';
 }
-function digitOpenPreview() {
+function digitOpenPreview(customHtml) {
   const wrap = document.getElementById('digit-preview');
   const body = document.getElementById('digit-preview-body');
   if (!wrap || !body) return;
-  let html = '';
-  try {
-    const api = window.CommonUnity && window.CommonUnity.home;
-    if (api && typeof api.publicHomeHtml === 'function' && api.currentPublicModel) {
-      html = api.publicHomeHtml(api.currentPublicModel);
-    }
-  } catch (_) { /* never break preview */ }
+  let html = customHtml || '';
+  if (!html) {
+    try {
+      const api = window.CommonUnity && window.CommonUnity.home;
+      if (api && typeof api.publicHomeHtml === 'function' && api.currentPublicModel) {
+        html = api.publicHomeHtml(api.currentPublicModel);
+      }
+    } catch (_) { /* never break preview */ }
+  }
   body.innerHTML = html || digitMockPageHtml();
   wrap.hidden = false;
   wrap.setAttribute('aria-hidden', 'false');
@@ -13932,6 +14185,26 @@ function digitPublishPrompt() {
         digitSetDash({ orient: 'done', plan: 'done', act: 'done', review: 'done' });
         digitAppend('<p>Held as a private draft. Nothing published.</p>');
       }
+    });
+  }
+  const launchpadToggle = document.getElementById('digit-launchpad-toggle');
+  if (launchpadToggle) launchpadToggle.addEventListener('click', digitToggleLaunchpad);
+  const taskBar = document.getElementById('digit-tasks');
+  if (taskBar) {
+    taskBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.digit-task');
+      if (!btn) return;
+      digitSelectTask(btn.dataset.task);
+    });
+  }
+  const taskDetail = document.getElementById('digit-task-detail');
+  if (taskDetail) {
+    taskDetail.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-digit-cvkit]');
+      if (!btn || btn.disabled) return;
+      const a = btn.dataset.digitCvkit;
+      if (a === 'download') digitDownloadCvKit();
+      else if (a === 'pulldown') digitOpenPreview(digitPulldownPreviewHtml());
     });
   }
   const closeBtn = document.getElementById('digit-preview-close');
