@@ -45,6 +45,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     om-cipher-v1-implementation-plan.md  ← canonical v1 build plan (incl. Bhramari)
     living-profile.md
     studio.md
+    archive.md                           ← Archive as continuity + AI ambience (present, not dominant)
     digit.md                             ← compositional builder presence inside stUdio
     commons.md
     fieldprint.md                        ← private edit stage → Personal hOMepage boundary

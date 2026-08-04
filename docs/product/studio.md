@@ -10,6 +10,8 @@ Studio is where the person works with their new baseline. It provides creative, 
 
 Studio holds both AI presences: **Nexus** (contemplative, orienting) and **DIGIT** (the compositional builder presence — see [`./digit.md`](./digit.md)). Their boundary is defined in [`../foundation/ai-roles.md`](../foundation/ai-roles.md): Nexus orients meaning; DIGIT composes form.
 
+Intelligence in Studio is **present, not dominant** — available when invited, never scanning or auto-processing. Material is *remembered* in the **Archive** and only *offered* into Nexus/DIGIT by an explicit "bring forward." The ambience principles, the Held→Prepared→Offered→Worked→Returned state loop, and the preparation-vs-interpretation boundary are canonical in [`./archive.md`](./archive.md).
+
 ## What Studio is not
 
 - Studio is **not** where Om Cipher or Living Profile are generated. Those come from Compass.
