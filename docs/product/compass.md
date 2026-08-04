@@ -17,6 +17,10 @@ By the end of a Compass process, the member has:
 3. The beginnings of a Living Profile: current projects, intentions, sankalpa, questions, creative stream.
 4. An issued Om Cipher as **initiation seal** and entrance marker into Studio and cOMmons.
 
+## The Name Gateway (entry into Layer 1)
+
+Compass opens the OM Cipher **not with calculation, but with listening** — a **Name Gateway** that invites the person into relationship with their first name (etymology, archetype, sound) and a Bhramari name-humming practice, *before* the numerology cards. This is what makes the cipher feel like a mirror rather than a profile form. Full feature spec: [`./name-as-code.md`](./name-as-code.md).
+
 ## Why it cannot be self-serve
 
 Self-serve sign-up would skip the act of witnessing and would treat onboarding as data collection. CommonUnity is not a personality test or branding exercise. The facilitated process is the product.
