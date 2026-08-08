@@ -5304,6 +5304,13 @@ input, textarea { font: inherit; color: inherit; }
   border-color: var(--rose-color, #c4b5fd);
   background: color-mix(in srgb, var(--rose-color, #c4b5fd) 12%, transparent);
 }
+.fo-media-dropzone.is-uploading {
+  border-color: var(--rose-color, #c4b5fd);
+  background: color-mix(in srgb, var(--rose-color, #c4b5fd) 8%, transparent);
+  cursor: progress;
+  pointer-events: none;
+}
+.fo-media-dropzone.is-uploading .fo-media-dropzone-text { opacity: 0.9; }
 .fo-media-dropzone-text { font-size: 12px; color: var(--text-muted); }
 .fo-media-dropzone-text u { text-decoration-thickness: 1px; }
 .fo-media-dropzone-hint { font-size: 10px; color: var(--text-muted); }
@@ -11584,7 +11591,7 @@ body.hw-open { overflow: hidden; }
         <div class="fo-media-dropzone" id="fo-media-dropzone" tabindex="0" role="button"
              aria-label="Add media observation — drag files here or click to choose">
           <input type="file" id="fo-media-input" multiple
-                 accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,application/pdf"
+                 accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,application/pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.ogg,.oga,.weba,.m4a,.aac,.pdf"
                  style="display:none;">
           <span class="fo-media-dropzone-text">Drag &amp; drop media here, or <u>choose files</u></span>
           <span class="fo-media-dropzone-hint">Images, audio, or PDF · up to 25&nbsp;MB · stays private to you, not sent to Nexus</span>
@@ -17198,7 +17205,26 @@ const FO_MEDIA_ACCEPT = [
   'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
   'audio/webm', 'audio/mp4', 'audio/aac', 'application/pdf'
 ];
+// Extension fallback: browsers frequently report an empty or generic MIME for
+// audio (.m4a, .wav) and for drag-and-dropped files, which would otherwise be
+// silently skipped even though they are supported. When the reported type is
+// not whitelisted we fall back to the extension and let the server (which does
+// the same) be authoritative. This is why PDFs uploaded but images/audio did
+// not: PDFs get a reliable application/pdf type, most other types do not.
+const FO_MEDIA_ACCEPT_EXT = [
+  '.png', '.jpg', '.jpeg', '.webp', '.gif',
+  '.mp3', '.wav', '.ogg', '.oga', '.weba', '.m4a', '.aac', '.pdf'
+];
 const FO_MEDIA_MAX_BYTES = 25 * 1024 * 1024;
+
+function foMediaSupported(file) {
+  const type = (file.type || '').toLowerCase().split(';')[0].trim();
+  if (type && FO_MEDIA_ACCEPT.includes(type)) return true;
+  const name = (file.name || '').toLowerCase();
+  const dot = name.lastIndexOf('.');
+  const ext = dot >= 0 ? name.slice(dot) : '';
+  return !!ext && FO_MEDIA_ACCEPT_EXT.includes(ext);
+}
 
 function foMediaQuery() {
   const cipherId = foCipherId();
@@ -17619,30 +17645,80 @@ function updateArchiveCounts() {
   setArchiveCount('archive-total-count', total);
 }
 
+let _foMediaUploading = false;
+
+function _foSetDropzoneBusy(busy, label) {
+  const zone = document.getElementById('fo-media-dropzone');
+  if (!zone) return;
+  zone.classList.toggle('is-uploading', !!busy);
+  zone.setAttribute('aria-busy', busy ? 'true' : 'false');
+  const text = zone.querySelector('.fo-media-dropzone-text');
+  if (!text) return;
+  if (busy) {
+    if (!text.dataset.foRestore) text.dataset.foRestore = text.innerHTML;
+    text.textContent = label || 'Uploading…';
+  } else if (text.dataset.foRestore) {
+    text.innerHTML = text.dataset.foRestore;
+    delete text.dataset.foRestore;
+  }
+}
+
 async function studioUploadFieldObservationMedia(files) {
   const arr = Array.from(files || []);
   if (!arr.length) return;
-  let uploaded = 0;
+  // Guard against double-submission (e.g. rapid re-drop or picker + drop race).
+  if (_foMediaUploading) {
+    if (typeof showToast === 'function') showToast('Still uploading — one moment…');
+    return;
+  }
+  // Validate up front so we can report skips before showing progress.
+  const valid = [];
   for (const file of arr) {
-    if (!FO_MEDIA_ACCEPT.includes((file.type || '').toLowerCase())) {
+    if (!foMediaSupported(file)) {
       if (typeof showToast === 'function') showToast(`Skipped ${file.name} — unsupported type.`);
+      continue;
+    }
+    if (file.size === 0) {
+      if (typeof showToast === 'function') showToast(`Skipped ${file.name} — empty file.`);
       continue;
     }
     if (file.size > FO_MEDIA_MAX_BYTES) {
       if (typeof showToast === 'function') showToast(`Skipped ${file.name} — over 25 MB.`);
       continue;
     }
-    const fd = new FormData();
-    fd.append('file', file, file.name);
-    fd.append('cipher_id', foCipherId());
-    try {
-      const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments`, { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('upload failed');
-      uploaded += 1;
-    } catch (_) {
-      if (typeof showToast === 'function') showToast(`Could not upload ${file.name}.`);
-    }
+    valid.push(file);
   }
+  if (!valid.length) return;
+
+  _foMediaUploading = true;
+  let uploaded = 0;
+  try {
+    for (let i = 0; i < valid.length; i++) {
+      const file = valid[i];
+      _foSetDropzoneBusy(true, valid.length > 1
+        ? `Uploading ${i + 1} of ${valid.length}…`
+        : `Uploading ${file.name}…`);
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      fd.append('cipher_id', foCipherId());
+      try {
+        const res = await fetch(`${API_BASE}/api/studio/field-observations/attachments`, { method: 'POST', body: fd });
+        if (!res.ok) {
+          let detail = '';
+          try { detail = (await res.json()).detail || ''; } catch (_) {}
+          throw new Error(detail || `HTTP ${res.status}`);
+        }
+        uploaded += 1;
+      } catch (err) {
+        const why = (err && err.message) ? ` (${err.message})` : '';
+        if (typeof showToast === 'function') showToast(`Could not upload ${file.name}${why}.`);
+      }
+    }
+  } finally {
+    _foMediaUploading = false;
+    _foSetDropzoneBusy(false);
+  }
+
   if (uploaded) {
     await studioLoadFieldObservationMedia();
     if (typeof showToast === 'function') showToast(uploaded === 1 ? 'Media observation captured.' : `${uploaded} media observations captured.`);
