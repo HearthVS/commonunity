@@ -5582,30 +5582,46 @@ async def admin_delete_announcement(message_id: int, request: Request):
     validated to be a general beta in-app announcement (see _ANNOUNCEMENT_SCOPE_SQL)
     before anything changes — email-all records, personal messages, invitations,
     and participant data can never be reached. Soft-delete preserves the
-    thread/delivery audit trail; an audit event records the removal."""
+    thread/delivery audit trail; an audit event records the removal.
+
+    The message id is always bound as a parameter (never interpolated). Any
+    database-layer failure is logged server-side but surfaced to the operator as
+    a safe, actionable message — raw SQL/driver internals are never returned."""
     _require_admin(request)
-    with _admin_db() as conn:
-        row = conn.execute(
-            f"""
-            SELECT m.id AS message_id
-            FROM communication_messages m
-            JOIN communication_threads t ON t.id = m.thread_id
-            WHERE m.id = ? AND {_ANNOUNCEMENT_SCOPE_SQL}
-            """,
-            (message_id,),
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="general beta announcement not found")
-        conn.execute(
-            "UPDATE communication_messages SET deleted_at = ? WHERE id = ?",
-            (_now_iso(), message_id),
-        )
-        conn.execute(
-            """
-            INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
-            VALUES (?, 'messaging_announcement_deleted', NULL, '', '/admin', 'admin', ?, ?)
-            """,
-            (_now_iso(), request.headers.get("user-agent", "")[:320], f"message:{message_id}"),
+    try:
+        with _admin_db() as conn:
+            row = conn.execute(
+                f"""
+                SELECT m.id AS message_id
+                FROM communication_messages m
+                JOIN communication_threads t ON t.id = m.thread_id
+                WHERE m.id = ? AND {_ANNOUNCEMENT_SCOPE_SQL}
+                """,
+                (message_id,),
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="general beta announcement not found")
+            conn.execute(
+                "UPDATE communication_messages SET deleted_at = ? WHERE id = ?",
+                (_now_iso(), message_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO events (timestamp, type, invite_id, token, route, source, user_agent, detail)
+                VALUES (?, 'messaging_announcement_deleted', NULL, '', '/admin', 'admin', ?, ?)
+                """,
+                (_now_iso(), request.headers.get("user-agent", "")[:320], f"message:{message_id}"),
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Log the real error (including any raw SQL/driver text) for diagnostics,
+        # but never leak database internals to the admin UI, which renders the
+        # response `detail` verbatim.
+        print(f"announcement delete failed (message {message_id}): {exc!r}")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not delete the announcement due to a server error. Please try again; if it persists, check the server logs.",
         )
     return {"ok": True, "message_id": message_id}
 
