@@ -239,9 +239,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!raw.consentGiven) {
         return res.status(400).json({ error: "Consent is required" });
       }
-      if (typeof raw.sessionDate !== "string" || !raw.sessionDate) {
-        raw.sessionDate = new Date().toISOString().slice(0, 10);
-      }
+    }
+    // The intake's session date is optional; default to the day it was sent.
+    if (typeof raw.sessionDate !== "string" || !raw.sessionDate) {
+      raw.sessionDate = new Date().toISOString().slice(0, 10);
     }
 
     // Compute auto-outputs
