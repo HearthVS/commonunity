@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { calculateRadiance, synthesizeRadianceProfile } from "../shared/genekeys";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { isPractitioner, rateLimit } from "./auth";
+import { getTableColumns } from "drizzle-orm";
+import { questionnaireResponses } from "../shared/schema";
 import { seedDatabase } from "./seed";
 import nodemailer from "nodemailer";
 import Anthropic from "@anthropic-ai/sdk";
@@ -183,8 +186,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(item);
   });
 
-  app.post("/api/questionnaires", (req, res) => {
-    const raw = req.body;
+  // Fields a public (not logged-in) intake may set. Ids and computed outputs
+  // are never accepted from the public form.
+  const PUBLIC_INTAKE_FIELDS = new Set(
+    Object.keys(getTableColumns(questionnaireResponses)).filter((k) => ![
+      "id", "clientId", "contraindicationFlags", "dominantDosha", "dominantCenter",
+      "suggestedChakraFocus", "recommendedComfortTier", "recommendedProtocolId",
+    ].includes(k)),
+  );
+  const intakeLimiter = rateLimit(8, 60 * 60 * 1000);
+
+  app.post("/api/questionnaires", (req, res, next) => {
+    if (isPractitioner(req)) return next();
+    intakeLimiter(req, res, next);
+  }, (req, res) => {
+    const practitioner = isPractitioner(req);
+    let raw = req.body ?? {};
+    if (!practitioner) {
+      // Honeypot: a hidden "website" field real people never fill in.
+      if (raw.website) return res.json({ ok: true });
+      raw = Object.fromEntries(
+        Object.entries(raw).filter(([k]) => PUBLIC_INTAKE_FIELDS.has(k) || k === "_source"),
+      );
+      if (typeof raw.clientName !== "string" || !raw.clientName.trim()) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+      if (!raw.consentGiven) {
+        return res.status(400).json({ error: "Consent is required" });
+      }
+      if (typeof raw.sessionDate !== "string" || !raw.sessionDate) {
+        raw.sessionDate = new Date().toISOString().slice(0, 10);
+      }
+    }
     // Compute auto-outputs
     const flags: string[] = [];
     if (raw.hasPacemaker) flags.push("pacemaker-caution");
@@ -259,7 +292,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (raw._source === "intake") {
       sendIntakeNotification(saved);
     }
-    res.json(saved);
+    // The public form only needs to know it worked; never echo stored records to it.
+    res.json(practitioner ? saved : { ok: true });
   });
 
   // ─── SESSION LOGS ─────────────────────────────────────────────────────────────

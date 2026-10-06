@@ -3,10 +3,12 @@ import { Link, useLocation } from "wouter";
 import {
   Music2, Brain, Activity, Leaf, Eye, ClipboardList,
   BookOpen, PlayCircle, PenLine, FlaskConical, Layers,
-  Info, BookMarked, ChevronLeft, ChevronRight, Menu, X, Users, Sparkles, ShoppingBag
+  Info, BookMarked, ChevronLeft, ChevronRight, Menu, X, Users, Sparkles, ShoppingBag, LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NexusPanel from "./NexusPanel";
+import { useQueryClient } from "@tanstack/react-query";
+import { logout } from "./AuthGate";
 
 const NAV_GROUPS = [
   {
@@ -60,6 +62,7 @@ export default function Layout({ children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
+  const queryClient = useQueryClient();
 
   const isActive = (href: string) => {
     if (href === "/inventory" && (location === "/" || location === "/inventory")) return true;
@@ -152,6 +155,12 @@ export default function Layout({ children }: LayoutProps) {
             <a href="/studio.html" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
               <Layers size={12}/> CommonUnity Studio
             </a>
+            <button
+              onClick={() => logout(queryClient)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 text-left"
+            >
+              <LogOut size={12}/> Sign out
+            </button>
           </div>
         )}
       </aside>
