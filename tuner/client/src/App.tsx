@@ -32,36 +32,40 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router hook={useHashLocation}>
-        {/* Standalone intake — no Layout */}
-        <Route path="/intake" component={Intake} />
+        <Switch>
+          {/* Standalone intake — no Layout */}
+          <Route path="/intake" component={Intake} />
 
-        <Layout>
-          <Switch>
-            <Route path="/" component={Inventory} />
-            <Route path="/inventory" component={Inventory} />
-            <Route path="/inventory/audit" component={InventoryAudit} />
-            <Route path="/inventory/:id" component={InstrumentDetail} />
-            <Route path="/chakras" component={ChakraAtlas} />
-            <Route path="/chakras/:id" component={ChakraDetail} />
-            <Route path="/biofield" component={BiofieldAtlas} />
-            <Route path="/ayurveda" component={AyurvedaAtlas} />
-            <Route path="/centers" component={CentersAtlas} />
-            <Route path="/koshas" component={KoshasAtlas} />
-            <Route path="/subtle-bodies" component={SubtleBodiesAtlas} />
-            <Route path="/questionnaire" component={Questionnaire} />
-            <Route path="/questionnaire/result/:id" component={QuestionnaireResult} />
-            <Route path="/clients" component={Clients} />
-            <Route path="/protocols" component={Protocols} />
-            <Route path="/protocols/:id" component={ProtocolDetail} />
-            <Route path="/sessions" component={SessionLog} />
-            <Route path="/sessions/:id" component={SessionDetail} />
-            <Route path="/composer" component={Composer} />
-            <Route path="/sources" component={Sources} />
-            <Route path="/why-om" component={WhyOM} />
-            <Route path="/guide" component={PractitionerGuide} />
-            <Route component={NotFound} />
-          </Switch>
-        </Layout>
+          <Route>
+            <Layout>
+              <Switch>
+                <Route path="/" component={Inventory} />
+                <Route path="/inventory" component={Inventory} />
+                <Route path="/inventory/audit" component={InventoryAudit} />
+                <Route path="/inventory/:id" component={InstrumentDetail} />
+                <Route path="/chakras" component={ChakraAtlas} />
+                <Route path="/chakras/:id" component={ChakraDetail} />
+                <Route path="/biofield" component={BiofieldAtlas} />
+                <Route path="/ayurveda" component={AyurvedaAtlas} />
+                <Route path="/centers" component={CentersAtlas} />
+                <Route path="/koshas" component={KoshasAtlas} />
+                <Route path="/subtle-bodies" component={SubtleBodiesAtlas} />
+                <Route path="/questionnaire" component={Questionnaire} />
+                <Route path="/questionnaire/result/:id" component={QuestionnaireResult} />
+                <Route path="/clients" component={Clients} />
+                <Route path="/protocols" component={Protocols} />
+                <Route path="/protocols/:id" component={ProtocolDetail} />
+                <Route path="/sessions" component={SessionLog} />
+                <Route path="/sessions/:id" component={SessionDetail} />
+                <Route path="/composer" component={Composer} />
+                <Route path="/sources" component={Sources} />
+                <Route path="/why-om" component={WhyOM} />
+                <Route path="/guide" component={PractitionerGuide} />
+                <Route component={NotFound} />
+              </Switch>
+            </Layout>
+          </Route>
+        </Switch>
       </Router>
       <Toaster />
     </QueryClientProvider>
