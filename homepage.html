@@ -1007,7 +1007,8 @@
     }
     .tool-visual { display: flex; flex-direction: column; align-items: center; gap: 16px; }
     .tool-visual-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: center; }
-    .compass-rose svg { opacity: 0.85; }
+    .compass-rose { max-width: 100%; }
+    .compass-rose svg { opacity: 0.85; display: block; max-width: 100%; height: auto; }
     .studio-rooms-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1029,7 +1030,7 @@
     .room-name { font-family: var(--display); font-size: 15px; color: var(--text); font-style: italic; }
     .room-law { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
     @media (max-width: 768px) {
-      .tool-inner, .tool-inner-reverse { grid-template-columns: 1fr; direction: ltr; }
+      .tool-inner, .tool-inner-reverse { grid-template-columns: minmax(0, 1fr); direction: ltr; }
       .tool-visual { order: -1; }
     }
 
@@ -1097,6 +1098,16 @@
     }
     .btn-secondary:hover { transform: translateY(-2px); border-color: var(--gold); color: var(--gold); }
   </style>
+  <link rel="stylesheet" href="/textsize.css">
+  <style>
+    /* Text size control in the nav: links stay right-aligned, Aa sits after them. */
+    .nav-links { margin-left: auto; }
+    .textsize-slot { display: flex; margin-left: clamp(18px, 2.6vw, 34px); }
+    @media (max-width: 760px) {
+      .textsize-slot { margin-left: auto; margin-right: 10px; }
+    }
+  </style>
+  <script src="/textsize.js" defer></script>
 </head>
 <body>
 
@@ -1121,13 +1132,15 @@
         <li><a href="/manifesto">Source Code</a></li>
       </ul>
 
+      <span class="textsize-slot" data-textsize-host></span>
+
       <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
   </nav>
 
-  <main id="top">
+  <main id="top" data-textsize-scale>
 
     <!-- ==================================================================
          2 · HERO — presence
@@ -1317,7 +1330,7 @@
             </div>
           </div>
           <div class="om-structure-canvas">
-            <canvas id="om-torus-canvas"></canvas>
+            <canvas id="om-torus-canvas" data-textsize-scale="off"></canvas>
             <p class="canvas-caption">The OM Structure — rotate with the torus</p>
           </div>
         </div>
@@ -1743,7 +1756,7 @@
   <!-- ====================================================================
        9 · FOOTER
        ================================================================= -->
-  <footer>
+  <footer data-textsize-scale>
     <div class="wrap footer-inner">
       <p class="footer-tag">
         An evolutionary field for unified living. Quietly underwritten by the Oṁ principle.

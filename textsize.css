@@ -1,0 +1,65 @@
+/* ---------- Text size (textsize.js) ----------
+   Shared with Arcanakin and the other Joint Idea apps: textsize.js is copied
+   as is, and the choice lives in localStorage under "jointidea-text-size".
+
+   Content scales as a whole, so layouts built in px still grow in proportion.
+   A page marks what should scale with data-textsize-scale and marks where the
+   "Aa" control sits with data-textsize-host. Keep pointer- and canvas-driven
+   views out of the scaled areas, so hit-testing and drawing stay in true
+   pixels; an element inside a scaled area can opt back out with
+   data-textsize-scale="off" (it is zoomed back to 1).
+
+   Colours come from the page through the --ts-* properties below; the
+   defaults are the CommonUnity cream-and-gold on deep warm dark. */
+[data-textsize-scale] { zoom: var(--text-scale, 1); }
+[data-textsize-scale="off"] { zoom: calc(1 / var(--text-scale, 1)); }
+
+.textsize {
+  --ts-text: #F5EED8;
+  --ts-dim: rgba(245, 238, 216, 0.55);
+  --ts-line: rgba(245, 238, 216, 0.18);
+  --ts-accent: #C4993A;
+  --ts-surface: #141210;
+  --ts-display: 'Cormorant Garamond', Georgia, serif;
+  --ts-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  position: relative;
+  flex: none;
+}
+.textsize-btn {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  height: 34px; padding: 0 11px; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--ts-text);
+  border: 1px solid var(--ts-line);
+  font-family: var(--ts-display); font-weight: 600; line-height: 32px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.textsize-btn span:first-child { font-size: 19px; }
+.textsize-btn span:last-child { font-size: 14px; }
+.textsize-btn:hover, .textsize-btn[aria-expanded="true"] {
+  border-color: var(--ts-accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ts-accent) 35%, transparent);
+}
+.textsize-btn:focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 2px; }
+.text-scaled .textsize-btn { border-color: color-mix(in srgb, var(--ts-accent) 80%, transparent); }
+.textsize-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 70;
+  width: 250px; padding: 14px 16px 16px; border-radius: 14px;
+  background: var(--ts-surface); border: 1px solid var(--ts-line);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), 0 0 24px color-mix(in srgb, var(--ts-accent) 14%, transparent);
+  font-family: var(--ts-body);
+}
+.textsize-label {
+  margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ts-dim);
+}
+.textsize-row { display: flex; align-items: center; gap: 12px; }
+.textsize-a { font-family: var(--ts-display); font-weight: 600; color: var(--ts-text); line-height: 1; }
+.textsize-a.small { font-size: 15px; }
+.textsize-a.large { font-size: 28px; }
+.textsize-range { flex: 1; min-width: 0; margin: 0; accent-color: var(--ts-accent); height: 28px; }
+
+/* On a phone the control can land anywhere in a wrapping header, so the panel
+   pins to the right edge of the header instead of hanging off the button. */
+@media (max-width: 600px) {
+  .textsize-panel { position: fixed; top: auto; right: 16px; margin-top: 10px; }
+}

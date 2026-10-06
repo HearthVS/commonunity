@@ -5842,6 +5842,19 @@ async def serve_favicon():
         return FileResponse(fav, media_type="image/svg+xml")
     return {"error": "Not found"}
 
+# Shared "Aa" text-size control (copied as is from Arcanakin; see textsize.css).
+# Public on purpose: the public homepage and Source Code page use it too, and it
+# carries no member data.
+@app.get("/textsize.js")
+async def serve_textsize_js():
+    return FileResponse(_ROOT / "textsize.js", media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+@app.get("/textsize.css")
+async def serve_textsize_css():
+    return FileResponse(_ROOT / "textsize.css", media_type="text/css",
+                        headers={"Cache-Control": "no-cache"})
+
 @app.get("/favicon-studio.svg")
 async def serve_favicon_studio():
     # Distinct stUdio tab icon (beta) so its browser tab is easy to tell

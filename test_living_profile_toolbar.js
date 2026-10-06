@@ -17,7 +17,7 @@ const HTML = fs.readFileSync(path.join(__dirname, 'studio.html'), 'utf8');
 // Extract the room header block (the main Studio toolbar) so assertions about
 // the toolbar cannot be satisfied by markup elsewhere on the screen.
 function roomHeaderBlock() {
-  const start = HTML.indexOf('<div class="room-header">');
+  const start = HTML.indexOf('<div class="room-header"');
   assert.ok(start > -1, 'room-header (main Studio toolbar) must exist');
   // Room selector frame marks the end of the header controls we care about.
   const end = HTML.indexOf('<!-- Room selector frame -->', start);

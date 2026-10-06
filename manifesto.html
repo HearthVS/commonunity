@@ -483,6 +483,18 @@
     gap: 12px;
   }
 </style>
+<link rel="stylesheet" href="/textsize.css">
+<style>
+  header.site .textsize {
+    --ts-text: var(--cream); --ts-dim: var(--cream-faint); --ts-line: var(--line-strong);
+    --ts-accent: var(--gold-soft); --ts-surface: var(--base-2);
+    --ts-display: var(--font-display); --ts-body: var(--font-sans);
+  }
+  @media (max-width: 760px) { header.site .textsize { margin-left: auto; } }
+  /* Long URLs wrap instead of widening the page at larger text sizes. */
+  .source-code a, .source-code .attribution { overflow-wrap: anywhere; }
+</style>
+<script src="/textsize.js" defer></script>
 </head>
 <body>
 
@@ -515,7 +527,7 @@
 
 <!-- Header -->
 <header class="site">
-  <div class="wrap wrap-wide nav">
+  <div class="wrap wrap-wide nav" data-textsize-host>
     <div class="brand">
       <a href="/home" aria-label="CommonUnity home">
         <svg class="lockup" viewBox="-30 0 760 132" aria-hidden="true"><use href="#logo-lockup"/></svg>
@@ -533,7 +545,7 @@
 </header>
 
 <!-- Hero -->
-<section class="hero">
+<section class="hero" data-textsize-scale>
   <div class="wrap">
     <div class="eyebrow">Source Code</div>
     <h1>A manifesto, path, and open invitation for <em>unified living.</em></h1>
@@ -554,7 +566,7 @@
 
 <hr class="rule" />
 
-<article class="source-code">
+<article class="source-code" data-textsize-scale>
   <div class="wrap">
 
     <!-- The origin -->
@@ -1050,7 +1062,7 @@
 </article>
 
 <!-- Footer -->
-<footer class="site">
+<footer class="site" data-textsize-scale>
   <div class="wrap wrap-wide">
     <div class="foot">
       <div>

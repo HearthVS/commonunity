@@ -1439,6 +1439,12 @@ input, textarea { font: inherit; color: inherit; }
   justify-content: center;
   min-width: 0;
 }
+/* In the stacked (phone/tablet) layout the page scrolls, so the four pills can
+   wrap instead of widening the page. The desktop header keeps one row because
+   .room-body's height is sized against it. */
+@media (max-width: 900px) {
+  .room-switcher { flex-wrap: wrap; }
+}
 .room-pill {
   padding: 5px 14px;
   border-radius: var(--radius-full);
@@ -2341,6 +2347,7 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap; /* keeps Save reachable in a narrow column or at larger text sizes */
 }
 
 /* ── Workspace selector (compact segmented control) ───────────────────
@@ -2978,6 +2985,8 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap; /* header buttons drop below the label rather than clip */
+  row-gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   flex-shrink: 0;
@@ -10787,6 +10796,17 @@ body.hw-open { overflow: hidden; }
      working" standard, identical here and in cOMpass. -->
 <link rel="stylesheet" href="/sdk/nexus-activity.css">
 <script src="/sdk/nexus-activity.js"></script>
+<!-- Shared "Aa" text-size control. It sits at the end of the room header and
+     scales the three room columns. The splitters between them and the room
+     header stay unscaled, so column dragging tracks the pointer exactly. -->
+<link rel="stylesheet" href="/textsize.css">
+<style>
+.room-header .textsize {
+  --ts-text: var(--text); --ts-dim: var(--text-muted); --ts-line: var(--border);
+  --ts-accent: var(--rose-color); --ts-surface: var(--card); --ts-body: var(--font-body);
+}
+</style>
+<script src="/textsize.js" defer></script>
 </head>
 <body>
 
@@ -11120,7 +11140,7 @@ body.hw-open { overflow: hidden; }
 <div id="screen-room" class="screen">
 
   <!-- Room Header with mood toolbar -->
-  <div class="room-header">
+  <div class="room-header" data-textsize-host>
     <div style="display:flex;align-items:center;gap:var(--space-3);flex-shrink:0;">
     <button class="room-back" id="btn-back-to-entrance">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -11347,7 +11367,7 @@ body.hw-open { overflow: hidden; }
   <div class="room-body">
 
     <!-- Left context column: persistent Gene Keys legend + Archive drawer -->
-    <div class="room-archive" id="room-archive">
+    <div class="room-archive" id="room-archive" data-textsize-scale>
 
       <!-- Gene Keys legend — the room's anchor. Always visible; stays put
            when the Archive drawer below is collapsed or scrolled. -->
@@ -11496,7 +11516,7 @@ body.hw-open { overflow: hidden; }
          tabindex="0"></div>
 
     <!-- Notepad (centre) -->
-    <div class="room-workbench">
+    <div class="room-workbench" data-textsize-scale>
       <div class="notepad-surface">
         <div class="notepad-header">
   <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;min-width:0;">
@@ -11704,7 +11724,7 @@ body.hw-open { overflow: hidden; }
          tabindex="0"></div>
 
     <!-- AI dock (right panel) — Nexus by default, DIGIT on request -->
-    <div class="room-mirror" id="room-mirror" data-ai-mode="nexus">
+    <div class="room-mirror" id="room-mirror" data-ai-mode="nexus" data-textsize-scale>
 
       <!-- ── AI dock switch (Nexus | DIGIT) ────────────────────────────────
            Slice 1: shown only in The Work (gated in CSS by
