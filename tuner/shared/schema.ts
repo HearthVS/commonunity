@@ -171,6 +171,8 @@ export const questionnaireResponses = sqliteTable("questionnaire_responses", {
   sessionDate: text("session_date").notNull(),
   // S1
   clientName: text("client_name"),
+  clientEmail: text("client_email"),
+  clientPhone: text("client_phone"),
   clientAge: integer("client_age"),
   pregnancyStatus: text("pregnancy_status"),
   // S2 safety
@@ -179,12 +181,14 @@ export const questionnaireResponses = sqliteTable("questionnaire_responses", {
   hasEpilepsy: integer("has_epilepsy"),
   soundSensitivity: integer("sound_sensitivity"),
   acuteCrisis: integer("acute_crisis"),
+  implantedDevice: integer("implanted_device"),
   otherMedical: text("other_medical"),
   sensoryMeds: text("sensory_meds"),
   // S3 intention
   intentionText: text("intention_text"),
   receiveText: text("receive_text"),
   focusAreas: text("focus_areas"), // JSON array
+  attentionAreas: text("attention_areas"), // free text from the remote intake
   // S4 ratings
   physicalEnergy: integer("physical_energy"),
   mentalClarity: integer("mental_clarity"),
