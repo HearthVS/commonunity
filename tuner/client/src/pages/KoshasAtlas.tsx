@@ -51,7 +51,7 @@ export default function KoshasAtlas() {
     setNexusContext(
       "Koshas Atlas — 7 Subtle Body Layers\nThe five classical koshas (Taittiriya Upanishad) extended to a 7-layer model incorporating Theosophical, Brennan, and Gene Keys frameworks. Indicates which instruments are most relevant to each layer and the application modality."
     );
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   function toggle(id: string) {

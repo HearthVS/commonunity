@@ -66,7 +66,7 @@ export default function SessionLog() {
 
   useEffect(() => {
     setNexusContext("Session Log\nRecord of past sessions — outcomes, instruments used, protocol deviations, and follow-up notes.");
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   return (

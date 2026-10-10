@@ -152,7 +152,7 @@ export default function Sources() {
 
   useEffect(() => {
     setNexusContext("Sources & Licensing\nAttributions for McKusick Biofield Tuning, Cousto Cosmic Octave, Solfeggio lineage, and instrument manufacturers.");
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   return (

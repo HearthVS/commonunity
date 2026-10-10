@@ -10,6 +10,7 @@
  * adapted for Node/Express + @anthropic-ai/sdk and React.
  */
 
+import OmTunerMark from "./OmTunerMark";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Send, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,7 +107,7 @@ export default function NexusPanel() {
         newLabel &&
         prevLabel &&
         newLabel !== prevLabel &&
-        !newLabel.startsWith("Sound healing") // ignore reset-to-default
+        !newLabel.startsWith("Frequency toolkit") // ignore reset-to-default
       ) {
         setHistory((h) => {
           if (h.length === 0) return h;
@@ -325,12 +326,7 @@ export default function NexusPanel() {
         {hasUnread && !open ? (
           <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-background" />
         ) : null}
-        <span
-          className="text-lg leading-none select-none"
-          style={{ fontFamily: "serif", letterSpacing: 0 }}
-        >
-          ॐ
-        </span>
+        <OmTunerMark size={26} strokeWidth={18} />
       </button>
 
       {/* Slide-out panel */}
@@ -348,18 +344,13 @@ export default function NexusPanel() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border flex-shrink-0">
-          <span
-            className="text-xl text-insight"
-            style={{ fontFamily: "serif" }}
-          >
-            ॐ
-          </span>
+          <OmTunerMark size={26} strokeWidth={16} className="text-insight" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-foreground">Nexus</div>
             <div className="text-xs text-muted-foreground truncate">
               {pageContext
                 ? pageContext.split("\n")[0].slice(0, 50)
-                : "Sound healing advisor"}
+                : "Frequency advisor"}
             </div>
           </div>
           <select

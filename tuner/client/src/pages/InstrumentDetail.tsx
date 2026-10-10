@@ -34,7 +34,7 @@ export default function InstrumentDetail() {
         (notes ? `\nKey notes: ${notes}` : "")
       );
     }
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, [instrument]);
 
   if (isLoading) return <div className="p-6"><Skeleton className="h-80"/></div>;

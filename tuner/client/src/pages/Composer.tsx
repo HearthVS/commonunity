@@ -162,7 +162,7 @@ export default function Composer() {
         `Frequency range: ${minHz}–${maxHz} Hz`
       );
     }
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, [tracks]);
 
   const exportName = soundscapeName.trim() || "Untitled Soundscape";

@@ -107,7 +107,7 @@ export default function BiofieldAtlas() {
     } else {
       setNexusContext("Biofield Atlas — McKusick biofield anatomy map");
     }
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, [activeZone]);
 
   if (isLoading) {

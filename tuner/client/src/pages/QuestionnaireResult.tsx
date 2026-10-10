@@ -128,7 +128,7 @@ export default function QuestionnaireResult() {
       radianceProfile ? radianceProfile.nexusSummary : "Radiance sphere: birth data not provided.",
     ];
     setNexusContext(lines.join("\n"));
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, [result, radianceProfile]);
 
   if (isLoading) {
