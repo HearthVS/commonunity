@@ -457,8 +457,9 @@ export default function Intake() {
               <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <span className="text-white">Your privacy.</span> Your answers go only to your practitioner.
-                  They are stored in your practitioner's Tuner account behind a login and are used to prepare
-                  your session. You can ask your practitioner to delete them at any time.
+                  They are stored in your practitioner's OM Tuner account behind a login and are used to prepare
+                  your session, sometimes with the help of an AI assistant. They are never published or shared
+                  with anyone else, and you can ask your practitioner to delete them at any time.
                 </p>
               </div>
             </div>
