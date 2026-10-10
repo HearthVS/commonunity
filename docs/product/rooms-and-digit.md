@@ -91,3 +91,4 @@ Build order is not fixed here; when we open the next room, we'll decide which fi
 - PRs #158, #159 — Front door and Workbench parity work.
 - `docs/product/personal-homepage.md` — Workbench + hOMe details.
 - OM Cipher naming tool — reused for optional nickname suggestions.
+- `docs/product/room-projects.md` — proposal (2026-10-10): ongoing projects living inside the rooms, with a person-owned record instead of AI memory.
