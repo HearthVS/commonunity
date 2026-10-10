@@ -43,8 +43,8 @@ export function setNexusContext(ctx: string) {
 
 const ORB_IDLE = `
   @keyframes nexus-breathe {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.0), 0 0 16px 2px rgba(99,102,241,0.25); }
-    50%       { box-shadow: 0 0 0 6px rgba(99,102,241,0.0), 0 0 28px 6px rgba(99,102,241,0.45); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(169,139,240,0.0), 0 0 16px 2px rgba(169,139,240,0.25); }
+    50%       { box-shadow: 0 0 0 6px rgba(169,139,240,0.0), 0 0 28px 6px rgba(169,139,240,0.45); }
   }
 `;
 
@@ -313,10 +313,10 @@ export default function NexusPanel() {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full",
-          "bg-primary/90 hover:bg-primary text-white",
+          "bg-insight/90 hover:bg-insight text-insight-foreground",
           "flex items-center justify-center",
           "transition-all duration-200 hover:scale-110 active:scale-95",
-          "shadow-lg shadow-primary/30"
+          "shadow-lg shadow-insight/30"
         )}
         style={{ animation: "nexus-breathe 4s ease-in-out infinite" }}
         title="Open Nexus"
@@ -349,7 +349,7 @@ export default function NexusPanel() {
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border flex-shrink-0">
           <span
-            className="text-xl text-primary"
+            className="text-xl text-insight"
             style={{ fontFamily: "serif" }}
           >
             ॐ
@@ -391,7 +391,7 @@ export default function NexusPanel() {
               onClick={() => setMemoryOpen((v) => !v)}
               className="w-full flex items-center gap-2 px-5 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Sparkles size={11} className="text-primary/60" />
+              <Sparkles size={11} className="text-insight/60" />
               <span className="flex-1 text-left">What I know about you</span>
               {memoryOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
@@ -442,7 +442,7 @@ export default function NexusPanel() {
                   className={cn(
                     "rounded-xl px-3.5 py-2.5 text-sm leading-relaxed max-w-[88%]",
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-insight text-insight-foreground"
                       : "bg-accent text-foreground"
                   )}
                 >
@@ -476,7 +476,7 @@ export default function NexusPanel() {
               className={cn(
                 "flex-1 resize-none rounded-lg border border-border bg-background",
                 "px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground",
-                "focus:outline-none focus:ring-1 focus:ring-primary/50",
+                "focus:outline-none focus:ring-1 focus:ring-insight/50",
                 "disabled:opacity-50 transition-colors",
                 "min-h-[38px] max-h-[120px] overflow-y-auto"
               )}
@@ -493,8 +493,8 @@ export default function NexusPanel() {
               disabled={!input.trim() || streaming}
               className={cn(
                 "flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center",
-                "bg-primary text-primary-foreground",
-                "hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed",
+                "bg-insight text-insight-foreground",
+                "hover:bg-insight/90 disabled:opacity-40 disabled:cursor-not-allowed",
                 "transition-all active:scale-95"
               )}
             >

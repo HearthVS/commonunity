@@ -9,7 +9,7 @@ const SECTIONS = [
     title: "Overview",
     icon: "⚗",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           OM Tuner is a practitioner-grade session planning tool. It is not a standalone healing
           device — it is a reference, protocol library, and session tracking system designed to support
@@ -35,7 +35,7 @@ const SECTIONS = [
     title: "Instruments",
     icon: "𝄞",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           The inventory contains 25 instruments across three types: weighted tuning forks (fork), singing bowls
           (bowl), and bells (bell). Each instrument has a primary frequency, chakra assignment, elemental
@@ -56,7 +56,7 @@ const SECTIONS = [
               body: "Bells are used for punctuation — opening, closing, transitions between protocol phases. A clear bell tone at the start of a session signals to the nervous system that sacred space has opened.",
             },
           ].map((item) => (
-            <div key={item.title} className="bg-[var(--card)] border border-white/10 rounded-lg p-4">
+            <div key={item.title} className="bg-card border border-white/10 rounded-lg p-4">
               <p className="font-medium text-white mb-1.5">{item.title}</p>
               <p>{item.body}</p>
             </div>
@@ -70,7 +70,7 @@ const SECTIONS = [
     title: "Client Intake",
     icon: "📋",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           The 8-section pre-session questionnaire generates a personalised session profile including:
           contraindication flags, dominant dosha, dominant Gurdjieff center, suggested chakra focus,
@@ -118,7 +118,7 @@ const SECTIONS = [
     title: "Protocol Execution",
     icon: "🔁",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           Every session uses the same ceremonial structure regardless of the middle protocol chosen:
         </p>
@@ -159,7 +159,7 @@ const SECTIONS = [
     title: "Multi-Lineage Practice",
     icon: "∞",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           OM Tuner honours multiple healing lineages rather than privileging any single system.
           Where frequency assignments differ, all systems are shown with attribution.
@@ -191,7 +191,7 @@ const SECTIONS = [
               principle: "Physical, Emotional, Intellectual intelligence centers. Guides which type of experience the session should emphasise.",
             },
           ].map((item) => (
-            <div key={item.system} className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
+            <div key={item.system} className="bg-card border border-white/10 rounded-xl p-4">
               <p className="font-medium text-white mb-1">{item.system}</p>
               <p className="text-xs">{item.principle}</p>
             </div>
@@ -205,7 +205,7 @@ const SECTIONS = [
     title: "Session Documentation",
     icon: "📝",
     content: (
-      <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
         <p>
           The Session Log stores the complete practice record. Recommended fields to complete after every session:
         </p>
@@ -220,14 +220,14 @@ const SECTIONS = [
             "Overall session rating (1–5) — for your practice development",
           ].map((item, i) => (
             <li key={i} className="flex items-start gap-2">
-              <div className="w-5 h-5 rounded-full bg-[var(--primary)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs text-[var(--primary)]">{i + 1}</span>
+              <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs text-primary">{i + 1}</span>
               </div>
               <span>{item}</span>
             </li>
           ))}
         </ul>
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
+        <div className="bg-card border border-white/10 rounded-xl p-4">
           <p className="text-white font-medium mb-1.5">Gap analysis</p>
           <p>
             After three or more sessions with the same client, the Session Log dashboard shows average
@@ -254,7 +254,7 @@ export default function PractitionerGuide() {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-xl font-bold text-white">Practitioner Guide</h1>
-        <p className="text-sm text-[var(--muted)]">
+        <p className="text-sm text-muted-foreground">
           Reference documentation for OM Tuner v1. Covers instrument types, intake protocol,
           session execution, multi-lineage practice, and documentation.
         </p>
@@ -270,8 +270,8 @@ export default function PractitionerGuide() {
                 onClick={() => setActive(s.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${
                   active === s.id
-                    ? "bg-[var(--primary)]/20 text-white"
-                    : "text-[var(--muted)] hover:bg-white/5"
+                    ? "bg-primary/20 text-white"
+                    : "text-muted-foreground hover:bg-white/5"
                 }`}
                 data-testid={`guide-section-${s.id}`}
               >
@@ -284,7 +284,7 @@ export default function PractitionerGuide() {
 
         {/* Content */}
         <div className="md:col-span-3">
-          <div className="bg-[var(--card)] border border-white/10 rounded-xl p-6 space-y-4">
+          <div className="bg-card border border-white/10 rounded-xl p-6 space-y-4">
             <h2 className="font-bold text-white">{activeSection.title}</h2>
             {activeSection.content}
           </div>
@@ -292,23 +292,23 @@ export default function PractitionerGuide() {
       </div>
 
       {/* Quick links */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
-        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Quick Links</p>
+      <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Links</p>
         <div className="flex flex-wrap gap-3">
           <Link href="/inventory">
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">Instrument Inventory</Button>
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">Instrument Inventory</Button>
           </Link>
           <Link href="/questionnaire">
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">Pre-Session Questionnaire</Button>
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">Pre-Session Questionnaire</Button>
           </Link>
           <Link href="/protocols">
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">Protocol Library</Button>
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">Protocol Library</Button>
           </Link>
           <Link href="/why-om">
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">Why OM at 136.10 Hz?</Button>
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">Why OM at 136.10 Hz?</Button>
           </Link>
           <Link href="/sources">
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">Source Library</Button>
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">Source Library</Button>
           </Link>
         </div>
       </div>

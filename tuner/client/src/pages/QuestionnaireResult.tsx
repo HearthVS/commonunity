@@ -143,7 +143,7 @@ export default function QuestionnaireResult() {
 
   if (!result) {
     return (
-      <div className="p-6 text-center text-[var(--muted)]">
+      <div className="p-6 text-center text-muted-foreground">
         <p>Session profile not found.</p>
         <Link href="/questionnaire">
           <Button variant="outline" className="mt-4 border-white/20">New Questionnaire</Button>
@@ -158,7 +158,7 @@ export default function QuestionnaireResult() {
   const dominantCenter = result.dominantCenter ?? "not answered";
   const comfortTier = result.recommendedComfortTier ?? 3;
   const tierInfo = COMFORT_TIERS.find((t) => t.tier === comfortTier) ?? COMFORT_TIERS[2];
-  const doshaColor = DOSHA_COLORS[dominantDosha] ?? "#6366f1";
+  const doshaColor = DOSHA_COLORS[dominantDosha] ?? "#2BC9B8";
   const chakraColor = CHAKRA_COLORS[result.suggestedChakraFocus ?? "CH-HEART"] ?? "#228B22";
 
   // Dosha label subtitle — handle "balanced" which has no parenthetical
@@ -173,7 +173,7 @@ export default function QuestionnaireResult() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">Session Profile</h1>
-          <p className="text-sm text-[var(--muted)] mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Generated for {result.clientName ?? "Client"} · {result.sessionDate ?? "Today"}
           </p>
         </div>
@@ -194,7 +194,7 @@ export default function QuestionnaireResult() {
                 size="sm"
                 variant="outline"
                 onClick={() => setConfirmDelete(false)}
-                className="border-white/20 text-[var(--muted)] text-xs"
+                className="border-white/20 text-muted-foreground text-xs"
               >
                 Cancel
               </Button>
@@ -205,13 +205,13 @@ export default function QuestionnaireResult() {
                 size="sm"
                 variant="ghost"
                 onClick={() => setConfirmDelete(true)}
-                className="text-[var(--muted)] hover:text-red-400 hover:bg-red-500/10"
+                className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                 data-testid="button-delete-profile"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
               <Link href={`/protocols/${result.recommendedProtocolId}`}>
-                <Button className="bg-[var(--primary)] hover:bg-[var(--primary)]/90" data-testid="button-view-protocol">
+                <Button className="bg-primary hover:bg-primary/90" data-testid="button-view-protocol">
                   View Protocol
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
@@ -222,80 +222,80 @@ export default function QuestionnaireResult() {
       </div>
 
       {/* Client info card */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5">
-        <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-3">Client Information</p>
+      <div className="bg-card border border-white/10 rounded-xl p-5">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Client Information</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
           <div className="flex items-start gap-2">
-            <User className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+            <User className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs text-[var(--muted)]">Name</p>
+              <p className="text-xs text-muted-foreground">Name</p>
               <p className="text-sm text-white font-medium">{result.clientName ?? "—"}</p>
             </div>
           </div>
           {result.clientEmail && (
             <div className="flex items-start gap-2">
-              <Mail className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+              <Mail className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Email</p>
+                <p className="text-xs text-muted-foreground">Email</p>
                 <p className="text-sm text-white truncate">{result.clientEmail}</p>
               </div>
             </div>
           )}
           {result.clientPhone && (
             <div className="flex items-start gap-2">
-              <Phone className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+              <Phone className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Phone</p>
+                <p className="text-xs text-muted-foreground">Phone</p>
                 <p className="text-sm text-white truncate">{result.clientPhone}</p>
               </div>
             </div>
           )}
           {(result as any).practitionerName && (
             <div className="flex items-start gap-2">
-              <Stethoscope className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+              <Stethoscope className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Practitioner</p>
+                <p className="text-xs text-muted-foreground">Practitioner</p>
                 <p className="text-sm text-white">{(result as any).practitionerName}</p>
               </div>
             </div>
           )}
           <div className="flex items-start gap-2">
-            <Calendar className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs text-[var(--muted)]">Session date</p>
+              <p className="text-xs text-muted-foreground">Session date</p>
               <p className="text-sm text-white">{result.sessionDate ?? "—"}</p>
             </div>
           </div>
           {birthDate && (
             <div className="flex items-start gap-2">
-              <Calendar className="w-3.5 h-3.5 text-[var(--primary)]/70 mt-0.5 shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-primary/70 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Date of birth</p>
+                <p className="text-xs text-muted-foreground">Date of birth</p>
                 <p className="text-sm text-white">{birthDate}</p>
               </div>
             </div>
           )}
           {birthTime && (
             <div className="flex items-start gap-2">
-              <Clock className="w-3.5 h-3.5 text-[var(--primary)]/70 mt-0.5 shrink-0" />
+              <Clock className="w-3.5 h-3.5 text-primary/70 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Time of birth</p>
+                <p className="text-xs text-muted-foreground">Time of birth</p>
                 <p className="text-sm text-white">{birthTime}</p>
               </div>
             </div>
           )}
           {birthPlace && (
             <div className="flex items-start gap-2">
-              <MapPin className="w-3.5 h-3.5 text-[var(--primary)]/70 mt-0.5 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-primary/70 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-[var(--muted)]">Place of birth</p>
+                <p className="text-xs text-muted-foreground">Place of birth</p>
                 <p className="text-sm text-white">{birthPlace}</p>
               </div>
             </div>
           )}
           {!birthDate && (
             <div className="col-span-2 md:col-span-3">
-              <p className="text-xs text-[var(--muted)] italic">
+              <p className="text-xs text-muted-foreground italic">
                 No birth data recorded — add it via the Radiance Sphere card below to unlock Gene Keys synthesis.
               </p>
             </div>
@@ -331,22 +331,22 @@ export default function QuestionnaireResult() {
       {/* Summary grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Dosha */}
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-1.5">
-          <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Dominant Quality</p>
+        <div className="bg-card border border-white/10 rounded-xl p-4 space-y-1.5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Dominant Quality</p>
           <p className="font-bold capitalize" style={{ color: doshaColor }}>{dominantDosha}</p>
-          <p className="text-xs text-[var(--muted)]">{doshaSub}</p>
+          <p className="text-xs text-muted-foreground">{doshaSub}</p>
         </div>
 
         {/* Center */}
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-1.5">
-          <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Dominant Center</p>
+        <div className="bg-card border border-white/10 rounded-xl p-4 space-y-1.5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Dominant Center</p>
           <p className="font-bold capitalize text-white">{dominantCenter}</p>
-          <p className="text-xs text-[var(--muted)]">Center focus</p>
+          <p className="text-xs text-muted-foreground">Center focus</p>
         </div>
 
         {/* Chakra */}
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-1.5">
-          <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Chakra Focus</p>
+        <div className="bg-card border border-white/10 rounded-xl p-4 space-y-1.5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Chakra Focus</p>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ background: chakraColor }} />
             <p className="font-bold text-white text-sm">{result.suggestedChakraFocus?.replace("CH-", "") ?? "Heart"}</p>
@@ -354,31 +354,31 @@ export default function QuestionnaireResult() {
         </div>
 
         {/* Comfort tier */}
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-1.5">
-          <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Comfort Tier</p>
-          <p className="font-bold text-[var(--primary)]">Tier {comfortTier}</p>
-          <p className="text-xs text-[var(--muted)]">{tierInfo.label.replace(`Tier ${comfortTier} — `, "")}</p>
+        <div className="bg-card border border-white/10 rounded-xl p-4 space-y-1.5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Comfort Tier</p>
+          <p className="font-bold text-primary">Tier {comfortTier}</p>
+          <p className="text-xs text-muted-foreground">{tierInfo.label.replace(`Tier ${comfortTier} — `, "")}</p>
         </div>
       </div>
 
       {/* Tier description */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
+      <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
         <div className="flex items-center gap-2">
-          <Badge className="bg-[var(--primary)]/20 text-[var(--primary)] border-[var(--primary)]/40">
+          <Badge className="bg-primary/20 text-primary border-primary/40">
             {tierInfo.label}
           </Badge>
         </div>
-        <p className="text-sm text-[var(--muted)]">{tierInfo.desc}</p>
+        <p className="text-sm text-muted-foreground">{tierInfo.desc}</p>
       </div>
 
       {/* Recommended protocol */}
       {result.recommendedProtocolId && (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
-          <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Recommended Protocol</p>
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recommended Protocol</p>
           <div className="flex items-center justify-between">
             <span className="font-mono text-white">{result.recommendedProtocolId}</span>
             <Link href={`/protocols/${result.recommendedProtocolId}`}>
-              <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]">
+              <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground">
                 <BookOpen className="w-3.5 h-3.5 mr-1.5" />
                 Open
               </Button>
@@ -389,24 +389,24 @@ export default function QuestionnaireResult() {
 
       {/* Intentions */}
       {result.intentionText && (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-          <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Client Intentions</p>
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Intentions</p>
           <p className="text-sm text-white leading-relaxed italic">"{result.intentionText}"</p>
         </div>
       )}
 
       {/* Client notes */}
       {(result.attentionAreas || result.otherNotes) && (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
           {result.attentionAreas && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Areas needing attention</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Areas needing attention</p>
               <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.attentionAreas}</p>
             </div>
           )}
           {result.otherNotes && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Anything else</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Anything else</p>
               <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.otherNotes}</p>
             </div>
           )}
@@ -425,7 +425,7 @@ export default function QuestionnaireResult() {
       <div className="flex gap-3 flex-wrap">
         <Button
           variant="outline"
-          className="border-white/20 text-[var(--muted)]"
+          className="border-white/20 text-muted-foreground"
           onClick={saveProfileJSON}
           data-testid="button-save-json"
         >
@@ -433,17 +433,17 @@ export default function QuestionnaireResult() {
           Save JSON
         </Button>
         <Link href="/clients">
-          <Button variant="outline" className="border-white/20 text-[var(--muted)]" data-testid="button-all-profiles">
+          <Button variant="outline" className="border-white/20 text-muted-foreground" data-testid="button-all-profiles">
             All Profiles
           </Button>
         </Link>
         <Link href="/sessions">
-          <Button variant="outline" className="border-white/20 text-[var(--muted)]" data-testid="button-log-session">
+          <Button variant="outline" className="border-white/20 text-muted-foreground" data-testid="button-log-session">
             Log a Session
           </Button>
         </Link>
         <Link href="/questionnaire">
-          <Button variant="outline" className="border-white/20 text-[var(--muted)]" data-testid="button-new-questionnaire">
+          <Button variant="outline" className="border-white/20 text-muted-foreground" data-testid="button-new-questionnaire">
             New Questionnaire
           </Button>
         </Link>

@@ -86,7 +86,7 @@ export default function SessionDetail() {
 
   if (!session) {
     return (
-      <div className="p-6 text-center text-[var(--muted)]">
+      <div className="p-6 text-center text-muted-foreground">
         <p>Session not found.</p>
         <Link href="/sessions">
           <Button variant="outline" className="mt-4 border-white/20">Back to Log</Button>
@@ -101,7 +101,7 @@ export default function SessionDetail() {
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       {/* Back */}
       <Link href="/sessions">
-        <button className="flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-white transition-colors">
+        <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Session Log
         </button>
@@ -111,14 +111,14 @@ export default function SessionDetail() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">{session.clientName ?? "Session"}</h1>
-          <div className="flex items-center gap-4 text-sm text-[var(--muted)] mt-1">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
               {session.sessionDate}
             </span>
             {session.selectedProtocolId && (
               <Link href={`/protocols/${session.selectedProtocolId}`}>
-                <span className="text-xs font-mono bg-[var(--primary)]/20 text-[var(--primary)] px-2 py-0.5 rounded hover:bg-[var(--primary)]/30 cursor-pointer">
+                <span className="text-xs font-mono bg-primary/20 text-primary px-2 py-0.5 rounded hover:bg-primary/30 cursor-pointer">
                   {session.selectedProtocolId}
                 </span>
               </Link>
@@ -130,7 +130,7 @@ export default function SessionDetail() {
         </div>
         <div className="flex gap-2 shrink-0">
           {!editing && (
-            <Button variant="outline" size="sm" className="border-white/20 text-[var(--muted)]" onClick={startEdit} data-testid="button-edit-session">
+            <Button variant="outline" size="sm" className="border-white/20 text-muted-foreground" onClick={startEdit} data-testid="button-edit-session">
               Edit
             </Button>
           )}
@@ -148,16 +148,16 @@ export default function SessionDetail() {
       </div>
 
       {editing ? (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Session date</Label>
-              <Input type="date" value={(form.sessionDate as string) ?? ""} onChange={(e) => set("sessionDate", e.target.value)} className="bg-[var(--bg)] border-white/20" />
+              <Label className="text-muted-foreground">Session date</Label>
+              <Input type="date" value={(form.sessionDate as string) ?? ""} onChange={(e) => set("sessionDate", e.target.value)} className="bg-background border-white/20" />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Would repeat?</Label>
+              <Label className="text-muted-foreground">Would repeat?</Label>
               <Select value={String(form.wouldRepeat ?? 1)} onValueChange={(v) => set("wouldRepeat", parseInt(v))}>
-                <SelectTrigger className="bg-[var(--bg)] border-white/20"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-background border-white/20"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Yes</SelectItem>
                   <SelectItem value="0">No</SelectItem>
@@ -166,23 +166,23 @@ export default function SessionDetail() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-[var(--muted)]">Presenting goal</Label>
-            <Input value={(form.goalPresentingNeed as string) ?? ""} onChange={(e) => set("goalPresentingNeed", e.target.value)} className="bg-[var(--bg)] border-white/20" />
+            <Label className="text-muted-foreground">Presenting goal</Label>
+            <Input value={(form.goalPresentingNeed as string) ?? ""} onChange={(e) => set("goalPresentingNeed", e.target.value)} className="bg-background border-white/20" />
           </div>
           <div className="space-y-2">
-            <Label className="text-[var(--muted)]">Observed response</Label>
-            <Textarea value={(form.observedResponse as string) ?? ""} onChange={(e) => set("observedResponse", e.target.value)} className="bg-[var(--bg)] border-white/20 min-h-[80px]" />
+            <Label className="text-muted-foreground">Observed response</Label>
+            <Textarea value={(form.observedResponse as string) ?? ""} onChange={(e) => set("observedResponse", e.target.value)} className="bg-background border-white/20 min-h-[80px]" />
           </div>
           <div className="space-y-2">
-            <Label className="text-[var(--muted)]">Outcome notes</Label>
-            <Textarea value={(form.outcomeNotes as string) ?? ""} onChange={(e) => set("outcomeNotes", e.target.value)} className="bg-[var(--bg)] border-white/20 min-h-[60px]" />
+            <Label className="text-muted-foreground">Outcome notes</Label>
+            <Textarea value={(form.outcomeNotes as string) ?? ""} onChange={(e) => set("outcomeNotes", e.target.value)} className="bg-background border-white/20 min-h-[60px]" />
           </div>
           <div className="space-y-2">
-            <Label className="text-[var(--muted)]">Deviations from protocol</Label>
-            <Input value={(form.deviationsFromProtocol as string) ?? ""} onChange={(e) => set("deviationsFromProtocol", e.target.value)} className="bg-[var(--bg)] border-white/20" />
+            <Label className="text-muted-foreground">Deviations from protocol</Label>
+            <Input value={(form.deviationsFromProtocol as string) ?? ""} onChange={(e) => set("deviationsFromProtocol", e.target.value)} className="bg-background border-white/20" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setEditing(false)} className="border-white/20 text-[var(--muted)]">Cancel</Button>
+            <Button variant="outline" onClick={() => setEditing(false)} className="border-white/20 text-muted-foreground">Cancel</Button>
             <Button onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending} data-testid="button-save-edit">
               <Save className="w-4 h-4 mr-1.5" />
               {updateMutation.isPending ? "Saving…" : "Save Changes"}
@@ -193,20 +193,20 @@ export default function SessionDetail() {
         <div className="space-y-5">
           {/* Goal */}
           {session.goalPresentingNeed && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Presenting Goal</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presenting Goal</p>
               <p className="text-sm text-white">{session.goalPresentingNeed}</p>
             </div>
           )}
 
           {/* Instruments */}
           {instruments.length > 0 && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Instruments Used</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Instruments Used</p>
               <div className="flex flex-wrap gap-2">
                 {instruments.map((id) => (
                   <Link key={id} href={`/inventory/${id}`}>
-                    <span className="text-xs px-2.5 py-1 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono hover:bg-[var(--primary)]/30 cursor-pointer">
+                    <span className="text-xs px-2.5 py-1 rounded bg-primary/20 text-primary font-mono hover:bg-primary/30 cursor-pointer">
                       {id}
                     </span>
                   </Link>
@@ -217,41 +217,41 @@ export default function SessionDetail() {
 
           {/* Observed response */}
           {session.observedResponse && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Observed Response</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Observed Response</p>
               <p className="text-sm text-white leading-relaxed">{session.observedResponse}</p>
             </div>
           )}
 
           {/* Outcome notes */}
           {session.outcomeNotes && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Outcome Notes</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outcome Notes</p>
               <p className="text-sm text-white leading-relaxed">{session.outcomeNotes}</p>
             </div>
           )}
 
           {/* Follow-up */}
           {session.followUpNotes && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Follow-Up Notes</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Follow-Up Notes</p>
               <p className="text-sm text-white">{session.followUpNotes}</p>
             </div>
           )}
 
           {/* Deviations */}
           {session.deviationsFromProtocol && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Deviations from Protocol</p>
-              <p className="text-sm text-[var(--muted)]">{session.deviationsFromProtocol}</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Deviations from Protocol</p>
+              <p className="text-sm text-muted-foreground">{session.deviationsFromProtocol}</p>
             </div>
           )}
 
           {/* Lessons */}
           {session.lessonsLearned && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
-              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Lessons Learned</p>
-              <p className="text-sm text-[var(--muted)]">{session.lessonsLearned}</p>
+            <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lessons Learned</p>
+              <p className="text-sm text-muted-foreground">{session.lessonsLearned}</p>
             </div>
           )}
         </div>

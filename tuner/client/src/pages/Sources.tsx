@@ -160,7 +160,7 @@ export default function Sources() {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-xl font-bold text-white">Source Library</h1>
-        <p className="text-sm text-[var(--muted)]">
+        <p className="text-sm text-muted-foreground">
           OM Tuner honours multiple healing lineages by citing all sources transparently.
           Frequency assignments that differ between systems (Cousto vs. Solfeggio vs. Western tonal)
           are displayed with full attribution rather than resolved to a single "correct" value.
@@ -168,8 +168,8 @@ export default function Sources() {
       </div>
 
       {/* Attribution statement */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5">
-        <p className="text-sm text-[var(--muted)] leading-relaxed">
+      <div className="bg-card border border-white/10 rounded-xl p-5">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           This application does not make medical claims. All frequency–chakra correspondences, dosha
           assessments, and protocol recommendations are educational wellness tools drawn from traditional
           systems. They are not substitutes for medical diagnosis or treatment. Sources are cited for
@@ -180,21 +180,21 @@ export default function Sources() {
       {/* Source sections */}
       {sources.map((section) => (
         <div key={section.category} className="space-y-4">
-          <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">{section.category}</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{section.category}</h2>
           <div className="space-y-4">
             {section.items.map((src) => (
               <div
                 key={src.id}
-                className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3"
+                className="bg-card border border-white/10 rounded-xl p-5 space-y-3"
                 data-testid={`source-${src.id}`}
               >
                 <div>
                   <h3 className="font-semibold text-white text-sm leading-snug">{src.title}</h3>
-                  <p className="text-xs text-[var(--primary)] mt-0.5">{src.author} · {src.year}</p>
-                  <p className="text-xs text-[var(--muted)]">{src.publisher}</p>
+                  <p className="text-xs text-primary mt-0.5">{src.author} · {src.year}</p>
+                  <p className="text-xs text-muted-foreground">{src.publisher}</p>
                 </div>
-                <p className="text-sm text-[var(--muted)] leading-relaxed">{src.description}</p>
-                <div className="inline-block bg-white/5 px-2.5 py-1 rounded text-xs text-[var(--muted)]">
+                <p className="text-sm text-muted-foreground leading-relaxed">{src.description}</p>
+                <div className="inline-block bg-white/5 px-2.5 py-1 rounded text-xs text-muted-foreground">
                   {src.license}
                 </div>
               </div>

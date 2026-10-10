@@ -62,7 +62,7 @@ const HOTSPOTS: HotspotDef[] = [
 
 const SIDE_CONFIG: Record<string, { label: string; color: string }> = {
   left:    { label: "Left · Feminine",   color: "#ec4899" },
-  right:   { label: "Right · Masculine", color: "#6366f1" },
+  right:   { label: "Right · Masculine", color: "#A98BF0" },
   back:    { label: "Back · Receiving",  color: "#f59e0b" },
   center:  { label: "Central axis",      color: "#a78bfa" },
   front:   { label: "Front",             color: "#14b8a6" },
@@ -124,9 +124,9 @@ export default function BiofieldAtlas() {
     const themes = parseArr(activeZone.themes as unknown as string);
     const physical = parseArr(activeZone.physicalCorrelates as unknown as string);
     const forks = parseArr(activeZone.suggestedForks as unknown as string);
-    const sideInfo = SIDE_CONFIG[activeZone.fieldSide ?? ""] ?? { label: activeZone.fieldSide, color: "#6366f1" };
+    const sideInfo = SIDE_CONFIG[activeZone.fieldSide ?? ""] ?? { label: activeZone.fieldSide, color: "#2BC9B8" };
     const hotspot = HOTSPOTS.find((h) => h.id === activeZoneId);
-    const color = hotspot?.color ?? "#6366f1";
+    const color = hotspot?.color ?? "#2BC9B8";
 
     return (
       <div className="p-5 max-w-2xl mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -374,7 +374,7 @@ export default function BiofieldAtlas() {
             .filter((z) => filter === "all" || z.fieldSide === filter)
             .map((zone) => {
               const h = HOTSPOTS.find((hs) => hs.id === zone.id);
-              const color = h?.color ?? "#6366f1";
+              const color = h?.color ?? "#2BC9B8";
               const sideInfo = SIDE_CONFIG[zone.fieldSide ?? ""] ?? { label: zone.fieldSide, color };
               return (
                 <button

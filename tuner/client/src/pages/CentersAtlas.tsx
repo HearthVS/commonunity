@@ -11,13 +11,13 @@ import { setNexusContext } from "../components/NexusPanel";
 const CATEGORY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
   "physical": { border: "#f97316", bg: "#f9731618", text: "#f97316" },
   "emotional": { border: "#ec4899", bg: "#ec489918", text: "#ec4899" },
-  "intellectual": { border: "#818cf8", bg: "#818cf818", text: "#818cf8" },
+  "intellectual": { border: "#A98BF0", bg: "#A98BF018", text: "#A98BF0" },
   "instinctive": { border: "#f59e0b", bg: "#f59e0b18", text: "#f59e0b" },
   "sex": { border: "#ef4444", bg: "#ef444418", text: "#ef4444" },
 };
 
 function getCenterColors(category: string) {
-  return CATEGORY_COLORS[category?.toLowerCase()] ?? { border: "#6366f1", bg: "#6366f118", text: "#6366f1" };
+  return CATEGORY_COLORS[category?.toLowerCase()] ?? { border: "#2BC9B8", bg: "#2BC9B818", text: "#2BC9B8" };
 }
 
 export default function CentersAtlas() {
@@ -54,8 +54,8 @@ export default function CentersAtlas() {
       </div>
 
       {/* Lineage note */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-        <p className="text-xs text-[var(--muted)]">
+      <div className="bg-card border border-white/10 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-white">Lineage attribution:</span> The centers model is drawn from
           G.I. Gurdjieff's teachings as recorded by P.D. Ouspensky in <em>In Search of the Miraculous</em> (1949).
           The sound healing application layer is a CommonUnity synthesis — not a direct Fourth Way teaching.
@@ -73,7 +73,7 @@ export default function CentersAtlas() {
           return (
             <div
               key={center.id}
-              className="bg-[var(--card)] border rounded-xl overflow-hidden"
+              className="bg-card border rounded-xl overflow-hidden"
               style={{ borderColor: colors.border }}
               data-testid={`card-center-${center.id}`}
             >
@@ -90,7 +90,7 @@ export default function CentersAtlas() {
                     )}
                   </div>
                   {center.manNumber && (
-                    <span className="text-xs text-[var(--muted)] shrink-0 bg-white/5 px-2 py-1 rounded">
+                    <span className="text-xs text-muted-foreground shrink-0 bg-white/5 px-2 py-1 rounded">
                       Man #{center.manNumber}
                     </span>
                   )}
@@ -98,13 +98,13 @@ export default function CentersAtlas() {
 
                 {/* Description */}
                 {center.description && (
-                  <p className="text-sm text-[var(--muted)] leading-relaxed">{center.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{center.description}</p>
                 )}
 
                 {/* Characteristics */}
                 {characteristics.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Characteristics</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Characteristics</p>
                     <div className="flex flex-wrap gap-1.5">
                       {characteristics.map((c) => (
                         <span key={c} className="text-xs px-2 py-0.5 rounded-full border capitalize"
@@ -119,10 +119,10 @@ export default function CentersAtlas() {
                 {/* Dominant behaviors */}
                 {behaviors.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Dominant Behaviors</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Dominant Behaviors</p>
                     <ul className="space-y-1">
                       {behaviors.slice(0, 3).map((b) => (
-                        <li key={b} className="text-xs text-[var(--muted)] flex items-start gap-1.5">
+                        <li key={b} className="text-xs text-muted-foreground flex items-start gap-1.5">
                           <span style={{ color: colors.text }} className="mt-0.5">·</span>
                           <span>{b}</span>
                         </li>
@@ -134,10 +134,10 @@ export default function CentersAtlas() {
                 {/* Instruments */}
                 {instruments.length > 0 && (
                   <div className="pt-3 border-t border-white/5">
-                    <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Suggested Forks</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Suggested Forks</p>
                     <div className="flex flex-wrap gap-1.5">
                       {instruments.map((id) => (
-                        <span key={id} className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono">
+                        <span key={id} className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-mono">
                           {id}
                         </span>
                       ))}
@@ -148,7 +148,7 @@ export default function CentersAtlas() {
                 {/* Practitioner notes */}
                 {center.practitionerNotes && (
                   <div className="pt-2 border-t border-white/5">
-                    <p className="text-xs text-[var(--muted)] italic">{center.practitionerNotes}</p>
+                    <p className="text-xs text-muted-foreground italic">{center.practitionerNotes}</p>
                   </div>
                 )}
               </div>
@@ -157,8 +157,8 @@ export default function CentersAtlas() {
         })}
       </div>
 
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-        <p className="text-xs text-[var(--muted)]">
+      <div className="bg-card border border-white/10 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground">
           Working with the centers is observational — the practitioner notices which center appears dominant
           or depleted in the session and adjusts instrument selection accordingly. No diagnostic claims are made.
         </p>

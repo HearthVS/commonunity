@@ -169,7 +169,7 @@ function drawChladni(
 
 export default function ChladniCanvas({
   frequency,
-  color = "#6366f1",
+  color = "#2BC9B8",
   size = 300,
   frequencies,
 }: ChladniCanvasProps) {

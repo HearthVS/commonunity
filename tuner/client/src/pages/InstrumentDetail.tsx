@@ -40,9 +40,9 @@ export default function InstrumentDetail() {
   if (isLoading) return <div className="p-6"><Skeleton className="h-80"/></div>;
   if (!instrument) return <div className="p-6 text-muted-foreground">Instrument not found.</div>;
 
-  const color = TYPE_COLORS[instrument.type] || "#6366f1";
-  const bg = TYPE_BG[instrument.type] || "rgba(99,102,241,0.15)";
-  const chakraColor = CHAKRA_COLORS[instrument.chakraId || ""] || "#6366f1";
+  const color = TYPE_COLORS[instrument.type] || "#2BC9B8";
+  const bg = TYPE_BG[instrument.type] || "rgba(43,201,184,0.15)";
+  const chakraColor = CHAKRA_COLORS[instrument.chakraId || ""] || "#2BC9B8";
   const benefits = parseArr(instrument.healingBenefits);
   const roles = parseArr(instrument.sessionRole);
   const contras = parseArr(instrument.contraindications);
@@ -283,7 +283,7 @@ function AudioPlayer({ filename, color }: { filename: string; color: string }) {
         onClick={toggle}
         data-testid="button-audio-play"
         className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full justify-center"
-        style={{background: playing ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", color, border: `1px solid ${color}30`}}
+        style={{background: playing ? "rgba(43,201,184,0.2)" : "rgba(43,201,184,0.1)", color, border: `1px solid ${color}30`}}
       >
         {playing ? <Pause size={16}/> : <Play size={16}/>}
         {playing ? "Pause" : "Play"}

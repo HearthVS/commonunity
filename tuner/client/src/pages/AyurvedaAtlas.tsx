@@ -16,7 +16,7 @@ const DOSHA_COLORS: Record<string, { border: string; bg: string; text: string }>
 };
 
 const ELEMENT_COLORS: Record<string, string> = {
-  air: "#a78bfa", akasha: "#818cf8", space: "#818cf8",
+  air: "#a78bfa", akasha: "#C9B6F7", space: "#C9B6F7",
   fire: "#f97316", water: "#38bdf8", earth: "#86efac",
 };
 
@@ -33,7 +33,7 @@ function getElementColor(sanskrit: string | null | undefined) {
   for (const [k, v] of Object.entries(ELEMENT_COLORS)) {
     if (lower.includes(k)) return v;
   }
-  return "#6366f1";
+  return "#2BC9B8";
 }
 
 export default function AyurvedaAtlas() {
@@ -73,7 +73,7 @@ export default function AyurvedaAtlas() {
       </div>
 
       <Tabs defaultValue="doshas">
-        <TabsList className="bg-[var(--card)] border border-white/10">
+        <TabsList className="bg-card border border-white/10">
           <TabsTrigger value="doshas">Doshas (Constitutions)</TabsTrigger>
           <TabsTrigger value="elements">Pañcamahābhūta (Elements)</TabsTrigger>
         </TabsList>
@@ -92,7 +92,7 @@ export default function AyurvedaAtlas() {
               return (
                 <div
                   key={doshKey}
-                  className="bg-[var(--card)] border rounded-xl overflow-hidden"
+                  className="bg-card border rounded-xl overflow-hidden"
                   style={{ borderColor: colors.border }}
                   data-testid={`card-dosha-${doshKey}`}
                 >
@@ -105,11 +105,11 @@ export default function AyurvedaAtlas() {
                       </p>
                     </div>
 
-                    <p className="text-sm text-[var(--muted)] leading-relaxed">{dosha.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{dosha.description}</p>
 
                     {qualities.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Qualities (Guṇas)</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Qualities (Guṇas)</p>
                         <div className="flex flex-wrap gap-1.5">
                           {qualities.map((q) => (
                             <span
@@ -126,10 +126,10 @@ export default function AyurvedaAtlas() {
 
                     {imbalanceSigns.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Imbalance Signs</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Imbalance Signs</p>
                         <ul className="space-y-1">
                           {imbalanceSigns.slice(0, 4).map((s) => (
-                            <li key={s} className="text-xs text-[var(--muted)] flex items-start gap-1.5">
+                            <li key={s} className="text-xs text-muted-foreground flex items-start gap-1.5">
                               <span style={{ color: colors.text }} className="mt-0.5">·</span>
                               <span>{s}</span>
                             </li>
@@ -140,10 +140,10 @@ export default function AyurvedaAtlas() {
 
                     {instruments.length > 0 && (
                       <div className="pt-3 border-t border-white/5">
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Balancing Forks</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Balancing Forks</p>
                         <div className="flex flex-wrap gap-1.5">
                           {instruments.map((id) => (
-                            <span key={id} className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono">
+                            <span key={id} className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-mono">
                               {id}
                             </span>
                           ))}
@@ -176,7 +176,7 @@ export default function AyurvedaAtlas() {
               return (
                 <div
                   key={el.id}
-                  className="bg-[var(--card)] border border-white/10 rounded-xl overflow-hidden"
+                  className="bg-card border border-white/10 rounded-xl overflow-hidden"
                   data-testid={`card-element-${el.id}`}
                 >
                   <div className="h-1.5" style={{ background: color }} />
@@ -185,7 +185,7 @@ export default function AyurvedaAtlas() {
                       <h3 className="font-semibold text-white">{el.name}</h3>
                       {el.sanskrit && <p className="text-xs mt-0.5" style={{ color }}>Sanskrit: {el.sanskrit}</p>}
                     </div>
-                    {el.description && <p className="text-sm text-[var(--muted)]">{el.description}</p>}
+                    {el.description && <p className="text-sm text-muted-foreground">{el.description}</p>}
                     {qualities.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {qualities.map((q) => (
@@ -203,7 +203,7 @@ export default function AyurvedaAtlas() {
                       <div className="pt-2 border-t border-white/5">
                         <div className="flex flex-wrap gap-1.5">
                           {instruments.map((id) => (
-                            <span key={id} className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono">
+                            <span key={id} className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-mono">
                               {id}
                             </span>
                           ))}

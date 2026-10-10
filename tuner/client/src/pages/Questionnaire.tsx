@@ -43,7 +43,7 @@ function RadioGroup({
           key={opt.value}
           className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
             value === opt.value
-              ? "border-[var(--primary)] bg-[var(--primary)]/10"
+              ? "border-primary bg-primary/10"
               : "border-white/10 hover:border-white/20"
           }`}
           data-testid={`radio-${name}-${opt.value}`}
@@ -54,7 +54,7 @@ function RadioGroup({
             value={opt.value}
             checked={value === opt.value}
             onChange={() => onChange(opt.value)}
-            className="mt-0.5 accent-[var(--primary)]"
+            className="mt-0.5 accent-primary"
           />
           <span className="text-sm text-white">{opt.label}</span>
         </label>
@@ -78,7 +78,7 @@ function CheckRow({
         type="checkbox"
         checked={Boolean(checked)}
         onChange={(e) => onChange(e.target.checked ? 1 : 0)}
-        className="mt-0.5 accent-[var(--primary)]"
+        className="mt-0.5 accent-primary"
       />
       <span className="text-sm text-white">{label}</span>
     </label>
@@ -166,7 +166,7 @@ export default function Questionnaire() {
 
       {/* Progress */}
       <div className="space-y-2">
-        <div className="flex justify-between text-xs text-[var(--muted)]">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>Section {section} of {TOTAL_SECTIONS}: {SECTION_TITLES[section - 1]}</span>
           <span>{Math.round((section / TOTAL_SECTIONS) * 100)}%</span>
         </div>
@@ -181,8 +181,8 @@ export default function Questionnaire() {
             onClick={() => setSection(i + 1)}
             className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full transition-colors ${
               section === i + 1
-                ? "bg-[var(--primary)] text-white"
-                : "bg-white/5 text-[var(--muted)] hover:bg-white/10"
+                ? "bg-primary text-white"
+                : "bg-white/5 text-muted-foreground hover:bg-white/10"
             }`}
             data-testid={`section-tab-${i + 1}`}
           >
@@ -192,51 +192,51 @@ export default function Questionnaire() {
       </div>
 
       {/* Section content */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-6 space-y-6">
+      <div className="bg-card border border-white/10 rounded-xl p-6 space-y-6">
         <h2 className="font-semibold text-white">{section}. {SECTION_TITLES[section - 1]}</h2>
 
         {/* ── Section 1: Client Info ── */}
         {section === 1 && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Client full name *</Label>
+              <Label className="text-muted-foreground">Client full name *</Label>
               <Input
                 value={form.clientName}
                 onChange={(e) => set("clientName", e.target.value)}
                 placeholder="Full name"
-                className="bg-[var(--bg)] border-white/20"
+                className="bg-background border-white/20"
                 data-testid="input-clientName"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Email address (optional)</Label>
+              <Label className="text-muted-foreground">Email address (optional)</Label>
               <Input
                 type="email"
                 value={form.clientEmail}
                 onChange={(e) => set("clientEmail", e.target.value)}
                 placeholder="email@example.com"
-                className="bg-[var(--bg)] border-white/20"
+                className="bg-background border-white/20"
                 data-testid="input-clientEmail"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[var(--muted)]">Session date</Label>
+                <Label className="text-muted-foreground">Session date</Label>
                 <Input
                   type="date"
                   value={form.sessionDate}
                   onChange={(e) => set("sessionDate", e.target.value)}
-                  className="bg-[var(--bg)] border-white/20"
+                  className="bg-background border-white/20"
                   data-testid="input-sessionDate"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[var(--muted)]">Practitioner name</Label>
+                <Label className="text-muted-foreground">Practitioner name</Label>
                 <Input
                   value={form.practitionerName}
                   onChange={(e) => set("practitionerName", e.target.value)}
                   placeholder="Practitioner"
-                  className="bg-[var(--bg)] border-white/20"
+                  className="bg-background border-white/20"
                   data-testid="input-practitionerName"
                 />
               </div>
@@ -245,33 +245,33 @@ export default function Questionnaire() {
             {/* Gene Keys Radiance — optional */}
             <div className="space-y-3 pt-2 border-t border-white/5">
               <div>
-                <Label className="text-[var(--muted)]">Date of birth <span className="text-white/30 font-normal">(optional — unlocks Gene Keys Radiance synthesis)</span></Label>
+                <Label className="text-muted-foreground">Date of birth <span className="text-white/30 font-normal">(optional — unlocks Gene Keys Radiance synthesis)</span></Label>
                 <Input
                   type="date"
                   value={form.birthDate}
                   onChange={(e) => set("birthDate", e.target.value)}
-                  className="bg-[var(--bg)] border-white/20 mt-2"
+                  className="bg-background border-white/20 mt-2"
                   data-testid="input-birthDate"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[var(--muted)]">Time of birth <span className="text-white/30 font-normal">(optional — improves accuracy)</span></Label>
+                  <Label className="text-muted-foreground">Time of birth <span className="text-white/30 font-normal">(optional — improves accuracy)</span></Label>
                   <Input
                     type="time"
                     value={form.birthTime}
                     onChange={(e) => set("birthTime", e.target.value)}
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                     data-testid="input-birthTime"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[var(--muted)]">Place of birth <span className="text-white/30 font-normal">(optional)</span></Label>
+                  <Label className="text-muted-foreground">Place of birth <span className="text-white/30 font-normal">(optional)</span></Label>
                   <Input
                     value={form.birthPlace}
                     onChange={(e) => set("birthPlace", e.target.value)}
                     placeholder="City, Country"
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                     data-testid="input-birthPlace"
                   />
                 </div>
@@ -283,7 +283,7 @@ export default function Questionnaire() {
         {/* ── Section 2: Intake & Consent ── */}
         {section === 2 && (
           <div className="space-y-5">
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-muted-foreground">
               Sound healing using tuning forks, singing bowls, and bells is a complementary wellness
               practice. It is not a substitute for medical diagnosis or treatment. The practitioner makes
               no medical claims.
@@ -311,7 +311,7 @@ export default function Questionnaire() {
         {/* ── Section 3: Medical Safety ── */}
         {section === 3 && (
           <div className="space-y-5">
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-muted-foreground">
               Please answer honestly. These questions identify conditions that require modified technique
               or practitioner judgement. Any "yes" will not cancel your session — it will adjust how we work.
             </p>
@@ -324,9 +324,9 @@ export default function Questionnaire() {
               <CheckRow label="I have significant tinnitus or sound hypersensitivity" checked={form.soundSensitivity} onChange={(v) => set("soundSensitivity", v)} />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Pregnancy status</Label>
+              <Label className="text-muted-foreground">Pregnancy status</Label>
               <Select value={form.pregnancyStatus} onValueChange={(v) => set("pregnancyStatus", v)}>
-                <SelectTrigger className="bg-[var(--bg)] border-white/20" data-testid="select-pregnancy">
+                <SelectTrigger className="bg-background border-white/20" data-testid="select-pregnancy">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,7 +344,7 @@ export default function Questionnaire() {
         {section === 4 && (
           <div className="space-y-5">
             <div className="space-y-3">
-              <Label className="text-[var(--muted)]">Prior experience with sound healing</Label>
+              <Label className="text-muted-foreground">Prior experience with sound healing</Label>
               <RadioGroup
                 name="priorExperience"
                 value={form.priorExperience}
@@ -358,7 +358,7 @@ export default function Questionnaire() {
               />
             </div>
             <div className="space-y-3">
-              <Label className="text-[var(--muted)]">Comfort with body contact from instruments</Label>
+              <Label className="text-muted-foreground">Comfort with body contact from instruments</Label>
               <RadioGroup
                 name="bodyContact"
                 value={form.bodyContact}
@@ -376,7 +376,7 @@ export default function Questionnaire() {
         {/* ── Section 5: How are you today? ── */}
         {section === 5 && (
           <div className="space-y-5">
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-muted-foreground">
               Select the option that most closely matches your current state — not your general nature, just right now.
             </p>
             {[
@@ -452,7 +452,7 @@ export default function Questionnaire() {
         {/* ── Section 6: Where you hold things ── */}
         {section === 6 && (
           <div className="space-y-5">
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-muted-foreground">
               Three short questions about how you process experience. Select what feels truest right now.
             </p>
             {[
@@ -496,26 +496,26 @@ export default function Questionnaire() {
         {section === 7 && (
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">
+              <Label className="text-muted-foreground">
                 What brings you to this session? What would you like to release, integrate, or open?
               </Label>
               <Textarea
                 value={form.intentionText}
                 onChange={(e) => set("intentionText", e.target.value)}
                 placeholder="Share as much or as little as you like…"
-                className="bg-[var(--bg)] border-white/20 min-h-[100px]"
+                className="bg-background border-white/20 min-h-[100px]"
                 data-testid="textarea-intentionText"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">
+              <Label className="text-muted-foreground">
                 Are there any areas of the body, emotions, or life circumstances you want particular attention on?
               </Label>
               <Textarea
                 value={form.stressAreas}
                 onChange={(e) => set("stressAreas", e.target.value)}
                 placeholder="Optional…"
-                className="bg-[var(--bg)] border-white/20 min-h-[80px]"
+                className="bg-background border-white/20 min-h-[80px]"
                 data-testid="textarea-stressAreas"
               />
             </div>
@@ -526,7 +526,7 @@ export default function Questionnaire() {
         {section === 8 && (
           <div className="space-y-5">
             <div className="space-y-3">
-              <Label className="text-[var(--muted)]">Are you open to vocal toning or mantra during the session?</Label>
+              <Label className="text-muted-foreground">Are you open to vocal toning or mantra during the session?</Label>
               <RadioGroup
                 name="vocalization"
                 value={form.vocalization}
@@ -539,7 +539,7 @@ export default function Questionnaire() {
               />
             </div>
             <div className="space-y-3">
-              <Label className="text-[var(--muted)]">Familiarity with chakra and energy body concepts</Label>
+              <Label className="text-muted-foreground">Familiarity with chakra and energy body concepts</Label>
               <RadioGroup
                 name="chakraFamiliarity"
                 value={form.chakraFamiliarity}
@@ -552,12 +552,12 @@ export default function Questionnaire() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Any additional notes for the practitioner?</Label>
+              <Label className="text-muted-foreground">Any additional notes for the practitioner?</Label>
               <Textarea
                 value={form.comfortNotes}
                 onChange={(e) => set("comfortNotes", e.target.value)}
                 placeholder="Sensitivities, preferences, boundaries…"
-                className="bg-[var(--bg)] border-white/20 min-h-[80px]"
+                className="bg-background border-white/20 min-h-[80px]"
                 data-testid="textarea-comfortNotes"
               />
             </div>
@@ -571,7 +571,7 @@ export default function Questionnaire() {
           variant="outline"
           onClick={() => setSection((s) => s - 1)}
           disabled={section === 1}
-          className="border-white/20 text-[var(--muted)]"
+          className="border-white/20 text-muted-foreground"
           data-testid="button-prev"
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
@@ -591,7 +591,7 @@ export default function Questionnaire() {
           <Button
             onClick={handleSubmit}
             disabled={mutation.isPending}
-            className="bg-[var(--primary)] hover:bg-[var(--primary)]/90"
+            className="bg-primary hover:bg-primary/90"
             data-testid="button-submit"
           >
             {mutation.isPending ? "Processing…" : "Generate Session Profile"}

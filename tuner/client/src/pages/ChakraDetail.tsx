@@ -36,7 +36,7 @@ export default function ChakraDetail() {
   if (isLoading) return <div className="p-6"><Skeleton className="h-96"/></div>;
   if (!chakra) return <div className="p-6 text-muted-foreground">Chakra not found.</div>;
 
-  const color = CHAKRA_COLORS[chakra.id] || "#6366f1";
+  const color = CHAKRA_COLORS[chakra.id] || "#2BC9B8";
   const themes = parseArr(chakra.themes);
   const imbalance = parseObj(chakra.imbalanceSigns);
   const asanas = parseArr(chakra.asanas);

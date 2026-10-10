@@ -36,14 +36,14 @@ const CHAKRA_COLORS: Record<string, string> = {
 };
 
 function getChakraColor(chakraId: string) {
-  return CHAKRA_COLORS[chakraId] ?? "#6366f1";
+  return CHAKRA_COLORS[chakraId] ?? "#2BC9B8";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">
+    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
       {children}
     </p>
   );
@@ -52,7 +52,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function InfoBlock({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="bg-white/[0.03] rounded-lg p-3">
-      <p className="text-xs text-[var(--muted)] mb-0.5">{label}</p>
+      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
       <p className="text-xs font-medium" style={accent ? { color: accent } : { color: "white" }}>
         {value}
       </p>
@@ -64,7 +64,7 @@ function InstrumentBadge({ id }: { id: string }) {
   return (
     <Link href={`/inventory/${id}`}>
       <span
-        className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono cursor-pointer hover:bg-[var(--primary)]/35 transition-colors"
+        className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-mono cursor-pointer hover:bg-primary/35 transition-colors"
         data-testid={`radiance-badge-${id}`}
       >
         {id}
@@ -122,36 +122,36 @@ function BirthEditForm({
 
   return (
     <div className="mt-4 pt-4 border-t border-white/10 space-y-3" data-testid="radiance-birth-edit-form">
-      <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Edit Birth Data</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Edit Birth Data</p>
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label className="text-xs text-[var(--muted)]">Date of birth</Label>
+          <Label className="text-xs text-muted-foreground">Date of birth</Label>
           <Input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="bg-[var(--bg)] border-white/20 h-8 text-sm"
+            className="bg-background border-white/20 h-8 text-sm"
             data-testid="radiance-edit-birthDate"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-[var(--muted)]">Time <span className="text-white/30">(optional)</span></Label>
+            <Label className="text-xs text-muted-foreground">Time <span className="text-white/30">(optional)</span></Label>
             <Input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-[var(--bg)] border-white/20 h-8 text-sm"
+              className="bg-background border-white/20 h-8 text-sm"
               data-testid="radiance-edit-birthTime"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-[var(--muted)]">Place <span className="text-white/30">(optional)</span></Label>
+            <Label className="text-xs text-muted-foreground">Place <span className="text-white/30">(optional)</span></Label>
             <Input
               value={place}
               onChange={(e) => setPlace(e.target.value)}
               placeholder="City, Country"
-              className="bg-[var(--bg)] border-white/20 h-8 text-sm"
+              className="bg-background border-white/20 h-8 text-sm"
               data-testid="radiance-edit-birthPlace"
             />
           </div>
@@ -161,7 +161,7 @@ function BirthEditForm({
             size="sm"
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !date}
-            className="bg-[var(--primary)] hover:bg-[var(--primary)]/90 h-7 text-xs px-3"
+            className="bg-primary hover:bg-primary/90 h-7 text-xs px-3"
             data-testid="radiance-edit-save"
           >
             <Check size={12} className="mr-1" />
@@ -172,7 +172,7 @@ function BirthEditForm({
             variant="outline"
             onClick={onCancel}
             disabled={mutation.isPending}
-            className="border-white/20 text-[var(--muted)] h-7 text-xs px-3"
+            className="border-white/20 text-muted-foreground h-7 text-xs px-3"
             data-testid="radiance-edit-cancel"
           >
             <X size={12} className="mr-1" />
@@ -199,10 +199,10 @@ function RadianceCompact({ profile }: { profile: RadianceProfile }) {
           Radiance GK {profile.activation.gate}.{profile.activation.line}
           {" · "}{profile.gift}
           {!profile.activation.precise && (
-            <span className="ml-2 text-[var(--muted)] font-normal">(approx.)</span>
+            <span className="ml-2 text-muted-foreground font-normal">(approx.)</span>
           )}
         </p>
-        <p className="text-xs text-[var(--muted)] mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {profile.chakraName} · {profile.fieldKoshaName} · Line {profile.activation.line}: {profile.bodyLayer}
         </p>
         <p className="text-xs mt-1.5 text-white/70">
@@ -251,7 +251,7 @@ function RadianceFull({
 
   return (
     <div
-      className="bg-[var(--card)] border rounded-xl overflow-hidden"
+      className="bg-card border rounded-xl overflow-hidden"
       style={{ borderColor: `${color}50` }}
       data-testid="radiance-card"
     >
@@ -270,7 +270,7 @@ function RadianceFull({
           <div className="flex-1">
             <div className="flex items-baseline gap-2 flex-wrap">
               <h3 className="font-bold text-white text-sm">Radiance Sphere</h3>
-              <span className="text-xs text-[var(--muted)]">Venus Sequence · Gene Keys</span>
+              <span className="text-xs text-muted-foreground">Venus Sequence · Gene Keys</span>
               {!profile.activation.precise && (
                 <span className="text-xs text-amber-400/70 flex items-center gap-1">
                   <AlertTriangle size={10} /> approx.
@@ -285,7 +285,7 @@ function RadianceFull({
           {questionnaireId && !editing && (
             <button
               onClick={() => setEditing(true)}
-              className="shrink-0 p-1.5 rounded-md text-[var(--muted)] hover:text-white hover:bg-white/10 transition-colors"
+              className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
               title="Edit birth data"
               data-testid="radiance-edit-toggle"
             >
@@ -297,15 +297,15 @@ function RadianceFull({
         {/* Shadow / Gift / Siddhi row */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-white/[0.03] rounded-lg p-2.5 text-center">
-            <p className="text-xs text-[var(--muted)] mb-0.5">Shadow</p>
+            <p className="text-xs text-muted-foreground mb-0.5">Shadow</p>
             <p className="text-xs font-semibold text-red-400/80">{profile.shadow}</p>
           </div>
           <div className="bg-white/[0.03] rounded-lg p-2.5 text-center border border-white/10">
-            <p className="text-xs text-[var(--muted)] mb-0.5">Gift</p>
+            <p className="text-xs text-muted-foreground mb-0.5">Gift</p>
             <p className="text-xs font-semibold text-emerald-400">{profile.gift}</p>
           </div>
           <div className="bg-white/[0.03] rounded-lg p-2.5 text-center">
-            <p className="text-xs text-[var(--muted)] mb-0.5">Siddhi</p>
+            <p className="text-xs text-muted-foreground mb-0.5">Siddhi</p>
             <p className="text-xs font-semibold" style={{ color }}>{profile.siddhi}</p>
           </div>
         </div>
@@ -314,28 +314,28 @@ function RadianceFull({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {/* Gate → Chakra → Kosha */}
           <div className="bg-white/[0.03] rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Gate → Field Layer
             </p>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">HD Center</span>
+                <span className="text-muted-foreground">HD Center</span>
                 <span className="text-white font-mono">{profile.hdCenter}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Chakra</span>
+                <span className="text-muted-foreground">Chakra</span>
                 <span style={{ color }} className="font-medium">{profile.chakraName.split("(")[0].trim()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Frequency</span>
+                <span className="text-muted-foreground">Frequency</span>
                 <span className="text-white font-mono">{profile.chakraFrequencyHz} Hz</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Kosha</span>
+                <span className="text-muted-foreground">Kosha</span>
                 <span className="text-white text-right">{profile.fieldKoshaName.replace(" Kosha", "")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Biofield</span>
+                <span className="text-muted-foreground">Biofield</span>
                 <span className="text-white/70 text-right">{profile.fieldBiofieldPosition}</span>
               </div>
             </div>
@@ -343,24 +343,24 @@ function RadianceFull({
 
           {/* Line → Body → Kosha */}
           <div className="bg-white/[0.03] rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Line {profile.activation.line} → Somatic Depth
             </p>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Archetype</span>
+                <span className="text-muted-foreground">Archetype</span>
                 <span className="text-white">{profile.lineArchetype}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Body layer</span>
+                <span className="text-muted-foreground">Body layer</span>
                 <span className="text-white text-right">{profile.bodyLayer}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Kosha</span>
+                <span className="text-muted-foreground">Kosha</span>
                 <span className="text-white text-right">{profile.somaticKoshaName.replace(" Kosha", "")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--muted)]">Depth</span>
+                <span className="text-muted-foreground">Depth</span>
                 <span className="text-white/70 text-right">{profile.fieldDepth}</span>
               </div>
             </div>
@@ -381,7 +381,7 @@ function RadianceFull({
               {profile.koshasConverge ? "Strong Convergence" : "Split Signal"}
             </p>
           </div>
-          <p className="text-xs text-[var(--muted)] leading-relaxed">{profile.convergenceNote}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{profile.convergenceNote}</p>
         </div>
 
         {/* Dosha / Element */}
@@ -402,7 +402,7 @@ function RadianceFull({
           {profile.secondaryInstruments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {profile.secondaryInstruments.map(id => (
-                <span key={id} className="text-xs px-2 py-0.5 rounded border border-white/15 text-[var(--muted)] font-mono">
+                <span key={id} className="text-xs px-2 py-0.5 rounded border border-white/15 text-muted-foreground font-mono">
                   {id}
                 </span>
               ))}
@@ -412,7 +412,7 @@ function RadianceFull({
 
         {/* Expand toggle for application + body layer description */}
         <button
-          className="w-full flex items-center justify-center gap-2 text-xs text-[var(--muted)] hover:text-white transition-colors py-1 border-t border-white/5 pt-3"
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors py-1 border-t border-white/5 pt-3"
           onClick={() => setExpanded(e => !e)}
           data-testid="radiance-expand"
         >
@@ -424,7 +424,7 @@ function RadianceFull({
             {/* Body layer desc */}
             <div>
               <SectionLabel>Body Layer — {profile.bodyLayer}</SectionLabel>
-              <p className="text-sm text-[var(--muted)] leading-relaxed">{profile.bodyLayerDescription}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{profile.bodyLayerDescription}</p>
             </div>
 
             {/* Application mode */}
@@ -436,7 +436,7 @@ function RadianceFull({
                 <Link2 size={11} style={{ color }} />
                 Application Protocol
               </p>
-              <p className="text-sm text-[var(--muted)] leading-relaxed">{profile.applicationMode}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{profile.applicationMode}</p>
             </div>
 
             {/* Attribution */}
@@ -487,7 +487,7 @@ function RadianceEmpty({ questionnaireId, onAddBirthData }: RadianceEmptyProps) 
 
   return (
     <div
-      className="bg-[var(--card)] border border-dashed border-white/15 rounded-xl p-5"
+      className="bg-card border border-dashed border-white/15 rounded-xl p-5"
       data-testid="radiance-empty"
     >
       <div className="flex items-center gap-4">
@@ -496,14 +496,14 @@ function RadianceEmpty({ questionnaireId, onAddBirthData }: RadianceEmptyProps) 
         </div>
         <div className="flex-1">
           <p className="text-sm font-medium text-white/50">Radiance Sphere</p>
-          <p className="text-xs text-[var(--muted)] mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Add a date of birth to unlock the Gene Keys Radiance synthesis — chakra, kosha, body layer, and instrument recommendations derived from this client's path to health.
           </p>
         </div>
         {(questionnaireId || onAddBirthData) && !editing && (
           <button
             onClick={() => questionnaireId ? setEditing(true) : onAddBirthData?.()}
-            className="shrink-0 text-xs text-[var(--primary)] hover:text-white border border-[var(--primary)]/40 hover:border-[var(--primary)] rounded-lg px-3 py-1.5 transition-colors"
+            className="shrink-0 text-xs text-primary hover:text-white border border-primary/40 hover:border-primary rounded-lg px-3 py-1.5 transition-colors"
             data-testid="radiance-add-birth"
           >
             Add birth data
@@ -562,7 +562,7 @@ export default function RadianceCard({
 
   if (isLoading) {
     return (
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 animate-pulse" data-testid="radiance-loading">
+      <div className="bg-card border border-white/10 rounded-xl p-5 animate-pulse" data-testid="radiance-loading">
         <div className="h-4 bg-white/10 rounded w-40 mb-3" />
         <div className="h-3 bg-white/5 rounded w-full mb-2" />
         <div className="h-3 bg-white/5 rounded w-3/4" />
@@ -572,7 +572,7 @@ export default function RadianceCard({
 
   if (isError || !profile) {
     return (
-      <div className="bg-[var(--card)] border border-red-500/20 rounded-xl p-4 text-xs text-red-400/70">
+      <div className="bg-card border border-red-500/20 rounded-xl p-4 text-xs text-red-400/70">
         Radiance calculation failed — check birth date format (YYYY-MM-DD).
       </div>
     );

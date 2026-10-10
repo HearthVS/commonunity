@@ -42,7 +42,7 @@ export default function ChakraAtlas() {
 }
 
 function ChakraRow({ chakra: c }: { chakra: Chakra }) {
-  const color = CHAKRA_COLORS[c.id] || "#6366f1";
+  const color = CHAKRA_COLORS[c.id] || "#2BC9B8";
   const themes = parseArr(c.themes).slice(0, 4);
   const forks = parseArr(c.recommendedForks);
 

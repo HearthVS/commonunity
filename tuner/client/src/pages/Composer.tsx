@@ -28,7 +28,7 @@ interface Track {
 const EXPORT_LENGTHS = [1, 3, 5, 10, 15, 20, 30, 45, 60]; // minutes
 
 const TRACK_COLORS = [
-  "#6366f1", "#14b8a6", "#f59e0b", "#ec4899",
+  "#2BC9B8", "#A98BF0", "#FF7A4D", "#7FE3D8",
   "#10b981", "#f97316", "#8b5cf6", "#06b6d4",
 ];
 
@@ -47,7 +47,7 @@ function TrackRow({
 }) {
   return (
     <div
-      className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-3"
+      className="bg-card border border-white/10 rounded-xl p-4 space-y-3"
       data-testid={`track-row-${index}`}
     >
       <div className="flex items-center gap-3">
@@ -67,7 +67,7 @@ function TrackRow({
                 });
               }
             }}
-            className="w-full bg-[var(--bg)] border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
+            className="w-full bg-background border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
             data-testid={`select-track-instrument-${index}`}
           >
             <option value="">— Select instrument —</option>
@@ -80,7 +80,7 @@ function TrackRow({
         </div>
         <button
           onClick={onRemove}
-          className="p-1.5 text-[var(--muted)] hover:text-red-400 transition-colors rounded"
+          className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors rounded"
           data-testid={`button-remove-track-${index}`}
         >
           <Trash2 className="w-4 h-4" />
@@ -89,7 +89,7 @@ function TrackRow({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="text-xs text-[var(--muted)] flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground flex items-center gap-2">
             <Volume2 className="w-3 h-3" />
             Volume: {track.gain}%
           </Label>
@@ -104,13 +104,13 @@ function TrackRow({
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-xs text-[var(--muted)]">
+          <Label className="text-xs text-muted-foreground">
             Frequency: {track.frequency > 0 ? formatHz(track.frequency) : "—"}
           </Label>
           {track.chakraId && (
             <div className="flex items-center gap-2 mt-1">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: CHAKRA_COLORS[track.chakraId] ?? "#6366f1" }} />
-              <span className="text-xs text-[var(--muted)]">{track.chakraId?.replace("CH-", "")}</span>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: CHAKRA_COLORS[track.chakraId] ?? "#2BC9B8" }} />
+              <span className="text-xs text-muted-foreground">{track.chakraId?.replace("CH-", "")}</span>
             </div>
           )}
         </div>
@@ -384,17 +384,17 @@ export default function Composer() {
         {/* ── Left: Tracks ── */}
         <div className="lg:col-span-3 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Tracks ({tracks.length})</h2>
-            <Button size="sm" variant="outline" onClick={addTrack} className="border-white/20 text-[var(--muted)]" data-testid="button-add-track">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tracks ({tracks.length})</h2>
+            <Button size="sm" variant="outline" onClick={addTrack} className="border-white/20 text-muted-foreground" data-testid="button-add-track">
               <Plus className="w-4 h-4 mr-1" />
               Add Track
             </Button>
           </div>
 
           {tracks.length === 0 ? (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-10 text-center">
-              <p className="text-sm text-[var(--muted)]">No tracks yet. Add an instrument to build your soundscape.</p>
-              <Button onClick={addTrack} variant="outline" className="mt-4 border-white/20 text-[var(--muted)]">
+            <div className="bg-card border border-white/10 rounded-xl p-10 text-center">
+              <p className="text-sm text-muted-foreground">No tracks yet. Add an instrument to build your soundscape.</p>
+              <Button onClick={addTrack} variant="outline" className="mt-4 border-white/20 text-muted-foreground">
                 <Plus className="w-4 h-4 mr-1" />
                 Add First Track
               </Button>
@@ -418,7 +418,7 @@ export default function Composer() {
           <div className="flex gap-3 pt-2">
             <Button
               onClick={isPlaying ? stopAudio : startAudio}
-              className={isPlaying ? "bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30" : "bg-[var(--primary)] hover:bg-[var(--primary)]/90"}
+              className={isPlaying ? "bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30" : "bg-primary hover:bg-primary/90"}
               data-testid="button-toggle-playback"
             >
               {isPlaying ? (
@@ -430,42 +430,42 @@ export default function Composer() {
           </div>
 
           {/* Save soundscape */}
-          <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-white/10 rounded-xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-white">Save &amp; share</h3>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Name</Label>
+              <Label className="text-muted-foreground">Name</Label>
               <Input
                 value={soundscapeName}
                 onChange={(e) => setSoundscapeName(e.target.value)}
                 placeholder="My morning grounding practice…"
-                className="bg-[var(--bg)] border-white/20"
+                className="bg-background border-white/20"
                 data-testid="input-soundscape-name"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[var(--muted)]">Notes (optional)</Label>
+              <Label className="text-muted-foreground">Notes (optional)</Label>
               <Textarea
                 value={soundscapeNotes}
                 onChange={(e) => setSoundscapeNotes(e.target.value)}
                 placeholder="Protocol context, client notes…"
-                className="bg-[var(--bg)] border-white/20 min-h-[60px]"
+                className="bg-background border-white/20 min-h-[60px]"
                 data-testid="textarea-soundscape-notes"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="export-length" className="text-[var(--muted)]">Length</Label>
+              <Label htmlFor="export-length" className="text-muted-foreground">Length</Label>
               <select
                 id="export-length"
                 value={exportMinutes}
                 onChange={(e) => setExportMinutes(Number(e.target.value))}
-                className="w-full bg-[var(--bg)] border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-background border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
                 data-testid="select-export-length"
               >
                 {EXPORT_LENGTHS.map((m) => (
                   <option key={m} value={m}>{m} minute{m > 1 ? "s" : ""}</option>
                 ))}
               </select>
-              <p className="text-xs text-[var(--muted)]">
+              <p className="text-xs text-muted-foreground">
                 The recordings loop for the whole length, so it works as a meditation track, with a gentle
                 fade in and out. Saved as an MP3 of about {Math.max(1, Math.round(estimatedSizeMB(exportMinutes)))} MB
                 {exportMinutes >= 20 ? `, which takes up to ${Math.ceil(exportMinutes * 2 / 60)} minute${exportMinutes > 30 ? "s" : ""} to create` : ""}.
@@ -496,7 +496,7 @@ export default function Composer() {
                   variant="outline"
                   onClick={pendingShare ? shareNow : prepareShare}
                   disabled={exporting || audibleTracks.length === 0}
-                  className={pendingShare ? "border-[var(--primary)] text-white" : "border-white/20"}
+                  className={pendingShare ? "border-primary text-white" : "border-white/20"}
                   data-testid="button-share-soundscape"
                 >
                   <Share2 className="w-4 h-4 mr-1.5" />
@@ -505,12 +505,12 @@ export default function Composer() {
               )}
             </div>
             {exporting && (
-              <p className="text-xs text-[var(--muted)]" aria-live="polite">
+              <p className="text-xs text-muted-foreground" aria-live="polite">
                 Creating audio… {Math.round((exportProgress ?? 0) * 100)}%
               </p>
             )}
             {pendingShare && !exporting && (
-              <p className="text-xs text-[var(--muted)]">
+              <p className="text-xs text-muted-foreground">
                 {pendingShare.file.name} is ready. Tap Share now to choose an app or person.
               </p>
             )}
@@ -520,9 +520,9 @@ export default function Composer() {
         {/* ── Right: Visualization ── */}
         <div className="lg:col-span-2 space-y-4">
           {/* Multi-Chladni */}
-          <div className="bg-[var(--card)] border border-white/10 rounded-xl overflow-hidden">
+          <div className="bg-card border border-white/10 rounded-xl overflow-hidden">
             <div className="p-3 border-b border-white/5">
-              <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Chladni Patterns</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Chladni Patterns</p>
             </div>
             <div className="p-4">
               {activeTracks.length > 0 ? (
@@ -535,7 +535,7 @@ export default function Composer() {
                   size={380}
                 />
               ) : (
-                <div className="w-full aspect-square flex items-center justify-center text-[var(--muted)] text-sm border border-white/10 rounded-lg">
+                <div className="w-full aspect-square flex items-center justify-center text-muted-foreground text-sm border border-white/10 rounded-lg">
                   Add tracks to see Chladni patterns
                 </div>
               )}
@@ -544,14 +544,14 @@ export default function Composer() {
 
           {/* Frequency summary */}
           {activeTracks.length > 0 && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-3">
-              <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Active Frequencies</p>
+            <div className="bg-card border border-white/10 rounded-xl p-4 space-y-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Frequencies</p>
               <div className="space-y-2">
                 {activeTracks.map((t, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: t.color }} />
                     <span className="text-sm text-white flex-1 truncate">{t.label || t.instrumentId}</span>
-                    <span className="text-xs font-mono text-[var(--muted)]">{formatHz(t.frequency)}</span>
+                    <span className="text-xs font-mono text-muted-foreground">{formatHz(t.frequency)}</span>
                   </div>
                 ))}
               </div>
@@ -569,8 +569,8 @@ export default function Composer() {
 
           {/* Saved soundscapes */}
           {soundscapes.length > 0 && (
-            <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-3">
-              <p className="text-xs text-[var(--muted)] uppercase tracking-wider">
+            <div className="bg-card border border-white/10 rounded-xl p-4 space-y-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
                 Saved Soundscapes ({soundscapes.length})
               </p>
               {soundscapes.length > 8 && (
@@ -579,7 +579,7 @@ export default function Composer() {
                   onChange={(e) => setLibraryFilter(e.target.value)}
                   placeholder="Search by name…"
                   aria-label="Search saved soundscapes"
-                  className="bg-[var(--bg)] border-white/20 h-8 text-sm"
+                  className="bg-background border-white/20 h-8 text-sm"
                   data-testid="input-filter-soundscapes"
                 />
               )}
@@ -603,7 +603,7 @@ export default function Composer() {
                             size="sm"
                             variant="ghost"
                             onClick={() => setConfirmDeleteId(null)}
-                            className="h-7 px-2 text-xs text-[var(--muted)]"
+                            className="h-7 px-2 text-xs text-muted-foreground"
                           >
                             Cancel
                           </Button>
@@ -625,13 +625,13 @@ export default function Composer() {
                             data-testid={`button-load-soundscape-${sc.id}`}
                           >
                             <span className="text-white line-clamp-2 break-words">{sc.name}</span>
-                            <span className="text-xs text-[var(--muted)] ml-2 shrink-0">
+                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
                               {minutes ? `${minutes} min · ` : ""}Load
                             </span>
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(sc.id)}
-                            className="p-1.5 text-[var(--muted)] hover:text-red-400 transition-colors rounded shrink-0"
+                            className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors rounded shrink-0"
                             aria-label={`Delete ${sc.name}`}
                             title="Delete"
                             data-testid={`button-delete-soundscape-${sc.id}`}
@@ -644,7 +644,7 @@ export default function Composer() {
                   );
                 })}
                 {filteredSoundscapes.length === 0 && (
-                  <p className="text-xs text-[var(--muted)] px-1">No saved soundscapes match “{libraryFilter}”.</p>
+                  <p className="text-xs text-muted-foreground px-1">No saved soundscapes match “{libraryFilter}”.</p>
                 )}
               </div>
             </div>
@@ -653,8 +653,8 @@ export default function Composer() {
       </div>
 
       {/* Disclaimer */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-        <p className="text-xs text-[var(--muted)]">
+      <div className="bg-card border border-white/10 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground">
           Preview plays your actual instrument recordings, looped and mixed in the browser via the Web Audio API.
           Each track's volume slider controls its mix level. The Chladni visualisation is a
           mathematical approximation based on the classical vibrating plate equation — not a direct
