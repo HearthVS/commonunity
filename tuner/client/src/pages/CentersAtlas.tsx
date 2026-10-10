@@ -28,7 +28,7 @@ export default function CentersAtlas() {
 
   useEffect(() => {
     setNexusContext("Centers Atlas (Gurdjieff)\nMoving, emotional, and intellectual centers — how center dominance shapes a client's session needs and instrument choices.");
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   if (isLoading) {

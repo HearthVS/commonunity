@@ -95,7 +95,7 @@ export default function Clients() {
   useEffect(() => {
     const count = profiles?.length ?? 0;
     setNexusContext(`Client Profiles page\n${count} client questionnaire${count !== 1 ? "s" : ""} on file`);
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, [profiles]);
 
   return (

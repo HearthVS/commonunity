@@ -246,7 +246,7 @@ export default function PractitionerGuide() {
 
   useEffect(() => {
     setNexusContext("Practitioner Guide\nSession design, client preparation, contraindication protocols, and ethical guidelines for sound healing practice.");
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   return (

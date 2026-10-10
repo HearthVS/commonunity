@@ -96,7 +96,7 @@ export default function Layout({ children }: LayoutProps) {
           {!collapsed && (
             <div className="flex flex-col min-w-0">
               <span className="font-display text-lg font-semibold text-foreground leading-tight truncate">om tuner</span>
-              <span className="text-xs text-muted-foreground leading-tight">Sound healing toolkit</span>
+              <span className="text-xs text-muted-foreground leading-tight">Frequency toolkit</span>
             </div>
           )}
           <button

@@ -644,7 +644,7 @@ export default function Intake() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground opacity-50">
-          OM Tuner · Sound healing session intake
+          OM Tuner · Pre-session intake
         </p>
       </div>
     </div>

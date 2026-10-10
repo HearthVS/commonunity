@@ -69,7 +69,7 @@ export default function Library() {
 
   useEffect(() => {
     setNexusContext("Library — the practitioner's private books and notes, searchable and used by Nexus for citations");
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   useEffect(() => {

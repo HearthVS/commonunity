@@ -51,7 +51,7 @@ export default function SubtleBodiesAtlas() {
     setNexusContext(
       "Subtle Bodies Atlas — 7 Seals of Gene Key 22\nThe seven subtle bodies mapped through Barbara Brennan's auric anatomy, the Theosophical tradition, and the seven evolutionary Seals of Gene Key 22 (Grace). Each body is linked to its primary instruments and recommended application distance."
     );
-    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
+    return () => setNexusContext("Frequency toolkit — OM Tuner");
   }, []);
 
   // Sort outer → inner for the nested visual (7 down to 1)
