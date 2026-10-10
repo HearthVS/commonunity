@@ -249,6 +249,7 @@ export function runMigrations() {
   // Remote intake fields that were collected but had no column to land in
   for (const col of [
     "client_email TEXT", "client_phone TEXT", "implanted_device INTEGER", "attention_areas TEXT",
+    "practitioner_name TEXT", "prior_experience TEXT",
   ]) {
     try {
       db.run(sql.raw(`ALTER TABLE questionnaire_responses ADD COLUMN ${col}`));

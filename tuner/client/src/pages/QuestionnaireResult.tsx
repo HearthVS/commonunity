@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { COMFORT_TIERS, DOSHA_LABELS, CHAKRA_COLORS, parseArr } from "@/lib/utils";
+import { intakeAnswerSections, intakeAnswersText } from "@/lib/intakeAnswers";
 import { AlertTriangle, CheckCircle, ArrowRight, BookOpen, Trash2, User, Calendar, Clock, MapPin, Mail, Phone, Stethoscope, Download } from "lucide-react";
 import type { QuestionnaireResponse } from "@shared/schema";
 import RadianceCard from "@/components/RadianceCard";
@@ -126,6 +127,9 @@ export default function QuestionnaireResult() {
       `Dominant dosha: ${result.dominantDosha ?? "unknown"} | Center: ${result.dominantCenter ?? "unknown"}`,
       `Protocol: ${result.recommendedProtocolId ?? "pending"} | Tier: ${result.recommendedComfortTier ?? "3"}`,
       radianceProfile ? radianceProfile.nexusSummary : "Radiance sphere: birth data not provided.",
+      "",
+      "Full intake answers:",
+      intakeAnswersText(result as unknown as Record<string, unknown>),
     ];
     setNexusContext(lines.join("\n"));
     return () => setNexusContext("Frequency toolkit — OM Tuner");
@@ -153,6 +157,7 @@ export default function QuestionnaireResult() {
   }
 
   const flags = parseArr(result.contraindicationFlags as unknown as string);
+  const answerSections = intakeAnswerSections(result as unknown as Record<string, unknown>);
   // Null means the client skipped those questions; say so instead of guessing.
   const dominantDosha = result.dominantDosha ?? "not answered";
   const dominantCenter = result.dominantCenter ?? "not answered";
@@ -395,23 +400,28 @@ export default function QuestionnaireResult() {
         </div>
       )}
 
-      {/* Client notes */}
-      {(result.attentionAreas || result.otherNotes) && (
-        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
-          {result.attentionAreas && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Areas needing attention</p>
-              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.attentionAreas}</p>
-            </div>
-          )}
-          {result.otherNotes && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Anything else</p>
-              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.otherNotes}</p>
-            </div>
-          )}
+      {/* Every answer, as the client gave it */}
+      <div className="bg-card border border-white/10 rounded-xl p-5 space-y-5" data-testid="all-answers">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Answers</p>
+          <p className="text-xs text-muted-foreground">Exactly as the client answered. Nexus can read these too.</p>
         </div>
-      )}
+        {answerSections.map((section) => (
+          <section key={section.title} className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">{section.title}</h3>
+            <dl className="divide-y divide-white/5">
+              {section.items.map((item) => (
+                <div key={item.question} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-6 gap-y-0.5 py-2">
+                  <dt className="text-sm text-muted-foreground">{item.question}</dt>
+                  <dd className={`text-sm leading-relaxed whitespace-pre-line ${item.flagged ? "text-warmth font-medium" : "text-foreground"}`}>
+                    {item.answer}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
 
       {/* Gene Keys Radiance Sphere */}
       <RadianceCard

@@ -173,6 +173,8 @@ export const questionnaireResponses = sqliteTable("questionnaire_responses", {
   clientName: text("client_name"),
   clientEmail: text("client_email"),
   clientPhone: text("client_phone"),
+  practitionerName: text("practitioner_name"),
+  priorExperience: text("prior_experience"),
   clientAge: integer("client_age"),
   pregnancyStatus: text("pregnancy_status"),
   // S2 safety

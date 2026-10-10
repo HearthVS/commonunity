@@ -251,7 +251,7 @@ export default function NexusPanel() {
         const transcript = msgs
           .map((m) => `${m.role === "nexus" ? "Nexus" : "Practitioner"}: ${m.text}`)
           .join("\n");
-        const compressionPrompt = `Based on this conversation, write a 3–5 sentence compressed profile of the practitioner: what instruments they use, their experience level, any preferences or patterns you notice, and any clinical or personal context that would help you in future sessions. Be specific, not generic. Return plain text only.\n\nConversation:\n${transcript.slice(0, 3000)}`;
+        const compressionPrompt = `Based on this conversation, write a 3–5 sentence compressed profile of the practitioner: what instruments they use, their experience level, any preferences or patterns you notice, and any clinical or personal context that would help you in future sessions. Be specific, not generic. Never include anything about a client: no names, contact details, health conditions or other personal information, even if they came up. Return plain text only.\n\nConversation:\n${transcript.slice(0, 3000)}`;
 
         const res = await fetch(`${API_BASE}/api/nexus/chat`, {
           method: "POST",
