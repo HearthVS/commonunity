@@ -705,7 +705,10 @@ Return plain text only. No markdown.`;
     try {
       const stream = anthropic.messages.stream({
         model: "claude-sonnet-4-5",
-        max_tokens: 300,
+        // A ceiling, not a target: the prompt keeps replies short by default,
+        // and only tokens actually written are billed. 300 used to cut
+        // longer explanations off mid-sentence.
+        max_tokens: 16000,
         system: systemWithContext,
         messages,
       });
@@ -717,6 +720,10 @@ Return plain text only. No markdown.`;
         ) {
           res.write(`data: ${JSON.stringify({ chunk: chunk.delta.text })}\n\n`);
         }
+      }
+      const final = await stream.finalMessage();
+      if (final.stop_reason === "max_tokens") {
+        res.write(`data: ${JSON.stringify({ chunk: "\n\n(This answer reached the length limit. Ask me to continue.)" })}\n\n`);
       }
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch (err: unknown) {
