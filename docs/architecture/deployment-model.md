@@ -29,7 +29,7 @@ The provider stack (Railway + Cloudflare + GitHub) matches the 2026-05-16 decisi
 - Main Studio/root: `https://commonunity-production.up.railway.app`
 - Studio route: `https://commonunity-production.up.railway.app/studio`
 - cOMmons: `https://commons-production-8914.up.railway.app/field`
-- Tuner: `https://ideal-trust-production-7782.up.railway.app` (client intake at `/intake`)
+- OM Tuner: `https://omtuner.com` (also `www.omtuner.com`; client intake at `/intake`). Custom domains on the `ideal-trust` service, DNS at Cloudflare (CNAMEs, DNS only). Railway URL `https://ideal-trust-production-7782.up.railway.app` still works.
 
 ## Future canonical domains
 
