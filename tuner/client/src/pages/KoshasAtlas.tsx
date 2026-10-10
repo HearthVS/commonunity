@@ -24,7 +24,7 @@ function InstrumentBadge({ id, instruments }: { id: string; instruments: Instrum
   return (
     <Link href={`/inventory/${id}`}>
       <span
-        className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-mono cursor-pointer hover:bg-[var(--primary)]/35 transition-colors"
+        className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-mono cursor-pointer hover:bg-primary/35 transition-colors"
         title={inst ? `${inst.name} — ${inst.frequency} Hz` : id}
         data-testid={`badge-instrument-${id}`}
       >
@@ -78,8 +78,8 @@ export default function KoshasAtlas() {
       />
 
       {/* Lineage note */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-        <p className="text-xs text-[var(--muted)] leading-relaxed">
+      <div className="bg-card border border-white/10 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="font-semibold text-white">Multiple lineages:</span>{" "}
           Layers 1–5 are canonical Sanskrit koshas (Taittiriya Upanishad, ~800 BCE).
           Layers 6–7 are extended using Theosophical and Gene Keys frameworks.
@@ -94,17 +94,17 @@ export default function KoshasAtlas() {
           const primaryIds = parseArr(kosha.primaryInstruments as unknown as string);
           const secondaryIds = parseArr(kosha.secondaryInstruments as unknown as string ?? "[]");
           const isOpen = expanded[kosha.id] ?? false;
-          const label = LAYER_LABELS[kosha.layerNumber] ?? { roman: String(kosha.layerNumber), bg: "rgba(99,102,241,0.12)" };
+          const label = LAYER_LABELS[kosha.layerNumber] ?? { roman: String(kosha.layerNumber), bg: "rgba(43,201,184,0.12)" };
 
           return (
             <div
               key={kosha.id}
-              className="bg-[var(--card)] border rounded-xl overflow-hidden transition-all"
-              style={{ borderColor: kosha.colorHex ?? "#6366f1" }}
+              className="bg-card border rounded-xl overflow-hidden transition-all"
+              style={{ borderColor: kosha.colorHex ?? "#2BC9B8" }}
               data-testid={`card-kosha-${kosha.id}`}
             >
               {/* Top accent bar */}
-              <div className="h-1" style={{ background: kosha.colorHex ?? "#6366f1" }} />
+              <div className="h-1" style={{ background: kosha.colorHex ?? "#2BC9B8" }} />
 
               {/* Collapsed header — always visible */}
               <button
@@ -116,7 +116,7 @@ export default function KoshasAtlas() {
                 {/* Layer number badge */}
                 <div
                   className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm"
-                  style={{ background: label.bg, color: kosha.colorHex ?? "#6366f1", border: `1px solid ${kosha.colorHex ?? "#6366f1"}40` }}
+                  style={{ background: label.bg, color: kosha.colorHex ?? "#2BC9B8", border: `1px solid ${kosha.colorHex ?? "#2BC9B8"}40` }}
                 >
                   {label.roman}
                 </div>
@@ -125,9 +125,9 @@ export default function KoshasAtlas() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <h3 className="font-bold text-white text-sm">{kosha.sanskritName}</h3>
-                    <span className="text-xs text-[var(--muted)]">{kosha.englishName}</span>
+                    <span className="text-xs text-muted-foreground">{kosha.englishName}</span>
                     {kosha.isExtendedKosha && (
-                      <span className="text-xs px-1.5 py-0.5 rounded border border-white/20 text-[var(--muted)]">
+                      <span className="text-xs px-1.5 py-0.5 rounded border border-white/20 text-muted-foreground">
                         Extended
                       </span>
                     )}
@@ -136,22 +136,22 @@ export default function KoshasAtlas() {
                   {!isOpen && primaryIds.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {primaryIds.slice(0, 3).map((id) => (
-                        <span key={id} className="text-xs font-mono text-[var(--primary)]/70">{id}</span>
+                        <span key={id} className="text-xs font-mono text-primary/70">{id}</span>
                       ))}
-                      {primaryIds.length > 3 && <span className="text-xs text-[var(--muted)]">+{primaryIds.length - 3}</span>}
+                      {primaryIds.length > 3 && <span className="text-xs text-muted-foreground">+{primaryIds.length - 3}</span>}
                     </div>
                   )}
                 </div>
 
                 {/* Biofield distance */}
                 {kosha.biofieldPosition && (
-                  <span className="hidden sm:block text-xs text-[var(--muted)] shrink-0 bg-white/5 px-2 py-1 rounded">
+                  <span className="hidden sm:block text-xs text-muted-foreground shrink-0 bg-white/5 px-2 py-1 rounded">
                     {kosha.biofieldPosition}
                   </span>
                 )}
 
                 {/* Expand chevron */}
-                <div className="shrink-0 text-[var(--muted)]">
+                <div className="shrink-0 text-muted-foreground">
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
               </button>
@@ -163,22 +163,22 @@ export default function KoshasAtlas() {
                   <div className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {kosha.theosophicalName && (
                       <div className="bg-white/[0.03] rounded-lg p-3">
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1">Theosophical</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Theosophical</p>
                         <p className="text-xs text-white/80">{kosha.theosophicalName}</p>
                       </div>
                     )}
                     {kosha.brennanLevel && (
                       <div className="bg-white/[0.03] rounded-lg p-3">
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1">Brennan Level</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Brennan Level</p>
                         <p className="text-xs text-white/80">{kosha.brennanLevel}</p>
                       </div>
                     )}
                     {kosha.geneKeySeal && (
                       <div className="bg-white/[0.03] rounded-lg p-3">
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1">Gene Key Seal</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Gene Key Seal</p>
                         <p className="text-xs text-white/80">{kosha.geneKeySeal}</p>
                         {(kosha.geneKeyShadow || kosha.geneKeyGift) && (
-                          <p className="text-xs text-[var(--muted)] mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Shadow: {kosha.geneKeyShadow} → Gift: {kosha.geneKeyGift}
                           </p>
                         )}
@@ -189,7 +189,7 @@ export default function KoshasAtlas() {
                   {/* Domain */}
                   {kosha.domain && (
                     <div>
-                      <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1.5">Domain</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Domain</p>
                       <p className="text-sm text-white/80 leading-relaxed">{kosha.domain}</p>
                     </div>
                   )}
@@ -197,8 +197,8 @@ export default function KoshasAtlas() {
                   {/* Vibrational quality */}
                   {kosha.vibrationalQuality && (
                     <div>
-                      <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1.5">Vibrational Quality</p>
-                      <p className="text-sm text-[var(--muted)] leading-relaxed italic">{kosha.vibrationalQuality}</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Vibrational Quality</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed italic">{kosha.vibrationalQuality}</p>
                     </div>
                   )}
 
@@ -206,19 +206,19 @@ export default function KoshasAtlas() {
                   <div className="flex flex-wrap gap-3">
                     {kosha.biofieldPosition && (
                       <div className="bg-white/[0.03] rounded-lg px-3 py-2 text-xs">
-                        <span className="text-[var(--muted)]">Field position: </span>
+                        <span className="text-muted-foreground">Field position: </span>
                         <span className="text-white">{kosha.biofieldPosition}</span>
                       </div>
                     )}
                     {kosha.frequencyRange && (
                       <div className="bg-white/[0.03] rounded-lg px-3 py-2 text-xs">
-                        <span className="text-[var(--muted)]">Frequency range: </span>
+                        <span className="text-muted-foreground">Frequency range: </span>
                         <span className="text-white">{kosha.frequencyRange}</span>
                       </div>
                     )}
                     {kosha.chakraId && (
                       <div className="bg-white/[0.03] rounded-lg px-3 py-2 text-xs">
-                        <span className="text-[var(--muted)]">Primary chakra: </span>
+                        <span className="text-muted-foreground">Primary chakra: </span>
                         <span className="text-white">{kosha.chakraId.replace("CH-", "").toLowerCase().replace("-", " ")}</span>
                       </div>
                     )}
@@ -227,8 +227,8 @@ export default function KoshasAtlas() {
                   {/* Sound healing interaction */}
                   {kosha.soundHealingInteraction && (
                     <div>
-                      <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1.5">Sound Healing Interaction</p>
-                      <p className="text-sm text-[var(--muted)] leading-relaxed">{kosha.soundHealingInteraction}</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Sound Healing Interaction</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{kosha.soundHealingInteraction}</p>
                     </div>
                   )}
 
@@ -236,7 +236,7 @@ export default function KoshasAtlas() {
                   <div className="pt-3 border-t border-white/5 space-y-3">
                     {primaryIds.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Primary Instruments</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Primary Instruments</p>
                         <div className="flex flex-wrap gap-2">
                           {primaryIds.map((id) => (
                             <InstrumentBadge key={id} id={id} instruments={instruments} />
@@ -246,7 +246,7 @@ export default function KoshasAtlas() {
                     )}
                     {secondaryIds.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-2">Secondary Instruments</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Secondary Instruments</p>
                         <div className="flex flex-wrap gap-2">
                           {secondaryIds.map((id) => (
                             <InstrumentBadge key={id} id={id} instruments={instruments} />
@@ -260,10 +260,10 @@ export default function KoshasAtlas() {
                   {kosha.applicationMode && (
                     <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
                       <p className="text-xs font-medium text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-                        <Link2 size={12} style={{ color: kosha.colorHex ?? "#6366f1" }} />
+                        <Link2 size={12} style={{ color: kosha.colorHex ?? "#2BC9B8" }} />
                         Application Mode
                       </p>
-                      <p className="text-sm text-[var(--muted)] leading-relaxed">{kosha.applicationMode}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{kosha.applicationMode}</p>
                     </div>
                   )}
                 </div>
@@ -274,8 +274,8 @@ export default function KoshasAtlas() {
       </div>
 
       {/* Footer note */}
-      <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-        <p className="text-xs text-[var(--muted)] leading-relaxed">
+      <div className="bg-card border border-white/10 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Instrument assignments are working hypotheses derived from frequency research and traditional system correspondences.
           All body-contact work should be preceded by consent and contraindication screening.
           Off-body and field-only modalities are always available as alternatives.

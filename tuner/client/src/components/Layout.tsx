@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NexusPanel from "./NexusPanel";
+import OmTunerMark, { OmTunerLogo } from "./OmTunerMark";
 import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "./AuthGate";
 
@@ -90,15 +91,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-border flex-shrink-0">
           <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-            <svg viewBox="0 0 32 32" className="w-7 h-7 om-logo-glow" fill="none">
-              {/* OM symbol simplified as SVG */}
-              <circle cx="16" cy="16" r="15" stroke="hsl(239,84%,67%)" strokeWidth="1.5" fill="none" opacity="0.3"/>
-              <text x="16" y="22" textAnchor="middle" fontSize="18" fill="hsl(239,84%,67%)" fontFamily="serif" className="om-symbol">ॐ</text>
-            </svg>
+            <OmTunerMark size={28} className="text-primary om-logo-glow" title="OM Tuner" />
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-700 text-foreground leading-tight truncate" style={{fontWeight:700}}>OM Tuner</span>
+              <span className="font-display text-lg font-semibold text-foreground leading-tight truncate">om tuner</span>
               <span className="text-xs text-muted-foreground leading-tight">Sound healing toolkit</span>
             </div>
           )}
@@ -170,8 +167,7 @@ export default function Layout({ children }: LayoutProps) {
           <button onClick={() => setMobileOpen(true)} className="text-muted-foreground">
             <Menu size={20}/>
           </button>
-          <span className="text-sm font-semibold">OM Tuner</span>
-          <span className="text-muted-foreground ml-1 om-symbol text-lg">ॐ</span>
+          <OmTunerLogo size={24} />
         </div>
 
         {/* Page content */}

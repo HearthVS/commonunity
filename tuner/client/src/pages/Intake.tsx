@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { OmTunerLogo } from "@/components/OmTunerMark";
 
 const DRAFT_KEY = "tuner-intake-draft";
 
@@ -165,13 +166,13 @@ function RadioGroup({
 }) {
   return (
     <fieldset className="space-y-2">
-      <legend className={`text-sm mb-2 ${muted ? "text-[var(--muted)]" : "text-white"}`}>{legend}</legend>
+      <legend className={`text-sm mb-2 ${muted ? "text-muted-foreground" : "text-white"}`}>{legend}</legend>
       {options.map((opt) => (
         <label
           key={opt.value}
           className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
             value === opt.value
-              ? "border-[var(--primary)] bg-[var(--primary)]/10"
+              ? "border-primary bg-primary/10"
               : "border-white/10 hover:border-white/20"
           }`}
         >
@@ -181,7 +182,7 @@ function RadioGroup({
             value={opt.value}
             checked={value === opt.value}
             onChange={() => onChange(opt.value)}
-            className="mt-0.5 accent-[var(--primary)]"
+            className="mt-0.5 accent-primary"
           />
           <span className="text-sm text-white">{opt.label}</span>
         </label>
@@ -203,7 +204,7 @@ function CheckRow({
         type="checkbox"
         checked={Boolean(checked)}
         onChange={(e) => onChange(e.target.checked ? 1 : 0)}
-        className="mt-0.5 accent-[var(--primary)]"
+        className="mt-0.5 accent-primary"
       />
       <span className="text-sm text-white">{label}</span>
     </label>
@@ -219,7 +220,7 @@ function Field({
   const id = useId();
   return (
     <div className="space-y-2">
-      <Label htmlFor={id} className="text-[var(--muted)]">{label}</Label>
+      <Label htmlFor={id} className="text-muted-foreground">{label}</Label>
       {children(id)}
     </div>
   );
@@ -307,20 +308,20 @@ export default function Intake() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto">
             <CheckCircle className="w-8 h-8 text-emerald-400" />
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-white">Thank you, {form.clientName.trim().split(" ")[0]}.</h1>
-            <p className="text-[var(--muted)] text-sm leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed">
               Your responses have been received. Your practitioner will review your profile
               and prepare a personalised session for you.
             </p>
           </div>
-          <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4">
-            <p className="text-xs text-[var(--muted)]">
+          <div className="bg-card border border-white/10 rounded-xl p-4">
+            <p className="text-xs text-muted-foreground">
               Nothing more to do — you can close this page. See you at your session.
             </p>
           </div>
@@ -330,26 +331,23 @@ export default function Intake() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] py-10 px-4">
+    <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-3">
-            <svg viewBox="0 0 32 32" className="w-10 h-10" fill="none" aria-hidden="true">
-              <circle cx="16" cy="16" r="15" stroke="hsl(239,84%,67%)" strokeWidth="1.5" fill="none" opacity="0.3"/>
-              <text x="16" y="22" textAnchor="middle" fontSize="18" fill="hsl(239,84%,67%)" fontFamily="serif">ॐ</text>
-            </svg>
+            <OmTunerLogo size={30} />
           </div>
           <h1 className="text-xl font-bold text-white">Pre-session intake</h1>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-sm text-muted-foreground">
             Takes about 5 minutes. Your answers help your practitioner personalise your session.
           </p>
         </div>
 
         {/* Progress */}
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-[var(--muted)]">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{SECTION_TITLES[section - 1]}</span>
             <span>Step {section} of {TOTAL_SECTIONS}</span>
           </div>
@@ -361,7 +359,7 @@ export default function Intake() {
         </div>
 
         {/* Section content */}
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-6 space-y-6">
+        <div className="bg-card border border-white/10 rounded-xl p-6 space-y-6">
           <h2 className="font-semibold text-white">{SECTION_TITLES[section - 1]}</h2>
 
           {/* ── Section 1: About you ── */}
@@ -375,11 +373,11 @@ export default function Intake() {
                     value={form.clientName}
                     onChange={(e) => set("clientName", e.target.value)}
                     placeholder="First and last name"
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                   />
                 )}
               </Field>
-              <p className="text-xs text-[var(--muted)]">
+              <p className="text-xs text-muted-foreground">
                 Please give an email address or a phone number (or both) so your practitioner can reach you.
               </p>
               <Field label="Email address">
@@ -393,7 +391,7 @@ export default function Intake() {
                     onChange={(e) => set("clientEmail", e.target.value)}
                     placeholder="email@example.com"
                     aria-invalid={emailInvalid}
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                   />
                 )}
               </Field>
@@ -406,7 +404,7 @@ export default function Intake() {
                     value={form.clientPhone}
                     onChange={(e) => set("clientPhone", e.target.value)}
                     placeholder="+1 555 123 4567"
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                   />
                 )}
               </Field>
@@ -417,7 +415,7 @@ export default function Intake() {
                     type="date"
                     value={form.sessionDate}
                     onChange={(e) => set("sessionDate", e.target.value)}
-                    className="bg-[var(--bg)] border-white/20"
+                    className="bg-background border-white/20"
                   />
                 )}
               </Field>
@@ -440,7 +438,7 @@ export default function Intake() {
           {/* ── Section 2: Consent ── */}
           {section === 2 && (
             <div className="space-y-5">
-              <p className="text-sm text-[var(--muted)] leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Sound healing using tuning forks, singing bowls, and bells is a complementary wellness
                 practice. It is not a substitute for medical diagnosis or treatment.
               </p>
@@ -457,7 +455,7 @@ export default function Intake() {
                 />
               </div>
               <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-                <p className="text-xs text-[var(--muted)] leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   <span className="text-white">Your privacy.</span> Your answers go only to your practitioner.
                   They are stored in your practitioner's Tuner account behind a login and are used to prepare
                   your session. You can ask your practitioner to delete them at any time.
@@ -469,7 +467,7 @@ export default function Intake() {
           {/* ── Section 3: Health & safety ── */}
           {section === 3 && (
             <div className="space-y-5">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-muted-foreground">
                 Please answer honestly. Any "yes" won't cancel your session — it helps your practitioner
                 work safely with you.
               </p>
@@ -510,7 +508,7 @@ export default function Intake() {
           {/* ── Section 4: Today ── */}
           {section === 4 && (
             <div className="space-y-6">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-muted-foreground">
                 Choose the option that feels most true right now — not in general, just today.
               </p>
               {TODAY_QUESTIONS.map(({ key, question, options }) => (
@@ -522,7 +520,7 @@ export default function Intake() {
           {/* ── Section 5: How you tend to be ── */}
           {section === 5 && (
             <div className="space-y-6">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-muted-foreground">
                 These are about how you usually are. Go with your first instinct.
               </p>
               {TENDENCY_QUESTIONS.map(({ key, question, options }) => (
@@ -541,7 +539,7 @@ export default function Intake() {
                     value={form.intentionText}
                     onChange={(e) => set("intentionText", e.target.value)}
                     placeholder="Share as much or as little as you like…"
-                    className="bg-[var(--bg)] border-white/20 min-h-[100px]"
+                    className="bg-background border-white/20 min-h-[100px]"
                   />
                 )}
               </Field>
@@ -552,7 +550,7 @@ export default function Intake() {
                     value={form.attentionAreas}
                     onChange={(e) => set("attentionAreas", e.target.value)}
                     placeholder="Optional…"
-                    className="bg-[var(--bg)] border-white/20 min-h-[80px]"
+                    className="bg-background border-white/20 min-h-[80px]"
                   />
                 )}
               </Field>
@@ -605,7 +603,7 @@ export default function Intake() {
                     value={form.otherNotes}
                     onChange={(e) => set("otherNotes", e.target.value)}
                     placeholder="Sensitivities, preferences, boundaries…"
-                    className="bg-[var(--bg)] border-white/20 min-h-[80px]"
+                    className="bg-background border-white/20 min-h-[80px]"
                   />
                 )}
               </Field>
@@ -623,7 +621,7 @@ export default function Intake() {
             variant="outline"
             onClick={() => setSection((s) => s - 1)}
             disabled={section === 1}
-            className="border-white/20 text-[var(--muted)]"
+            className="border-white/20 text-muted-foreground"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
             Back
@@ -638,14 +636,14 @@ export default function Intake() {
             <Button
               onClick={() => mutation.mutate(form)}
               disabled={mutation.isPending}
-              className="bg-[var(--primary)] hover:bg-[var(--primary)]/90"
+              className="bg-primary hover:bg-primary/90"
             >
               {mutation.isPending ? "Sending…" : "Submit"}
             </Button>
           )}
         </div>
 
-        <p className="text-center text-xs text-[var(--muted)] opacity-50">
+        <p className="text-center text-xs text-muted-foreground opacity-50">
           OM Tuner · Sound healing session intake
         </p>
       </div>

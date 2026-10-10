@@ -146,8 +146,8 @@ function InstrumentSection({ title, instruments }: { title: string; instruments:
 }
 
 function InstrumentCard({ instrument: i }: { instrument: Instrument }) {
-  const color = TYPE_COLORS[i.type] || "#6366f1";
-  const bg = TYPE_BG[i.type] || "rgba(99,102,241,0.15)";
+  const color = TYPE_COLORS[i.type] || "#2BC9B8";
+  const bg = TYPE_BG[i.type] || "rgba(43,201,184,0.15)";
   const chakraColor = CHAKRA_COLORS[i.chakraId || ""] || undefined;
   const benefits = parseArr(i.healingBenefits).slice(0, 3);
   const roles = parseArr(i.sessionRole).slice(0, 2);

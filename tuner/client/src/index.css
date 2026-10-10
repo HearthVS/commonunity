@@ -4,54 +4,68 @@
 
 /* ============================================================
    OM TUNER — Design System
-   Exact token match to CommonUnity Compass / Studio
+   The tuned palette: each accent is a tone from Hans Cousto's
+   The Cosmic Octave, octaved up into light.
+     OM / Earth year, 136.10 Hz   → green-turquoise  (primary)
+     Platonic year, 172.06 Hz      → violet           (insight: Nexus, Library)
+     Earth day, 194.18 Hz          → orange-red       (warmth: client moments)
    ============================================================ */
 
 @layer base {
   :root {
-    /* CommonUnity Theme A (dark blue) exact tokens */
-    --background: 222 35% 9%;
-    --foreground: 213 31% 97%;
+    --background: 260 29% 6%;          /* Night  #0E0B14 */
+    --foreground: 37 35% 93%;          /* Light  #F3EEE6 */
 
-    --card: 224 28% 11%;
-    --card-foreground: 213 31% 95%;
+    --card: 260 24% 10%;               /* Room   #17131F */
+    --card-foreground: 37 35% 93%;
 
-    --popover: 222 24% 10%;
-    --popover-foreground: 213 31% 95%;
+    --popover: 261 25% 14%;            /* Raised #201A2B */
+    --popover-foreground: 37 35% 93%;
 
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 174 65% 48%;            /* OM     #2BC9B8 */
+    --primary-foreground: 173 75% 9%;  /*        #062A26 */
 
-    --secondary: 217 19% 16%;
-    --secondary-foreground: 213 31% 95%;
+    --secondary: 261 25% 14%;
+    --secondary-foreground: 37 35% 93%;
 
-    --muted: 215 19% 16%;
-    --muted-foreground: 215 16% 57%;
+    --muted: 261 25% 14%;
+    --muted-foreground: 267 10% 62%;   /* Muted  #9D94A8 */
 
-    --accent: 217 19% 18%;
-    --accent-foreground: 213 31% 95%;
+    --accent: 261 25% 16%;
+    --accent-foreground: 37 35% 93%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 28% 19%;
-    --input: 216 20% 10%;
-    --ring: 239 84% 67%;
+    --border: 263 20% 17%;             /* Line   #2A2335 */
+    --input: 263 20% 17%;
+    --ring: 174 65% 48%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Chart / chakra colors */
-    --chart-1: 239 84% 67%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 338 82% 62%;
-    --chart-5: 261 80% 75%;
+    /* Tuned accents beyond primary */
+    --insight: 258 77% 74%;            /* Platonic year #A98BF0 */
+    --insight-foreground: 259 51% 15%;
+    --warmth: 15 100% 65%;             /* Earth day     #FF7A4D */
+    --warmth-foreground: 15 84% 12%;
 
-    /* CommonUnity 4-point colors */
+    /* Chart colors follow the tuned palette */
+    --chart-1: 174 65% 48%;
+    --chart-2: 258 77% 74%;
+    --chart-3: 15 100% 65%;
+    --chart-4: 173 64% 69%;
+    --chart-5: 37 35% 80%;
+
+    /* CommonUnity 4-point colors (kept for shared components) */
     --work: 38 93% 50%;
-    --lens: 239 84% 67%;
+    --lens: 258 77% 74%;
     --field: 160 84% 39%;
     --call: 338 82% 62%;
+
+    --font-sans: 'Figtree', system-ui, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --font-serif: Georgia, serif;
   }
 }
 
@@ -59,9 +73,13 @@
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
   html { scroll-behavior: smooth; }
 }
@@ -80,11 +98,14 @@
 
 /* ─── GLOW SYSTEM ────────────────────────────────────────── */
 :root {
-  /* Background radial — lifts the center like a light source */
-  --bg-glow: radial-gradient(ellipse at 50% 30%, hsl(239 60% 14%) 0%, hsl(222 35% 9%) 60%);
+  /* A faint lift of warmth from above, like a dim room light */
+  --bg-glow: radial-gradient(ellipse at 50% 0%, hsl(262 30% 10%) 0%, hsl(260 29% 6%) 65%);
+  /* Resonance rings, very faint, top right: sound made visible */
+  --bg-rings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400' viewBox='0 0 1400 1400'%3E%3Cg fill='none' stroke='%232BC9B8'%3E%3Ccircle cx='700' cy='700' r='90' stroke-opacity='.10'/%3E%3Ccircle cx='700' cy='700' r='180' stroke-opacity='.085'/%3E%3Ccircle cx='700' cy='700' r='270' stroke-opacity='.07'/%3E%3Ccircle cx='700' cy='700' r='360' stroke-opacity='.06'/%3E%3Ccircle cx='700' cy='700' r='450' stroke-opacity='.05'/%3E%3Ccircle cx='700' cy='700' r='540' stroke-opacity='.04'/%3E%3Ccircle cx='700' cy='700' r='630' stroke-opacity='.03'/%3E%3C/g%3E%3C/svg%3E");
 
   /* Card glows — per accent color */
-  --glow-primary:  rgba(99, 102, 241, 0.18);
+  --glow-primary:  rgba(43, 201, 184, 0.16);
+  --glow-insight:  rgba(169, 139, 240, 0.18);
   --glow-teal:     rgba(0, 206, 209, 0.18);
   --glow-amber:    rgba(245, 158, 11, 0.15);
   --glow-rose:     rgba(244, 63, 94, 0.15);
@@ -103,7 +124,9 @@
 
 /* Apply bg radial gradient to body */
 body {
-  background-image: var(--bg-glow) !important;
+  background-image: var(--bg-rings), var(--bg-glow) !important;
+  background-repeat: no-repeat, no-repeat !important;
+  background-position: right -520px top -620px, center !important;
   background-attachment: fixed !important;
 }
 
@@ -128,8 +151,8 @@ body {
   inset: 0 -1.5rem;   /* bleeds to match parent p-6 padding */
   background: linear-gradient(
     135deg,
-    hsl(237 55% 17% / 0.7) 0%,
-    hsl(226 38% 12% / 0.4) 60%,
+    hsl(174 40% 14% / 0.35) 0%,
+    hsl(260 24% 10% / 0.3) 60%,
     transparent 100%
   );
   border-bottom: 1px solid hsl(var(--border) / 0.6);
@@ -202,6 +225,7 @@ body {
 }
 
 .frequency-display {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -239,12 +263,12 @@ body {
 
 /* ─── SIDEBAR OM LOGO GLOW ───────────────────────────────── */
 .om-logo-glow {
-  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+  filter: drop-shadow(0 0 8px rgba(43, 201, 184, 0.45));
   animation: om-breathe 5s ease-in-out infinite;
 }
 @keyframes om-breathe {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4)); }
-  50%       { filter: drop-shadow(0 0 16px rgba(0, 206, 209, 0.65)); }
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(43, 201, 184, 0.35)); }
+  50%       { filter: drop-shadow(0 0 14px rgba(43, 201, 184, 0.6)); }
 }
 
 /* ─── FLOATING GLOW CARDS (generic) ─────────────────────── */
@@ -269,7 +293,7 @@ body {
 /* ─── CHLADNI CANVAS ─────────────────────────────────────── */
 .chladni-canvas {
   border-radius: var(--radius);
-  background: #050a14;
+  background: #0B0910;
 }
 
 /* ─── INSTRUMENT CARD ────────────────────────────────────── */

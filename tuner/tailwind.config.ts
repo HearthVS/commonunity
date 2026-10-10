@@ -26,6 +26,14 @@ export default {
           foreground: "hsl(var(--popover-foreground) / <alpha-value>)",
           border: "hsl(var(--popover-border) / <alpha-value>)",
         },
+        insight: {
+          DEFAULT: "hsl(var(--insight) / <alpha-value>)",
+          foreground: "hsl(var(--insight-foreground) / <alpha-value>)",
+        },
+        warmth: {
+          DEFAULT: "hsl(var(--warmth) / <alpha-value>)",
+          foreground: "hsl(var(--warmth-foreground) / <alpha-value>)",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary) / <alpha-value>)",
           foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
@@ -84,6 +92,7 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
+        display: ["var(--font-display)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
       },

@@ -55,13 +55,13 @@ interface AuditResponse {
 const URGENCY_COLOR: Record<string, string> = {
   high: "#ef4444",
   medium: "#f59e0b",
-  low: "#6366f1",
+  low: "#2BC9B8",
 };
 
 const URGENCY_BG: Record<string, string> = {
   high: "rgba(239,68,68,0.12)",
   medium: "rgba(245,158,11,0.12)",
-  low: "rgba(99,102,241,0.12)",
+  low: "rgba(43,201,184,0.12)",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -127,7 +127,7 @@ export default function InventoryAudit() {
         <div className="mb-8 space-y-4">
           {/* Stat row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="Owned" value={String(data.ownedCount)} sub="instruments" color="#6366f1" />
+            <StatCard label="Owned" value={String(data.ownedCount)} sub="instruments" color="#2BC9B8" />
             <StatCard
               label="Ideal Set"
               value={String(data.idealSetCount)}
@@ -184,7 +184,7 @@ export default function InventoryAudit() {
             </div>
             <div
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-              style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}
+              style={{ background: "rgba(43,201,184,0.1)", color: "#2BC9B8" }}
             >
               <Info size={11} />
               <span className="font-semibold">{lowCount}</span> lower priority
@@ -278,10 +278,10 @@ function StatCard({
 function SuggestionCard({ suggestion: s }: { suggestion: AcquisitionSuggestion }) {
   const [expanded, setExpanded] = useState(false);
 
-  const typeColor = TYPE_COLORS[s.type] || "#6366f1";
-  const typeBg = TYPE_BG[s.type] || "rgba(99,102,241,0.15)";
-  const urgencyColor = URGENCY_COLOR[s.urgency] || "#6366f1";
-  const urgencyBg = URGENCY_BG[s.urgency] || "rgba(99,102,241,0.12)";
+  const typeColor = TYPE_COLORS[s.type] || "#2BC9B8";
+  const typeBg = TYPE_BG[s.type] || "rgba(43,201,184,0.15)";
+  const urgencyColor = URGENCY_COLOR[s.urgency] || "#2BC9B8";
+  const urgencyBg = URGENCY_BG[s.urgency] || "rgba(43,201,184,0.12)";
   const chakraColor = CHAKRA_COLORS[s.chakraAffinity] || undefined;
 
   return (

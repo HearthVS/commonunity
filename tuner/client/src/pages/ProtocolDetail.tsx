@@ -72,7 +72,7 @@ export default function ProtocolDetail() {
 
   if (!proto) {
     return (
-      <div className="p-6 text-center text-[var(--muted)]">
+      <div className="p-6 text-center text-muted-foreground">
         <p>Protocol not found.</p>
         <Link href="/protocols">
           <Button variant="outline" className="mt-4 border-white/20">Back to Library</Button>
@@ -94,7 +94,7 @@ export default function ProtocolDetail() {
     <div className="p-6 max-w-3xl mx-auto space-y-8">
       {/* Back */}
       <Link href="/protocols">
-        <button className="flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-white transition-colors">
+        <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Protocol Library
         </button>
@@ -104,42 +104,42 @@ export default function ProtocolDetail() {
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <span className="text-xs font-mono text-[var(--primary)]">{proto.id}</span>
+            <span className="text-xs font-mono text-primary">{proto.id}</span>
             <h1 className="text-xl font-bold text-white mt-0.5">{proto.name}</h1>
           </div>
           <div className="flex gap-2 shrink-0">
             {proto.estimatedDuration && (
-              <div className="flex items-center gap-1.5 text-xs text-[var(--muted)] bg-white/5 px-3 py-1.5 rounded-lg">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg">
                 <Clock className="w-3.5 h-3.5" />
                 {proto.estimatedDuration} min
               </div>
             )}
             {(proto.comfortTierMin !== null && proto.comfortTierMax !== null) && (
-              <div className="flex items-center gap-1.5 text-xs text-[var(--muted)] bg-white/5 px-3 py-1.5 rounded-lg">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg">
                 <Users className="w-3.5 h-3.5" />
                 Tier {proto.comfortTierMin}–{proto.comfortTierMax}
               </div>
             )}
           </div>
         </div>
-        <p className="text-sm text-[var(--muted)] leading-relaxed">{proto.description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{proto.description}</p>
       </div>
 
       {/* Meta tags */}
       <div className="flex flex-wrap gap-2">
         {chakraSequence.map((cid) => (
-          <Badge key={cid} variant="outline" style={{ borderColor: CHAKRA_COLORS[cid] ?? "#6366f1", color: CHAKRA_COLORS[cid] ?? "#6366f1" }}>
-            <div className="w-2 h-2 rounded-full mr-1.5" style={{ background: CHAKRA_COLORS[cid] ?? "#6366f1" }} />
+          <Badge key={cid} variant="outline" style={{ borderColor: CHAKRA_COLORS[cid] ?? "#2BC9B8", color: CHAKRA_COLORS[cid] ?? "#2BC9B8" }}>
+            <div className="w-2 h-2 rounded-full mr-1.5" style={{ background: CHAKRA_COLORS[cid] ?? "#2BC9B8" }} />
             {cid.replace("CH-", "")}
           </Badge>
         ))}
         {doshaTags.map((d) => (
-          <Badge key={d} variant="outline" className="border-white/20 text-[var(--muted)] capitalize">
+          <Badge key={d} variant="outline" className="border-white/20 text-muted-foreground capitalize">
             {d}
           </Badge>
         ))}
         {centerFocus.map((c) => (
-          <Badge key={c} variant="outline" className="border-white/20 text-[var(--muted)] capitalize">
+          <Badge key={c} variant="outline" className="border-white/20 text-muted-foreground capitalize">
             {c} center
           </Badge>
         ))}
@@ -147,12 +147,12 @@ export default function ProtocolDetail() {
 
       {/* Primary instruments */}
       {primaryInstruments.length > 0 && (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Instrument Set</h2>
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Instrument Set</h2>
           <div className="flex flex-wrap gap-2">
             {primaryInstruments.map((id) => (
               <Link key={id} href={`/inventory/${id}`}>
-                <span className="text-xs px-2.5 py-1 rounded-lg bg-[var(--primary)]/20 text-[var(--primary)] font-mono hover:bg-[var(--primary)]/30 transition-colors cursor-pointer">
+                <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/20 text-primary font-mono hover:bg-primary/30 transition-colors cursor-pointer">
                   {id}
                 </span>
               </Link>
@@ -163,17 +163,17 @@ export default function ProtocolDetail() {
 
       {/* Comfort tiers */}
       {(proto.comfortTierMin !== null && proto.comfortTierMax !== null) && (
-        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Comfort Tiers</h2>
+        <div className="bg-card border border-white/10 rounded-xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Comfort Tiers</h2>
           <div className="space-y-2">
             {COMFORT_TIERS.filter((t) => t.tier >= (proto.comfortTierMin ?? 1) && t.tier <= (proto.comfortTierMax ?? 5)).map((t) => (
               <div key={t.tier} className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[var(--primary)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs text-[var(--primary)] font-bold">{t.tier}</span>
+                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-primary font-bold">{t.tier}</span>
                 </div>
                 <div>
                   <p className="text-sm text-white font-medium">{t.label}</p>
-                  <p className="text-xs text-[var(--muted)]">{t.desc}</p>
+                  <p className="text-xs text-muted-foreground">{t.desc}</p>
                 </div>
               </div>
             ))}
@@ -183,14 +183,14 @@ export default function ProtocolDetail() {
 
       {/* Protocol phases */}
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-[var(--muted)] uppercase tracking-wider">Session Phases</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Session Phases</h2>
         <div className="space-y-3">
           {allPhases.map((phase, idx) => {
             const isOM = idx === 0 || idx === allPhases.length - 1;
             return (
               <div
                 key={idx}
-                className={`bg-[var(--card)] border rounded-xl overflow-hidden ${
+                className={`bg-card border rounded-xl overflow-hidden ${
                   isOM ? "border-teal-500/40" : "border-white/10"
                 }`}
                 data-testid={`phase-${idx}`}
@@ -201,32 +201,32 @@ export default function ProtocolDetail() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                        isOM ? "bg-teal-500/20 text-teal-300" : "bg-[var(--primary)]/20 text-[var(--primary)]"
+                        isOM ? "bg-teal-500/20 text-teal-300" : "bg-primary/20 text-primary"
                       }`}>
                         {idx === 0 ? "↑" : idx === allPhases.length - 1 ? "↓" : idx}
                       </div>
                       <div>
                         <h3 className={`font-semibold ${isOM ? "text-teal-200" : "text-white"}`}>{phase.name}</h3>
                         {phase.duration && (
-                          <span className="text-xs text-[var(--muted)]">{phase.duration}</span>
+                          <span className="text-xs text-muted-foreground">{phase.duration}</span>
                         )}
                       </div>
                     </div>
                     {phase.placement && (
-                      <span className="text-xs bg-white/5 text-[var(--muted)] px-2 py-1 rounded shrink-0">
+                      <span className="text-xs bg-white/5 text-muted-foreground px-2 py-1 rounded shrink-0">
                         {phase.placement}
                       </span>
                     )}
                   </div>
 
                   {/* Technique */}
-                  <p className="text-sm text-[var(--muted)] leading-relaxed">{phase.technique}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{phase.technique}</p>
 
                   {/* Instruments */}
                   {phase.instruments?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {phase.instruments.map((id) => (
-                        <span key={id} className="text-xs px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] font-mono">
+                        <span key={id} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-mono">
                           {id}
                         </span>
                       ))}
@@ -235,7 +235,7 @@ export default function ProtocolDetail() {
 
                   {/* Notes */}
                   {phase.notes && (
-                    <p className="text-xs text-[var(--muted)] italic border-l-2 border-white/10 pl-3">
+                    <p className="text-xs text-muted-foreground italic border-l-2 border-white/10 pl-3">
                       {phase.notes}
                     </p>
                   )}
@@ -257,7 +257,7 @@ export default function ProtocolDetail() {
 
       {/* Goal */}
       {proto.goal && (
-        <div className="text-xs text-[var(--muted)] border-t border-white/5 pt-4">
+        <div className="text-xs text-muted-foreground border-t border-white/5 pt-4">
           Goal: {proto.goal}
         </div>
       )}

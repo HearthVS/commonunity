@@ -30,13 +30,13 @@ export const CHAKRA_COLORS: Record<string, string> = {
 
 // Instrument type badge colors
 export const TYPE_COLORS: Record<string, string> = {
-  fork: "hsl(239,84%,67%)",
+  fork: "#2BC9B8",
   bowl: "hsl(160,84%,39%)",
   bell: "hsl(38,92%,50%)",
 };
 
 export const TYPE_BG: Record<string, string> = {
-  fork: "rgba(99,102,241,0.15)",
+  fork: "rgba(43,201,184,0.15)",
   bowl: "rgba(16,185,129,0.15)",
   bell: "rgba(245,158,11,0.15)",
 };
@@ -63,7 +63,7 @@ export function getInstrumentAudioUrl(filename: string | null | undefined): stri
 
 // Chladni pattern color per chakra
 export function chladniColor(chakraId: string | null | undefined): string {
-  return CHAKRA_COLORS[chakraId || ""] || "#6366f1";
+  return CHAKRA_COLORS[chakraId || ""] || "#2BC9B8";
 }
 
 // Comfort tier labels

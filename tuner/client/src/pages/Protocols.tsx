@@ -13,7 +13,7 @@ import { setNexusContext } from "../components/NexusPanel";
 const CATEGORY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
   grounding: { border: "#CC0000", bg: "#CC000018", text: "#f87171" },
   "emotional-release": { border: "#ec4899", bg: "#ec489918", text: "#f9a8d4" },
-  "deep-relaxation": { border: "#818cf8", bg: "#818cf818", text: "#a5b4fc" },
+  "deep-relaxation": { border: "#A98BF0", bg: "#A98BF018", text: "#C9B6F7" },
   vata: { border: "#a78bfa", bg: "#a78bfa18", text: "#c4b5fd" },
   pitta: { border: "#f97316", bg: "#f9731618", text: "#fdba74" },
   kapha: { border: "#34d399", bg: "#34d39918", text: "#6ee7b7" },
@@ -80,7 +80,7 @@ export default function Protocols() {
           return (
             <Link key={proto.id} href={`/protocols/${proto.id}`}>
               <div
-                className="bg-[var(--card)] border rounded-xl overflow-hidden cursor-pointer hover:border-white/30 transition-colors group"
+                className="bg-card border rounded-xl overflow-hidden cursor-pointer hover:border-white/30 transition-colors group"
                 style={{ borderColor: colors.border }}
                 data-testid={`card-protocol-${proto.id}`}
               >
@@ -97,14 +97,14 @@ export default function Protocols() {
                         {proto.id}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--muted)] group-hover:text-white transition-colors mt-0.5 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors mt-0.5 shrink-0" />
                   </div>
 
                   {/* Description */}
-                  <p className="text-sm text-[var(--muted)] leading-relaxed line-clamp-2">{proto.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{proto.description}</p>
 
                   {/* Meta row */}
-                  <div className="flex items-center gap-4 text-xs text-[var(--muted)]">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     {proto.estimatedDuration && (
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -129,12 +129,12 @@ export default function Protocols() {
                   {/* Chakra dots */}
                   {chakraIds.length > 0 && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-[var(--muted)] mr-1">Chakras:</span>
+                      <span className="text-xs text-muted-foreground mr-1">Chakras:</span>
                       {chakraIds.map((cid) => (
                         <div
                           key={cid}
-                          className="w-3 h-3 rounded-full border-2 border-[var(--card)]"
-                          style={{ background: CHAKRA_COLORS[cid] ?? "#6366f1" }}
+                          className="w-3 h-3 rounded-full border-2 border-card"
+                          style={{ background: CHAKRA_COLORS[cid] ?? "#2BC9B8" }}
                           title={cid}
                         />
                       ))}
@@ -145,12 +145,12 @@ export default function Protocols() {
                   {instruments.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {instruments.slice(0, 5).map((id) => (
-                        <span key={id} className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-[var(--muted)] font-mono">
+                        <span key={id} className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground font-mono">
                           {id}
                         </span>
                       ))}
                       {instruments.length > 5 && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-[var(--muted)]">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground">
                           +{instruments.length - 5} more
                         </span>
                       )}
