@@ -47,6 +47,7 @@ The rule of thumb: **if it must remain true across threads, sessions, and contri
     studio.md
     archive.md                           ← Archive as continuity + AI ambience (present, not dominant)
     digit.md                             ← compositional builder presence inside stUdio
+    digit-profile-kit.md                 ← design note: structured profile record + the artifact card pattern
     commons.md
     fieldprint.md                        ← private edit stage → Personal hOMepage boundary
     personal-homepage.md
