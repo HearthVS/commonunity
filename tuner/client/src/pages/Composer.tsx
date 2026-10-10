@@ -11,7 +11,8 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { MultiChladniCanvas } from "@/components/ChladniCanvas";
 import { parseArr, CHAKRA_COLORS, formatHz } from "@/lib/utils";
-import { Plus, Trash2, Save, Play, Square, Volume2 } from "lucide-react";
+import { Plus, Trash2, Save, Play, Square, Volume2, Download, Share2 } from "lucide-react";
+import { renderSoundscapeMp3, soundscapeFileName, downloadBlob, canShareAudioFile, estimatedSizeMB } from "@/lib/soundscapeExport";
 import type { Instrument, Soundscape } from "@shared/schema";
 
 interface Track {
@@ -23,6 +24,8 @@ interface Track {
   color: string;
   audioFilename?: string;
 }
+
+const EXPORT_LENGTHS = [1, 3, 5, 10, 15, 20, 30, 45, 60]; // minutes
 
 const TRACK_COLORS = [
   "#6366f1", "#14b8a6", "#f59e0b", "#ec4899",
@@ -122,6 +125,13 @@ export default function Composer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [soundscapeName, setSoundscapeName] = useState("");
   const [soundscapeNotes, setSoundscapeNotes] = useState("");
+  const [exportMinutes, setExportMinutes] = useState(10);
+  const [exportProgress, setExportProgress] = useState<number | null>(null);
+  // A rendered file ready to share; the share sheet must open straight from a tap.
+  const [pendingShare, setPendingShare] = useState<{ key: string; file: File } | null>(null);
+  const [shareSupported] = useState(canShareAudioFile);
+  const [libraryFilter, setLibraryFilter] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const playbackNodesRef = useRef<{ source: AudioBufferSourceNode | OscillatorNode; gain: GainNode }[]>([]);
 
@@ -155,27 +165,107 @@ export default function Composer() {
     return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
   }, [tracks]);
 
+  const exportName = soundscapeName.trim() || "Untitled Soundscape";
+  const exportKey = JSON.stringify([tracks, exportMinutes, exportName]);
+  const audibleTracks = tracks.filter((t) => t.frequency > 0 && t.gain > 0);
+  const exporting = exportProgress !== null;
+
+  // Drop a prepared share file once the mix, length or name changes.
+  useEffect(() => {
+    if (pendingShare && pendingShare.key !== exportKey) setPendingShare(null);
+  }, [exportKey, pendingShare]);
+
+  const renderFile = async (): Promise<File> => {
+    setExportProgress(0);
+    try {
+      const blob = await renderSoundscapeMp3(tracks, exportMinutes * 60, setExportProgress);
+      return new File([blob], soundscapeFileName(exportName), { type: "audio/mpeg" });
+    } finally {
+      setExportProgress(null);
+    }
+  };
+
+  const downloadAudio = async () => {
+    try {
+      const file = await renderFile();
+      downloadBlob(file, file.name);
+      toast({ title: "Audio downloaded", description: `${file.name} is in your Downloads folder.` });
+    } catch {
+      toast({ title: "Could not create the audio file", variant: "destructive" });
+    }
+  };
+
+  const prepareShare = async () => {
+    try {
+      const file = await renderFile();
+      setPendingShare({ key: exportKey, file });
+    } catch {
+      toast({ title: "Could not create the audio file", variant: "destructive" });
+    }
+  };
+
+  const shareNow = async () => {
+    if (!pendingShare) return;
+    const list = audibleTracks.map((t) => `${t.label} (${formatHz(t.frequency)})`).join(", ");
+    try {
+      await navigator.share({
+        files: [pendingShare.file],
+        title: exportName,
+        text: `${exportName} — a ${exportMinutes}-minute soundscape: ${list}`,
+      });
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        toast({ title: "Sharing didn't work here", description: "Use Download instead and send the file.", variant: "destructive" });
+      }
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/soundscapes", {
-        name: soundscapeName || "Untitled Soundscape",
+        name: exportName,
         notes: soundscapeNotes,
+        duration: exportMinutes * 60,
         tracks: JSON.stringify(tracks),
         instrumentIds: JSON.stringify(tracks.map((t) => t.instrumentId).filter(Boolean)),
       }).then((r) => r.json()),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/soundscapes"] });
-      toast({ title: "Soundscape saved" });
+      toast({ title: "Soundscape saved", description: "Creating the audio file for your Downloads…" });
+      await downloadAudio();
       setSoundscapeName("");
       setSoundscapeNotes("");
     },
+    onError: () => {
+      toast({ title: "Could not save the soundscape", variant: "destructive" });
+    },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/soundscapes/${id}`).then((r) => r.json()),
+    onSuccess: (_data, id) => {
+      const name = soundscapes.find((sc) => sc.id === id)?.name;
+      queryClient.invalidateQueries({ queryKey: ["/api/soundscapes"] });
+      setConfirmDeleteId(null);
+      toast({ title: name ? `Deleted: ${name}` : "Soundscape deleted" });
+    },
+    onError: () => {
+      toast({ title: "Could not delete the soundscape", variant: "destructive" });
+    },
+  });
+
+  const filteredSoundscapes = libraryFilter.trim()
+    ? soundscapes.filter((sc) => sc.name.toLowerCase().includes(libraryFilter.trim().toLowerCase()))
+    : soundscapes;
 
   const loadSoundscape = (sc: Soundscape) => {
     const loaded = parseArr(sc.tracks as unknown as string);
     if (loaded.length > 0) {
       try {
         setTracks(JSON.parse(sc.tracks as unknown as string));
+        if (sc.duration && EXPORT_LENGTHS.includes(sc.duration / 60)) setExportMinutes(sc.duration / 60);
+        setSoundscapeName(sc.name);
+        setSoundscapeNotes(sc.notes ?? "");
         toast({ title: `Loaded: ${sc.name}` });
       } catch {
         toast({ title: "Could not load soundscape", variant: "destructive" });
@@ -341,7 +431,7 @@ export default function Composer() {
 
           {/* Save soundscape */}
           <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white">Save Soundscape</h3>
+            <h3 className="text-sm font-semibold text-white">Save &amp; share</h3>
             <div className="space-y-2">
               <Label className="text-[var(--muted)]">Name</Label>
               <Input
@@ -362,14 +452,68 @@ export default function Composer() {
                 data-testid="textarea-soundscape-notes"
               />
             </div>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || tracks.length === 0}
-              data-testid="button-save-soundscape"
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              {saveMutation.isPending ? "Saving…" : "Save Soundscape"}
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="export-length" className="text-[var(--muted)]">Length</Label>
+              <select
+                id="export-length"
+                value={exportMinutes}
+                onChange={(e) => setExportMinutes(Number(e.target.value))}
+                className="w-full bg-[var(--bg)] border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
+                data-testid="select-export-length"
+              >
+                {EXPORT_LENGTHS.map((m) => (
+                  <option key={m} value={m}>{m} minute{m > 1 ? "s" : ""}</option>
+                ))}
+              </select>
+              <p className="text-xs text-[var(--muted)]">
+                The recordings loop for the whole length, so it works as a meditation track, with a gentle
+                fade in and out. Saved as an MP3 of about {Math.max(1, Math.round(estimatedSizeMB(exportMinutes)))} MB
+                {exportMinutes >= 20 ? `, which takes up to ${Math.ceil(exportMinutes * 2 / 60)} minute${exportMinutes > 30 ? "s" : ""} to create` : ""}.
+                {estimatedSizeMB(exportMinutes) > 20 && " That's too large for most email — share it through WhatsApp, AirDrop or a cloud drive instead."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || exporting || audibleTracks.length === 0}
+                data-testid="button-save-soundscape"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                {saveMutation.isPending ? "Saving…" : "Save & download"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={downloadAudio}
+                disabled={exporting || audibleTracks.length === 0}
+                className="border-white/20"
+                data-testid="button-download-soundscape"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                Download only
+              </Button>
+              {shareSupported && (
+                <Button
+                  variant="outline"
+                  onClick={pendingShare ? shareNow : prepareShare}
+                  disabled={exporting || audibleTracks.length === 0}
+                  className={pendingShare ? "border-[var(--primary)] text-white" : "border-white/20"}
+                  data-testid="button-share-soundscape"
+                >
+                  <Share2 className="w-4 h-4 mr-1.5" />
+                  {pendingShare ? "Share now" : "Share…"}
+                </Button>
+              )}
+            </div>
+            {exporting && (
+              <p className="text-xs text-[var(--muted)]" aria-live="polite">
+                Creating audio… {Math.round((exportProgress ?? 0) * 100)}%
+              </p>
+            )}
+            {pendingShare && !exporting && (
+              <p className="text-xs text-[var(--muted)]">
+                {pendingShare.file.name} is ready. Tap Share now to choose an app or person.
+              </p>
+            )}
           </div>
         </div>
 
@@ -426,19 +570,82 @@ export default function Composer() {
           {/* Saved soundscapes */}
           {soundscapes.length > 0 && (
             <div className="bg-[var(--card)] border border-white/10 rounded-xl p-4 space-y-3">
-              <p className="text-xs text-[var(--muted)] uppercase tracking-wider">Saved Soundscapes</p>
-              <div className="space-y-2">
-                {soundscapes.slice(0, 5).map((sc) => (
-                  <button
-                    key={sc.id}
-                    onClick={() => loadSoundscape(sc)}
-                    className="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 rounded-lg px-3 py-2 text-sm text-left transition-colors"
-                    data-testid={`button-load-soundscape-${sc.id}`}
-                  >
-                    <span className="text-white truncate">{sc.name}</span>
-                    <span className="text-xs text-[var(--muted)] ml-2 shrink-0">Load</span>
-                  </button>
-                ))}
+              <p className="text-xs text-[var(--muted)] uppercase tracking-wider">
+                Saved Soundscapes ({soundscapes.length})
+              </p>
+              {soundscapes.length > 8 && (
+                <Input
+                  value={libraryFilter}
+                  onChange={(e) => setLibraryFilter(e.target.value)}
+                  placeholder="Search by name…"
+                  aria-label="Search saved soundscapes"
+                  className="bg-[var(--bg)] border-white/20 h-8 text-sm"
+                  data-testid="input-filter-soundscapes"
+                />
+              )}
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {filteredSoundscapes.map((sc) => {
+                  const minutes = sc.duration ? Math.round(sc.duration / 60) : null;
+                  const confirming = confirmDeleteId === sc.id;
+                  return (
+                    <div
+                      key={sc.id}
+                      className="flex items-center gap-1 bg-white/5 rounded-lg pr-1"
+                      data-testid={`row-soundscape-${sc.id}`}
+                    >
+                      {confirming ? (
+                        <>
+                          <div className="flex-1 min-w-0 px-3 py-2">
+                            <p className="text-xs text-red-300">Delete this soundscape?</p>
+                            <p className="text-sm text-white line-clamp-2 break-words">{sc.name}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="h-7 px-2 text-xs text-[var(--muted)]"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(sc.id)}
+                            disabled={deleteMutation.isPending}
+                            className="h-7 px-2 text-xs bg-red-500/80 hover:bg-red-500 text-white"
+                            data-testid={`button-confirm-delete-soundscape-${sc.id}`}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => loadSoundscape(sc)}
+                            className="flex-1 min-w-0 flex items-center justify-between hover:bg-white/5 rounded-lg px-3 py-2 text-sm text-left transition-colors"
+                            data-testid={`button-load-soundscape-${sc.id}`}
+                          >
+                            <span className="text-white line-clamp-2 break-words">{sc.name}</span>
+                            <span className="text-xs text-[var(--muted)] ml-2 shrink-0">
+                              {minutes ? `${minutes} min · ` : ""}Load
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(sc.id)}
+                            className="p-1.5 text-[var(--muted)] hover:text-red-400 transition-colors rounded shrink-0"
+                            aria-label={`Delete ${sc.name}`}
+                            title="Delete"
+                            data-testid={`button-delete-soundscape-${sc.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+                {filteredSoundscapes.length === 0 && (
+                  <p className="text-xs text-[var(--muted)] px-1">No saved soundscapes match “{libraryFilter}”.</p>
+                )}
               </div>
             </div>
           )}
