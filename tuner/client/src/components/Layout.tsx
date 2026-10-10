@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Music2, Brain, Activity, Leaf, Eye, ClipboardList,
   BookOpen, PlayCircle, PenLine, FlaskConical, Layers,
-  Info, BookMarked, ChevronLeft, ChevronRight, Menu, X, Users, Sparkles, ShoppingBag, LogOut
+  Info, BookMarked, Library, ChevronLeft, ChevronRight, Menu, X, Users, Sparkles, ShoppingBag, LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NexusPanel from "./NexusPanel";
@@ -47,6 +47,7 @@ const NAV_GROUPS = [
   {
     label: "Reference",
     items: [
+      { href: "/library", label: "Library", icon: Library },
       { href: "/why-om", label: "Why OM", icon: Info },
       { href: "/guide", label: "Practitioner Guide", icon: BookMarked },
       { href: "/sources", label: "Sources & Licensing", icon: FlaskConical },

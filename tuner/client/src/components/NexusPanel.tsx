@@ -261,6 +261,7 @@ export default function NexusPanel() {
             pageContext: "",
             nexusMemory: "",
             model: modelRef.current,
+            useLibrary: false,
           }),
         });
 
