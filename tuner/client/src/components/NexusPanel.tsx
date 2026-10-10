@@ -48,6 +48,25 @@ const ORB_IDLE = `
   }
 `;
 
+// ─── Model choice ─────────────────────────────────────────────────────────────
+// The server accepts only these ids and sets the right options for each.
+
+const NEXUS_MODEL_OPTIONS = [
+  { id: "claude-opus-5-5", label: "Opus 5.5 · best" },
+  { id: "claude-sonnet-5-5", label: "Sonnet 5.5 · faster" },
+  { id: "claude-haiku-5-5", label: "Haiku 5.5 · quickest" },
+] as const;
+type NexusModelId = (typeof NEXUS_MODEL_OPTIONS)[number]["id"];
+const MODEL_KEY = "nexus-model";
+
+function loadModel(): NexusModelId {
+  try {
+    const saved = localStorage.getItem(MODEL_KEY);
+    if (NEXUS_MODEL_OPTIONS.some((o) => o.id === saved)) return saved as NexusModelId;
+  } catch { /* storage unavailable */ }
+  return "claude-opus-5-5";
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function NexusPanel() {
@@ -59,6 +78,15 @@ export default function NexusPanel() {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [pageContext, setPageContext] = useState("");
   const [hasUnread, setHasUnread] = useState(false);
+  const [model, setModel] = useState<NexusModelId>(loadModel);
+  // Read by the send and memory-summary callbacks, so they always use the
+  // current choice without being recreated.
+  const modelRef = useRef<NexusModelId>(model);
+
+  useEffect(() => {
+    modelRef.current = model;
+    try { localStorage.setItem(MODEL_KEY, model); } catch { /* storage unavailable */ }
+  }, [model]);
 
   const convRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -142,6 +170,7 @@ export default function NexusPanel() {
           history: newHistory.slice(-10),
           pageContext,
           nexusMemory,
+          model: modelRef.current,
         }),
       });
 
@@ -231,6 +260,7 @@ export default function NexusPanel() {
             history: [],
             pageContext: "",
             nexusMemory: "",
+            model: modelRef.current,
           }),
         });
 
@@ -331,6 +361,19 @@ export default function NexusPanel() {
                 : "Sound healing advisor"}
             </div>
           </div>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value as NexusModelId)}
+            disabled={streaming}
+            aria-label="Nexus model"
+            title="Which Claude model Nexus uses"
+            className="text-xs bg-background border border-border rounded-md px-1.5 py-1 text-muted-foreground hover:text-foreground disabled:opacity-50 max-w-[11rem]"
+            data-testid="nexus-model"
+          >
+            {NEXUS_MODEL_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
           <button
             data-testid="nexus-close"
             onClick={() => setOpen(false)}

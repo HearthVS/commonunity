@@ -651,6 +651,16 @@ Return plain text only. No markdown.`;
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Models the practitioner can pick in the Nexus panel. Anything else falls
+  // back to the default. Effort is the per-model depth/cost control.
+  const NEXUS_MODELS = {
+    "claude-opus-5-5": { effort: "medium", fallback: true },    // best answers
+    "claude-sonnet-5-5": { effort: "low", fallback: true },     // faster, cheaper
+    "claude-haiku-5-5": { effort: "low", fallback: false },     // quickest, cheapest
+  } as const;
+  type NexusModelId = keyof typeof NEXUS_MODELS;
+  const NEXUS_DEFAULT_MODEL: NexusModelId = "claude-opus-5-5";
+
   // GET /api/nexus/memory — fetch current persisted memory
   app.get("/api/nexus/memory", (_req, res) => {
     const mem = storage.getNexusMemory();
@@ -668,7 +678,7 @@ Return plain text only. No markdown.`;
   // POST /api/nexus/chat — SSE streaming conversation
   // Body: { message: string, history: {role:"user"|"nexus", text:string}[], pageContext: string, nexusMemory?: string }
   app.post("/api/nexus/chat", async (req, res) => {
-    const { message, history = [], pageContext = "", nexusMemory: clientMemory } = req.body;
+    const { message, history = [], pageContext = "", nexusMemory: clientMemory, model: requestedModel = NEXUS_DEFAULT_MODEL } = req.body;
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "message required" });
     }
@@ -703,13 +713,32 @@ Return plain text only. No markdown.`;
     res.flushHeaders();
 
     try {
-      const stream = anthropic.messages.stream({
-        model: "claude-sonnet-4-5",
-        max_tokens: 300,
+      const modelId: NexusModelId =
+        typeof requestedModel === "string" && Object.prototype.hasOwnProperty.call(NEXUS_MODELS, requestedModel)
+          ? (requestedModel as NexusModelId)
+          : NEXUS_DEFAULT_MODEL;
+      const choice = NEXUS_MODELS[modelId];
+      // Server-side fallback: if the model's safety classifiers decline a
+      // request, the API re-runs it on Anthropic's recommended model for that
+      // category instead of returning a refusal. Not offered for Haiku 5.5.
+      // Not yet typed in SDK 0.92, so it is passed through as an extra field.
+      const fallbackParams = choice.fallback
+        ? { fallbacks: "default", betas: ["server-side-fallback-2026-07-01"] }
+        : {};
+      const stream = anthropic.beta.messages.stream({
+        model: modelId,
+        // A ceiling, not a target: the prompt keeps replies short by default,
+        // and only tokens actually written are billed. Thinking (always on
+        // for these models) counts toward it too.
+        max_tokens: 32000,
+        output_config: { effort: choice.effort },
         system: systemWithContext,
         messages,
+        ...fallbackParams,
       });
 
+      // Only answer text is forwarded; Opus 5.5's thinking blocks arrive
+      // empty by default and are skipped.
       for await (const chunk of stream) {
         if (
           chunk.type === "content_block_delta" &&
@@ -717,6 +746,13 @@ Return plain text only. No markdown.`;
         ) {
           res.write(`data: ${JSON.stringify({ chunk: chunk.delta.text })}\n\n`);
         }
+      }
+      const final = await stream.finalMessage();
+      if (final.stop_reason === "refusal") {
+        // The whole fallback chain declined; any partial text is not a complete answer.
+        res.write(`data: ${JSON.stringify({ chunk: "\n\n(I can't help with this one. Try rephrasing the question.)" })}\n\n`);
+      } else if (final.stop_reason === "max_tokens") {
+        res.write(`data: ${JSON.stringify({ chunk: "\n\n(This answer reached the length limit. Ask me to continue.)" })}\n\n`);
       }
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch (err: unknown) {
