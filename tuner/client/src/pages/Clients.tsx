@@ -25,6 +25,8 @@ const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function Clients() {
+  // Follows the address the app is opened on (omtuner.com once it's live).
+  const intakeUrl = `${window.location.origin}/intake`;
   const qc = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
@@ -93,7 +95,7 @@ export default function Clients() {
   useEffect(() => {
     const count = profiles?.length ?? 0;
     setNexusContext(`Client Profiles page\n${count} client questionnaire${count !== 1 ? "s" : ""} on file`);
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, [profiles]);
 
   return (
@@ -141,7 +143,7 @@ export default function Clients() {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-1">Remote intake link</p>
           <p className="text-sm text-white font-mono truncate">
-            https://ideal-trust-production-7782.up.railway.app/intake
+            {intakeUrl}
           </p>
           <p className="text-xs text-[var(--muted)] mt-1">
             Share this with clients before their session. Submissions appear here automatically.
@@ -152,7 +154,7 @@ export default function Clients() {
           size="sm"
           className="border-white/20 text-[var(--muted)] shrink-0"
           onClick={() => {
-            navigator.clipboard.writeText("https://ideal-trust-production-7782.up.railway.app/intake");
+            navigator.clipboard.writeText(intakeUrl);
           }}
         >
           Copy link

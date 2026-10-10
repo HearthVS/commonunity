@@ -12,7 +12,7 @@ const OM_HZ = 136.10;
 export default function WhyOM() {
   useEffect(() => {
     setNexusContext("Why OM — 136.10 Hz\nThe Earth Year frequency, Cousto derivation, co-chanting practice with two heart forks at the sternum, and the ceremonial container.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   return (

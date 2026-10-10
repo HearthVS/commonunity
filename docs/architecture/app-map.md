@@ -42,7 +42,7 @@ The repo currently colocates several surfaces:
 | `server.py` | Server-side glue |
 | `field/` | cOMmons-side assets/code (deployed separately via `field-phase-1`) |
 | `sdk/` | Shared SDK utilities |
-| `tuner/` | Tuner tool inside Studio |
+| `tuner/` | OM Tuner — standalone sound healing toolkit (omtuner.com), lightly linked to CommonUnity; Nexus is its AI |
 | `ashtanga-*`, `surya-namaskar`, `hatha-*` | Practice modules referenced by Studio |
 
 This colocation is historical; the canonical separation is by **layer** (per [`./system-map.md`](./system-map.md)), not by directory.

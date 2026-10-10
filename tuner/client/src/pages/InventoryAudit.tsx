@@ -87,7 +87,7 @@ export default function InventoryAudit() {
       "Inventory Audit — Gap Analysis\n" +
         "Reviewing frequency coverage gaps and acquisition suggestions to complete the ideal instrument set."
     );
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   const suggestions = (data?.suggestions ?? []).filter((s) => {

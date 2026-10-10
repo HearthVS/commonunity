@@ -152,7 +152,7 @@ export default function Sources() {
 
   useEffect(() => {
     setNexusContext("Sources & Licensing\nAttributions for McKusick Biofield Tuning, Cousto Cosmic Octave, Solfeggio lineage, and instrument manufacturers.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   return (
@@ -161,7 +161,7 @@ export default function Sources() {
       <div className="space-y-2">
         <h1 className="text-xl font-bold text-white">Source Library</h1>
         <p className="text-sm text-[var(--muted)]">
-          CommonUnity Tuner honours multiple healing lineages by citing all sources transparently.
+          OM Tuner honours multiple healing lineages by citing all sources transparently.
           Frequency assignments that differ between systems (Cousto vs. Solfeggio vs. Western tonal)
           are displayed with full attribution rather than resolved to a single "correct" value.
         </p>

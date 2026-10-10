@@ -47,7 +47,7 @@ export default function AyurvedaAtlas() {
 
   useEffect(() => {
     setNexusContext("Ayurveda & Elements\nVata, Pitta, Kapha doshas — elemental correspondences, balancing forks, and dosha-specific session guidance.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   if (isLoading) {

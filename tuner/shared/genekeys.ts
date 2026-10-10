@@ -1,5 +1,5 @@
 /**
- * CommonUnity Tuner — Gene Keys re-export
+ * OM Tuner — Gene Keys re-export
  *
  * The canonical implementation lives in sdk/genekeys.ts.
  * This file re-exports everything from there so existing imports

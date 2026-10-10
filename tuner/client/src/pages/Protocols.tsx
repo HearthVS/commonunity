@@ -33,7 +33,7 @@ export default function Protocols() {
 
   useEffect(() => {
     setNexusContext("Protocol Library\nAll session protocols — grounding, clearing, heart-centering, chakra-specific, dosha-specific, and the OM ceremonial container.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   if (isLoading) {

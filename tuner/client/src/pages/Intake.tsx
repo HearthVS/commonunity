@@ -247,14 +247,6 @@ export default function Intake() {
     window.scrollTo({ top: 0 });
   }, [section, submitted]);
 
-  // The beta feedback widget is for CommonUnity testers, not clients.
-  useEffect(() => {
-    const widget = document.getElementById("cu-feedback-widget");
-    const previous = widget?.style.display ?? "";
-    if (widget) widget.style.display = "none";
-    return () => { if (widget) widget.style.display = previous; };
-  }, []);
-
   const mutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       const { noneApply, ...payload } = data;
@@ -654,7 +646,7 @@ export default function Intake() {
         </div>
 
         <p className="text-center text-xs text-[var(--muted)] opacity-50">
-          CommonUnity Tuner · Sound healing session intake
+          OM Tuner · Sound healing session intake
         </p>
       </div>
     </div>

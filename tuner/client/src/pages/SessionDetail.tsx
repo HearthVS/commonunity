@@ -35,7 +35,7 @@ export default function SessionDetail() {
         (session.selectedProtocolId ? `Protocol: ${session.selectedProtocolId}` : "")
       );
     }
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, [session]);
 
   const updateMutation = useMutation({
