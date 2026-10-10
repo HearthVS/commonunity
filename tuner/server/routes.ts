@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { calculateRadiance, synthesizeRadianceProfile } from "../shared/genekeys";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { isPractitioner, rateLimit } from "./auth";
+import { getTableColumns } from "drizzle-orm";
+import { questionnaireResponses } from "../shared/schema";
 import { seedDatabase } from "./seed";
 import nodemailer from "nodemailer";
 import Anthropic from "@anthropic-ai/sdk";
@@ -39,25 +42,46 @@ async function sendIntakeNotification(q: any) {
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
     const flags = (() => { try { return JSON.parse(q.contraindicationFlags ?? "[]"); } catch { return []; } })();
-    const flagLine = flags.length > 0 ? `⚠️ Flags: ${flags.join(", ")}` : "✅ No contraindication flags";
+    const safety = [
+      q.hasPacemaker && "Pacemaker or implanted cardiac device",
+      q.implantedDevice && "Other implanted electronic device",
+      q.hasEpilepsy && "Epilepsy or seizure disorder",
+      q.recentSurgery && "Surgery or significant injury in the past 6 months",
+      q.soundSensitivity && "Significant tinnitus or sound sensitivity",
+      q.acuteCrisis && "Acute emotional crisis or severe distress (follow up before the session)",
+      q.pregnancyStatus === "first-trimester" && "Pregnant, first trimester",
+      q.pregnancyStatus === "yes" && "Pregnant, second or third trimester",
+      q.pregnancyStatus === "postpartum" && "Postpartum (within 6 weeks)",
+    ].filter(Boolean) as string[];
+    const urgent = q.acuteCrisis ? "⚠️ Check in first: " : "";
     await transporter.sendMail({
       from: `"CommonUnity Tuner" <${SMTP_USER}>`,
       to: NOTIFY_EMAIL,
-      subject: `New intake: ${q.clientName ?? "Client"} — ${q.recommendedProtocolId ?? "protocol pending"}`,
+      ...(q.clientEmail ? { replyTo: q.clientEmail } : {}),
+      subject: `${urgent}New intake: ${q.clientName ?? "Client"} — session ${q.sessionDate ?? "date not given"}`,
       text: [
         `New remote intake received.`,
         ``,
         `Name: ${q.clientName ?? "—"}`,
-        `Date: ${q.sessionDate ?? "—"}`,
-        `Dominant quality: ${q.dominantDosha ?? "—"}`,
-        `Dominant center: ${q.dominantCenter ?? "—"}`,
+        `Email: ${q.clientEmail || "not given"}`,
+        `Phone: ${q.clientPhone || "not given"}`,
+        `Session date: ${q.sessionDate ?? "—"}`,
+        ``,
+        safety.length > 0
+          ? `Health & safety:\n${safety.map((x) => `  • ${x}`).join("\n")}`
+          : `Health & safety: nothing reported`,
+        ...(flags.length > 0 ? [`Flags: ${flags.join(", ")}`] : []),
+        ``,
+        `Intention: ${q.intentionText || "not given"}`,
+        `Areas needing attention: ${q.attentionAreas || "not given"}`,
+        `Anything else: ${q.otherNotes || "not given"}`,
+        ``,
+        `Dominant quality: ${q.dominantDosha ?? "not answered"}`,
+        `Dominant center: ${q.dominantCenter ?? "not answered"}`,
         `Recommended protocol: ${q.recommendedProtocolId ?? "—"}`,
         `Comfort tier: ${q.recommendedComfortTier ?? "—"}`,
-        flagLine,
         ``,
-        `Intention: ${q.intentionText ?? "not provided"}`,
-        ``,
-        `View in Tuner: https://ideal-trust-production-7782.up.railway.app/#/clients`,
+        `View in Tuner: https://ideal-trust-production-7782.up.railway.app/#/questionnaire/result/${q.id}`,
       ].join("\n"),
     });
   } catch (err) {
@@ -183,48 +207,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(item);
   });
 
-  app.post("/api/questionnaires", (req, res) => {
-    const raw = req.body;
+  // Fields a public (not logged-in) intake may set. Ids and computed outputs
+  // are never accepted from the public form.
+  const PUBLIC_INTAKE_FIELDS = new Set(
+    Object.keys(getTableColumns(questionnaireResponses)).filter((k) => ![
+      "id", "clientId", "contraindicationFlags", "dominantDosha", "dominantCenter",
+      "suggestedChakraFocus", "recommendedComfortTier", "recommendedProtocolId",
+    ].includes(k)),
+  );
+  const intakeLimiter = rateLimit(8, 60 * 60 * 1000);
+
+  app.post("/api/questionnaires", (req, res, next) => {
+    if (isPractitioner(req)) return next();
+    intakeLimiter(req, res, next);
+  }, (req, res) => {
+    const practitioner = isPractitioner(req);
+    let raw = req.body ?? {};
+    // Older intake forms sent these under other names; keep accepting them.
+    if (raw.stressAreas && !raw.attentionAreas) raw.attentionAreas = raw.stressAreas;
+    if (raw.comfortNotes && !raw.otherNotes) raw.otherNotes = raw.comfortNotes;
+
+    if (!practitioner) {
+      // Honeypot: a hidden "website" field real people never fill in.
+      if (raw.website) return res.json({ ok: true });
+      raw = Object.fromEntries(
+        Object.entries(raw).filter(([k]) => PUBLIC_INTAKE_FIELDS.has(k) || k === "_source"),
+      );
+      if (typeof raw.clientName !== "string" || !raw.clientName.trim()) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+      if (!raw.consentGiven) {
+        return res.status(400).json({ error: "Consent is required" });
+      }
+    }
+    // The intake's session date is optional; default to the day it was sent.
+    if (typeof raw.sessionDate !== "string" || !raw.sessionDate) {
+      raw.sessionDate = new Date().toISOString().slice(0, 10);
+    }
+
     // Compute auto-outputs
     const flags: string[] = [];
     if (raw.hasPacemaker) flags.push("pacemaker-caution");
+    if (raw.implantedDevice) flags.push("implanted-device-caution");
     if (raw.recentSurgery) flags.push("recent-surgery-caution");
     if (raw.hasEpilepsy) flags.push("epilepsy-seizure-caution");
     if (raw.soundSensitivity) flags.push("sound-sensitivity-caution", "tinnitus-caution");
     if (raw.acuteCrisis) flags.push("acute-trauma-caution", "severe-mental-health-caution");
-    if (raw.pregnancyStatus === "yes") flags.push("pregnancy-caution");
+    if (raw.pregnancyStatus === "yes" || raw.pregnancyStatus === "first-trimester") flags.push("pregnancy-caution");
+    if (raw.pregnancyStatus === "postpartum") flags.push("postpartum-caution");
 
-    // Dosha tally — balanced is now a first-class outcome
-    const doshaCounts: Record<string, number> = { vata: 0, pitta: 0, kapha: 0, balanced: 0 };
-    const doshaFields = ["doshaBody","doshaMind","doshaSleep","doshaAppetite","doshaEnergy","doshaEmotions"];
-    for (const f of doshaFields) {
-      const v = raw[f];
-      if (v === "vata-like") doshaCounts.vata++;
-      else if (v === "pitta-like") doshaCounts.pitta++;
-      else if (v === "kapha-like") doshaCounts.kapha++;
-      else if (v === "balanced") doshaCounts.balanced++;
-    }
-    // Dominant: whichever category scored highest.
-    // Tie between balanced and a dosha -> balanced wins (sattvic state takes priority).
-    const sorted = Object.entries(doshaCounts).sort((a, b) => b[1] - a[1]);
-    const topScore = sorted[0][1];
-    // If balanced is tied for top, prefer it
-    const dominantDosha = doshaCounts.balanced === topScore ? "balanced" : sorted[0][0];
+    // Pick the top-scoring value among `fields`. Ties are broken by the answer
+    // to the first field in `tieBreakOrder` that names one of the tied values,
+    // so the result follows the client's answers, not the order of this code.
+    // Returns null when nothing was answered.
+    const dominant = (
+      fields: string[], values: string[], toKey: (v: string) => string | undefined, tieBreakOrder: string[],
+      prefer?: string,
+    ): string | null => {
+      const counts: Record<string, number> = Object.fromEntries(values.map((v) => [v, 0]));
+      for (const f of fields) {
+        const k = toKey(raw[f]);
+        if (k && k in counts) counts[k]++;
+      }
+      const top = Math.max(...Object.values(counts));
+      if (top === 0) return null;
+      const tied = values.filter((v) => counts[v] === top);
+      if (prefer && tied.includes(prefer)) return prefer;
+      for (const f of tieBreakOrder) {
+        const k = toKey(raw[f]);
+        if (k && tied.includes(k)) return k;
+      }
+      return tied[0];
+    };
 
-    // Center tally
-    const centerCounts: Record<string, number> = { physical: 0, emotional: 0, intellectual: 0 };
-    const centerFields = ["centerDecisions","centerStress","centerLearning","centerTrust","centerNeglected","centerSelf"];
-    for (const f of centerFields) {
-      const v = raw[f];
-      if (v === "physical") centerCounts.physical++;
-      else if (v === "emotional") centerCounts.emotional++;
-      else if (v === "intellectual") centerCounts.intellectual++;
-    }
-    const dominantCenter = Object.entries(centerCounts).sort((a,b) => b[1]-a[1])[0][0];
+    // Dosha — balanced is a first-class outcome and wins a tie (sattvic state).
+    const dominantDosha = dominant(
+      ["doshaBody","doshaMind","doshaSleep","doshaAppetite","doshaEnergy","doshaEmotions"],
+      ["vata", "pitta", "kapha", "balanced"],
+      (v) => (v === "balanced" ? "balanced" : typeof v === "string" ? v.replace(/-like$/, "") : undefined),
+      ["doshaBody", "doshaMind", "doshaEnergy", "doshaSleep"],
+      "balanced",
+    );
+
+    // Center — ties go to where the client feels stress in the body.
+    const dominantCenter = dominant(
+      ["centerDecisions","centerStress","centerLearning","centerTrust","centerNeglected","centerSelf"],
+      ["physical", "emotional", "intellectual"],
+      (v) => v,
+      ["centerStress", "centerDecisions", "centerNeglected"],
+    );
 
     // Comfort tier
     let comfortTier = 3;
-    const hasAllContraindications = flags.some(f => ["pacemaker-caution","epilepsy-seizure-caution","severe-mental-health-caution"].includes(f));
+    const hasAllContraindications = flags.some(f => ["pacemaker-caution","implanted-device-caution","epilepsy-seizure-caution","severe-mental-health-caution"].includes(f));
     if (hasAllContraindications) comfortTier = 1;
     else if (raw.bodyContact === "field-only") comfortTier = 1;
     else if (raw.bodyContact === "limited") comfortTier = 2;
@@ -235,14 +310,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const doshaChakraMap: Record<string, string> = {
       vata: "CH-ROOT", pitta: "CH-SOLAR", kapha: "CH-SACRAL", balanced: "CH-HEART",
     };
-    const suggestedChakraFocus = doshaChakraMap[dominantDosha] || "CH-HEART";
+    const suggestedChakraFocus = (dominantDosha && doshaChakraMap[dominantDosha]) || "CH-HEART";
 
     // Protocol recommendation — balanced routes to integration/maintenance
     const protocolMap: Record<string, string> = {
       vata: "PROTO-VATA", pitta: "PROTO-PITTA", kapha: "PROTO-KAPHA",
       balanced: "PROTO-FULL-ASCENDING",
     };
-    const focusProtocol = protocolMap[dominantDosha] || "PROTO-GROUNDING";
+    const focusProtocol = (dominantDosha && protocolMap[dominantDosha]) || "PROTO-GROUNDING";
 
     const data = {
       ...raw,
@@ -259,7 +334,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (raw._source === "intake") {
       sendIntakeNotification(saved);
     }
-    res.json(saved);
+    // The public form only needs to know it worked; never echo stored records to it.
+    res.json(practitioner ? saved : { ok: true });
   });
 
   // ─── SESSION LOGS ─────────────────────────────────────────────────────────────

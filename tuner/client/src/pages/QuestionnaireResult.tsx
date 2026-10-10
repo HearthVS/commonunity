@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { COMFORT_TIERS, DOSHA_LABELS, CHAKRA_COLORS, parseArr } from "@/lib/utils";
-import { AlertTriangle, CheckCircle, ArrowRight, BookOpen, Trash2, User, Calendar, Clock, MapPin, Mail, Stethoscope, Download } from "lucide-react";
+import { AlertTriangle, CheckCircle, ArrowRight, BookOpen, Trash2, User, Calendar, Clock, MapPin, Mail, Phone, Stethoscope, Download } from "lucide-react";
 import type { QuestionnaireResponse } from "@shared/schema";
 import RadianceCard from "@/components/RadianceCard";
 import { setNexusContext } from "../components/NexusPanel";
@@ -32,6 +32,7 @@ const CONTRA_LABELS: Record<string, string> = {
   "tinnitus-caution": "Tinnitus present — avoid prolonged high-frequency tones near ears",
   "acute-trauma-caution": "Acute trauma / crisis — grounding-only protocols; no deep emotional excavation",
   "severe-mental-health-caution": "Acute mental health episode — work only with GP/therapist permission",
+  "postpartum-caution": "Postpartum (within 6 weeks) — avoid weighted forks on lower abdomen/sacrum; keep the session gentle",
 };
 
 export default function QuestionnaireResult() {
@@ -152,8 +153,9 @@ export default function QuestionnaireResult() {
   }
 
   const flags = parseArr(result.contraindicationFlags as unknown as string);
-  const dominantDosha = result.dominantDosha ?? "vata";
-  const dominantCenter = result.dominantCenter ?? "emotional";
+  // Null means the client skipped those questions; say so instead of guessing.
+  const dominantDosha = result.dominantDosha ?? "not answered";
+  const dominantCenter = result.dominantCenter ?? "not answered";
   const comfortTier = result.recommendedComfortTier ?? 3;
   const tierInfo = COMFORT_TIERS.find((t) => t.tier === comfortTier) ?? COMFORT_TIERS[2];
   const doshaColor = DOSHA_COLORS[dominantDosha] ?? "#6366f1";
@@ -230,12 +232,21 @@ export default function QuestionnaireResult() {
               <p className="text-sm text-white font-medium">{result.clientName ?? "—"}</p>
             </div>
           </div>
-          {(result as any).clientEmail && (
+          {result.clientEmail && (
             <div className="flex items-start gap-2">
               <Mail className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs text-[var(--muted)]">Email</p>
-                <p className="text-sm text-white truncate">{(result as any).clientEmail}</p>
+                <p className="text-sm text-white truncate">{result.clientEmail}</p>
+              </div>
+            </div>
+          )}
+          {result.clientPhone && (
+            <div className="flex items-start gap-2">
+              <Phone className="w-3.5 h-3.5 text-[var(--muted)] mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-[var(--muted)]">Phone</p>
+                <p className="text-sm text-white truncate">{result.clientPhone}</p>
               </div>
             </div>
           )}
@@ -381,6 +392,24 @@ export default function QuestionnaireResult() {
         <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-2">
           <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Client Intentions</p>
           <p className="text-sm text-white leading-relaxed italic">"{result.intentionText}"</p>
+        </div>
+      )}
+
+      {/* Client notes */}
+      {(result.attentionAreas || result.otherNotes) && (
+        <div className="bg-[var(--card)] border border-white/10 rounded-xl p-5 space-y-3">
+          {result.attentionAreas && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Areas needing attention</p>
+              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.attentionAreas}</p>
+            </div>
+          )}
+          {result.otherNotes && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Anything else</p>
+              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{result.otherNotes}</p>
+            </div>
+          )}
         </div>
       )}
 

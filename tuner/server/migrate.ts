@@ -246,6 +246,15 @@ export function runMigrations() {
     db.run(sql`ALTER TABLE questionnaire_responses ADD COLUMN birth_place TEXT`);
   } catch (_) { /* column already exists */ }
 
+  // Remote intake fields that were collected but had no column to land in
+  for (const col of [
+    "client_email TEXT", "client_phone TEXT", "implanted_device INTEGER", "attention_areas TEXT",
+  ]) {
+    try {
+      db.run(sql.raw(`ALTER TABLE questionnaire_responses ADD COLUMN ${col}`));
+    } catch (_) { /* column already exists */ }
+  }
+
   // Nexus AI memory — single-row global store for beta
   db.run(sql`CREATE TABLE IF NOT EXISTS nexus_memory (
     key TEXT PRIMARY KEY,

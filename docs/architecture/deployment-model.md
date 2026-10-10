@@ -22,12 +22,14 @@ The provider stack (Railway + Cloudflare + GitHub) matches the 2026-05-16 decisi
 | --- | --- | --- | --- |
 | Main CommonUnity | Studio + root | `2a5f091f-fbc8-44e2-89a2-a48780531e22` | `main` |
 | cOMmons | Field surface | `20df4da0-9e34-412c-8427-ee048309a185` | `field-phase-1` |
+| Tuner (`ideal-trust`) | Sound healing toolkit + client intake (`tuner/`) | `6c9b23f0-1340-4652-b6fa-e538d763a96e` | `main` (redeploys on every push to `main`) |
 
 ## Live URLs
 
 - Main Studio/root: `https://commonunity-production.up.railway.app`
 - Studio route: `https://commonunity-production.up.railway.app/studio`
 - cOMmons: `https://commons-production-8914.up.railway.app/field`
+- Tuner: `https://ideal-trust-production-7782.up.railway.app` (client intake at `/intake`)
 
 ## Future canonical domains
 
@@ -81,6 +83,8 @@ cOMmons accepts:
 - `Procfile`, `nixpacks.toml`, `railway.json`, `runtime.txt`, and `requirements.txt` define the runtime contract at repo root.
 - cOMmons currently uses SQLite as its data store.
 - Three beta cOMmons profiles seeded: Markus, Eda, Vesna.
+- Tuner uses SQLite at `DATABASE_URL=/data/tuner.db` on the Railway volume `ideal-trust-volume` (mounted at `/data`, added 2026-10-06). Before that the database lived inside the container and was wiped on every deploy; intakes from before 2026-10-06 are not recoverable.
+- Tuner needs `TUNER_PRACTITIONER_PASSWORD` for the practitioner login, and `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` (optional `NOTIFY_EMAIL`) to email new intakes. Without the SMTP variables no notification is sent.
 
 ## Operational rules
 
