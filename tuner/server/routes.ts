@@ -3,6 +3,7 @@ import { calculateRadiance, synthesizeRadianceProfile } from "../shared/genekeys
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isPractitioner, rateLimit } from "./auth";
+import { registerLibrary, searchLibrary } from "./library";
 import { getTableColumns } from "drizzle-orm";
 import { questionnaireResponses } from "../shared/schema";
 import { seedDatabase } from "./seed";
@@ -90,6 +91,8 @@ async function sendIntakeNotification(q: any, baseUrl: string) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerLibrary(app);
+
   // Seed on startup
   try { seedDatabase(); } catch (e) { console.warn("Seed error:", e); }
 
@@ -646,6 +649,7 @@ Your nature:
 - Plain text only. No markdown, no bullet lists, no headers in your replies.
 - When frequency assignments differ between systems (Cousto vs Solfeggio vs Western tonal), you name the difference and its source rather than picking one.
 - Every protocol has an off-body option. If someone cannot receive direct application, you know how to adapt.
+- The practitioner keeps a private library of books and notes. When passages from it come with a question, ground your answer in them where they apply and cite them inline as (Title, p. N). Never invent a citation, quote, or page number; if the passages don't cover the question, answer from your own knowledge and say the library doesn't cover it.
 
 Return plain text only. No markdown.`;
 
@@ -678,7 +682,7 @@ Return plain text only. No markdown.`;
   // POST /api/nexus/chat — SSE streaming conversation
   // Body: { message: string, history: {role:"user"|"nexus", text:string}[], pageContext: string, nexusMemory?: string }
   app.post("/api/nexus/chat", async (req, res) => {
-    const { message, history = [], pageContext = "", nexusMemory: clientMemory, model: requestedModel = NEXUS_DEFAULT_MODEL } = req.body;
+    const { message, history = [], pageContext = "", nexusMemory: clientMemory, model: requestedModel = NEXUS_DEFAULT_MODEL, useLibrary = true } = req.body;
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "message required" });
     }
@@ -704,7 +708,17 @@ Return plain text only. No markdown.`;
       const role = msg.role === "nexus" ? "assistant" : "user";
       messages.push({ role, content: msg.text });
     }
-    messages.push({ role: "user", content: message });
+    // Library passages for this question only; they aren't kept in the
+    // conversation history the client sends back.
+    const passages = useLibrary === false ? [] : searchLibrary(message, 4, true);
+    const content = passages.length
+      ? "Passages from my library that may be relevant (cite as (Title, p. N) where you use them; ignore any that don't apply):\n\n" +
+        passages
+          .map((p, i) => `[${i + 1}] ${p.title}${p.author ? ` (${p.author})` : ""}, p. ${p.page}:\n${(p.content ?? "").slice(0, 2500)}`)
+          .join("\n\n") +
+        `\n\n---\n\nMy question: ${message}`
+      : message;
+    messages.push({ role: "user", content });
 
     // SSE headers
     res.setHeader("Content-Type", "text/event-stream");

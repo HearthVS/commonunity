@@ -24,6 +24,7 @@ import SessionLog from "./pages/SessionLog";
 import SessionDetail from "./pages/SessionDetail";
 import Composer from "./pages/Composer";
 import Sources from "./pages/Sources";
+import Library from "./pages/Library";
 import WhyOM from "./pages/WhyOM";
 import PractitionerGuide from "./pages/PractitionerGuide";
 import InventoryAudit from "./pages/InventoryAudit";
@@ -61,6 +62,7 @@ export default function App() {
                   <Route path="/sessions/:id" component={SessionDetail} />
                   <Route path="/composer" component={Composer} />
                   <Route path="/sources" component={Sources} />
+                  <Route path="/library" component={Library} />
                   <Route path="/why-om" component={WhyOM} />
                   <Route path="/guide" component={PractitionerGuide} />
                   <Route component={NotFound} />

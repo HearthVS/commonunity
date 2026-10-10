@@ -255,6 +255,25 @@ export function runMigrations() {
     } catch (_) { /* column already exists */ }
   }
 
+  // Practitioner library: resources plus a full-text index of their pages
+  db.run(sql`CREATE TABLE IF NOT EXISTS library_resources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    author TEXT,
+    tags TEXT,
+    notes TEXT,
+    filename TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    page_count INTEGER NOT NULL,
+    text_pages INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  )`);
+  db.run(sql`CREATE VIRTUAL TABLE IF NOT EXISTS library_pages USING fts5(
+    content, resource_id UNINDEXED, page UNINDEXED,
+    tokenize = 'porter unicode61 remove_diacritics 2'
+  )`);
+
   // Nexus AI memory — single-row global store for beta
   db.run(sql`CREATE TABLE IF NOT EXISTS nexus_memory (
     key TEXT PRIMARY KEY,

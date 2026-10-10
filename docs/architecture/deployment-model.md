@@ -84,6 +84,7 @@ cOMmons accepts:
 - cOMmons currently uses SQLite as its data store.
 - Three beta cOMmons profiles seeded: Markus, Eda, Vesna.
 - Tuner uses SQLite at `DATABASE_URL=/data/tuner.db` on the Railway volume `ideal-trust-volume` (mounted at `/data`, added 2026-10-06). Before that the database lived inside the container and was wiped on every deploy; intakes from before 2026-10-06 are not recoverable.
+- OM Tuner's Library files are stored next to the database on the same volume (`/data/library`, override with `LIBRARY_DIR`); their text is indexed in the SQLite database. Never commit library files to the repo (the repo is public and resources may be copyrighted).
 - Tuner needs `TUNER_PRACTITIONER_PASSWORD` for the practitioner login, and `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` (optional `NOTIFY_EMAIL`) to email new intakes. Without the SMTP variables no notification is sent.
 
 ## Operational rules
