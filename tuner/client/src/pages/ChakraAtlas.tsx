@@ -15,7 +15,7 @@ export default function ChakraAtlas() {
 
   useEffect(() => {
     setNexusContext("Chakra Atlas\nOverview of all 7 chakras plus extended centers — frequencies, bija mantras, mudras, forks, and placement guides.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   const sorted = [...chakras].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));

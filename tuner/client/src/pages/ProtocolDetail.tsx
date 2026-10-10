@@ -57,7 +57,7 @@ export default function ProtocolDetail() {
         `Phases: ${phases.length} phases in this protocol`
       );
     }
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, [proto]);
 
   if (isLoading) {

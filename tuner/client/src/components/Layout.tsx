@@ -97,8 +97,8 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-700 text-foreground leading-tight truncate" style={{fontWeight:700}}>CommonUnity</span>
-              <span className="text-xs text-muted-foreground leading-tight">Tuner</span>
+              <span className="text-sm font-700 text-foreground leading-tight truncate" style={{fontWeight:700}}>OM Tuner</span>
+              <span className="text-xs text-muted-foreground leading-tight">Sound healing toolkit</span>
             </div>
           )}
           <button
@@ -146,14 +146,11 @@ export default function Layout({ children }: LayoutProps) {
           ))}
         </nav>
 
-        {/* Footer links to CommonUnity ecosystem */}
+        {/* Footer: light link to CommonUnity, which OM Tuner is part of */}
         {!collapsed && (
           <div className="border-t border-border p-3 flex flex-col gap-1">
-            <a href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
-              <Layers size={12}/> CommonUnity Compass
-            </a>
-            <a href="/studio.html" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
-              <Layers size={12}/> CommonUnity Studio
+            <a href="https://commonunity.io" target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
+              <Layers size={12}/> Part of CommonUnity
             </a>
             <button
               onClick={() => logout(queryClient)}
@@ -172,7 +169,7 @@ export default function Layout({ children }: LayoutProps) {
           <button onClick={() => setMobileOpen(true)} className="text-muted-foreground">
             <Menu size={20}/>
           </button>
-          <span className="text-sm font-semibold">CommonUnity Tuner</span>
+          <span className="text-sm font-semibold">OM Tuner</span>
           <span className="text-muted-foreground ml-1 om-symbol text-lg">ॐ</span>
         </div>
 

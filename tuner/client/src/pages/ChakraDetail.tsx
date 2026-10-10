@@ -30,7 +30,7 @@ export default function ChakraDetail() {
         (themes ? `\nThemes: ${themes}` : "")
       );
     }
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, [chakra]);
 
   if (isLoading) return <div className="p-6"><Skeleton className="h-96"/></div>;

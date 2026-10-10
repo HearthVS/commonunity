@@ -11,7 +11,7 @@ const SECTIONS = [
     content: (
       <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
         <p>
-          CommonUnity Tuner is a practitioner-grade session planning tool. It is not a standalone healing
+          OM Tuner is a practitioner-grade session planning tool. It is not a standalone healing
           device — it is a reference, protocol library, and session tracking system designed to support
           experienced sound healing practitioners.
         </p>
@@ -161,7 +161,7 @@ const SECTIONS = [
     content: (
       <div className="space-y-4 text-sm text-[var(--muted)] leading-relaxed">
         <p>
-          CommonUnity Tuner honours multiple healing lineages rather than privileging any single system.
+          OM Tuner honours multiple healing lineages rather than privileging any single system.
           Where frequency assignments differ, all systems are shown with attribution.
         </p>
         <div className="grid grid-cols-1 gap-3">
@@ -246,7 +246,7 @@ export default function PractitionerGuide() {
 
   useEffect(() => {
     setNexusContext("Practitioner Guide\nSession design, client preparation, contraindication protocols, and ethical guidelines for sound healing practice.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   return (
@@ -255,7 +255,7 @@ export default function PractitionerGuide() {
       <div className="space-y-2">
         <h1 className="text-xl font-bold text-white">Practitioner Guide</h1>
         <p className="text-sm text-[var(--muted)]">
-          Reference documentation for CommonUnity Tuner v1. Covers instrument types, intake protocol,
+          Reference documentation for OM Tuner v1. Covers instrument types, intake protocol,
           session execution, multi-lineage practice, and documentation.
         </p>
       </div>

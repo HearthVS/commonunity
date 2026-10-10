@@ -25,7 +25,7 @@ export default function Inventory() {
   // Nexus context — instrument inventory overview
   useEffect(() => {
     setNexusContext("Instrument Inventory\nFull collection of tuning forks, singing bowls, and bells — browse or search by type, lineage, or chakra.");
-    return () => setNexusContext("Sound healing practitioner tool — CommonUnity Tuner");
+    return () => setNexusContext("Sound healing practitioner tool — OM Tuner");
   }, []);
 
   const filtered = useMemo(() => {

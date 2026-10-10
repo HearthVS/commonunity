@@ -59,7 +59,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <form onSubmit={submit} className="w-full max-w-sm bg-card border border-border rounded-xl p-6 space-y-5">
         <div className="text-center space-y-1">
           <div className="text-3xl text-primary om-symbol" aria-hidden="true">ॐ</div>
-          <h1 className="text-lg font-semibold text-foreground">CommonUnity Tuner</h1>
+          <h1 className="text-lg font-semibold text-foreground">OM Tuner</h1>
           <p className="text-sm text-muted-foreground">Practitioner login</p>
         </div>
         {data && !data.configured ? (

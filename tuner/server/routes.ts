@@ -34,7 +34,7 @@ const SMTP_PORT = parseInt(process.env.SMTP_PORT ?? "587");
 const SMTP_USER = process.env.SMTP_USER ?? "";
 const SMTP_PASS = process.env.SMTP_PASS ?? "";
 
-async function sendIntakeNotification(q: any) {
+async function sendIntakeNotification(q: any, baseUrl: string) {
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return; // skip if not configured
   try {
     const transporter = nodemailer.createTransport({
@@ -55,7 +55,7 @@ async function sendIntakeNotification(q: any) {
     ].filter(Boolean) as string[];
     const urgent = q.acuteCrisis ? "⚠️ Check in first: " : "";
     await transporter.sendMail({
-      from: `"CommonUnity Tuner" <${SMTP_USER}>`,
+      from: `"OM Tuner" <${SMTP_USER}>`,
       to: NOTIFY_EMAIL,
       ...(q.clientEmail ? { replyTo: q.clientEmail } : {}),
       subject: `${urgent}New intake: ${q.clientName ?? "Client"} — session ${q.sessionDate ?? "date not given"}`,
@@ -81,7 +81,7 @@ async function sendIntakeNotification(q: any) {
         `Recommended protocol: ${q.recommendedProtocolId ?? "—"}`,
         `Comfort tier: ${q.recommendedComfortTier ?? "—"}`,
         ``,
-        `View in Tuner: https://ideal-trust-production-7782.up.railway.app/#/questionnaire/result/${q.id}`,
+        `View in OM Tuner: ${baseUrl}/#/questionnaire/result/${q.id}`,
       ].join("\n"),
     });
   } catch (err) {
@@ -332,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const saved = storage.createQuestionnaire(data);
     // Fire-and-forget email for remote intake submissions
     if (raw._source === "intake") {
-      sendIntakeNotification(saved);
+      sendIntakeNotification(saved, `${req.protocol}://${req.get("host")}`);
     }
     // The public form only needs to know it worked; never echo stored records to it.
     res.json(practitioner ? saved : { ok: true });
@@ -622,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // In Tuner it operates as a sound healing practitioner's advisor,
   // contextually aware of what instrument/protocol/client is on screen.
 
-  const NEXUS_SYSTEM = `You are the Nexus — the AI presence within CommonUnity Tuner, a professional sound healing toolkit.
+  const NEXUS_SYSTEM = `You are the Nexus — the AI presence within OM Tuner, a professional sound healing toolkit.
 
 You are not a generic assistant. You are a knowledgeable companion for the sound healing practitioner using this app. You hold deep familiarity with:
 - The instruments in this practitioner's collection: tuning forks, singing bowls, bells, and their specific frequencies

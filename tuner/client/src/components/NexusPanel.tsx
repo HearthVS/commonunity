@@ -1,5 +1,5 @@
 /**
- * NexusPanel — the Nexus AI presence for CommonUnity Tuner.
+ * NexusPanel — the Nexus AI presence for OM Tuner.
  *
  * A floating orb (bottom-right) opens a slide-out panel containing a
  * streaming chat conversation with the Nexus AI. The Nexus receives

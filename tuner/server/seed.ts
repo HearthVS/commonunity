@@ -1172,7 +1172,7 @@ export async function seedDatabase() {
     db.insert(koshas).values(kosha as any).run();
   }
 
-  console.log("✅ CommonUnity Tuner: database seeded successfully");
+  console.log("✅ OM Tuner: database seeded successfully");
 }
 
 // ─── Koshas — 7 Subtle Body Layers ────────────────────────────────────────────
